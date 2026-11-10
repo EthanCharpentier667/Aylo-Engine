@@ -22,6 +22,7 @@ task("package-release")
         import("lib.detect.find_tool")
         import("utils.archive")
         import("engine_version")
+        import("third_party_notices")
 
         config.load()
         local plat = config.plat()
@@ -226,10 +227,25 @@ task("package-release")
             end
         end
 
-        -- Licenses of what the runtime carries.
-        local notices = path.join(rootdir, "xmake", "package", "THIRD_PARTY_NOTICES.md")
-        os.mkdir(path.join(runtime, "licenses"))
-        os.cp(notices, path.join(runtime, "licenses", "THIRD_PARTY_NOTICES.md"))
+        -- Licenses of what the runtime carries: the third-party code of each binary in `licenses/by-library/<file>.md`
+        -- (what the game export keeps of them), and all of them in THIRD_PARTY_NOTICES.md.
+        local licenses = path.join(runtime, "licenses")
+        local bylibrary = path.join(licenses, "by-library")
+        os.mkdir(bylibrary)
+        local allrows = {}
+        for _, file in ipairs(os.files(path.join(runtime, "**"))) do
+            local filename = path.filename(file)
+            local rows = third_party_notices.rowsOfBundled(filename)
+            if not rows then
+                local target = third_party_notices.targetOf(filename)
+                rows = target and third_party_notices.rowsOfTarget(target)
+            end
+            if rows then
+                third_party_notices.writeRows(bylibrary, filename, rows)
+                table.join2(allrows, rows)
+            end
+        end
+        third_party_notices.writeNotices(path.join(licenses, "THIRD_PARTY_NOTICES.md"), allrows)
 
         -- The starting game.
         os.cp(path.join(rootdir, "examples", "games", "template", "game"), path.join(stage, "templates", "game"))
