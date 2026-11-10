@@ -69,7 +69,7 @@ The program starts the pack next to it when no game folder is given, so the laun
 | EXP-02 | Licenses per library in `manifest.json` | none | P2 | S |
 | EXP-03 | `aylo-export` tool: the trimmed folder, with the game folder as it is | EXP-01, EXP-02 | P1 | M |
 | EXP-04 | File source (`core::vfs`): a folder or a pack, and every reader moved to it | none | P1 | L |
-| EXP-05 | Sounds from bytes: `IAudioDevice` opens a sound from memory | none | P1 | M |
+| EXP-05 | Sounds from bytes: a streamed sound from memory | none | P1 | S |
 | EXP-06 | Pack format: writer, reader, scripts as bytecode | EXP-04 | P1 | M |
 | EXP-07 | The engine runs a pack (`game.pak` next to the program, or given) | EXP-04, EXP-05, EXP-06 | P1 | M |
 | EXP-08 | `aylo-export` packs the game | EXP-03, EXP-07 | P1 | S |
@@ -163,9 +163,13 @@ pack. Tests: `tests/core/DirectorySourceTests.cpp`, and a store and the capsule 
 
 ### EXP-05: sounds from bytes
 
-`IAudioDevice::createSound` takes the sound's bytes instead of a path (miniaudio decodes from memory; a streamed music
-keeps its bytes for as long as it plays). The audio plugin reads the bytes from the file source. Every audio backend is
-changed with the contract.
+The contract already had `IAudioDevice::createSound(encoded)`, and the audio plugin gives it the bytes from the file
+source when the assets have no folder (EXP-04). What did not work was a streamed sound given as bytes: miniaudio's
+resource manager streams files only, by their path, so a streamed music from a pack could not play. `MiniaudioDevice`
+now keeps the bytes of such a sound, and each voice decodes them while it plays (`core::Sound` from memory: a
+`ma_decoder` on the bytes, `ma_sound_init_from_data_source`). No contract changed, and miniaudio is the only backend
+with an audio device. Tests: `tests/audio/MiniaudioDeviceTests.cpp` (a new `audio-tests` module), which plays a sound
+and streams one given as bytes, on miniaudio's null device where the machine has no sound card.
 
 ### EXP-06: pack format
 

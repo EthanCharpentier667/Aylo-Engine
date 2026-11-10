@@ -410,6 +410,11 @@ Hands out ids and tracks the voices' state (a looping voice plays until stopped,
 - One `ma_engine` (device, mixer, resource manager) owned by `MiniaudioDevice`, one `ma_sound_group` per bus, one
   `ma_sound` per voice, created from the loaded sound's data source (`ma_sound_init_copy` for effects, a streamed
   `ma_sound` for music). The C objects are wrapped in RAII classes.
+- A sound given as bytes (`createSound(encoded)`, what the audio plugin does for an exported game's pack) is registered
+  with the resource manager and decoded once, unless it is streamed: the resource manager streams files only, by their
+  path. A streamed sound given as bytes keeps them, and each voice decodes them while it plays (a `ma_decoder` on the
+  memory, `ma_sound_init_from_data_source`). `tests/audio/` plays both through the contract, on the null device where
+  the machine has no sound card.
 - `maxVoices` sizes the voice table; beyond it, the oldest effect voice is stolen, music never is.
 - OGG Vorbis decodes through `stb_vorbis`, from the `stb` package already in the project.
 - Settings: `sampleRate`, `channels`, `device` (see [Configuration](#4-configuration)).
