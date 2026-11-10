@@ -37,7 +37,10 @@ task("package-release")
             raise("the package is a release build: run `xmake f -m release` first (the mode is " .. tostring(config.mode()) .. ")")
         end
         if not option.get("no-build") then
-            os.execv(os.programfile(), {"build", "-y", "-P", rootdir, "aylo-runtime", "aylo-sign"})
+            -- One target per call: `xmake build` takes a single target.
+            for _, name in ipairs({"aylo-runtime", "aylo-sign", "aylo-export"}) do
+                os.execv(os.programfile(), {"build", "-y", "-P", rootdir, name})
+            end
         end
 
         local builddir = path.join(path.absolute(config.builddir()), plat, config.arch(), config.mode())
@@ -66,7 +69,11 @@ task("package-release")
             end
         end
         copyExecutable(path.join(builddir, "aylo-runtime" .. exeext), path.join(runtime, "aylo-runtime" .. exeext))
-        copyExecutable(path.join(builddir, "aylo-sign" .. exeext), path.join(stage, "tools", "aylo-sign" .. exeext))
+        -- The tools: aylo-sign signs the game plugins, aylo-export exports a game with the zip's runtime/.
+        local tools = {"aylo-sign", "aylo-export"}
+        for _, tool in ipairs(tools) do
+            copyExecutable(path.join(builddir, tool .. exeext), path.join(stage, "tools", tool .. exeext))
+        end
 
         -- The libraries, as the build made them: `lib/` holds the ones that are not plugins, `plugins/` the plugins (real
         -- files, `plugins/backends/` for the backends). A library made for the tests is not part of the engine.
@@ -164,8 +171,10 @@ task("package-release")
             end
             if patchelf then
                 os.vrunv(patchelf.program, {"--set-rpath", "$ORIGIN/lib:$ORIGIN/plugins", path.join(runtime, "aylo-runtime")})
-                os.vrunv(patchelf.program, {"--set-rpath", "$ORIGIN/../runtime/lib:$ORIGIN/../runtime/plugins",
-                                            path.join(stage, "tools", "aylo-sign")})
+                for _, tool in ipairs(tools) do
+                    os.vrunv(patchelf.program, {"--set-rpath", "$ORIGIN/../runtime/lib:$ORIGIN/../runtime/plugins",
+                                                path.join(stage, "tools", tool)})
+                end
             else
                 cprint("${yellow}warning: patchelf is missing: the executables keep the search paths of the build")
             end
@@ -204,7 +213,8 @@ task("package-release")
             })
 
             local binaries = table.join(os.files(path.join(runtime, "**.dylib")),
-                                        {path.join(runtime, "aylo-runtime"), path.join(stage, "tools", "aylo-sign")})
+                                        {path.join(runtime, "aylo-runtime"), path.join(stage, "tools", "aylo-sign"),
+                                         path.join(stage, "tools", "aylo-export")})
             for _, file in ipairs(binaries) do
                 local args = {}
                 -- otool -L: the first line is the file, then one dependency per line (the first of a library is its id).
@@ -298,7 +308,8 @@ task("package-release")
         end
         for _, file in ipairs(table.join(os.files(path.join(stage, "runtime", "**" .. libext)),
                                           os.files(path.join(runtime, "aylo-runtime" .. exeext)),
-                                          os.files(path.join(stage, "tools", "aylo-sign" .. exeext)))) do
+                                          os.files(path.join(stage, "tools", "aylo-sign" .. exeext)),
+                                          os.files(path.join(stage, "tools", "aylo-export" .. exeext)))) do
             keepSymbols(file)
         end
         if windows then
