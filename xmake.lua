@@ -220,6 +220,7 @@ includes("src/rtype/render/vulkan")
 includes("src/rtype/audio/miniaudio")
 includes("src/rtype/runtime")
 includes("src/rtype/tools/sign")
+includes("src/rtype/tools/export")
 
 -- Every backend library, for what loads them without linking them.
 target("backend-libraries")
