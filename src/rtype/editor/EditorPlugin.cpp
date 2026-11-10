@@ -153,6 +153,7 @@ void runFrame(EditorState& state, contract::platform::IPlatform& platform, contr
     panels::drawConsolePanel(state);
     panels::drawServerPanel(state);
     panels::drawPluginsPanel(state);
+    panels::drawExportPanel(state);
     state.session->online.update(*state.supervisor);
     ImGui::Render();
     ImDrawData& drawData = *ImGui::GetDrawData();

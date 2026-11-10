@@ -161,6 +161,9 @@ void drawFileMenuItems(EditorState& state, contract::platform::IPlatform& platfo
     if (ImGui::MenuItem("Save", "Ctrl+S", false, state.getEdited().has_value())) {
         saveScene(state);
     }
+    if (ImGui::MenuItem("Export...", nullptr, false, state.session && state.session->exporter)) {
+        state.showExport = true;
+    }
     ImGui::Separator();
     if (ImGui::MenuItem("Quit")) {
         platform.close();

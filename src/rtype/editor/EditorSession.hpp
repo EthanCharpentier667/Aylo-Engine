@@ -18,6 +18,7 @@
 #include "editor/process/ClientLauncher.hpp"
 #include "editor/server/ServerPanelState.hpp"
 #include "editor/server/ServerSupervisor.hpp"
+#include "editor/shipping/GameExport.hpp"
 
 namespace rtype::editor {
 
@@ -45,6 +46,8 @@ struct RTYPE_EDITOR_API EditorSession {
     server::ServerPanelState serverPanel;                  ///< What the Server panel remembers between frames.
     play::OnlinePlay online;                               ///< Play online: standalone, or a client of the server.
     std::string reopenScene;  ///< The scene to open again once the editor is standalone again; consumed by the build.
+    shipping::Exporter exporter;             ///< Exports the game (File > Export...); set by the program, may be empty.
+    shipping::ExportPanelState exportPanel;  ///< What the Export panel remembers.
 };
 
 }  // namespace rtype::editor

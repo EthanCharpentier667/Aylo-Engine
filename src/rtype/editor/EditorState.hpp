@@ -140,6 +140,7 @@ struct RTYPE_EDITOR_API EditorState {
     bool showConsole{true};    ///< Whether the Console panel is open.
     bool showServer{true};     ///< Whether the Server panel is open.
     bool showPlugins{true};    ///< Whether the Plugins panel is open.
+    bool showExport{false};    ///< Whether the Export panel is open (File > Export...).
     std::array<float, kFrameHistory> frameTimes{};  ///< The last frames' durations, in milliseconds, as a ring.
     std::size_t frameCursor{0};                     ///< Where the next frame time goes in frameTimes.
 
