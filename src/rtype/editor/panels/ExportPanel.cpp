@@ -13,10 +13,10 @@
 #include <cstdint>
 #include <filesystem>
 #include <format>
+#include <optional>
 #include <string>
 
 #include "Panels.hpp"
-#include "editor/EditorSession.hpp"
 #include "editor/EditorState.hpp"
 #include "editor/shipping/GameExport.hpp"
 
@@ -36,24 +36,37 @@ std::string megabytes(const std::uintmax_t bytes) {
     return std::format("{:.1f} MB", static_cast<double>(bytes) / kMegabyte);
 }
 
+/// @brief Shows @p text wrapped at the panel's edge, in @p color if given.
+void wrapped(const std::string& text, const std::optional<ImVec4>& color = std::nullopt) {
+    if (color) {
+        ImGui::PushStyleColor(ImGuiCol_Text, *color);
+    }
+    ImGui::PushTextWrapPos(0.0F);
+    ImGui::TextUnformatted(text.c_str());
+    ImGui::PopTextWrapPos();
+    if (color) {
+        ImGui::PopStyleColor();
+    }
+}
+
 /// @brief Shows what the last export did.
 void drawResult(const shipping::ExportResult& result) {
     ImGui::Separator();
     if (!result.ok) {
-        ImGui::TextColored(ImVec4{1.0F, 0.45F, 0.4F, 1.0F}, "Export failed");
-        ImGui::TextWrapped("%s", result.error.c_str());
+        wrapped("Export failed", ImVec4{1.0F, 0.45F, 0.4F, 1.0F});
+        wrapped(result.error);
         return;
     }
     ImGui::TextUnformatted(std::format("Exported to {} ({})", result.folder, megabytes(result.bytes)).c_str());
     for (const std::string& warning : result.warnings) {
-        ImGui::TextColored(ImVec4{1.0F, 0.8F, 0.3F, 1.0F}, "warning:");
-        ImGui::SameLine();
-        ImGui::TextWrapped("%s", warning.c_str());
+        wrapped(std::format("warning: {}", warning), ImVec4{1.0F, 0.8F, 0.3F, 1.0F});
     }
     if (ImGui::CollapsingHeader(std::format("{} libraries kept", result.libraries.size()).c_str(),
                                 ImGuiTreeNodeFlags_DefaultOpen)) {
         for (const std::string& library : result.libraries) {
-            ImGui::BulletText("%s", library.c_str());
+            ImGui::Bullet();
+            ImGui::SameLine();
+            wrapped(library);
         }
     }
 }
@@ -70,7 +83,7 @@ void drawExportPanel(EditorState& state) {
     }
     ImGui::SetNextWindowSize(ImVec2{560.0F, 0.0F}, ImGuiCond_FirstUseEver);
     if (ImGui::Begin("Export", &state.showExport)) {
-        ImGui::TextWrapped(
+        wrapped(
             "Makes the folder a player runs: the program, only the plugins and backends your project.luau needs, and "
             "your game in one pack, as tools/aylo-export does.");
         ImGui::InputText("Output folder", panel.output.data(), panel.output.size());
