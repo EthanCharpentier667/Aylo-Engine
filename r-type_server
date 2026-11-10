@@ -1,5 +1,0 @@
-#!/bin/sh
-# R-Type server: starts the AYLO runtime headless on the game in `games/gyatt_rider_2/`; any argument is passed on
-# (`--port <port>`...).
-dir="$(dirname "$0")"
-exec "$dir/aylo-runtime" --server "$dir/games/gyatt_rider_2" "$@"
