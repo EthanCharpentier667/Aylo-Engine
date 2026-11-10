@@ -179,6 +179,70 @@ else
     fail "aylo-sign keygen did not make smoke.pub and smoke.key"
 fi
 
+# --- An exported game (tools/aylo-export) -------------------------------------------------------------------------
+# What a game developer ships: the template exported with the zip's runtime, then run from the export alone.
+exporter="$root/tools/aylo-export"
+if [ -x "$exporter" ]; then
+    mkdir -p "$work/MyGame"
+    cp -R "$root/templates/game" "$work/MyGame/game"
+    if "$exporter" "$work/MyGame/game" "$work/exports" > "$work/export.log" 2>&1; then
+        ok "aylo-export exported templates/game"
+    else
+        fail "aylo-export failed: $(cat "$work/export.log")"
+    fi
+    exported="$work/exports/MyGame"
+    for file in MyGame game.pak export.json licenses/THIRD_PARTY_NOTICES.md play.sh; do
+        if [ -f "$exported/$file" ]; then ok "the export has $file"; else fail "the export has no $file"; fi
+    done
+    # Only the libraries export.json lists, and each one it lists.
+    listed=$(grep -c '"file": "plugins/' "$exported/export.json" 2>/dev/null || true)
+    shipped=0
+    unlisted=0
+    for library in $(cd "$exported" && find plugins -type f \( -name '*.so' -o -name '*.dylib' \) 2>/dev/null); do
+        shipped=$((shipped + 1))
+        grep -q "\"file\": \"$library\"" "$exported/export.json" || { unlisted=$((unlisted + 1)); echo "  not in export.json: $library" >&2; }
+    done
+    if [ "$unlisted" -eq 0 ] && [ "$shipped" -eq "$listed" ]; then
+        ok "the export ships the $shipped libraries export.json lists, and no other"
+    else
+        fail "the export ships $shipped libraries, export.json lists $listed ($unlisted not listed)"
+    fi
+    all=$(find "$root/runtime/plugins" -type f \( -name '*.so' -o -name '*.dylib' \) | wc -l | tr -d ' ')
+    if [ "$shipped" -lt "$all" ]; then ok "the export keeps $shipped of the $all libraries of runtime/plugins/"; else fail "the export keeps every library ($shipped of $all)"; fi
+    if [ -f "$check" ]; then
+        if bash "$check" "$exported" > "$work/export-check.log" 2>&1; then
+            ok "the export depends on nothing outside its folder"
+        else
+            fail "something of the export resolves outside it: $(cat "$work/export-check.log")"
+        fi
+    fi
+    # The program alone, started from another folder: it finds game.pak next to itself. A client through play.sh.
+    if [ -x "$exported/MyGame" ] && command -v stdbuf >/dev/null 2>&1; then
+        port=$((port + 1))
+        (cd "$work" && stdbuf -oL "$exported/MyGame" --server --port "$port" > "$work/export-server.log" 2>&1) &
+        export_server=$!
+        sleep 2
+        "$exported/play.sh" --port "$port" --headless > "$work/export-client.log" 2>&1 &
+        export_client=$!
+        joined=0
+        for _ in 1 2 3 4 5 6 7 8 9 10; do
+            sleep 1
+            if grep -q "client connected" "$work/export-server.log"; then joined=1; break; fi
+        done
+        if [ "$joined" -eq 1 ]; then
+            ok "the exported server, run from its pack, saw the exported client connect"
+        else
+            fail "the exported server never saw the client: $(cat "$work/export-server.log") $(cat "$work/export-client.log")"
+        fi
+        kill "$export_client" "$export_server" 2>/dev/null || true
+        pkill -f "$exported/MyGame" 2>/dev/null || true
+    else
+        warn "no stdbuf: the exported game is not run (its output would be buffered)"
+    fi
+else
+    fail "tools/aylo-export is missing or not executable"
+fi
+
 echo
 if [ "$failures" -eq 0 ]; then
     echo "smoke test passed: $(basename "$zip")"
