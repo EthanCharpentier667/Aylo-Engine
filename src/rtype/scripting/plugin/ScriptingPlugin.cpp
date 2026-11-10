@@ -44,7 +44,9 @@ ScriptingPlugin& ScriptingPlugin::operator=(ScriptingPlugin&& other) noexcept = 
 std::string_view ScriptingPlugin::getName() const noexcept { return "rtype.scripting"; }
 
 void ScriptingPlugin::build(ecs::App& app) {
-    const modules::ScriptResolver resolver{_config.directory, _config.aliases};
+    const modules::ScriptResolver resolver = _config.source
+                                                 ? modules::ScriptResolver{_config.source, _config.aliases}
+                                                 : modules::ScriptResolver{_config.directory, _config.aliases};
     auto host = ScriptHost::create(app, _config.options, resolver.forLoader());
     if (!host) {
         throw exceptions::ScriptLoadException{
