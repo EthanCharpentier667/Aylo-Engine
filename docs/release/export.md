@@ -91,22 +91,26 @@ EXP-03 alone already answers the size of a shipped game: the trimmed folder, wit
 
 ### EXP-01: plugin resolution
 
-In `engine` (`engine/export/`), a function that takes a game folder and the runtime's folder and returns the libraries
-the game needs, each with the reason it is kept:
+`exporting::selectLibraries()` in `engine` (`engine/exporting/`; `export` is a keyword) takes a game folder and the
+runtime's folder and returns the libraries the game needs, each with the reasons it is kept
+([`../engine/design.md`](../engine/design.md#what-a-game-needs)):
 
-- read `project.luau` once per side, as the `Engine` does (`engine/scripting/SettingsLoader`), with the same
-  `engine.args` handling;
-- load the libraries of `plugins/`, `plugins/backends/` and `<game>/plugins/` (`plugin::PluginLoader`), registering
-  each one alone to know which library registers which plugin and which backend;
+- read `project.luau` once per side, as the `Engine` does (`scripting::loadProjectSettings()`, shared with it);
+- load the libraries of `plugins/`, `plugins/backends/` and `<game>/plugins/` (`plugin::PluginLoader`), and register
+  them one at a time, comparing the registries before and after each, to know which library registers which plugin
+  and which backend. A backend registers into a registry typed by its contract, which `engine` cannot name: the plugin
+  that offers the registry also offers its names (`LibraryRegistrar::provideNames()`, `kLibraryAbiVersion` 2);
 - from the plugins named, the backends named and the plugins every game has, follow `getDependencies()` until nothing
-  is added; a name no library registers is an error naming the folders searched, like `createRequiredPlugin()`.
+  is added; a name no library registers is an error naming it and the names that exist;
+- add the plugin libraries a kept library links: the system loads them with it, even when its plugins do not require
+  theirs. The build writes them next to each library, `<library>.links` ([`../Plugins.md`](../Plugins.md#what-a-library-links)).
 
-To read `getDependencies()`, the plugin is created from its factory with the side's settings and never built. Check
-that no plugin does work in its constructor; one that does is fixed, or registers its dependencies with its factory
-(`PluginRegistry::add`), which is the fallback if creating plugins turns out to be unsafe.
+To read `getDependencies()`, the plugin is created from its factory with the side's settings and never built. The
+engine's plugins do no work in their constructor (the tests create the graphics, shader and physics plugins this way).
 
-Tests (`tests/engine/`): a game naming one plugin keeps it and its dependencies and nothing else; the server and client
-sides are joined; an unknown plugin name is an error naming it; a backend not named is left out.
+Tests (`tests/engine/LibrarySelectionTests.cpp`): an empty game keeps the transform plugin alone; a game naming one
+plugin keeps it and what it requires and nothing else; the server and client sides are joined; a backend not named is
+left out; a game plugin and what it links are kept; an unknown plugin or backend is an error naming it.
 
 ### EXP-02: licenses per library
 

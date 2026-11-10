@@ -118,6 +118,25 @@ A plugin reads its section when it is built, so a section is only checked if its
 an error, as in `network`. A server and a client list what they need (`engine.isClient` separates them). See
 [`../Plugins.md`](../Plugins.md#loading) for the folders, the entry points and the signatures.
 
+### What a game needs
+
+`exporting::selectLibraries()` (`engine/exporting/LibrarySelection`) answers which plugin and backend libraries a game
+needs, for an export that ships only those ([`../release/export.md`](../release/export.md)). It reads `project.luau`
+for the server side, then for the client side, with `scripting::loadProjectSettings()` as `build()` does, and loads the
+libraries of each side as `registerLibraries()` does. It registers them one at a time
+(`PluginLoader::registerInto(registrar, registered)`) and compares the plugin names and the backend names
+(`LibraryRegistrar::listNames()`) before and after each one, so it knows which library brings what. It keeps:
+
+- the libraries of the plugins a side names, of `rtype.Transform`, and of what they require (each plugin is created from
+  its factory to read `getDependencies()`, never built);
+- on a client, the libraries of the backends the settings of `Engine::kBackendSettings` name;
+- every library of `<game>/plugins/`, checked with `plugin::gamePluginVerifier()` as the `Engine` checks them;
+- then what those link, from their `.links` files ([`../Plugins.md`](../Plugins.md#what-a-library-links)).
+
+Each library comes with its reasons (`named in plugins (client)`, `required by rtype.Shader`, `backend 'glfw'
+(platform)`, `linked by librtype-plugin-sprite.dylib`). A name no library brings is an error naming it and those that
+exist.
+
 ## Assets
 
 Everything a game loads is in `<game>/assets/`, and every path starts there: `engine.assets.texture("ship.png")` reads
