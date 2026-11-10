@@ -29,10 +29,14 @@
 #include <utility>
 #include <vector>
 
+#include "core/asset/exceptions/AssetExceptions.hpp"
 #include "core/config/exceptions/ConfigExceptions.hpp"
 #include "core/library/LibraryEntry.hpp"
 #include "core/system/ExecutablePath.hpp"
 #include "core/vfs/DirectorySource.hpp"
+#include "core/vfs/FileSource.hpp"
+#include "core/vfs/Pack.hpp"
+#include "core/vfs/exceptions/PackException.hpp"
 #include "rtype/core/config/Settings.hpp"
 #include "rtype/core/reload/ReloadReport.hpp"
 #include "rtype/ecs/app/App.hpp"
@@ -82,31 +86,53 @@ bool runsServer(const rtype::ecs::RunMode mode) { return rtype::ecs::runsIn(rtyp
 /// @return Whether @p args start with the game directory: a first argument that is not a flag.
 bool startsWithGame(const std::vector<std::string>& args) { return !args.empty() && !args.front().starts_with("--"); }
 
-/// @return The game directory: the first of @p args if it is not a flag, or @p fallback, made absolute.
-/// @throws rtype::engine::exceptions::RuntimeError If it has no project file.
-std::filesystem::path findGame(const std::vector<std::string>& args, const std::filesystem::path& fallback) {
-    std::filesystem::path directory =
-        std::filesystem::absolute(startsWithGame(args) ? std::filesystem::path{args.front()} : fallback);
-
-    directory = directory.lexically_normal();
-    if (!std::filesystem::is_regular_file(directory / rtype::engine::Engine::kProjectFile)) {
-        throw rtype::engine::exceptions::RuntimeError{
-            std::format("No game in '{}': it has no {} (give the game directory as the first argument)",
-                        directory.string(), rtype::engine::Engine::kProjectFile)};
+/// @return The game in the pack @p file: its files, and the folder of its native plugins next to it.
+/// @throws rtype::engine::exceptions::RuntimeError If it is not a pack, or holds no project file.
+rtype::engine::Engine::GameLocation openPack(const std::filesystem::path& file) {
+    std::shared_ptr<const rtype::core::vfs::FileSource> pack;
+    try {
+        pack = std::make_shared<rtype::core::vfs::PackSource>(file);
+    } catch (const rtype::core::vfs::exceptions::PackException& error) {
+        throw rtype::engine::exceptions::RuntimeError{error.what()};
     }
-    return directory;
+    if (!pack->exists(rtype::engine::Engine::kProjectFile)) {
+        throw rtype::engine::exceptions::RuntimeError{
+            std::format("No game in the pack '{}': it has no {}", file.string(), rtype::engine::Engine::kProjectFile)};
+    }
+    return {.directory = file.parent_path() / file.stem(), .files = std::move(pack), .packed = true};
+}
+
+/// @return The game: the first of @p args if it is not a flag (a directory, or a `.pak`), else @p fallback, else the
+/// pack next to the program (Engine::kPackFile), made absolute.
+/// @throws rtype::engine::exceptions::RuntimeError If none holds a project file.
+rtype::engine::Engine::GameLocation findGame(const std::vector<std::string>& args,
+                                             const std::filesystem::path& fallback) {
+    using rtype::engine::Engine;
+    const bool given = startsWithGame(args);
+    const std::filesystem::path directory =
+        std::filesystem::absolute(given ? std::filesystem::path{args.front()} : fallback).lexically_normal();
+
+    if (given && std::filesystem::is_regular_file(directory) &&
+        directory.extension() == rtype::core::vfs::kPackExtension) {
+        return openPack(directory);
+    }
+    if (std::filesystem::is_regular_file(directory / Engine::kProjectFile)) {
+        return {.directory = directory,
+                .files = std::make_shared<rtype::core::vfs::DirectorySource>(directory),
+                .packed = false};
+    }
+    const std::filesystem::path pack = rtype::core::system::getExecutableDirectory() / Engine::kPackFile;
+    if (!given && std::filesystem::is_regular_file(pack)) {
+        return openPack(pack);
+    }
+    throw rtype::engine::exceptions::RuntimeError{
+        std::format("No game in '{}': it has no {} (give the game directory or its pack as the first argument)",
+                    directory.string(), Engine::kProjectFile)};
 }
 
 /// @return The flags of @p args, which are what follows the game directory if there is one.
 rtype::engine::CommandLine parseFlags(const std::vector<std::string>& args) {
     return rtype::engine::CommandLine::parse(std::span{args}.subspan(startsWithGame(args) ? 1 : 0));
-}
-
-/// @return The settings `project.luau` gives for this mode and command line.
-rtype::core::config::Settings loadSettings(const std::filesystem::path& game, const rtype::ecs::RunMode mode,
-                                           const rtype::engine::CommandLine& commandLine, const bool isDebug) {
-    return rtype::engine::scripting::loadProjectSettings(game / rtype::engine::Engine::kProjectFile, mode, commandLine,
-                                                         isDebug);
 }
 
 /// @return The `network.port` setting, checked: a whole number from @p lowest to 65535.
@@ -124,8 +150,9 @@ std::uint16_t readPort(const rtype::core::config::Settings& network, const std::
 /// @return The `scripts.aliases` setting: alias name, then its target folder in `scripts/`.
 /// @throws rtype::engine::exceptions::RuntimeError If a value is not a string, or an alias is invalid (`scripts` and
 /// `self` are reserved, names are `a-z 0-9 _ . -`, the target stays inside @p scriptsDirectory). Names the setting.
-std::map<std::string, std::string> readScriptAliases(const rtype::core::config::Settings& scripts,
-                                                     const std::filesystem::path& scriptsDirectory) {
+std::map<std::string, std::string> readScriptAliases(
+    const rtype::core::config::Settings& scripts, const std::filesystem::path& scriptsDirectory,
+    const std::shared_ptr<const rtype::core::vfs::FileSource>& scriptFiles) {
     const rtype::core::config::Settings aliases = scripts.section("aliases");
     std::map<std::string, std::string> result;
 
@@ -133,7 +160,10 @@ std::map<std::string, std::string> readScriptAliases(const rtype::core::config::
         try {
             result.emplace(name, aliases.getString(name, ""));
             // Alone, so the error names this alias; duplicates (names ignore case) fail when the plugin builds.
-            const rtype::scripting::modules::ScriptResolver check{scriptsDirectory, {{name, result.at(name)}}};
+            const std::map<std::string, std::string> alias{{name, result.at(name)}};
+            const rtype::scripting::modules::ScriptResolver check =
+                scriptFiles ? rtype::scripting::modules::ScriptResolver{scriptFiles, alias}
+                            : rtype::scripting::modules::ScriptResolver{scriptsDirectory, alias};
         } catch (const rtype::core::config::exceptions::SettingsException&) {
             throw rtype::engine::exceptions::RuntimeError{
                 std::format("Invalid setting 'scripts.aliases.{}': it must be a string, the folder in scripts/", name)};
@@ -230,7 +260,8 @@ namespace rtype::engine {
 Engine::Engine(EngineConfig config)
     : _config{std::move(config)},
       _commandLine{parseFlags(_config.args)},
-      _gameDirectory{findGame(_config.args, _config.game)},
+      _game{findGame(_config.args, _config.game)},
+      _gameDirectory{_game.directory},
       _reloader{_gameDirectory},
       _hotReload{_config.debug.value_or(kIsDebug)} {
     build();
@@ -245,6 +276,24 @@ const ecs::App& Engine::app() const noexcept { return *_app; }
 const CommandLine& Engine::commandLine() const noexcept { return _commandLine; }
 
 const std::filesystem::path& Engine::gameDirectory() const noexcept { return _gameDirectory; }
+
+const std::shared_ptr<const core::vfs::FileSource>& Engine::gameFiles() const noexcept { return _game.files; }
+
+bool Engine::isPacked() const noexcept { return _game.packed; }
+
+core::config::Settings Engine::readSettings() const {
+    const bool isDebug = _config.debug.value_or(kIsDebug);
+    if (!_game.packed) {
+        return scripting::loadProjectSettings(_gameDirectory / kProjectFile, _config.mode, _commandLine, isDebug);
+    }
+    std::string source;
+    try {
+        source = _game.files->read(kProjectFile);
+    } catch (const core::asset::exceptions::AssetLoadException& error) {
+        throw exceptions::RuntimeError{error.what()};
+    }
+    return scripting::loadProjectSettings(std::string{kProjectFile}, source, _config.mode, _commandLine, isDebug);
+}
 
 ecs::RunMode Engine::mode() const noexcept { return _config.mode; }
 
@@ -376,8 +425,7 @@ void Engine::reload() {
 void Engine::addHotReloadSources() {
     _reloader.add(std::make_unique<reload::ProjectReloadable>(std::filesystem::path{kProjectFile}, [this] {
         // The project is read again and its network settings checked, without building anything.
-        const core::config::Settings settings =
-            loadSettings(_gameDirectory, _config.mode, _commandLine, _config.debug.value_or(kIsDebug));
+        const core::config::Settings settings = readSettings();
         static_cast<void>(makeNetworkPlugin(_config.mode, settings, _commandLine, _config.debug.value_or(kIsDebug)));
     }));
     _reloader.add(std::make_unique<reload::ScriptsReloadable>(_gameDirectory, std::filesystem::path{kScriptsDirectory},
@@ -429,23 +477,34 @@ void Engine::build() {
     _reloader.clear();
     _scriptHost = nullptr;
     _app.reset();
-    addHotReloadSources();
+    // A pack has no files to follow: an exported game never reloads itself.
+    if (!_game.packed) {
+        addHotReloadSources();
+    }
     const bool isDebug = _config.debug.value_or(kIsDebug);
-    _settings = loadSettings(_gameDirectory, _config.mode, _commandLine, isDebug);
+    _settings = readSettings();
     _hotReload = _settings.getBool(kHotReloadSetting, isDebug);
+    if (_game.packed && _hotReload) {
+        std::cerr << "[Engine] Hot reload is off: the game is a pack, which has no files to follow.\n";
+        _hotReload = false;
+    }
     // Checked before anything is built, so a wrong address fails before a window opens; added last, see the class.
     std::unique_ptr<ecs::Plugin> networkPlugin = makeNetworkPlugin(_config.mode, _settings, _commandLine, isDebug);
     const bool client = runsClient(_config.mode);
     const bool server = runsServer(_config.mode);
     const rtype::core::config::Settings scripts = _settings.section("scripts");
     scripts.checkKeys({"main", "server", "client", "aliases"}, "scripts");
-    std::map<std::string, std::string> aliases = readScriptAliases(scripts, _gameDirectory / kScriptsDirectory);
+    const std::shared_ptr<const core::vfs::FileSource> scriptFiles =
+        _game.packed ? std::make_shared<core::vfs::SubSource>(_game.files, std::string{kScriptsDirectory}) : nullptr;
+    std::map<std::string, std::string> aliases =
+        readScriptAliases(scripts, _gameDirectory / kScriptsDirectory, scriptFiles);
     std::optional<std::string> mainEntry = readScriptEntry(scripts, "main");
     std::optional<std::string> serverEntry = readScriptEntry(scripts, "server");
     std::optional<std::string> clientEntry = readScriptEntry(scripts, "client");
     const std::filesystem::path assets = _gameDirectory / kAssetsDirectory;
     // A server can run with the scripts alone; a client always draws something, so it is checked before a window opens.
-    if (client && !std::filesystem::is_directory(assets)) {
+    // A pack holds the assets it was exported with.
+    if (client && !_game.packed && !std::filesystem::is_directory(assets)) {
         throw exceptions::RuntimeError{
             std::format("No assets in '{}': it has no {} directory", _gameDirectory.string(), kAssetsDirectory)};
     }
@@ -453,8 +512,13 @@ void Engine::build() {
 
     ecs::App& app = *_app;
     // Inserted first, so every plugin finds it when it is built.
-    app.getWorld().getResources().insert(
-        plugins::AssetDirectory{.path = assets, .source = std::make_shared<core::vfs::DirectorySource>(assets)});
+    if (_game.packed) {
+        app.getWorld().getResources().insert(plugins::AssetDirectory{
+            .source = std::make_shared<core::vfs::SubSource>(_game.files, std::string{kAssetsDirectory})});
+    } else {
+        app.getWorld().getResources().insert(
+            plugins::AssetDirectory{.path = assets, .source = std::make_shared<core::vfs::DirectorySource>(assets)});
+    }
     if (_hotReload) {
         app.getWorld().getResources().insert(plugins::HotReload{.reloader = &_reloader});
     }
@@ -479,6 +543,7 @@ void Engine::build() {
     }
     app.addPlugin(rtype::scripting::ScriptingPlugin{{
         .directory = _gameDirectory / kScriptsDirectory,
+        .source = scriptFiles,
         .main = std::move(mainEntry),
         .server = std::move(serverEntry),
         .client = std::move(clientEntry),

@@ -8,6 +8,7 @@
 #pragma once
 
 #include <filesystem>
+#include <string>
 #include <string_view>
 
 #include "rtype/core/config/Settings.hpp"
@@ -77,6 +78,12 @@ class RTYPE_ENGINE_API SettingsLoader {
     /// @throws luau::exceptions::RuntimeError If the file cannot be read or compiled, or if the script fails.
     void load(const std::filesystem::path& path);
 
+    /// @brief As load(), for a script given as its text: `project.luau` read from an exported game's pack.
+    /// @param name How messages name the script.
+    /// @param source Its source.
+    /// @throws luau::exceptions::RuntimeError If it cannot be compiled, or if it fails.
+    void load(std::string name, const std::string& source);
+
   private:
     luau::Runtime _runtime;      ///< The sandboxed runtime the scripts run in.
     luau::Table _engineTable;    ///< The `engine` global.
@@ -96,6 +103,13 @@ class RTYPE_ENGINE_API SettingsLoader {
 /// @throws luau::exceptions::RuntimeError If the file cannot be read or compiled, or if the script fails.
 /// @throws exceptions::RuntimeError If a setting has an unsupported type (build()).
 [[nodiscard]] RTYPE_ENGINE_API core::config::Settings loadProjectSettings(const std::filesystem::path& projectFile,
+                                                                          ecs::RunMode mode,
+                                                                          const CommandLine& commandLine, bool isDebug);
+
+/// @brief As the other loadProjectSettings(), for a project given as its text (read from a pack).
+/// @param name How messages name it.
+/// @param source The text of `project.luau`.
+[[nodiscard]] RTYPE_ENGINE_API core::config::Settings loadProjectSettings(std::string name, const std::string& source,
                                                                           ecs::RunMode mode,
                                                                           const CommandLine& commandLine, bool isDebug);
 }  // namespace rtype::engine::scripting

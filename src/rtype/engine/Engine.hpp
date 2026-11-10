@@ -21,6 +21,7 @@
 #include "CommandLine.hpp"
 #include "EngineConfig.hpp"
 #include "Export.hpp"
+#include "core/vfs/FileSource.hpp"
 #include "rtype/core/config/Settings.hpp"
 #include "rtype/core/reload/HotReloader.hpp"
 #include "rtype/ecs/app/App.hpp"
@@ -68,6 +69,8 @@ namespace rtype::engine {
 class RTYPE_ENGINE_API Engine {
   public:
     static constexpr std::string_view kProjectFile = "project.luau";  ///< The settings, in the game directory.
+    /// @brief The pack the program runs when it is given no game and finds no `game/` folder: next to the program.
+    static constexpr std::string_view kPackFile = "game.pak";
     static constexpr std::string_view kScriptsDirectory = "scripts";  ///< The scripts, in the game directory.
     static constexpr std::string_view kAssetsDirectory = "assets";    ///< The assets, in the game directory.
     static constexpr std::string_view kPluginsDirectory =
@@ -107,8 +110,15 @@ class RTYPE_ENGINE_API Engine {
     /// @return The flags of the command line.
     [[nodiscard]] const CommandLine& commandLine() const noexcept;
 
-    /// @return The game directory, absolute.
+    /// @return The game directory, absolute. For a pack, the folder named after it next to it (`game/` for
+    /// `game.pak`), which holds only the game's native plugins (`plugins/`): its other files are in the pack.
     [[nodiscard]] const std::filesystem::path& gameDirectory() const noexcept;
+
+    /// @return The game's files: its directory, or its pack. Never null.
+    [[nodiscard]] const std::shared_ptr<const core::vfs::FileSource>& gameFiles() const noexcept;
+
+    /// @return Whether the game is a pack (an exported game): no hot reload, its files are read from it.
+    [[nodiscard]] bool isPacked() const noexcept;
 
     /// @return What the process runs.
     [[nodiscard]] ecs::RunMode mode() const noexcept;
@@ -171,7 +181,17 @@ class RTYPE_ENGINE_API Engine {
     /// @throws std::exception What a frame throws, or what a reload throws (the engine then has no App).
     int run(std::optional<std::size_t> maxFrames = std::nullopt);
 
+    /// @brief Where a game is: what the command line names, found when the engine is made.
+    struct GameLocation {
+        std::filesystem::path directory;                     ///< See gameDirectory().
+        std::shared_ptr<const core::vfs::FileSource> files;  ///< See gameFiles().
+        bool packed{false};                                  ///< See isPacked().
+    };
+
   private:
+    /// @brief Reads `project.luau` for the current mode and command line, from the game's directory or its pack.
+    [[nodiscard]] core::config::Settings readSettings() const;
+
     /// @brief The mode and command line a build runs with.
     struct Setup {
         ecs::RunMode mode;
@@ -209,7 +229,8 @@ class RTYPE_ENGINE_API Engine {
     plugin::PluginLoader _loader;          ///< The plugin libraries; outlives every App built from them.
     EngineConfig _config;                  ///< What to run, kept for the reloads.
     CommandLine _commandLine;              ///< The flags of EngineConfig::args.
-    std::filesystem::path _gameDirectory;  ///< The game directory, absolute.
+    GameLocation _game;                    ///< Where the game is: its directory, its files.
+    std::filesystem::path _gameDirectory;  ///< The game directory, absolute (_game.directory).
     core::reload::HotReloader _reloader;   ///< What hot reload follows; outlives the Apps, forgets them on a build.
     scripting::ScriptHost* _scriptHost{nullptr};  ///< The scripts of the current App, null when there is none.
     bool _hotReload{false};                       ///< Whether hot reload is on, from the settings of the last build.

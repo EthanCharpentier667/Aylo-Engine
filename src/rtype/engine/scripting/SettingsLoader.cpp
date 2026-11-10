@@ -182,15 +182,35 @@ void SettingsLoader::load(const std::filesystem::path& path) {
     luau::expect(_runtime.run(script));
 }
 
-core::config::Settings loadProjectSettings(const std::filesystem::path& projectFile, const ecs::RunMode mode,
-                                           const CommandLine& commandLine, const bool isDebug) {
-    SettingsLoader loader;
+void SettingsLoader::load(std::string name, const std::string& source) {
+    const luau::Script script = rtype::luau::expect(_runtime.load(std::move(name), source));
 
+    luau::expect(_runtime.run(script));
+}
+
+namespace {
+/// @brief Gives @p loader the flags of @p mode, @p isDebug and the command line.
+void setUp(SettingsLoader& loader, const ecs::RunMode mode, const CommandLine& commandLine, const bool isDebug) {
     loader.setFlag("isClient", ecs::runsIn(ecs::Side::kClient, mode));
     loader.setFlag("isServer", ecs::runsIn(ecs::Side::kServer, mode));
     loader.setFlag("isDebug", isDebug);
     loader.setArgs(commandLine);
+}
+}  // namespace
+
+core::config::Settings loadProjectSettings(const std::filesystem::path& projectFile, const ecs::RunMode mode,
+                                           const CommandLine& commandLine, const bool isDebug) {
+    SettingsLoader loader;
+    setUp(loader, mode, commandLine, isDebug);
     loader.load(projectFile);
+    return loader.build();
+}
+
+core::config::Settings loadProjectSettings(std::string name, const std::string& source, const ecs::RunMode mode,
+                                           const CommandLine& commandLine, const bool isDebug) {
+    SettingsLoader loader;
+    setUp(loader, mode, commandLine, isDebug);
+    loader.load(std::move(name), source);
     return loader.build();
 }
 }  // namespace rtype::engine::scripting
