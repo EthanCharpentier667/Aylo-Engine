@@ -17,6 +17,7 @@
 #include <format>
 #include <fstream>
 #include <ios>
+#include <iterator>
 #include <set>
 #include <string>
 #include <string_view>
@@ -24,11 +25,16 @@
 #include <utility>
 #include <vector>
 
+#include "core/vfs/Pack.hpp"
+#include "core/vfs/exceptions/PackException.hpp"
 #include "rtype/engine/Engine.hpp"
 #include "rtype/engine/Exceptions.hpp"
 #include "rtype/engine/exporting/LibrarySelection.hpp"
 #include "rtype/engine/plugin/PluginSignature.hpp"
 #include "rtype/engine/plugin/SharedLibrary.hpp"
+#include "rtype/luau/Result.hpp"
+#include "rtype/luau/Runtime.hpp"
+#include "rtype/luau/RuntimeConfig.hpp"
 
 namespace rtype::engine::exporting {
 namespace {
@@ -74,11 +80,18 @@ void copyFile(const std::filesystem::path& from, const std::filesystem::path& to
                                  std::filesystem::perm_options::replace);
 }
 
-/// @brief Copies the game folder @p from to @p to, without hidden files and with only the libraries of `plugins/`
-/// and their signatures (not the sources a game builds them from).
-void copyGame(const std::filesystem::path& from, const std::filesystem::path& to) {
-    const std::filesystem::path plugins = from / Engine::kPluginsDirectory;
-    for (auto entry = std::filesystem::recursive_directory_iterator{from};
+/// @brief The files of a game folder, sorted out for the export.
+struct GameFiles {
+    std::vector<std::filesystem::path> files;    ///< Its files, relative to it, but hidden ones and `plugins/`.
+    std::vector<std::filesystem::path> plugins;  ///< The libraries of its plugins and their signatures, relative.
+};
+
+/// @return The files of the game folder @p game: no hidden file (`.luaurc`), and of `plugins/` only the libraries and
+/// their signatures (not the sources a game builds them from).
+GameFiles listGame(const std::filesystem::path& game) {
+    GameFiles found;
+    const std::filesystem::path plugins = game / Engine::kPluginsDirectory;
+    for (auto entry = std::filesystem::recursive_directory_iterator{game};
          entry != std::filesystem::recursive_directory_iterator{}; ++entry) {
         const std::filesystem::path& path = entry->path();
         if (path.filename().string().starts_with('.')) {
@@ -88,21 +101,54 @@ void copyGame(const std::filesystem::path& from, const std::filesystem::path& to
             continue;
         }
         if (path.parent_path() == plugins) {
+            if (entry->is_directory()) {
+                entry.disable_recursion_pending();
+            }
             const std::string name = path.filename().string();
             const bool library = path.extension() == plugin::SharedLibrary::getExtension();
             const bool signature =
                 name.ends_with(std::format("{}{}", plugin::SharedLibrary::getExtension(), plugin::kSignatureExtension));
-            if (entry->is_directory()) {
-                entry.disable_recursion_pending();
+            if (entry->is_regular_file() && (library || signature)) {
+                found.plugins.push_back(path.lexically_relative(game));
             }
-            if (!entry->is_regular_file() || (!library && !signature)) {
-                continue;
-            }
+            continue;
         }
         if (entry->is_regular_file()) {
-            copyFile(path, to / path.lexically_relative(from));
+            found.files.push_back(path.lexically_relative(game));
         }
     }
+    std::ranges::sort(found.files);
+    std::ranges::sort(found.plugins);
+    return found;
+}
+
+/// @return The entries of the pack of the game @p game: its files, its scripts precompiled.
+/// @throws exceptions::RuntimeError If a script does not compile, naming it and the compiler's message.
+std::vector<core::vfs::PackEntry> packEntries(const std::filesystem::path& game, const GameFiles& files) {
+    const luau::Result<luau::Runtime> runtime =
+        luau::Runtime::create({.optimizationLevel = luau::RuntimeConfig::OptimizationLevel::kStandard});
+    if (!runtime) {
+        throw exceptions::RuntimeError{std::format("Cannot compile the scripts: {}", runtime.error().message())};
+    }
+    std::vector<core::vfs::PackEntry> entries;
+    for (const std::filesystem::path& file : files.files) {
+        const std::string path = file.generic_string();
+        const bool script =
+            path.starts_with(std::format("{}/", Engine::kScriptsDirectory)) && file.extension() == ".luau";
+        if (!script) {
+            entries.push_back(core::vfs::PackEntry{.path = path, .data = game / file});
+            continue;
+        }
+        std::ifstream in{game / file, std::ios::binary};
+        const std::string source{std::istreambuf_iterator<char>{in}, std::istreambuf_iterator<char>{}};
+        luau::Result<std::string> chunk = runtime->precompile(source);
+        if (!chunk) {
+            throw exceptions::RuntimeError{
+                std::format("Cannot export: {} does not compile: {}", path, chunk.error().message())};
+        }
+        entries.push_back(core::vfs::PackEntry{.path = path, .data = std::move(*chunk)});
+    }
+    return entries;
 }
 
 /// @return The table rows of the notices of @p file (a binary of the runtime); none if the runtime has none for it.
@@ -193,8 +239,14 @@ std::filesystem::path destinationOf(const SelectedLibrary& library) {
 /// @brief Fills an export folder; removed by exportGame() if this throws.
 class Exporter {
   public:
-    Exporter(const ExportRequest& request, std::string name, std::filesystem::path folder, ExportReport& report)
-        : _request{&request}, _name{std::move(name)}, _folder{std::move(folder)}, _report{&report} {}
+    Exporter(const ExportRequest& request, std::string name, std::filesystem::path folder, ExportReport& report,
+             GameFiles game, std::vector<core::vfs::PackEntry> pack)
+        : _request{&request},
+          _name{std::move(name)},
+          _folder{std::move(folder)},
+          _report{&report},
+          _game{std::move(game)},
+          _pack{std::move(pack)} {}
 
     void run() {
         copyProgram();
@@ -205,7 +257,7 @@ class Exporter {
                 _binaries.emplace_back(library.file, true);
             }
         }
-        copyGame(_request->game, _folder / kGameFolder);
+        copyGame();
         writeNotices();
         writeLauncher();
         writeManifest();
@@ -283,18 +335,37 @@ class Exporter {
         }
     }
 
-    /// @brief Writes the script that runs the game from its folder.
+    /// @brief Writes the game: its pack, or its folder; and the libraries of its plugins, which stay files.
+    void copyGame() const {
+        for (const std::filesystem::path& file : _game.plugins) {
+            copyFile(_request->game / file, _folder / kGameFolder / file);
+        }
+        if (!_request->pack) {
+            for (const std::filesystem::path& file : _game.files) {
+                copyFile(_request->game / file, _folder / kGameFolder / file);
+            }
+            return;
+        }
+        try {
+            core::vfs::writePack(_folder / Engine::kPackFile, _pack);
+        } catch (const core::vfs::exceptions::PackException& error) {
+            throw exceptions::RuntimeError{error.what()};
+        }
+    }
+
+    /// @brief Writes the script that runs the game from its folder: the pack, or the game folder.
     void writeLauncher() const {
+        const std::string_view game = _request->pack ? Engine::kPackFile : kGameFolder;
         if (kWindows) {
             std::ofstream{_folder / "play.bat"}
-                << std::format("@echo off\r\ncd /d \"%~dp0\"\r\n\"{}.exe\" {} %*\r\n", _name, kGameFolder);
+                << std::format("@echo off\r\ncd /d \"%~dp0\"\r\n\"{}.exe\" {} %*\r\n", _name, game);
             return;
         }
         const std::filesystem::path script = _folder / "play.sh";
         std::ofstream{script} << std::format(
             "#!/bin/sh\n# Runs {0}; `./play.sh --server` runs its server.\n"
             "cd \"$(dirname \"$0\")\" || exit 1\nexec \"./{0}\" {1} \"$@\"\n",
-            _name, kGameFolder);
+            _name, game);
         std::filesystem::permissions(script,
                                      std::filesystem::perms::owner_exec | std::filesystem::perms::group_exec |
                                          std::filesystem::perms::others_exec,
@@ -335,10 +406,12 @@ class Exporter {
         _report->bytes += std::filesystem::file_size(_folder / kExportFile);
     }
 
-    const ExportRequest* _request;  ///< What to export; outlives the exporter.
-    std::string _name;              ///< The game's name.
-    std::filesystem::path _folder;  ///< The export.
-    ExportReport* _report;          ///< What the export made; outlives the exporter.
+    const ExportRequest* _request;            ///< What to export; outlives the exporter.
+    std::string _name;                        ///< The game's name.
+    std::filesystem::path _folder;            ///< The export.
+    ExportReport* _report;                    ///< What the export made; outlives the exporter.
+    GameFiles _game;                          ///< The game's files.
+    std::vector<core::vfs::PackEntry> _pack;  ///< What its pack holds, compiled before anything is written.
     std::vector<std::pair<std::filesystem::path, bool>>
         _binaries;  ///< The files copied, for their notices; true: they must have some.
 };
@@ -374,10 +447,13 @@ ExportReport exportGame(const ExportRequest& request) {
     report.libraries = selectLibraries({.game = absolute.game,
                                         .runtime = absolute.runtime,
                                         .debug = request.debug,
-                                        .verifyGamePlugin = plugin::gamePluginVerifier()});
+                                        .verifyGamePlugin = request.verifyGamePlugin});
+    GameFiles game = listGame(absolute.game);
+    std::vector<core::vfs::PackEntry> pack =
+        request.pack ? packEntries(absolute.game, game) : std::vector<core::vfs::PackEntry>{};
     std::filesystem::create_directories(report.folder);
     try {
-        Exporter{absolute, name, report.folder, report}.run();
+        Exporter{absolute, name, report.folder, report, std::move(game), std::move(pack)}.run();
     } catch (...) {
         std::filesystem::remove_all(report.folder, error);
         throw;

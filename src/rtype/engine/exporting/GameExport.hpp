@@ -9,11 +9,13 @@
 
 #include <cstdint>
 #include <filesystem>
+#include <functional>
 #include <string>
 #include <vector>
 
 #include "rtype/engine/Export.hpp"
 #include "rtype/engine/exporting/LibrarySelection.hpp"
+#include "rtype/engine/plugin/PluginSignature.hpp"
 
 namespace rtype::engine::exporting {
 /// @brief What exportGame() makes.
@@ -24,6 +26,10 @@ struct ExportRequest {
     std::string name;               ///< The game's name: its folder and its program; empty: the game folder's parent's.
     std::string engineVersion;      ///< The engine's version, written in `export.json`.
     bool debug{false};              ///< `engine.isDebug` when `project.luau` is read: the runtime's build.
+    bool pack{true};                ///< The game in one pack (`game.pak`); false: as a folder (`game/`).
+    /// @brief What the game's plugin libraries must pass before they are opened to read what they bring: by default
+    /// the Engine's own check (plugin::gamePluginVerifier(), their signature in a release build).
+    std::function<void(const std::filesystem::path&)> verifyGamePlugin = plugin::gamePluginVerifier();
 };
 
 /// @brief What exportGame() did.
@@ -45,8 +51,11 @@ struct ExportReport {
 /// - `<name>` (`.exe` on Windows): the runtime's program, renamed;
 /// - `lib/` as it is in the runtime (on Windows, the libraries next to the program);
 /// - `plugins/` and `plugins/backends/`: the libraries kept;
-/// - `game/`: the game folder, without the sources of its plugins (only their libraries and signatures) and without
-///   hidden files such as `.luaurc`;
+/// - `game.pak`: the game's files (core::vfs::writePack()), its scripts precompiled (luau::Runtime::precompile()),
+///   without hidden files such as `.luaurc` and without `plugins/`; or, with `pack` false, `game/`: the game folder
+///   as it is, without them;
+/// - `game/plugins/`: the libraries of the game's own plugins and their signatures (not their sources), which stay
+///   files, where the Engine looks for them next to the pack;
 /// - `licenses/THIRD_PARTY_NOTICES.md`: the notices of the binaries kept, from the runtime's `licenses/by-library/`
 ///   (a build folder has none: the report warns);
 /// - `play.sh` (`play.bat` on Windows), which runs the game, and `--server` for a dedicated server;
@@ -54,7 +63,8 @@ struct ExportReport {
 /// @param request What to export.
 /// @return What it made.
 /// @throws exceptions::RuntimeError If the game or the runtime is not one, the output folder exists and is not empty,
-/// the name is not a file name, or selectLibraries() refuses the game; nothing is left half made in that case.
+/// the name is not a file name, a script does not compile (its file and the compiler's message), or selectLibraries()
+/// refuses the game; nothing is written in that case.
 /// @throws std::filesystem::filesystem_error If a file cannot be copied or written.
 [[nodiscard]] RTYPE_ENGINE_API ExportReport exportGame(const ExportRequest& request);
 }  // namespace rtype::engine::exporting
