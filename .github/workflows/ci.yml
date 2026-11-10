@@ -136,7 +136,7 @@ jobs:
         run: |
           xmake f -y --Tests=y
           xmake build -y
-        timeout-minutes: 30
+        timeout-minutes: 60
 
       - name: Remove unused packages
         if: github.ref == 'refs/heads/main' && steps.package-cache.outputs.cache-hit != 'true'

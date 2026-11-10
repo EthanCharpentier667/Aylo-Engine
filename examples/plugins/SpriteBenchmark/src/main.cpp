@@ -6,8 +6,9 @@
 */
 
 // Measures what animated sprites cost the whole frame: 10 000 of them by default, each playing an animation of the same
-// atlas (the six frames of assets/r-typesheet26.gif) from its own start, drifting and bouncing off the window's edges,
-// so every frame updates their Transform, advances their animation, sorts them and draws them in one batch.
+// atlas (the six frames of examples/assets/r-typesheet26.gif) from its own start, drifting and bouncing off the
+// window's edges, so every frame updates their Transform, advances their animation, sorts them and draws them in one
+// batch.
 //
 // Each second it prints the frames per second, the mean and the slowest frame time of that second; at the end, the
 // mean over the run, after a warm-up second. The issue's target is 60 FPS (16.7 ms) on the team's slowest machine.
@@ -114,7 +115,7 @@ RTYPE_ECS_RESOURCE(Measure, "example.Measure");
 // Startup: builds the atlas and spawns the sprites, scattered, each from its own point of the animation.
 void spawnSprites(ecs::ResMut<AtlasAssets> atlases, ecs::Res<Measure> measure, ecs::Commands& commands) {
     SpriteAtlas atlas =
-        SpriteAtlas::grid("assets/r-typesheet26.gif", kFrameSize, kFrames, {2.0F, 0.0F}, 0, {1.0F, 1.0F});
+        SpriteAtlas::grid("examples/assets/r-typesheet26.gif", kFrameSize, kFrames, {2.0F, 0.0F}, 0, {1.0F, 1.0F});
     atlas.addAnimation("fly", {0, 1, 2, 3, 4, 5}, kFrameDuration);
     const AssetId sheet = atlases->add("benchmark", std::move(atlas));
 

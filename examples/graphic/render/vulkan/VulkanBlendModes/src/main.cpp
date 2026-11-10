@@ -88,7 +88,7 @@ constexpr float kShipY = 130.0F;
 constexpr float kBandY = 300.0F;
 constexpr float kCirclesY = 480.0F;
 
-// Frames of the sprite sheets of assets/: top-left corner and size, in pixels.
+// Frames of the sprite sheets of examples/assets/: top-left corner and size, in pixels.
 constexpr glm::vec2 kShotPosition{110.0F, 151.0F};  // bullet.gif: the first shot.
 constexpr glm::vec2 kShotSize{78.0F, 16.0F};
 constexpr glm::vec2 kShipPosition{9.0F, 9.0F};  // r-typesheet24.gif: the first ship.
@@ -124,9 +124,9 @@ RTYPE_ECS_RESOURCE(Lifetime, "example.Lifetime");
 
 // Startup: loads the sprite sheets and spawns the bands, then one ship and one shot per column over them.
 void spawnScene(ecs::ResMut<TextureAssets> textures, ecs::Commands& commands) {
-    const AssetId shots = textures->load("assets/bullet.gif", TextureDesc{.filter = TextureFilter::kLinear});
-    const AssetId ships = textures->load("assets/r-typesheet24.gif");
-    const AssetId band = textures->load("assets/r-typesheet26.gif");
+    const AssetId shots = textures->load("examples/assets/bullet.gif", TextureDesc{.filter = TextureFilter::kLinear});
+    const AssetId ships = textures->load("examples/assets/r-typesheet24.gif");
+    const AssetId band = textures->load("examples/assets/r-typesheet26.gif");
 
     constexpr float kBandScale = 2.0F;
     const float step = kBandSize.x * kBandScale;

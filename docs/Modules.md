@@ -180,7 +180,7 @@ architecture rules, and this file keeps the detail, which changes with every fea
       the `Parallax` entities before the camera, and another pushes the visible chunks' tiles to the
       `SpriteQueue`. It requires the graphics plugin. See `docs/Tilemap.md`.
     - `plugins/text/` (`rtype::plugins::text`) — `TextPlugin`: text from MSDF font atlases made offline by
-      msdf-atlas-gen (`assets/fonts/`). `Font` (glyph metrics and kerning), the `FontAssets` resource (fonts by
+      msdf-atlas-gen (`examples/assets/fonts/`). `Font` (glyph metrics and kerning), the `FontAssets` resource (fonts by
       `AssetId`, msdf-atlas-gen JSON read with nlohmann_json in `text/detail/`, with the UTF-8 decoder),
       `layoutText()` /
       `measureText()` (`TextLayout.hpp`) and the `TextRenderer` component. A client Render system lays out each text and

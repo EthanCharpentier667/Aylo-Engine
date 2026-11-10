@@ -5,8 +5,8 @@
 ** main
 */
 
-// Text from an MSDF font atlas (assets/fonts/orbitron.json, made by msdf-atlas-gen): a line at every size from 12 to
-// 200 pixels, all from one 48-pixel atlas, then a text that zooms in and out and turns, sharp at every scale, and
+// Text from an MSDF font atlas (examples/assets/fonts/orbitron.json, made by msdf-atlas-gen): a line at every size from
+// 12 to 200 pixels, all from one 48-pixel atlas, then a text that zooms in and out and turns, sharp at every scale, and
 // a centred block of several lines. The view is the window, one world unit per pixel. --validation enables the Vulkan
 // validation layer.
 //   xmake f --text=y && xmake run text [--validation]
@@ -57,7 +57,7 @@ using rtype::plugins::transform::Transform;
 namespace {
 constexpr glm::vec2 kWindow{1280.0F, 900.0F};
 constexpr contract::renderer::Color kClear{0.05F, 0.05F, 0.09F, 1.0F};
-constexpr const char* kFont = "assets/fonts/orbitron.json";
+constexpr const char* kFont = "examples/assets/fonts/orbitron.json";
 constexpr std::array<float, 8> kSizes{12.0F, 16.0F, 24.0F, 32.0F, 48.0F, 72.0F, 120.0F, 200.0F};
 constexpr float kMargin = 24.0F;
 
