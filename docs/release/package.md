@@ -88,7 +88,9 @@ It then:
 
 `.github/scripts/smoke-test.sh <zip>` (`.ps1` on Windows) behaves like a user: it unzips into an empty directory and
 checks the layout and the hashes of the manifest, the version the runtime reports, the dependencies of `runtime/`, a
-server started on `templates/game` and a headless client connecting to it, and `aylo-sign keygen`. Run it on a machine
+server started on `templates/game` and a headless client connecting to it, `aylo-sign keygen`, and a game exported with
+`tools/aylo-export` (its layout, only the libraries its `export.json` lists, nothing outside it, its server and client
+run from its pack, [`export.md`](export.md)). Run it on a machine
 with no toolchain, such as a bare container, for the answer that counts.
 
 The server's output goes to a file, and a program's output to a file is buffered, so a player joining reaches the log

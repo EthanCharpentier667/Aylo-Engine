@@ -234,9 +234,14 @@ kept and why, the size) in a panel. `docs/Editor.md` and `manual/pages/editor.md
 
 ### EXP-10: CI
 
-The smoke test (`.github/scripts/smoke-test.sh` and `.ps1`) exports `templates/game` with the packaged zip, runs the
-export in a clean folder as a server and as a headless client (`--server`, `--headless`, as it runs `runtime/` today),
-and checks that `plugins/` holds only what `export.json` lists.
+The smoke test (`.github/scripts/smoke-test.sh` and `.ps1`), which the release workflow runs on every zip it makes (a
+push to `main`, a tag, or by hand), exports `templates/game` with the zip's `tools/aylo-export` and checks the export:
+the program, `game.pak`, `export.json`, the notices and the launcher are there; `plugins/` holds the libraries
+`export.json` lists and no other, fewer than the runtime has; the export resolves nothing outside its folder
+(`check-self-contained.sh`, Linux and macOS). Then it runs the exported program alone, from another folder (it finds
+`game.pak` next to itself), as a server, and a headless client through `play.sh`: on Linux and macOS the server must see
+the client connect; on Windows, whose redirected output is buffered, both must stay up. Run by hand on the macOS zip: it
+passes.
 
 ### EXP-11: docs
 
