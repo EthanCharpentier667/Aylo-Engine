@@ -70,7 +70,7 @@ Export your game with `tools/aylo-export`: the folder of your game first, then w
 ```
 
 ```
-Exported to exports/my_game (10.3 MB)
+Exported to exports/my_game (10.4 MB)
   librtype-plugin-graphics.so: named in plugins (client)
   librtype-plugin-input.so: linked by librtype-plugin-graphics.so; required by rtype.graphics
   librtype-plugin-transform.so: every game; linked by librtype-plugin-graphics.so
@@ -88,13 +88,11 @@ The export is a folder you zip and publish:
 ```
 exports/my_game/
   my_game               the program (my_game.exe on Windows)
+  game.pak              your game in one file: project.luau, scripts/ (compiled), assets/
   lib/                  what every plugin needs (on Windows, next to the program)
   plugins/              only the plugins your game uses
     backends/           only the window, renderer and audio backends it names
   game/
-    project.luau
-    scripts/
-    assets/
     plugins/            your native plugins and their signatures, if you have some
   licenses/
     THIRD_PARTY_NOTICES.md   the notices of the libraries kept
@@ -102,10 +100,17 @@ exports/my_game/
   export.json           the engine version, the libraries kept and why, the SHA-256 of every file
 ```
 
+`game.pak` holds your `project.luau`, your `assets/` and your `scripts/`, compiled: you do not hand out the source of
+your scripts, and the export stops on a script that does not compile, before it writes anything. The program finds
+`game.pak` next to itself, so a player can also start it without `play.sh`. A game run from its pack never reloads its
+files, whatever `hotReload` says. Your [native plugins](native-plugins.md) stay files, in `game/plugins/`: a library is
+not loaded from a pack.
+
 | Option | Default | What it does |
 |---|---|---|
 | `--name <name>` | the name of your game's folder (`my_game` for `my_game/game`) | the name of the export folder and of the program |
 | `--runtime <folder>` | the zip's `runtime/`, next to `tools/` | the runtime the export takes the program and the libraries from |
+| `--no-pack` | off | ships your game as its folder, `game/`, with the scripts as you wrote them, instead of `game.pak` |
 
 Your players run `play.sh` (`play.bat` on Windows), and a dedicated server runs `./play.sh --server`. Every other flag
 reaches your `project.luau` as `engine.args`, as with `aylo-runtime`. Check the export on a machine that has never seen
@@ -116,8 +121,8 @@ the engine, or in a clean virtual machine, before you publish it.
     backends you name (`engine.args.headless` in the template), name in the default branch everything the other
     branches need, or the export leaves it out and that branch stops with `unknown plugin`.
 
-What the export leaves out of `game/`: the files and folders whose name starts with a dot (`.luaurc` is for your
-editor), and in `game/plugins/` everything but the libraries and their `.sig` files: the sources of your
+What the export leaves out of your game: the files and folders whose name starts with a dot (`.luaurc` is for your
+editor), and in `plugins/` everything but the libraries and their `.sig` files: the sources of your
 [native plugins](native-plugins.md) stay with you.
 
 ### When the export stops
@@ -129,6 +134,7 @@ The export checks everything before it writes anything, and leaves nothing behin
 | `Invalid setting 'plugins' (client): unknown plugin 'game.Bos' (known: ...)` | `project.luau` names a plugin no library brings: a typo, or a native plugin you did not build |
 | `Plugin 'rtype.Sprite' requires 'rtype.graphics', which no library registers (known: ...)` | the runtime is missing a library: export with the whole `runtime/` of a release |
 | `Invalid setting 'platform' (client): no backend library registers 'glfx' (known: ...)` | a backend name with a typo (`platform`, `renderer`, `audio.backend`) |
+| `Cannot export: scripts/player.luau does not compile: ...` | a script with a syntax error: the message gives its line |
 | `'exports/my_game' already exists and is not empty: remove it, or export elsewhere` | an export is never written over another one |
 | `Invalid name 'a/b': it names a folder and a program, so it must be a file name` | `--name` with a `/`, `\` or `:` in it |
 
