@@ -7,7 +7,7 @@
 
 // aylo-export: exports a game, the folder a player runs, with only the plugins and backends its project.luau needs
 // (docs/release/export.md). In the release zip it is in `tools/`, and ships the zip's `runtime/`.
-//   aylo-export <game> <output> [--name <name>] [--runtime <directory>]
+//   aylo-export <game> <output> [--name <name>] [--runtime <directory>] [--no-pack]
 #include <cstddef>
 #include <cstdint>
 #include <exception>
@@ -41,11 +41,12 @@ constexpr bool kIsDebug = true;
 #endif
 
 constexpr std::string_view kUsage =
-    "usage: aylo-export <game> <output> [--name <name>] [--runtime <directory>]\n"
+    "usage: aylo-export <game> <output> [--name <name>] [--runtime <directory>] [--no-pack]\n"
     "  <game>       the game folder, with its project.luau\n"
     "  <output>     where the exported game goes, as <output>/<name>/\n"
     "  --name       the game's name, its folder and its program (default: the game folder's)\n"
-    "  --runtime    the runtime to ship (default: the zip's runtime/, next to tools/)\n";
+    "  --runtime    the runtime to ship (default: the zip's runtime/, next to tools/)\n"
+    "  --no-pack    ship the game as its folder, game/, instead of one game.pak\n";
 
 /// @brief The command line, read.
 struct Options {
@@ -53,6 +54,7 @@ struct Options {
     std::filesystem::path output;                  ///< Where the export goes.
     std::string name;                              ///< The game's name; empty: the default.
     std::optional<std::filesystem::path> runtime;  ///< The runtime; empty: the default.
+    bool pack{true};                               ///< The game in one pack.
 };
 
 /// @return The options of @p args, or nothing if they are not valid (the usage is printed).
@@ -64,6 +66,10 @@ std::optional<Options> parse(const std::vector<std::string>& args) {
         if (arg == "--help" || arg == "-h") {
             std::cout << kUsage;
             return std::nullopt;
+        }
+        if (arg == "--no-pack") {
+            options.pack = false;
+            continue;
         }
         if (arg == "--name" || arg == "--runtime") {
             if (i + 1 >= args.size()) {
@@ -128,6 +134,7 @@ int main(const int argc, char** argv) {
             .name = options->name,
             .engineVersion = RTYPE_ENGINE_VERSION,
             .debug = kIsDebug,
+            .pack = options->pack,
         });
         std::cout << std::format("Exported to {} ({})\n", report.folder.generic_string(), megabytes(report.bytes));
         for (const rtype::engine::exporting::SelectedLibrary& library : report.libraries) {
