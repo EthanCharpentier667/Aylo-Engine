@@ -1,3 +1,4 @@
+includes("audio")
 includes("core")
 includes("ecs")
 includes("engine")
