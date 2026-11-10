@@ -66,6 +66,15 @@ if [ "$links" -eq 0 ]; then ok "no symbolic link"; else fail "$links symbolic li
 if ls "$root/runtime/lib" | grep -q 'plugin'; then fail "a plugin is in runtime/lib/"; else ok "runtime/lib/ holds no plugin"; fi
 loose=$(find "$root/runtime/plugins" -type f ! -name '*.so' ! -name '*.dylib' ! -name '*.luau' ! -name '*.links' | wc -l | tr -d ' ')
 if [ "$loose" -eq 0 ]; then ok "runtime/plugins/ holds plugin libraries only"; else fail "runtime/plugins/ holds $loose files that are not libraries"; fi
+# The game export keeps the notices of the binaries it keeps: each binary it may keep has its own.
+unnoticed=0
+for file in "$runtime" $(find "$root/runtime/plugins" -type f \( -name '*.so' -o -name '*.dylib' \)); do
+    if [ ! -f "$root/runtime/licenses/by-library/$(basename "$file").md" ]; then
+        unnoticed=$((unnoticed + 1))
+        echo "  no notices for $(basename "$file")" >&2
+    fi
+done
+if [ "$unnoticed" -eq 0 ]; then ok "every binary has its notices in runtime/licenses/by-library/"; else fail "$unnoticed binaries have no notices"; fi
 if [ -x "$runtime" ]; then
     # --- Version ------------------------------------------------------------------------------------------------------
     reported=$("$runtime" --version | sed -n 1p)

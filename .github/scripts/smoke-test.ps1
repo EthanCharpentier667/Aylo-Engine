@@ -47,6 +47,17 @@ try {
     foreach ($folder in 'runtime\plugins', 'runtime\plugins\backends', 'templates\game\scripts', 'templates\game\assets') {
         if (Test-Path -LiteralPath (Join-Path $root $folder) -PathType Container) { Ok "has $folder\" } else { Fail "missing $folder\" }
     }
+    # The game export keeps the notices of the binaries it keeps: each binary it may keep has its own.
+    $binaries = @(Get-Item -LiteralPath $runtime -ErrorAction SilentlyContinue) +
+                @(Get-ChildItem -LiteralPath (Join-Path $root 'runtime\plugins') -Recurse -File -Filter '*.dll')
+    $unnoticed = 0
+    foreach ($binary in $binaries) {
+        if (-not (Test-Path -LiteralPath (Join-Path $root "runtime\licenses\by-library\$($binary.Name).md") -PathType Leaf)) {
+            $unnoticed++
+            [Console]::Error.WriteLine("  no notices for $($binary.Name)")
+        }
+    }
+    if ($unnoticed -eq 0) { Ok "every binary has its notices in runtime\licenses\by-library\" } else { Fail "$unnoticed binaries have no notices" }
 
     # --- Version ------------------------------------------------------------------------------------------------------
     if (Test-Path -LiteralPath $runtime) {
