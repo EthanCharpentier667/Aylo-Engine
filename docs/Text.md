@@ -67,12 +67,12 @@ ctx.commands:spawn({
 ## Making a font
 
 Fonts are generated offline with [msdf-atlas-gen](https://github.com/Chlumsky/msdf-atlas-gen) (`brew install
-msdf-atlas-gen` on macOS, or a release binary), from any `.ttf` or `.otf`. `assets/fonts/orbitron.png` and `.json`
-were made from `Orbitron.ttf` ([Orbitron](https://github.com/theleagueof/orbitron), SIL Open Font License,
-`assets/fonts/OFL.txt`), for ASCII and Latin-1 (`assets/fonts/charset.txt`):
+msdf-atlas-gen` on macOS, or a release binary), from any `.ttf` or `.otf`. `examples/assets/fonts/orbitron.png` and
+`.json` were made from `Orbitron.ttf` ([Orbitron](https://github.com/theleagueof/orbitron), SIL Open Font License,
+`examples/assets/fonts/OFL.txt`), for ASCII and Latin-1 (`examples/assets/fonts/charset.txt`):
 
 ```sh
-cd assets/fonts
+cd examples/assets/fonts
 msdf-atlas-gen -font Orbitron.ttf -charset charset.txt -type msdf -format png -imageout orbitron.png \
     -json orbitron.json -size 48 -pxrange 4 -yorigin top -pots
 ```

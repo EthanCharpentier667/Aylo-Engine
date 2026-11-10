@@ -68,9 +68,10 @@ spawns its layers (`spawnTilemap()`) and returns how many it spawned.
 
 ## In the repository
 
-- `assets/levels/space.tmj`: a 200x10 level over the space background of `assets/backgrounds/space/` (CC0, by
-  ansimuz): three repeating layers and two planets at their own parallax speed, a group, and a layer of tiles cut from
-  the same images (one tileset embedded, `far-planets.tsj` external), some of them flipped.
-- `assets/levels/space-background.tmj`: the three repeating layers alone, each scrolling left at its own speed
+- `examples/assets/levels/space.tmj`: a 200x10 level over the space background of
+  `examples/assets/backgrounds/space/` (CC0, by ansimuz): three repeating layers and two planets at their own parallax
+  speed, a group, and a layer of tiles cut from the same images (one tileset embedded, `far-planets.tsj` external),
+  some of them flipped.
+- `examples/assets/levels/space-background.tmj`: the three repeating layers alone, each scrolling left at its own speed
   (`scrollx`): the background of the engine's duel.
 - `examples/plugins/tilemap`: the camera flies over `space.tmj` (`xmake f --tilemap=y && xmake run tilemap`).
