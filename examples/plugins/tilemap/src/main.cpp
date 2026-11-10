@@ -5,10 +5,10 @@
 ** main
 */
 
-// A side-scrolling level made in Tiled's format (assets/levels/space.tmj): the camera flies right on its own over three
-// repeating background layers and two planets, each moving at its own parallax speed, and a long layer of tiles that
-// moves with the world. Only the chunks of tiles the camera shows are drawn. At the end of the level, the camera goes
-// back to the start.
+// A side-scrolling level made in Tiled's format (examples/assets/levels/space.tmj): the camera flies right on its own
+// over three repeating background layers and two planets, each moving at its own parallax speed, and a long layer of
+// tiles that moves with the world. Only the chunks of tiles the camera shows are drawn. At the end of the level, the
+// camera goes back to the start.
 //   xmake f --tilemap=y && xmake run tilemap
 
 #include <exception>
@@ -61,9 +61,9 @@ constexpr float kLevelLength = 3200.0F;  // The level's width: 200 tiles of 16 p
 
 // Startup: loads the level, spawns its layers and the camera at its start.
 void spawnLevel(ecs::ResMut<TilemapAssets> maps, ecs::Commands& commands) {
-    const AssetId level = maps->load("assets/levels/space.tmj");
+    const AssetId level = maps->load("examples/assets/levels/space.tmj");
     const std::vector<ecs::Entity> layers = spawnTilemap(commands, *maps, level);
-    std::cout << "assets/levels/space.tmj: " << layers.size() << " layers\n";
+    std::cout << "examples/assets/levels/space.tmj: " << layers.size() << " layers\n";
     commands.spawn().add(Transform{.position = kView / 2.0F}).add(rtype::plugins::graphics::Camera{});
 }
 

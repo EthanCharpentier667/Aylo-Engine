@@ -87,7 +87,7 @@ constexpr Color kClear{0.03F, 0.03F, 0.06F, 1.0F};
 constexpr std::uint32_t kDotSize = 32;
 constexpr std::uint32_t kRingFrames = 4;
 constexpr float kPi = std::numbers::pi_v<float>;
-constexpr const char* kFont = "assets/fonts/orbitron.json";
+constexpr const char* kFont = "examples/assets/fonts/orbitron.json";
 
 // The ids of what Startup creates, for the Update systems.
 struct Assets {

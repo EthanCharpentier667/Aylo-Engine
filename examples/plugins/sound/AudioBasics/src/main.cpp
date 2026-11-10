@@ -7,7 +7,7 @@
 
 // The audio plugin, frame by frame: gameplay loads sounds by path, sends PlaySound / PlayMusic / StopMusic, and gives
 // entities an AudioSource; the plugin turns that into calls on the audio backend the config names. Two backends are
-// registered, as the executable would: "miniaudio", which plays the sounds of assets/ (maint.ogg, laser.mp3,
+// registered, as the executable would: "miniaudio", which plays the sounds of examples/assets/ (maint.ogg, laser.mp3,
 // laser-no.mp3), one step every 1.5 seconds; and "log", defined below, which plays nothing and prints every call it
 // receives, so reading the output next to the script shows what each gameplay action costs the backend.
 //
@@ -177,9 +177,9 @@ RTYPE_ECS_COMPONENT(Ship, "example.Ship");
 /// @brief Startup: asks for the sounds (they load in this frame's PostUpdate), places the listener in the middle of an
 /// 800-unit-wide screen, and spawns the ship on the left with its cannon firing.
 void setup(ecs::ResMut<AudioAssets> sounds, ecs::ResMut<GameSounds> game, ecs::Commands& commands) {
-    game->music = sounds->load("assets/maint.ogg", SoundDesc{.stream = true});
-    game->misfire = sounds->load("assets/laser-no.mp3");
-    game->laser = sounds->load("assets/laser.mp3");
+    game->music = sounds->load("examples/assets/maint.ogg", SoundDesc{.stream = true});
+    game->misfire = sounds->load("examples/assets/laser-no.mp3");
+    game->laser = sounds->load("examples/assets/laser.mp3");
     commands.spawn().add(Transform{.position = {400.0F, 300.0F}}).add(AudioListener{});
     commands.spawn()
         .add(Ship{})

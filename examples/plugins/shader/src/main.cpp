@@ -7,9 +7,10 @@
 
 // Game shaders on sprites, shapes, texts and particles, three ships from one sheet:
 // - on the left, the default material;
-// - in the middle, a "wave" shader (assets/shaders/wave.glsl): its vertex stage sways the ship with TIME, its
+// - in the middle, a "wave" shader (examples/assets/shaders/wave.glsl): its vertex stage sways the ship with TIME, its
 //   fragment stage tints it with a material value and blends in a second texture;
-// - on the right, a "flash" shader (assets/shaders/flash.glsl) with an `instance uniform`: each of the two ships sets
+// - on the right, a "flash" shader (examples/assets/shaders/flash.glsl) with an `instance uniform`: each of the two
+// ships sets
 //   its own amount (MaterialInstance), so they share one material and one batch;
 // - at the bottom, shapes: a bar with the default material, one with "wave", and a circle with "flash" and its own
 //   amount. A shape is drawn by a call to the renderer, with the material ShaderHandles created;
@@ -83,10 +84,10 @@ constexpr glm::vec2 kScale{4.0F};
 void spawnShips(ecs::ResMut<TextureAssets> textures, ecs::ResMut<ShaderAssets> shaders,
                 ecs::ResMut<MaterialAssets> materials, ecs::ResMut<FontAssets> fonts,
                 ecs::ResMut<ParticleEffectAssets> effects, ecs::Commands& commands) {
-    const AssetId sheet = textures->load("assets/r-typesheet24.gif");
-    const AssetId overlay = textures->load("assets/r-fx-explosions.gif");
-    const AssetId wave = shaders->load("assets/shaders/wave.glsl");
-    const AssetId flash = shaders->load("assets/shaders/flash.glsl");
+    const AssetId sheet = textures->load("examples/assets/r-typesheet24.gif");
+    const AssetId overlay = textures->load("examples/assets/r-fx-explosions.gif");
+    const AssetId wave = shaders->load("examples/assets/shaders/wave.glsl");
+    const AssetId flash = shaders->load("examples/assets/shaders/flash.glsl");
     const AssetId waving = materials->add("example.waving", Material{.shader = wave}.setTexture("overlay", overlay));
     const AssetId flashing = materials->add("example.flashing", Material{.shader = flash});
 
@@ -114,7 +115,7 @@ void spawnShips(ecs::ResMut<TextureAssets> textures, ecs::ResMut<ShaderAssets> s
     commands.spawn()
         .add(Transform{.position = {kWidth * 0.5F, kHeight * 0.12F}})
         .add(TextRenderer{.text = "Game shaders",
-                          .font = fonts->load("assets/fonts/orbitron.json"),
+                          .font = fonts->load("examples/assets/fonts/orbitron.json"),
                           .size = 48.0F,
                           .anchor = {0.5F, 0.5F},
                           .material = waving});
@@ -152,7 +153,7 @@ void drawShapes(ecs::NonSendMut<Backend> backend, ecs::Res<ShaderAssets> shaders
         backend->renderer->draw(bar);
     }
     const rtype::contract::renderer::CompiledShader* flash =
-        shaders->get(AssetId::fromPath("assets/shaders/flash.glsl"));
+        shaders->get(AssetId::fromPath("examples/assets/shaders/flash.glsl"));
     const ShaderHandles::Material* flashing = handles->getMaterial(AssetId::fromPath("example.flashing"));
     if (flash != nullptr && flashing != nullptr) {
         backend->renderer->draw(rtype::contract::renderer::Shape{
