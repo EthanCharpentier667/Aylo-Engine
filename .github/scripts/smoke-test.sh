@@ -61,9 +61,10 @@ done
 # Every library is a real file, once: a link would be another copy to a tool that flattens them, and loaded twice.
 links=$(find "$root" -type l | wc -l | tr -d ' ')
 if [ "$links" -eq 0 ]; then ok "no symbolic link"; else fail "$links symbolic links: every library must be a real file"; fi
-# lib/ holds what is not a plugin, plugins/ nothing else (the Engine refuses a library that is not one there).
+# lib/ holds what is not a plugin, plugins/ nothing else (the Engine refuses a library that is not one there) but the
+# `.links` file of each library (docs/Plugins.md#what-a-library-links).
 if ls "$root/runtime/lib" | grep -q 'plugin'; then fail "a plugin is in runtime/lib/"; else ok "runtime/lib/ holds no plugin"; fi
-loose=$(find "$root/runtime/plugins" -type f ! -name '*.so' ! -name '*.dylib' ! -name '*.luau' | wc -l | tr -d ' ')
+loose=$(find "$root/runtime/plugins" -type f ! -name '*.so' ! -name '*.dylib' ! -name '*.luau' ! -name '*.links' | wc -l | tr -d ' ')
 if [ "$loose" -eq 0 ]; then ok "runtime/plugins/ holds plugin libraries only"; else fail "runtime/plugins/ holds $loose files that are not libraries"; fi
 if [ -x "$runtime" ]; then
     # --- Version ------------------------------------------------------------------------------------------------------
