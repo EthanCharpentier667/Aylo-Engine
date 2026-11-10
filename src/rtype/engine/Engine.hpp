@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <array>
 #include <atomic>
 #include <cstddef>
 #include <filesystem>
@@ -74,7 +75,12 @@ class RTYPE_ENGINE_API Engine {
     static constexpr std::string_view kBackendsDirectory =
         "backends";                                                 ///< The backends, in the plugins by the executable.
     static constexpr std::string_view kPluginsSetting = "plugins";  ///< The setting naming the plugins to add.
-    static constexpr std::string_view kDefaultHost = "127.0.0.1";   ///< The server a client joins by default.
+    /// @brief The plugin every game has (TransformPlugin::kName, which the Engine does not include; a test checks
+    /// they are the same).
+    static constexpr std::string_view kTransformPlugin = "rtype.Transform";
+    /// @brief The settings that name a backend; a client whose game sets one loads the backend libraries.
+    static constexpr std::array<std::string_view, 3> kBackendSettings{"platform", "renderer", "audio.backend"};
+    static constexpr std::string_view kDefaultHost = "127.0.0.1";  ///< The server a client joins by default.
     static constexpr std::string_view kHotReloadSetting =
         "hotReload";                             ///< The setting that turns hot reload on or off.
     static constexpr int kBuildFailedCode = 84;  ///< What run() returns when a run with a frame limit cannot rebuild.

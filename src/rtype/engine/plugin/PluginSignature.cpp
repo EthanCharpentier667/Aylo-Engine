@@ -17,6 +17,7 @@
 #include <filesystem>
 #include <format>
 #include <fstream>
+#include <functional>
 #include <ios>
 #include <iterator>
 #include <optional>
@@ -91,5 +92,21 @@ void verifyPluginSignature(const std::filesystem::path& library, const PublicKey
         throw exceptions::RuntimeError{
             std::format("Plugin library '{}' does not match its signature", library.generic_string())};
     }
+}
+
+std::function<void(const std::filesystem::path&)> gamePluginVerifier() {
+#ifdef NDEBUG
+    return [](const std::filesystem::path& library) {
+        const std::optional<PublicKey> root = parsePublicKey(RTYPE_PLUGIN_ROOT_KEY);
+        if (!root) {
+            throw exceptions::RuntimeError{std::format(
+                "Plugin library '{}' cannot be checked: this build has no root key (xmake f --plugin_root_key=<hex>)",
+                library.generic_string())};
+        }
+        verifyPluginSignature(library, *root);
+    };
+#else
+    return {};
+#endif
 }
 }  // namespace rtype::engine::plugin

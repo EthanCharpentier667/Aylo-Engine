@@ -17,6 +17,8 @@
 #include <vector>
 
 #include "rtype/core/config/Settings.hpp"
+#include "rtype/ecs/schedule/RunMode.hpp"
+#include "rtype/ecs/system/Side.hpp"
 #include "rtype/engine/CommandLine.hpp"
 #include "rtype/engine/Exceptions.hpp"
 #include "rtype/luau/Function.hpp"
@@ -178,5 +180,17 @@ void SettingsLoader::load(const std::filesystem::path& path) {
     const luau::Script script = rtype::luau::expect(_runtime.load(path));
 
     luau::expect(_runtime.run(script));
+}
+
+core::config::Settings loadProjectSettings(const std::filesystem::path& projectFile, const ecs::RunMode mode,
+                                           const CommandLine& commandLine, const bool isDebug) {
+    SettingsLoader loader;
+
+    loader.setFlag("isClient", ecs::runsIn(ecs::Side::kClient, mode));
+    loader.setFlag("isServer", ecs::runsIn(ecs::Side::kServer, mode));
+    loader.setFlag("isDebug", isDebug);
+    loader.setArgs(commandLine);
+    loader.load(projectFile);
+    return loader.build();
 }
 }  // namespace rtype::engine::scripting

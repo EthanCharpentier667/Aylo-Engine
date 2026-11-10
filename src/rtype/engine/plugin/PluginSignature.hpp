@@ -11,6 +11,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <functional>
 #include <optional>
 #include <string_view>
 
@@ -46,4 +47,10 @@ struct RTYPE_ENGINE_API PluginSignature {
 /// @throws exceptions::RuntimeError If the signature is missing or malformed, the developer's key has no valid
 /// certificate, or the library is not what was signed, naming the file.
 RTYPE_ENGINE_API void verifyPluginSignature(const std::filesystem::path& library, const PublicKey& root);
+
+/// @brief What a game's plugin library must pass before it is opened, for PluginLoader::load(): in a release build its
+/// signature, checked against the root key built into the engine; nothing in a debug build, where plugins are written.
+/// @return The check; empty in a debug build. It throws exceptions::RuntimeError for a library it refuses, or for every
+/// library when the build has no root key (`xmake f --plugin_root_key=<hex>`).
+[[nodiscard]] RTYPE_ENGINE_API std::function<void(const std::filesystem::path&)> gamePluginVerifier();
 }  // namespace rtype::engine::plugin

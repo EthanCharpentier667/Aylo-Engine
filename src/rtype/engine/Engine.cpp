@@ -72,10 +72,6 @@ constexpr bool kIsDebug = false;
 constexpr bool kIsDebug = true;
 #endif
 
-/// @brief The name of the transform plugin, the one plugin every game has (TransformPlugin::kName, which the Engine
-/// does not include; a test checks they are the same).
-constexpr std::string_view kTransformPlugin = "rtype.Transform";
-
 /// @return Whether @p mode runs the client side: a window, inputs and sound.
 bool runsClient(const rtype::ecs::RunMode mode) { return rtype::ecs::runsIn(rtype::ecs::Side::kClient, mode); }
 
@@ -108,14 +104,8 @@ rtype::engine::CommandLine parseFlags(const std::vector<std::string>& args) {
 /// @return The settings `project.luau` gives for this mode and command line.
 rtype::core::config::Settings loadSettings(const std::filesystem::path& game, const rtype::ecs::RunMode mode,
                                            const rtype::engine::CommandLine& commandLine, const bool isDebug) {
-    rtype::engine::scripting::SettingsLoader loader;
-
-    loader.setFlag("isClient", runsClient(mode));
-    loader.setFlag("isServer", runsServer(mode));
-    loader.setFlag("isDebug", isDebug);
-    loader.setArgs(commandLine);
-    loader.load(game / rtype::engine::Engine::kProjectFile);
-    return loader.build();
+    return rtype::engine::scripting::loadProjectSettings(game / rtype::engine::Engine::kProjectFile, mode, commandLine,
+                                                         isDebug);
 }
 
 /// @return The `network.port` setting, checked: a whole number from @p lowest to 65535.
@@ -236,21 +226,6 @@ std::unique_ptr<rtype::ecs::Plugin> makeNetworkPlugin(const rtype::ecs::RunMode 
 }  // namespace
 
 namespace rtype::engine {
-#ifdef NDEBUG
-namespace {
-/// @brief Refuses a library of the game that the root key built into this engine does not vouch for.
-void verifyGamePlugin(const std::filesystem::path& library) {
-    const std::optional<plugin::PublicKey> root = plugin::parsePublicKey(RTYPE_PLUGIN_ROOT_KEY);
-    if (!root) {
-        throw exceptions::RuntimeError{std::format(
-            "Plugin library '{}' cannot be checked: this build has no root key (xmake f --plugin_root_key=<hex>)",
-            library.generic_string())};
-    }
-    plugin::verifyPluginSignature(library, *root);
-}
-}  // namespace
-#endif
-
 Engine::Engine(EngineConfig config)
     : _config{std::move(config)},
       _commandLine{parseFlags(_config.args)},
@@ -413,15 +388,10 @@ void Engine::registerLibraries() {
     _loader.load(plugins);
     // Only a client whose game opens a window or plays sound loads what does it: a server never does.
     if (runsClient(_config.mode) &&
-        (_settings.has("platform") || _settings.has("renderer") || _settings.has("audio.backend"))) {
+        std::ranges::any_of(kBackendSettings, [this](const std::string_view key) { return _settings.has(key); })) {
         _loader.load(plugins / kBackendsDirectory);
     }
-    // A debug build is where plugins are written: only a release build, what players run, checks their signature.
-#ifdef NDEBUG
-    _loader.load(_gameDirectory / kPluginsDirectory, &verifyGamePlugin);
-#else
-    _loader.load(_gameDirectory / kPluginsDirectory);
-#endif
+    _loader.load(_gameDirectory / kPluginsDirectory, plugin::gamePluginVerifier());
     ecs::PluginRegistry& registry = _app->getPluginRegistry();
     registry.setSettings(_settings);
     core::library::LibraryRegistrar registrar;

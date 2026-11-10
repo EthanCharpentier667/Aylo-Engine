@@ -11,6 +11,7 @@
 #include <string_view>
 
 #include "rtype/core/config/Settings.hpp"
+#include "rtype/ecs/schedule/RunMode.hpp"
 #include "rtype/engine/CommandLine.hpp"
 #include "rtype/engine/Export.hpp"
 #include "rtype/luau/Function.hpp"
@@ -84,4 +85,17 @@ class RTYPE_ENGINE_API SettingsLoader {
         _groupMetatable;  ///< The metatable of `engine.settings` and of every group: its `__index` is _createGroup.
     luau::Function _createGroup;  ///< The native `__index` of _groupMetatable, which creates the missing groups.
 };
+
+/// @brief Reads a game's settings as the Engine does for one side: `engine.isClient` and `engine.isServer` from
+/// @p mode, `engine.isDebug`, and `engine.args` from @p commandLine.
+/// @param projectFile The game's `project.luau`.
+/// @param mode The side the settings are read for.
+/// @param commandLine The flags, as `engine.args`.
+/// @param isDebug `engine.isDebug`.
+/// @return The settings the file gives.
+/// @throws luau::exceptions::RuntimeError If the file cannot be read or compiled, or if the script fails.
+/// @throws exceptions::RuntimeError If a setting has an unsupported type (build()).
+[[nodiscard]] RTYPE_ENGINE_API core::config::Settings loadProjectSettings(const std::filesystem::path& projectFile,
+                                                                          ecs::RunMode mode,
+                                                                          const CommandLine& commandLine, bool isDebug);
 }  // namespace rtype::engine::scripting
