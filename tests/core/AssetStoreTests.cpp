@@ -8,16 +8,23 @@
 #include <gtest/gtest.h>
 
 #include <filesystem>
+#include <format>
 #include <fstream>
+#include <map>
+#include <memory>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
 #include <system_error>
+#include <utility>
+#include <vector>
 
 #include "core/asset/AssetFiles.hpp"
 #include "core/asset/AssetId.hpp"
 #include "core/asset/AssetStore.hpp"
 #include "core/asset/exceptions/AssetExceptions.hpp"
+#include "core/vfs/FileSource.hpp"
 
 using rtype::core::asset::AssetId;
 using rtype::core::asset::AssetStore;
@@ -178,4 +185,42 @@ TEST_F(AssetDirectoryTest, AStoreRecordsAPathThatLeavesItsDirectoryAsFailed) {
     EXPECT_EQ(store.get(id), nullptr);
     ASSERT_NE(store.getEntry(id), nullptr);
     EXPECT_TRUE(store.getEntry(id)->error.contains("outside the assets directory"));
+}
+
+namespace {
+/// @brief Files held in memory, as a pack holds them: what proves a store reads through its source.
+class MemorySource final : public rtype::core::vfs::FileSource {
+  public:
+    explicit MemorySource(std::map<std::string, std::string> files) : _files{std::move(files)} {}
+
+    [[nodiscard]] std::string read(const std::string_view path) const override {
+        const auto found = _files.find(std::string{path});
+        if (found == _files.end()) {
+            throw rtype::core::asset::exceptions::AssetLoadException{std::format("no '{}' in memory", path)};
+        }
+        return found->second;
+    }
+    [[nodiscard]] bool exists(const std::string_view path) const noexcept override {
+        return _files.contains(std::string{path});
+    }
+    [[nodiscard]] std::vector<std::string> list(std::string_view /*folder*/) const override { return {}; }
+    [[nodiscard]] std::optional<std::filesystem::path> directory() const override { return std::nullopt; }
+
+  private:
+    std::map<std::string, std::string> _files;  ///< The files, by path.
+};
+}  // namespace
+
+TEST(AssetStore, ReadsThroughItsSource) {
+    AssetStore<std::string> store{"Test"};
+    store.setSource(std::make_shared<MemorySource>(std::map<std::string, std::string>{{"levels/a.txt", "in memory"}}));
+    const auto parse = [](std::string_view text, const std::filesystem::path& /*file*/) { return std::string{text}; };
+
+    const auto* read = store.get(store.load("levels/a.txt", parse).id);
+    ASSERT_NE(read, nullptr);
+    EXPECT_EQ(*read, "in memory");
+    const AssetId missing = store.load("levels/b.txt", parse).id;
+    ASSERT_NE(store.getEntry(missing), nullptr);
+    EXPECT_TRUE(store.getEntry(missing)->error.contains("no 'levels/b.txt' in memory"));
+    EXPECT_TRUE(store.getDirectory().empty());
 }
