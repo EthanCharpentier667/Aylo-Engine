@@ -39,7 +39,7 @@ A shipped game today is the engine's `runtime/` folder as it came, next to the g
 ## 3. What an export makes
 
 ```
-aylo-export <game> <out> [--name MyGame] [--runtime <dir>]
+aylo-export <game> <out> [--name MyGame] [--runtime <dir>] [--no-pack]
 ```
 
 ```
@@ -48,7 +48,7 @@ aylo-export <game> <out> [--name MyGame] [--runtime <dir>]
   lib/                    copied whole (on Windows, next to the program)
   plugins/                only the plugins the game needs
     backends/             only the backends it names
-  game.pak                the game: project.luau, scripts as bytecode, assets (until EXP-08: game/, as a folder)
+  game.pak                the game: project.luau, scripts as bytecode, assets (--no-pack: game/, as a folder)
   game/plugins/           the game's own plugin libraries and their .sig, where the Engine looks for them
   vulkan/                 as in the runtime, when it has one (the MoltenVK manifest on macOS)
   licenses/               THIRD_PARTY_NOTICES.md: the notices of the binaries kept
@@ -213,8 +213,19 @@ case rules), `tests/luau/RuntimeTests.cpp` (a precompiled chunk loads, keeps its
 
 ### EXP-08: `aylo-export` packs the game
 
-`aylo-export` writes `game.pak` from the game folder, compiling each script (a script that does not compile stops the
-export with its file and line). `--no-pack` keeps the folder of EXP-03.
+`exportGame()` writes `game.pak` (`ExportRequest::pack`, on by default; `aylo-export --no-pack` keeps the folder of
+EXP-03). The pack holds the game's files but its hidden ones and `plugins/`; each `scripts/**.luau` is precompiled
+(`luau::Runtime::precompile()`, the optimization of the scripting host), and a script that does not compile stops the
+export with its file and the compiler's message, before anything is written. The libraries of the game's plugins and
+their `.sig` files go to `game/plugins/`, next to the pack, where the Engine loads them (EXP-07); they are checked as the
+Engine checks them (`ExportRequest::verifyGamePlugin`, the Engine's by default). The launcher runs `game.pak`, and the
+program finds it next to itself without one.
+
+Tests (`tests/engine/GameExportTests.cpp`): the pack holds the project, the assets and the scripts precompiled; the
+Engine runs the exported pack (a script that requires another); a script that does not compile stops the export and
+leaves nothing; `--no-pack` keeps the folder; the game's plugin libraries and signatures stay files next to the pack and
+out of it. Run by hand from the macOS zip: the template game exported as a pack, its program started alone from another
+folder as a server, and a headless client started by `play.sh` connected to it.
 
 ### EXP-09: export menu of the editor
 
