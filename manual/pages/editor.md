@@ -40,9 +40,19 @@ An `.actor` named there opens alone (see below).
 | **Console** | What your game writes: your scripts' `print`, the engine's errors and warnings |
 | **Stats** | The frame rate, the last frame times, and what the frame drew |
 | **Plugins** | The plugins your game loaded, in build order, each with its kind (engine or game), the plugins it needs and those that need it; a filter; and the plugins available but not loaded |
+| **Export** | Opened by **File**, **Export...**: exports your game as a player gets it, as `tools/aylo-export` does (see [Shipping your game](shipping.md)) |
 
 Drag a panel by its tab to dock it elsewhere. The editor remembers where they are, and **View**, **Reset layout** docks
 them as they were the first time. **File**, **Save scene** (Ctrl+S) saves the scene; **File**, **Quit** closes the editor.
+
+## Export your game
+
+**File**, **Export...** opens the Export panel. Choose the output folder (by default `exports/`, next to your game's
+folder), a name (by default your game folder's), and whether the game goes in one pack (`game.pak`, on by default), then
+click **Export**. The panel then says where the export went, its size, each library it kept and why, and the warnings,
+or why it stopped: the messages are those of [Shipping your game](shipping.md#when-the-export-stops). The editor waits
+while it exports, a second or two for a small game. Save your scene first: the export takes the files as they are on
+disk.
 
 ## Edit a scene
 
