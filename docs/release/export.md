@@ -141,17 +141,25 @@ later.
 
 ### EXP-04: file source
 
-`core::vfs::FileSource`, an interface with `read(path) -> bytes`, `exists(path)`, `list(folder)` and
-`isWatchable()`, and two implementations: a folder (today's behavior, with the checks of `resolveAssetPath()`) and a
-pack (EXP-06). The `AssetDirectory` resource becomes the game's file source, and every reader moves to it:
+`core::vfs::FileSource` (`core/vfs/`), an interface with `read(path)` (the bytes), `exists(path)`, `list(folder)` and
+`directory()` (the folder on disk, if the files are files on disk), and `core::vfs::DirectorySource`, a folder with the
+checks of `resolveAssetPath()` (`..`, absolute paths, links leaving the folder). `core::vfs::readBytes()` gives the bytes
+of an image or a sound. `core` stays without state: a source is an object the world holds.
 
-- the asset stores of the plugins (`AssetStore`, the texture, atlas, font, shader, tilemap, particle and audio assets);
-- `graphics/TextureCalls` and `ImageDecoding`, which open files themselves;
-- `capsule/CapsuleFiles`, which lists the capsule files;
-- `scripting/modules/ScriptResolver` and the settings loader, for `scripts/` and `project.luau`.
+The `AssetDirectory` resource gets a `source` (the Engine puts a `DirectorySource` on `<game>/assets/` in it), and
+`plugins::assetSourceOf()` gives it to the plugins. Every reader moved to it:
 
-Hot reload asks `isWatchable()`; only a folder is. `core` stays without state: a source is an object the world holds.
-Tests (`tests/core/`): the folder source keeps every check of today (`..`, absolute paths, links leaving the folder).
+- `AssetStore` (atlases, fonts, tilemaps, particle effects) and the external tilesets of a Tiled map;
+- `TextureAssets`, `ShaderAssets`, and the images the atlas packer packs (`packImages()` takes a reader);
+- `AudioAssets`: a sound is opened by its path when the source has a folder (a streamed music keeps reading it), from
+  its bytes otherwise (EXP-05 streams them);
+- `CapsuleFiles`, which lists the capsule files with `list()`.
+
+`setDirectory(path)` stays on each store, a `DirectorySource` on that folder, for the programs and tests without an
+Engine. Hot reload follows the assets only when `AssetDirectory` has a folder (`path`). The scripts and `project.luau`
+are read by the scripting module and the settings loader, which move to a source with EXP-07, where the engine runs a
+pack. Tests: `tests/core/DirectorySourceTests.cpp`, and a store and the capsule files reading a source held in memory
+(`AssetStoreTests`, `CapsuleFilesTests`).
 
 ### EXP-05: sounds from bytes
 

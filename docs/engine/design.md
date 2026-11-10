@@ -150,8 +150,14 @@ is named by this path, the same on every side.
   directory once normalized, and a link that points out of it. The asset is then recorded as failed, like a missing
   file. A `../` that stays inside is fine: a Tiled map in `levels/` names `../backgrounds/a.png`.
 - **How the plugins know it.** The `Engine` inserts the `AssetDirectory` resource before it builds them, and each one
-  hands it to its asset resource. A program without an `Engine` has none: its paths are relative to the working
-  directory and nothing is checked.
+  hands its source (`plugins::assetSourceOf()`) to its asset resource. A program without an `Engine` has none: its
+  paths are relative to the working directory and nothing is checked.
+- **Read through a source.** Every reader (the asset stores, `TextureAssets`, `ShaderAssets`, `AudioAssets`, the atlas
+  packer, `CapsuleFiles`) reads through a `core::vfs::FileSource`: `read()`, `exists()`, `list()`, and `directory()`,
+  the folder on disk when there is one. In development it is a `core::vfs::DirectorySource` on `<game>/assets/`, with
+  the checks above; an exported game will read its pack instead ([`../release/export.md`](../release/export.md),
+  EXP-06 and EXP-07). What needs a file on disk asks `directory()`: hot reload follows only a folder, and a sound is
+  opened by its path when it has one (a streamed music keeps reading it), from its bytes otherwise.
 
 ## Reloading
 
