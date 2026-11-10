@@ -20,10 +20,13 @@
 #include <vector>
 
 #include "core/system/ExecutablePath.hpp"
+#include "core/vfs/Pack.hpp"
+#include "rtype/ecs/schedule/RunMode.hpp"
 #include "rtype/engine/Engine.hpp"
 #include "rtype/engine/Exceptions.hpp"
 #include "rtype/engine/exporting/GameExport.hpp"
 #include "rtype/engine/plugin/SharedLibrary.hpp"
+#include "rtype/luau/Runtime.hpp"
 
 using rtype::engine::Engine;
 using rtype::engine::exceptions::RuntimeError;
@@ -112,8 +115,8 @@ TEST_F(GameExportTest, ExportsTheProgramTheGameAndOnlyThePluginsItNeeds) {
     EXPECT_EQ(filesIn(folder / Engine::kPluginsDirectory),
               (std::vector<std::string>{libraryFile("rtype-plugin-physics"), libraryFile("rtype-plugin-transform")}));
     EXPECT_TRUE(filesIn(folder / Engine::kPluginsDirectory / Engine::kBackendsDirectory).empty());
-    EXPECT_EQ(readText(folder / "game" / Engine::kProjectFile), R"(engine.settings.plugins = { "rtype.Physics" })");
-    EXPECT_TRUE(std::filesystem::is_regular_file(folder / "game" / "scripts" / "main.luau"));
+    EXPECT_TRUE(std::filesystem::is_regular_file(folder / Engine::kPackFile));
+    EXPECT_FALSE(std::filesystem::exists(folder / "game" / Engine::kProjectFile));  // in the pack
     EXPECT_TRUE(std::filesystem::is_regular_file(folder / "licenses" / "THIRD_PARTY_NOTICES.md"));
     EXPECT_GT(report.bytes, 0U);
 }
@@ -126,18 +129,81 @@ TEST_F(GameExportTest, WritesTheLibrariesAndTheHashesInExportJson) {
     EXPECT_NE(json.find(std::format(R"("file": "plugins/{}")", libraryFile("rtype-plugin-physics"))), std::string::npos)
         << json;
     EXPECT_NE(json.find(R"json("named in plugins (server)")json"), std::string::npos) << json;
-    EXPECT_NE(json.find(R"("game/project.luau": ")"), std::string::npos) << json;
+    EXPECT_NE(json.find(R"("game.pak": ")"), std::string::npos) << json;
 }
 
-TEST_F(GameExportTest, LeavesOutHiddenFilesAndThePluginSources) {
+TEST_F(GameExportTest, PacksTheGameWithItsScriptsPrecompiled) {
+    write("assets/levels/a.txt", "a level");
+    static_cast<void>(exportGame(request()));
+    const rtype::core::vfs::PackSource pack{_output / "MyGame" / Engine::kPackFile};
+
+    EXPECT_EQ(pack.read("project.luau"), R"(engine.settings.plugins = { "rtype.Physics" })");
+    EXPECT_EQ(pack.read("assets/levels/a.txt"), "a level");
+    EXPECT_TRUE(std::string_view{pack.read("scripts/main.luau")}.starts_with(rtype::luau::Runtime::kBytecodeHeader));
+    EXPECT_EQ(readText(_output / "MyGame" / "play.sh").find("game.pak") == std::string::npos,
+              rtype::engine::exporting::runtimeProgramName().ends_with(".exe"));  // play.bat on Windows
+}
+
+TEST_F(GameExportTest, TheEngineRunsTheExportedPack) {
+    write("project.luau", "engine.settings.network.port = 0");
+    write("scripts/shared/names.luau", "return { shield = 'game.Shield' }");
+    write("scripts/main.luau", R"(engine.ecs.component(require("@scripts/shared/names").shield, { fields = {} }))");
+    static_cast<void>(exportGame(request()));
+
+    const Engine engine{
+        {.mode = rtype::ecs::RunMode::kServer, .args = {(_output / "MyGame" / Engine::kPackFile).string()}}};
+
+    EXPECT_TRUE(engine.isPacked());
+    EXPECT_TRUE(engine.app().getWorld().getComponents().find("game.Shield"));
+}
+
+TEST_F(GameExportTest, RefusesAScriptThatDoesNotCompile) {
+    write("scripts/broken.luau", "local = ");
+
+    try {
+        static_cast<void>(exportGame(request()));
+        FAIL() << "a script that does not compile was exported";
+    } catch (const RuntimeError& error) {
+        EXPECT_NE(std::string_view{error.what()}.find("scripts/broken.luau"), std::string_view::npos) << error.what();
+    }
+    EXPECT_FALSE(std::filesystem::exists(_output / "MyGame"));
+}
+
+TEST_F(GameExportTest, KeepsTheGameFolderWithoutAPack) {
     write(".luaurc", "{}");
     write("plugins/boss/Boss.cpp", "// a source");
     write("plugins/boss/xmake.lua", "-- a build file");
-    static_cast<void>(exportGame(request()));
+    ExportRequest folder = request();
+    folder.pack = false;
+    static_cast<void>(exportGame(folder));
     const std::filesystem::path game = _output / "MyGame" / "game";
 
+    EXPECT_FALSE(std::filesystem::exists(_output / "MyGame" / Engine::kPackFile));
+    EXPECT_EQ(readText(game / Engine::kProjectFile), R"(engine.settings.plugins = { "rtype.Physics" })");
+    EXPECT_EQ(readText(game / "scripts" / "main.luau"), "return {}");
     EXPECT_FALSE(std::filesystem::exists(game / ".luaurc"));
     EXPECT_FALSE(std::filesystem::exists(game / "plugins" / "boss"));
+}
+
+TEST_F(GameExportTest, KeepsTheLibrariesOfTheGamePluginsNextToThePack) {
+    // The fixture under another name: two libraries of the same file name are refused.
+    const std::string library = libraryFile("rtype-game-boss");
+    std::filesystem::create_directories(_game / "plugins");
+    std::filesystem::copy_file(
+        rtype::core::system::getExecutableDirectory() / "plugins" / libraryFile("rtype-test-plugin"),
+        _game / "plugins" / library);
+    write("plugins/" + library + ".sig", "a signature");
+    write("plugins/boss/Boss.cpp", "// a source");
+    // A release build checks the signature of a game's plugin before it opens it; the fixture has none.
+    ExportRequest unchecked = request();
+    unchecked.verifyGamePlugin = {};
+    static_cast<void>(exportGame(unchecked));
+    const std::filesystem::path plugins = _output / "MyGame" / "game" / "plugins";
+
+    EXPECT_TRUE(std::filesystem::is_regular_file(plugins / library));
+    EXPECT_EQ(readText(plugins / (library + ".sig")), "a signature");
+    EXPECT_FALSE(std::filesystem::exists(plugins / "boss"));
+    EXPECT_FALSE(rtype::core::vfs::PackSource{_output / "MyGame" / Engine::kPackFile}.exists("plugins/" + library));
 }
 
 TEST_F(GameExportTest, WarnsWhenTheRuntimeHasNoNotices) {
@@ -152,7 +218,7 @@ TEST_F(GameExportTest, NamesTheExportAsAsked) {
     const ExportReport report = exportGame(request("Duel"));
 
     EXPECT_EQ(report.folder, _output / "Duel");
-    EXPECT_TRUE(std::filesystem::exists(_output / "Duel" / "game" / Engine::kProjectFile));
+    EXPECT_TRUE(std::filesystem::exists(_output / "Duel" / Engine::kPackFile));
 }
 
 TEST_F(GameExportTest, RefusesANameThatIsNotAFileName) {
