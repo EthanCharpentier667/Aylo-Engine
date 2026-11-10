@@ -16,7 +16,7 @@ aylo-engine-<version>-<os>-<arch>/
 │   │                        other engine modules are static, inside aylo-runtime)
 │   ├── plugins/             the plugin libraries, real files; the engine scans this folder
 │   │   └── backends/        the platform, renderer and audio backends, scanned too
-│   └── licenses/            THIRD_PARTY_NOTICES.md
+│   └── licenses/            THIRD_PARTY_NOTICES.md, and by-library/<file>.md: the notices of each binary
 ├── tools/aylo-sign(.exe)
 ├── templates/game/          a game that runs, from examples/games/template/game/
 ├── manual/                  the manual, built for offline reading
@@ -31,6 +31,14 @@ rpath, the DLLs of `lib/` sit next to the executable instead (there is no `lib/`
 the DLLs of `plugins/` find them. How a binary finds its libraries is in
 [`self-contained.md`](self-contained.md#how-the-build-gets-there).
 The editor will get its own `editor/` folder, outside `runtime/`, so that shipping the runtime never ships it.
+
+The notices are made, not written by hand (`xmake/modules/third_party_notices.lua`). A binary contains the packages of
+its target and those of the static modules it links (`aylo-runtime` holds Luau, Asio and libsodium through `engine`,
+`luau` and `network`); a library `lib/` takes from the system (the Vulkan loader and MoltenVK on macOS, the GCC runtime on
+Linux) has its own entry. `licenses/by-library/<file>.md` holds the rows of one binary, and `THIRD_PARTY_NOTICES.md` all
+of them. A package the table does not know stops the release, so the notices cannot fall behind the build. The game
+export keeps the files of the binaries it keeps ([`export.md`](export.md)); the smoke test checks that every binary it
+may keep has one.
 
 `manifest.json` holds the `version` (a nightly build is `<version>-nightly.<commit>`), the `commit`, the `platform` and
 `arch`, the `toolchain`, the `library_abi` and the `sha256` of every other file of the zip. Its version, commit,

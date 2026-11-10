@@ -33,7 +33,7 @@ A shipped game today is the engine's `runtime/` folder as it came, next to the g
 | E6 | **Hot reload is off in a pack.** A packed game has no files to watch; `hotReload = true` is ignored with a log line. | A pack is a shipped build. |
 | E7 | **A pack is data from outside**: a damaged or hostile pack never crashes, throws or asserts past its reader; it is refused with its path and the reason. | `AGENTS.md`, rule 6 and 9. |
 | E8 | **Game plugins are copied as built**, with their `.sig`, from `<game>/plugins/`. The export compiles nothing and signs nothing. | Signing stays the developer's step (`aylo-sign`, [`../Plugins.md`](../Plugins.md#signatures)). |
-| E9 | **The licenses follow the libraries**: each library of the runtime names its notices in `manifest.json`, and the export copies only those of the libraries it keeps. | A trimmed runtime must still carry every notice it needs, and nothing more. |
+| E9 | **The licenses follow the libraries**: each binary of the runtime has its notices in `licenses/by-library/<file>.md`, and the export ships those of the binaries it keeps. | A trimmed runtime must still carry every notice it needs, and nothing more. |
 | E10 | **Later, not in this plan**: the pack inside the executable (one file), and a static runtime with every plugin linked in. Both are listed in [Later](#5-later) with what they need. | They are not needed to ship only what a game uses, and each has a cost of its own (signing on macOS, an executable per set of plugins). |
 
 ## 3. What an export makes
@@ -114,9 +114,12 @@ left out; a game plugin and what it links are kept; an unknown plugin or backend
 
 ### EXP-02: licenses per library
 
-`xmake/package-release.lua` writes, for each library of `runtime/`, the notices of the third-party code it contains (a
-table kept next to the packages in the build, the same one that fills `licenses/` today). The smoke test checks that
-every library has an entry.
+`xmake/package-release.lua` writes, for each binary of `runtime/`, the notices of the third-party code it contains, in
+`licenses/by-library/<file>.md` (one table row per package), and `THIRD_PARTY_NOTICES.md` from all of them
+([`package.md`](package.md)). The rows come from a table in `xmake/modules/third_party_notices.lua`, by xmake package:
+a binary holds the packages of its target and of the static modules it links, and a package the table does not know
+stops the release. This replaces the hand-made `xmake/package/THIRD_PARTY_NOTICES.md`, which had fallen behind (no SDL,
+raylib, curl or OpenSSL). The smoke test checks that the program and every plugin and backend have their file.
 
 ### EXP-03: `aylo-export`, the trimmed folder
 
