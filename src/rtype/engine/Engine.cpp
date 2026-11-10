@@ -32,6 +32,7 @@
 #include "core/config/exceptions/ConfigExceptions.hpp"
 #include "core/library/LibraryEntry.hpp"
 #include "core/system/ExecutablePath.hpp"
+#include "core/vfs/DirectorySource.hpp"
 #include "rtype/core/config/Settings.hpp"
 #include "rtype/core/reload/ReloadReport.hpp"
 #include "rtype/ecs/app/App.hpp"
@@ -452,7 +453,8 @@ void Engine::build() {
 
     ecs::App& app = *_app;
     // Inserted first, so every plugin finds it when it is built.
-    app.getWorld().getResources().insert(plugins::AssetDirectory{.path = assets});
+    app.getWorld().getResources().insert(
+        plugins::AssetDirectory{.path = assets, .source = std::make_shared<core::vfs::DirectorySource>(assets)});
     if (_hotReload) {
         app.getWorld().getResources().insert(plugins::HotReload{.reloader = &_reloader});
     }
