@@ -51,6 +51,13 @@ class RTYPE_ENGINE_API PluginLoader {
     /// @brief Calls the registration of every library, in the order they were loaded.
     void registerInto(core::library::LibraryRegistrar& registrar) const;
 
+    /// @brief As registerInto(), and calls @p registered after each library, with its file: what reads what each
+    /// library brought (the game export) compares the registries before and after.
+    /// @param registrar What the libraries exchange.
+    /// @param registered Called once per library, in the order they were loaded, after it registered.
+    void registerInto(core::library::LibraryRegistrar& registrar,
+                      const std::function<void(const std::filesystem::path&)>& registered) const;
+
   private:
     /// @brief One library, loaded and checked.
     struct Loaded {
