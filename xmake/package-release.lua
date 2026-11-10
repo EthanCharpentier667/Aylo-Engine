@@ -89,6 +89,10 @@ task("package-release")
                 local to = path.join(runtime, "plugins", path.relative(file, pluginsdir))
                 os.mkdir(path.directory(to))
                 os.cp(file, to)
+                -- What the library links, for the game export (xmake/modules/plugin_links.lua).
+                if os.isfile(file .. ".links") then
+                    os.cp(file .. ".links", to .. ".links")
+                end
                 local filename = path.filename(file)
                 if windows and (filename == "rtype-plugin-transform.dll" or filename == "rtype-plugin-input.dll") then
                     os.cp(file, path.join(runtime, filename))

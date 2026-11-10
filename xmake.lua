@@ -113,6 +113,10 @@ rule("rtype.plugin_library")
             target:add("rpathdirs", up .. "/lib")
         end
     end)
+    after_build(function (target)
+        import("plugin_links")
+        plugin_links.write(target)
+    end)
 rule_end()
 
 -- Makes a target a game's own plugin library: a folder `<game>/plugins/<name>/`, with its xmake.lua and its sources, built
@@ -128,6 +132,10 @@ rule("rtype.game_plugin")
             target:add("rpathdirs", path.join("@loader_path", path.relative(path.join(build, "lib"), folder)),
                        path.join("@loader_path", path.relative(path.join(build, "plugins"), folder)))
         end
+    end)
+    after_build(function (target)
+        import("plugin_links")
+        plugin_links.write(target)
     end)
 rule_end()
 
