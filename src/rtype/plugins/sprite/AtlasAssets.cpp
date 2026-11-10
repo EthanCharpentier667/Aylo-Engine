@@ -12,6 +12,7 @@
 #include <exception>
 #include <filesystem>
 #include <format>
+#include <memory>
 #include <optional>
 #include <span>
 #include <string>
@@ -22,6 +23,7 @@
 #include "core/asset/AssetFiles.hpp"
 #include "core/asset/AssetId.hpp"
 #include "core/asset/AssetStore.hpp"
+#include "core/vfs/FileSource.hpp"
 #include "plugins/sprite/SpriteAtlas.hpp"
 #include "plugins/sprite/detail/AtlasJson.hpp"
 #include "plugins/sprite/detail/AtlasPacker.hpp"
@@ -30,6 +32,10 @@
 namespace rtype::plugins::sprite {
 
 void AtlasAssets::setDirectory(std::filesystem::path directory) { _atlases.setDirectory(std::move(directory)); }
+
+void AtlasAssets::setSource(std::shared_ptr<const core::vfs::FileSource> source) {
+    _atlases.setSource(std::move(source));
+}
 
 std::size_t AtlasAssets::getCount() const noexcept { return _atlases.getCount(); }
 
@@ -59,12 +65,11 @@ core::asset::AssetId AtlasAssets::pack(const std::string& name, std::span<const 
         return core::asset::AssetId::fromPath(path);
     }
     try {
-        std::vector<std::filesystem::path> files;
-        files.reserve(images.size());
-        for (const std::filesystem::path& image : images) {
-            files.push_back(core::asset::resolveAssetPath(_atlases.getDirectory(), image));
-        }
-        detail::PackedImages packed = detail::packImages(files, padding);
+        const core::vfs::FileSource& source = _atlases.getSource();
+        detail::PackedImages packed =
+            detail::packImages(images, padding, [&source](const std::filesystem::path& image) {
+                return core::vfs::readBytes(source, image.generic_string());
+            });
         contract::renderer::TextureDesc packedDesc = desc;
         packedDesc.size = packed.size;
         SpriteAtlas atlas{path, packedDesc};

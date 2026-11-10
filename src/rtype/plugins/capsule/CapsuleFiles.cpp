@@ -11,6 +11,7 @@
 #include <exception>
 #include <filesystem>
 #include <format>
+#include <memory>
 #include <set>
 #include <span>
 #include <string>
@@ -21,6 +22,7 @@
 
 #include "core/asset/AssetFiles.hpp"
 #include "core/asset/exceptions/AssetExceptions.hpp"
+#include "core/vfs/DirectorySource.hpp"
 #include "plugins/capsule/Capsule.hpp"
 #include "plugins/capsule/Capsules.hpp"
 #include "plugins/capsule/exceptions/CapsuleException.hpp"
@@ -29,7 +31,10 @@
 
 namespace rtype::plugins::capsule {
 CapsuleFiles::CapsuleFiles(std::filesystem::path assetDirectory, const ecs::Components& components)
-    : _directory{std::move(assetDirectory)}, _components{&components} {}
+    : CapsuleFiles{std::make_shared<core::vfs::DirectorySource>(std::move(assetDirectory)), components} {}
+
+CapsuleFiles::CapsuleFiles(std::shared_ptr<const core::vfs::FileSource> assets, const ecs::Components& components)
+    : _assets{std::move(assets)}, _components{&components} {}
 
 std::vector<CapsuleId> CapsuleFiles::loadAll(Capsules& capsules) {
     const std::vector<std::string> files = scan();
@@ -79,16 +84,10 @@ CapsuleFiles::Reread CapsuleFiles::reload(Capsules& capsules, std::span<const st
 
 std::vector<std::string> CapsuleFiles::scan() const {
     std::vector<std::string> files;
-    std::error_code error;
-    std::filesystem::recursive_directory_iterator entry{
-        _directory, std::filesystem::directory_options::skip_permission_denied, error};
-    const std::filesystem::recursive_directory_iterator end;
-    while (!error && entry != end) {
-        std::error_code fileError;
-        if (entry->is_regular_file(fileError) && !fileError && format::isCapsuleFile(entry->path())) {
-            files.push_back(core::asset::normalizePath(entry->path().lexically_relative(_directory)));
+    for (std::string& file : _assets->list("")) {
+        if (format::isCapsuleFile(std::filesystem::path{file})) {
+            files.push_back(core::asset::normalizePath(file));
         }
-        entry.increment(error);
     }
     std::ranges::sort(files);
     return files;
@@ -100,7 +99,7 @@ void CapsuleFiles::read(Capsules& capsules, const std::string& path, std::set<st
     pending.erase(path);
     std::string text;
     try {
-        text = core::asset::readTextFile(core::asset::resolveAssetPath(_directory, path));
+        text = _assets->read(path);
     } catch (const core::asset::exceptions::AssetLoadException& error) {
         throw exceptions::CapsuleException{std::format("{}: {}", path, error.what())};
     }

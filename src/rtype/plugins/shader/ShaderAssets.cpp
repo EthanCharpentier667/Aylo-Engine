@@ -13,6 +13,7 @@
 #include <filesystem>
 #include <format>
 #include <iostream>
+#include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -29,7 +30,15 @@ namespace rtype::plugins::shader {
 
 std::size_t ShaderAssets::getCount() const noexcept { return _shaders.getCount(); }
 
-void ShaderAssets::setDirectory(std::filesystem::path directory) { _directory = std::move(directory); }
+void ShaderAssets::setDirectory(std::filesystem::path directory) {
+    _source = std::make_shared<core::vfs::DirectorySource>(std::move(directory));
+}
+
+void ShaderAssets::setSource(std::shared_ptr<const core::vfs::FileSource> source) {
+    _source = source ? std::move(source) : std::make_shared<core::vfs::DirectorySource>(std::filesystem::path{});
+}
+
+const core::vfs::FileSource& ShaderAssets::getSource() const noexcept { return *_source; }
 
 core::asset::AssetId ShaderAssets::load(const std::filesystem::path& path) {
     std::string name = core::asset::normalizePath(path);
@@ -114,7 +123,7 @@ std::vector<core::asset::AssetId> ShaderAssets::takeUnloaded() { return std::exc
 contract::renderer::CompiledShader ShaderAssets::compileFile(const std::string& name) const {
     std::string text;
     try {
-        text = core::asset::readTextFile(core::asset::resolveAssetPath(_directory, name));
+        text = _source->read(name);
     } catch (const core::asset::exceptions::AssetLoadException& error) {
         throw core::asset::exceptions::AssetLoadException{std::format("Shader '{}': {}", name, error.what())};
     }

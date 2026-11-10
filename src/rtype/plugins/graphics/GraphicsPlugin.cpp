@@ -278,7 +278,7 @@ void GraphicsPlugin::build(ecs::App& app) {
     resources.insertNonSend(ToolFrame{});
     resources.insertIfAbsent<ClearColor>();
     resources.insertIfAbsent<TextureAssets>();
-    resources.getMut<TextureAssets>()->setDirectory(assetDirectoryOf(resources));
+    resources.getMut<TextureAssets>()->setSource(assetSourceOf(resources));
     resources.insertIfAbsent<graphics::SpriteQueue>();
     resources.insertIfAbsent<graphics::OverlayQueue>();
     resources.insertIfAbsent<graphics::ViewInfo>();

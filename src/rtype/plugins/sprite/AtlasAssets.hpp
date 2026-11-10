@@ -10,12 +10,14 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <memory>
 #include <span>
 #include <string>
 #include <vector>
 
 #include "core/asset/AssetId.hpp"
 #include "core/asset/AssetStore.hpp"
+#include "core/vfs/FileSource.hpp"
 #include "plugins/sprite/Export.hpp"
 #include "plugins/sprite/SpriteAtlas.hpp"
 #include "rtype/contract/renderer/drawing/Texture.hpp"
@@ -64,6 +66,10 @@ class RTYPE_PLUGIN_SPRITE_API AtlasAssets {
     /// @brief Sets where the files are read; a path that leaves it fails (core::asset::resolveAssetPath()).
     /// @param directory The assets' directory; empty: the working directory, unchecked.
     void setDirectory(std::filesystem::path directory);
+
+    /// @brief Sets where the files are read: the game's folder or its pack (plugins::assetSourceOf()).
+    /// @param source The files; null: the working directory, unchecked.
+    void setSource(std::shared_ptr<const core::vfs::FileSource> source);
 
     /// @return The number of atlases known, built or failed.
     [[nodiscard]] std::size_t getCount() const noexcept;

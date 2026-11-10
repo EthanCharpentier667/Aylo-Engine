@@ -9,11 +9,13 @@
 
 #include <filesystem>
 #include <map>
+#include <memory>
 #include <set>
 #include <span>
 #include <string>
 #include <vector>
 
+#include "core/vfs/FileSource.hpp"
 #include "plugins/capsule/Capsule.hpp"
 #include "plugins/capsule/Export.hpp"
 #include "rtype/ecs/resource/ResourceTraits.hpp"
@@ -42,6 +44,11 @@ class RTYPE_PLUGIN_CAPSULE_API CapsuleFiles {
     /// @param assetDirectory The game's assets; capsule paths are relative to it.
     /// @param components The world's components, which the files name; they must outlive this resource.
     CapsuleFiles(std::filesystem::path assetDirectory, const ecs::Components& components);
+
+    /// @param assets The game's assets, a folder or a pack (plugins::assetSourceOf()); capsule paths are relative to
+    /// it.
+    /// @param components The world's components, which the files name; they must outlive this resource.
+    CapsuleFiles(std::shared_ptr<const core::vfs::FileSource> assets, const ecs::Components& components);
     ~CapsuleFiles() = default;
     CapsuleFiles(const CapsuleFiles& other) = delete;
     CapsuleFiles& operator=(const CapsuleFiles& other) = delete;
@@ -69,9 +76,9 @@ class RTYPE_PLUGIN_CAPSULE_API CapsuleFiles {
     void read(Capsules& capsules, const std::string& path, std::set<std::string>& pending,
               std::vector<CapsuleId>& read);
 
-    std::filesystem::path _directory;                    ///< The game's assets.
-    const ecs::Components* _components;                  ///< What the files name.
-    std::map<std::string, std::set<std::string>> _uses;  ///< The capsules each file instances, by its path.
+    std::shared_ptr<const core::vfs::FileSource> _assets;  ///< The game's assets.
+    const ecs::Components* _components;                    ///< What the files name.
+    std::map<std::string, std::set<std::string>> _uses;    ///< The capsules each file instances, by its path.
 };
 
 RTYPE_ECS_RESOURCE(CapsuleFiles, "rtype.CapsuleFiles");

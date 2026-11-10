@@ -10,6 +10,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <memory>
 #include <optional>
 #include <span>
 #include <string>
@@ -17,6 +18,8 @@
 #include <vector>
 
 #include "core/asset/AssetId.hpp"
+#include "core/vfs/DirectorySource.hpp"
+#include "core/vfs/FileSource.hpp"
 #include "plugins/audio/Export.hpp"
 #include "rtype/contract/audiodevice/AudioTypes.hpp"
 #include "rtype/contract/audiodevice/IAudioDevice.hpp"
@@ -68,8 +71,12 @@ class RTYPE_PLUGIN_AUDIO_API AudioAssets {
     /// @param directory The assets' directory; empty: the working directory, unchecked.
     void setDirectory(std::filesystem::path directory);
 
-    /// @return Where the files are read.
-    [[nodiscard]] const std::filesystem::path& getDirectory() const noexcept;
+    /// @brief Sets where the files are read: the game's folder or its pack (plugins::assetSourceOf()).
+    /// @param source The files; null: the working directory, unchecked.
+    void setSource(std::shared_ptr<const core::vfs::FileSource> source);
+
+    /// @return Where the files are read, never null.
+    [[nodiscard]] const core::vfs::FileSource& getSource() const noexcept;
 
     /// @return The number of sounds known, whatever their state.
     [[nodiscard]] std::size_t getCount() const noexcept;
@@ -124,10 +131,11 @@ class RTYPE_PLUGIN_AUDIO_API AudioAssets {
     /// @return The queued entry @p id names, removed from the queue, or nullptr if it is not queued.
     Entry* dequeue(core::asset::AssetId id);
 
-    std::filesystem::path _directory;                          ///< Where the files are read.
-    std::unordered_map<core::asset::AssetId, Entry> _entries;  ///< Every sound asked for, by id.
-    std::vector<core::asset::AssetId> _queued;                 ///< The queued sounds, in the order they were asked for.
-    std::vector<contract::audiodevice::SoundId> _unloaded;     ///< Sounds to destroy, from unload().
+    std::shared_ptr<const core::vfs::FileSource> _source{
+        std::make_shared<core::vfs::DirectorySource>(std::filesystem::path{})};  ///< Where the files are read.
+    std::unordered_map<core::asset::AssetId, Entry> _entries;                    ///< Every sound asked for, by id.
+    std::vector<core::asset::AssetId> _queued;              ///< The queued sounds, in the order they were asked for.
+    std::vector<contract::audiodevice::SoundId> _unloaded;  ///< Sounds to destroy, from unload().
 };
 RTYPE_ECS_RESOURCE(AudioAssets, "rtype.AudioAssets");
 

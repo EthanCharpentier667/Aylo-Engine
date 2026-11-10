@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <filesystem>
+#include <memory>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -26,11 +27,15 @@ namespace rtype::plugins::tilemap {
 
 void TilemapAssets::setDirectory(std::filesystem::path directory) { _maps.setDirectory(std::move(directory)); }
 
+void TilemapAssets::setSource(std::shared_ptr<const core::vfs::FileSource> source) {
+    _maps.setSource(std::move(source));
+}
+
 std::size_t TilemapAssets::getCount() const noexcept { return _maps.getCount(); }
 
 core::asset::AssetId TilemapAssets::load(const std::filesystem::path& path) {
     const auto readText = [this](const std::filesystem::path& file) {
-        return core::asset::readTextFile(core::asset::resolveAssetPath(_maps.getDirectory(), file));
+        return _maps.getSource().read(file.generic_string());
     };
     const auto stored = _maps.load(path, [&readText](std::string_view text, const std::filesystem::path& file) {
         return detail::parseTiledMap(text, file, readText);

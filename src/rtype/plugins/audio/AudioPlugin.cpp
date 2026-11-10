@@ -251,7 +251,7 @@ void AudioPlugin::build(ecs::App& app) {
     resources.insertNonSend(AudioSetup{.registry = std::move(_registry), .settings = std::move(_settings)});
     resources.insertNonSend(Audio{});
     resources.insertIfAbsent<AudioAssets>();
-    resources.getMut<AudioAssets>()->setDirectory(assetDirectoryOf(resources));
+    resources.getMut<AudioAssets>()->setSource(assetSourceOf(resources));
     resources.insertIfAbsent<plugins::audio::AudioVolumes>();
     static_cast<void>(app.getWorld().getComponents().registerType<AudioSource>());
     static_cast<void>(app.getWorld().getComponents().registerType<AudioListener>());

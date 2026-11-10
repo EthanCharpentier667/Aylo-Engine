@@ -298,7 +298,7 @@ std::span<const std::string_view> ParticlePlugin::getDependencies() const noexce
 void ParticlePlugin::build(ecs::App& app) {
     ecs::Resources& resources = app.getWorld().getResources();
     resources.insertIfAbsent<ParticleEffectAssets>();
-    resources.getMut<ParticleEffectAssets>()->setDirectory(assetDirectoryOf(resources));
+    resources.getMut<ParticleEffectAssets>()->setSource(assetSourceOf(resources));
     resources.insertIfAbsent<ParticleEffectDrafts>();
     resources.insertIfAbsent<ParticleSystems>();
     resources.insertIfAbsent<graphics::TextureAssets>();

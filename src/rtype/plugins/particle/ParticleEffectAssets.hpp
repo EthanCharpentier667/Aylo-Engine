@@ -19,6 +19,7 @@
 
 #include "core/asset/AssetId.hpp"
 #include "core/asset/AssetStore.hpp"
+#include "core/vfs/FileSource.hpp"
 #include "plugins/particle/Export.hpp"
 #include "plugins/particle/IParticleEffectLoader.hpp"
 #include "plugins/particle/ParticleEffect.hpp"
@@ -56,6 +57,10 @@ class RTYPE_PLUGIN_PARTICLE_API ParticleEffectAssets {
     /// @brief Sets where the files are read; a path that leaves it fails (core::asset::resolveAssetPath()).
     /// @param directory The assets' directory; empty: the working directory, unchecked.
     void setDirectory(std::filesystem::path directory);
+
+    /// @brief Sets where the files are read: the game's folder or its pack (plugins::assetSourceOf()).
+    /// @param source The files; null: the working directory, unchecked.
+    void setSource(std::shared_ptr<const core::vfs::FileSource> source);
 
     /// @return The number of effects known, read or failed.
     [[nodiscard]] std::size_t getCount() const noexcept;

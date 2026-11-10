@@ -10,6 +10,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <memory>
 #include <optional>
 #include <span>
 #include <string>
@@ -17,6 +18,8 @@
 #include <vector>
 
 #include "core/asset/AssetId.hpp"
+#include "core/vfs/DirectorySource.hpp"
+#include "core/vfs/FileSource.hpp"
 #include "plugins/graphics/Export.hpp"
 #include "rtype/contract/renderer/IRenderer.hpp"
 #include "rtype/contract/renderer/drawing/Texture.hpp"
@@ -68,8 +71,12 @@ class RTYPE_PLUGIN_GRAPHICS_API TextureAssets {
     /// @param directory The assets' directory; empty: the working directory, unchecked.
     void setDirectory(std::filesystem::path directory);
 
-    /// @return Where the files are read.
-    [[nodiscard]] const std::filesystem::path& getDirectory() const noexcept;
+    /// @brief Sets where the files are read: the game's folder or its pack (plugins::assetSourceOf()).
+    /// @param source The files; null: the working directory, unchecked.
+    void setSource(std::shared_ptr<const core::vfs::FileSource> source);
+
+    /// @return Where the files are read, never null.
+    [[nodiscard]] const core::vfs::FileSource& getSource() const noexcept;
 
     /// @return The number of textures known, whatever their state.
     [[nodiscard]] std::size_t getCount() const noexcept;
@@ -136,8 +143,9 @@ class RTYPE_PLUGIN_GRAPHICS_API TextureAssets {
     /// @return The queued entry @p id names, removed from the queue, or nullptr if it is not queued.
     Entry* dequeue(core::asset::AssetId id);
 
-    std::filesystem::path _directory;                          ///< Where the files are read.
-    std::unordered_map<core::asset::AssetId, Entry> _entries;  ///< Every texture asked for, by id.
+    std::shared_ptr<const core::vfs::FileSource> _source{
+        std::make_shared<core::vfs::DirectorySource>(std::filesystem::path{})};  ///< Where the files are read.
+    std::unordered_map<core::asset::AssetId, Entry> _entries;                    ///< Every texture asked for, by id.
     std::vector<core::asset::AssetId> _queued;             ///< The queued textures, in the order they were asked for.
     std::vector<contract::renderer::TextureId> _unloaded;  ///< Textures to destroy, from unload().
 };

@@ -32,6 +32,10 @@ void ParticleEffectAssets::setDirectory(std::filesystem::path directory) {
     _effects.setDirectory(std::move(directory));
 }
 
+void ParticleEffectAssets::setSource(std::shared_ptr<const core::vfs::FileSource> source) {
+    _effects.setSource(std::move(source));
+}
+
 std::size_t ParticleEffectAssets::getCount() const noexcept { return _effects.getCount(); }
 
 void ParticleEffectAssets::addLoader(std::string extension, std::unique_ptr<IParticleEffectLoader> loader) {
