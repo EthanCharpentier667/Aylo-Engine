@@ -173,13 +173,26 @@ and streams one given as bytes, on miniaudio's null device where the machine has
 
 ### EXP-06: pack format
 
-A small format, written and read by `core::vfs`: a header (magic, version), a table of entries (normalized path,
-offset, size, sha256), the data, no compression at first. The reader checks every offset and size against the file,
-refuses a path that is absolute or contains `..`, and reads an entry only when asked. The scripts are stored as Luau
-bytecode (`luau::Bytecode`), and the script loader takes bytecode as well as source.
+`core/vfs/Pack`: `writePack()`, and `PackSource`, the files of a pack as a `FileSource`. The format, little endian: the
+magic `AYLOPAK\0`, the version (`kPackVersion`, 1), the number of entries, then per entry its normalized path (u32
+length, then the bytes), its offset and its size (u64), then the data, in the order given; no compression at first. An
+entry's data is a file on disk, copied without being held in memory, or bytes.
 
-Tests (`tests/core/`): a written pack reads back the same bytes; a truncated pack, an offset past the end, a duplicate
-path and a path leaving the pack are each refused with a message, never a crash.
+`PackSource` reads and checks the table when it opens the pack: the magic and the version, a number of entries the file
+can hold, a path length up to 4096, paths that are normalized, relative and stay in the pack, each once, and an offset
+and a size that end inside the file (no overflow). Anything else is a `vfs::exceptions::PackException` naming the file
+and why, never a read past the end. Each file is read when asked, from the file, so the pack is never held in memory.
+Its offsets are from a start that can be past the beginning of the file, for a pack appended to a program
+([Later](#5-later)). `SubSource` shows a folder of a source as a source of its own: `assets/` of the pack is what the
+asset readers get. The scripts are stored as the export gives them; EXP-08 compiles them to bytecode, and EXP-07 reads
+bytecode as well as source.
+
+Tests (`tests/core/PackTests.cpp`): a written pack reads back the same bytes, binary ones included, its paths
+normalized; it lists a folder and finds its files; it refuses to read what it does not hold or what leaves it; the
+writer refuses a path that leaves the pack or is given twice; a pack appended to another file opens from its start; a
+missing, short, foreign or other-version file, a table cut short, a path too long, an entry past the end or whose
+offset overflows, a path leaving the pack and a path given twice are each refused; a `SubSource` reads, lists and
+refuses as its folder, and keeps the directory of a folder.
 
 ### EXP-07: the engine runs a pack
 
