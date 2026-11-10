@@ -229,8 +229,12 @@ folder as a server, and a headless client started by `play.sh` connected to it.
 
 ### EXP-09: export menu of the editor
 
-*File > Export...*: the output folder, the name, then the same function as the tool, with its result (the libraries
-kept and why, the size) in a panel. `docs/Editor.md` and `manual/pages/editor.md` are updated.
+*File > Export...* opens the Export panel (`editor/panels/ExportPanel.cpp`): the output folder (by default `exports/`
+next to the game folder), the name, one pack or the folder, then the same `exportGame()` as the tool, and its result:
+where, the size, the libraries kept and why, the warnings or the error. The editor library knows no engine, so the
+session holds the action (`EditorSession::exporter`, a `shipping::Exporter`) and `aylo-editor` sets it, as it sets the
+Console's Luau and Play online; `shipping::runExport()` turns its exceptions into a failed result. Tests:
+`tests/plugins/EditorExportTests.cpp`. `docs/Editor.md` and `manual/pages/editor.md` are updated.
 
 ### EXP-10: CI
 

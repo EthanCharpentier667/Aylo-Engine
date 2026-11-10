@@ -237,6 +237,7 @@ background it would fail out of sight.
 | Console | `panels/ConsolePanel.cpp` | The program's output: filters by kind (info, warnings, errors) and by text, Clear, right-click to copy a line, follows new lines unless scrolled up |
 | Particles | `panels/ParticlesPanel.cpp` | The effects of `ParticleEffectAssets`: edit the spawning, each particle and the forces, preview at the middle of the view, Copy as Luau |
 | Stats | `panels/StatsPanel.cpp` | `io.Framerate`, the plot of the last frame times, `getFrameStats()` |
+| Export | `panels/ExportPanel.cpp` | File > Export...: the output folder, the name, one pack or the folder (`shipping::ExportPanelState`, in the session), then `shipping::runExport()` with the session's `exporter`, and its result (the libraries kept and why, the size, the warnings, or the error). `aylo-editor` sets the exporter to `engine::exporting::exportGame()` on its game folder and the runtime next to it (the zip's `runtime/`, else its own folder); the editor library knows no engine. It runs on the frame, which waits for it |
 | Plugins | `panels/PluginsPanel.cpp` | The plugins added to the App (`App::getPlugins()`), in the order recorded: kind (engine for an `rtype.` name, else game), requires, required by, a name filter, and the registered plugins not added. The data is gathered by `collectPlugins()` (`panels/PluginInfo.cpp`), without ImGui |
 
 `FieldEditor::editFields()` shows a reflected value field by field (`TypeInfo::fields`). It works on a byte copy of the
