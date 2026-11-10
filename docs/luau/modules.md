@@ -27,7 +27,11 @@ auto value = loader.require("main");  // a root require, from C++
 
 ## What a module is
 
-Each module is compiled by `Runtime::load` (so it runs in its own thread) and run once. It sees a `require` function
+Each module is compiled by `Runtime::load` (so it runs in its own thread) and run once. A module's source may also be
+a chunk `Runtime::precompile()` made: `Runtime::kBytecodeHeader` (an ESC, then `Luau`, as no source starts), then the
+bytecode, with the line numbers. `load()` takes it as it is, without compiling. Luau does not check the bytecode it
+loads, so a chunk must come from where the engine comes from: an exported game's pack, which ships with the program,
+never the network. It sees a `require` function
 bound to its own key: that is how the resolver knows the requester without debug information, and why
 `pcall(require, "x")` works.
 

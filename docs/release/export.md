@@ -196,9 +196,20 @@ refuses as its folder, and keeps the directory of a folder.
 
 ### EXP-07: the engine runs a pack
 
-`aylo-runtime` (and the renamed program) starts `game.pak` next to itself when no folder is given, or a `.pak` given as
-the first argument. The `Engine` takes a file source instead of a folder; a pack turns hot reload off (E6). The
-editor keeps folders only.
+`aylo-runtime` (and the renamed program) runs a `.pak` given as the first argument, or `game.pak` next to itself when
+no game is given and there is no `game/` folder ([`../engine/design.md`](../engine/design.md#or-a-pack)). The `Engine`
+reads everything from the game's files (`Engine::gameFiles()`): `project.luau`, the scripts (`ScriptResolver` and
+`ScriptingPlugin` read a source; scripts may be precompiled), the assets (EXP-04). The game's native plugins stay files,
+in the folder named after the pack (`game/plugins/` for `game.pak`), checked as before. A pack turns hot reload off
+(E6). The editor keeps folders only.
+
+Luau loads a chunk `luau::Runtime::precompile()` made (`kBytecodeHeader`, then the bytecode) as it is. Luau does not
+check bytecode: a pack is as trusted as the program it ships with, which is the case of an export, never of the network.
+
+Tests: `tests/engine/EnginePackTests.cpp` (a game, its requires and its assets run from a pack, hot reload off; a pack
+with no project or a file that is not a pack is refused), `tests/scripting/ScriptResolverTests.cpp` (scripts of a pack,
+case rules), `tests/luau/RuntimeTests.cpp` (a precompiled chunk loads, keeps its line numbers). Not tested: finding
+`game.pak` next to the program, which writes next to the test executable; the export's smoke test does (EXP-10).
 
 ### EXP-08: `aylo-export` packs the game
 
