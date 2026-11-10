@@ -39,7 +39,7 @@ A shipped game today is the engine's `runtime/` folder as it came, next to the g
 ## 3. What an export makes
 
 ```
-aylo-export <game> <out> [--name MyGame] [--debug]
+aylo-export <game> <out> [--name MyGame] [--runtime <dir>]
 ```
 
 ```
@@ -48,9 +48,10 @@ aylo-export <game> <out> [--name MyGame] [--debug]
   lib/                    copied whole (on Windows, next to the program)
   plugins/                only the plugins the game needs
     backends/             only the backends it names
-  game.pak                the game: project.luau, scripts as bytecode, assets
-  plugins-game/           the game's own plugins and their .sig, if it has some
-  licenses/               the notices of the libraries kept
+  game.pak                the game: project.luau, scripts as bytecode, assets (until EXP-08: game/, as a folder)
+  game/plugins/           the game's own plugin libraries and their .sig, where the Engine looks for them
+  vulkan/                 as in the runtime, when it has one (the MoltenVK manifest on macOS)
+  licenses/               THIRD_PARTY_NOTICES.md: the notices of the binaries kept
   play.sh / play.bat      the launcher (the program finds game.pak next to it, so it can also be started alone)
   export.json             the engine version, the plugins and backends kept and why, the sha256 of every file
 ```
@@ -123,10 +124,20 @@ raylib, curl or OpenSSL). The smoke test checks that the program and every plugi
 
 ### EXP-03: `aylo-export`, the trimmed folder
 
-`src/rtype/tools/export/`, the program `aylo-export`, linking `engine` (allowed: it is an executable). It makes the
-layout of [section 3](#3-what-an-export-makes) with `game/` copied as a folder instead of `game.pak`, renames the
-program, writes the launchers and `export.json`. A debug export (`--debug`) is refused from a release runtime and the
-other way round: the runtime it copies is the one it runs from. The release zip ships it in `tools/`.
+`exporting::exportGame()` in `engine` (`engine/exporting/GameExport`, so the editor can call it, EXP-09) and the
+program `aylo-export` (`src/rtype/tools/export/`, linking `engine`: it is an executable) that runs it. It makes the
+layout of [section 3](#3-what-an-export-makes) with `game/` copied as a folder instead of `game.pak`: the program
+renamed, `lib/` and `vulkan/` whole, the libraries of selectLibraries(), the game without its hidden files and without
+the sources of its plugins (only their libraries and `.sig` files), the notices merged from `licenses/by-library/`
+(EXP-02; a build folder has none, which is a warning), the launcher of the platform and `export.json`. Everything is
+checked before a file is written, an output folder that is not empty is refused, and a failure removes what was
+written. `engine.isDebug` is the build of the tool, which is the build of the runtime of its zip, so there is no
+`--debug`. The runtime is the zip's `runtime/` next to `tools/` by default, or `--runtime`. The release zip ships it in
+`tools/`. Tests: `tests/engine/GameExportTests.cpp`; the manual: `manual/pages/shipping.md`.
+
+`project.luau` is read with no flags, as a player starts the game: a game whose plugins depend on a flag names, in its
+default branch, what the others need (the manual says so). Passing the flags of the export to `engine.args` is left for
+later.
 
 ### EXP-04: file source
 

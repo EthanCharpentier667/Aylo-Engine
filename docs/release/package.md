@@ -17,7 +17,7 @@ aylo-engine-<version>-<os>-<arch>/
 │   ├── plugins/             the plugin libraries, real files; the engine scans this folder
 │   │   └── backends/        the platform, renderer and audio backends, scanned too
 │   └── licenses/            THIRD_PARTY_NOTICES.md, and by-library/<file>.md: the notices of each binary
-├── tools/aylo-sign(.exe)
+├── tools/aylo-sign(.exe)   aylo-export(.exe): signs the game plugins, exports a game ([`export.md`](export.md))
 ├── templates/game/          a game that runs, from examples/games/template/game/
 ├── manual/                  the manual, built for offline reading
 ├── README.md  LICENSE  VERSION
@@ -66,7 +66,7 @@ is `rtype::core::version::describe` (`src/rtype/core/version/`).
 
 ```sh
 xmake f -y -m release
-xmake package-release            # builds aylo-runtime and aylo-sign first (--no-build to skip), then packages
+xmake package-release            # builds aylo-runtime, aylo-sign and aylo-export first (--no-build to skip), then packages
 ```
 
 The output is in `build/package/`. Options: `--no-build` packages what is already built, `--no-manual` leaves the manual
@@ -76,7 +76,7 @@ It then:
 1. copies the runtime, `lib/` and `plugins/` as the build made them, leaving out the libraries made for the tests,
    adds the C++ runtime to `lib/` (Linux, with `patchelf`) and sets the search paths of the executable and the tool to
    the folders of the zip (`$ORIGIN/lib:$ORIGIN/plugins`, and `$ORIGIN/../runtime/lib:$ORIGIN/../runtime/plugins` for
-   `tools/aylo-sign`; on Windows its DLLs are copied next to it);
+   `tools/aylo-sign` and `tools/aylo-export`; on Windows their DLLs are copied next to them);
 2. adds the licenses, the template game, the manual, the README, the version and the license of the repository (with a
    warning when the repository has none);
 3. strips what is not stripped and keeps the debug information apart;
