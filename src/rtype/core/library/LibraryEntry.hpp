@@ -12,6 +12,7 @@
 #include <map>
 #include <string>
 #include <string_view>
+#include <vector>
 
 /// @brief Names the compiler and the standard library a binary was built with, as a string literal.
 /// @details What a library shares with the engine is C++: they must agree on it, so they must be built alike.
@@ -44,7 +45,7 @@ namespace rtype::core::library {
 
 /// @brief The version of what a library and the engine share: raised when LibraryEntry or LibraryRegistrar change, so
 /// an older library is refused rather than called wrongly.
-inline constexpr std::uint32_t kLibraryAbiVersion = 1;
+inline constexpr std::uint32_t kLibraryAbiVersion = 2;
 
 /// @brief The name of the C function a library exports (RTYPE_LIBRARY).
 inline constexpr std::string_view kLibraryEntrySymbol = "rtypeLibrary";
@@ -70,8 +71,21 @@ class LibraryRegistrar {
     template <typename T>
     [[nodiscard]] T* find(std::string_view name) const;
 
+    /// @brief Lists the names a registry holds, called by listNames().
+    using NameLister = std::function<std::vector<std::string>()>;
+
+    /// @brief Lets a registry offered with provide() be read without its type: what lists what each library registers
+    /// (the game export) calls @p lister, and needs no contract. Replaces a lister of the same name.
+    /// @param name The service's name, as given to provide().
+    /// @param lister Returns the names the registry holds now; it must outlive the registrar.
+    void provideNames(std::string_view name, NameLister lister);
+
+    /// @return The names each service of provideNames() holds now, by service name.
+    [[nodiscard]] std::map<std::string, std::vector<std::string>, std::less<>> listNames() const;
+
   private:
-    std::map<std::string, void*, std::less<>> _services;  ///< The services by name.
+    std::map<std::string, void*, std::less<>> _services;          ///< The services by name.
+    std::map<std::string, NameLister, std::less<>> _nameListers;  ///< What lists the names of a service, by its name.
 };
 
 /// @brief What a library gives the engine: plain data with C linkage, the only part of the interface that does not

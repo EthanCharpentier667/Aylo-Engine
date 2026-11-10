@@ -8,11 +8,27 @@
 #include "core/library/LibraryEntry.hpp"
 
 #include <format>
+#include <map>
+#include <string>
 #include <string_view>
+#include <utility>
+#include <vector>
 
 #include "core/library/exceptions/LibraryException.hpp"
 
 namespace rtype::core::library {
+
+void LibraryRegistrar::provideNames(const std::string_view name, NameLister lister) {
+    _nameListers.insert_or_assign(std::string{name}, std::move(lister));
+}
+
+std::map<std::string, std::vector<std::string>, std::less<>> LibraryRegistrar::listNames() const {
+    std::map<std::string, std::vector<std::string>, std::less<>> names;
+    for (const auto& [service, lister] : _nameListers) {
+        names.emplace(service, lister ? lister() : std::vector<std::string>{});
+    }
+    return names;
+}
 
 void checkLibrary(const LibraryEntry& entry, const std::string_view file) {
     if (entry.abiVersion != kLibraryAbiVersion) {
