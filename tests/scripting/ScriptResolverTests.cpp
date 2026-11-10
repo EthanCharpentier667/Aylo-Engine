@@ -9,10 +9,13 @@
 
 #include <filesystem>
 #include <map>
+#include <memory>
 #include <string>
 #include <string_view>
 
 #include "ScriptsDirectory.hpp"
+#include "core/vfs/FileSource.hpp"
+#include "core/vfs/Pack.hpp"
 #include "rtype/scripting/ErrorKind.hpp"
 #include "rtype/scripting/exceptions/ScriptLoadException.hpp"
 #include "rtype/scripting/modules/ScriptResolver.hpp"
@@ -321,4 +324,48 @@ TEST(ScriptResolver, RefusesInvalidEntries) {
     expectError(resolver.resolveEntry("/main"), ErrorKind::kInvalidPath, "invalid entry");
     expectError(resolver.resolveEntry("main/"), ErrorKind::kInvalidPath, "invalid entry");
     expectError(resolver.resolveEntry("missing"), ErrorKind::kModuleNotFound, "not found");
+}
+
+namespace {
+/// @return The scripts of a pack written to @p file, as the scripting plugin reads them from an exported game.
+std::shared_ptr<const rtype::core::vfs::FileSource> packedScripts(const std::filesystem::path& file) {
+    using rtype::core::vfs::PackEntry;
+    rtype::core::vfs::writePack(file,
+                                {
+                                    PackEntry{.path = "project.luau", .data = std::string{""}},
+                                    PackEntry{.path = "scripts/config/player.luau", .data = std::string{"return 1"}},
+                                    PackEntry{.path = "scripts/ui/init.luau", .data = std::string{"return 2"}},
+                                    PackEntry{.path = "scripts/Enemy.luau", .data = std::string{"return 3"}},
+                                });
+    return std::make_shared<rtype::core::vfs::SubSource>(std::make_shared<rtype::core::vfs::PackSource>(file),
+                                                         "scripts");
+}
+}  // namespace
+
+TEST(ScriptResolver, ResolvesTheScriptsOfASource) {
+    const ScriptsDirectory scripts{"rtype-resolver-source"};
+    const ScriptResolver resolver{packedScripts(scripts.path() / "game.pak"), {{"cfg", "config"}}};
+
+    const auto player = resolver("", "@scripts/config/player");
+    ASSERT_TRUE(player) << player.error().message();
+    EXPECT_EQ(player->key, "config/player.luau");
+    EXPECT_EQ(player->chunkName, "scripts/config/player.luau");
+    EXPECT_EQ(player->source, "return 1");
+    const auto ui = resolver("", "@scripts/ui");
+    ASSERT_TRUE(ui) << ui.error().message();
+    EXPECT_EQ(ui->key, "ui/init.luau");
+    const auto aliased = resolver("", "@cfg/player");
+    ASSERT_TRUE(aliased) << aliased.error().message();
+    EXPECT_EQ(aliased->key, "config/player.luau");
+    EXPECT_TRUE(resolver.root().empty());
+}
+
+TEST(ScriptResolver, KeepsTheCaseRulesInASource) {
+    const ScriptsDirectory scripts{"rtype-resolver-source-case"};
+    const ScriptResolver resolver{packedScripts(scripts.path() / "game.pak")};
+
+    expectError(resolver("", "@scripts/enemy"), ErrorKind::kCaseMismatch, "'Enemy.luau'");
+    expectError(resolver("", "@scripts/Config/player"), ErrorKind::kCaseMismatch, "'config'");
+    expectError(resolver("", "@scripts/missing"), ErrorKind::kModuleNotFound, "scripts/missing.luau");
+    expectError(resolver("", "../project"), ErrorKind::kOutsideScripts, "escapes scripts/");
 }
