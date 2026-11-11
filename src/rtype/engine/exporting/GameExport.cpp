@@ -13,13 +13,10 @@
 #include <algorithm>
 #include <array>
 #include <cstddef>
-#include <cstdint>
-#include <exception>
 #include <filesystem>
 #include <format>
 #include <fstream>
 #include <ios>
-#include <iterator>
 #include <set>
 #include <string>
 #include <string_view>
@@ -197,18 +194,18 @@ std::filesystem::path destinationOf(const SelectedLibrary& library) {
 class Exporter {
   public:
     Exporter(const ExportRequest& request, std::string name, std::filesystem::path folder, ExportReport& report)
-        : _request{request}, _name{std::move(name)}, _folder{std::move(folder)}, _report{report} {}
+        : _request{&request}, _name{std::move(name)}, _folder{std::move(folder)}, _report{&report} {}
 
     void run() {
         copyProgram();
         copyLib();
-        for (const SelectedLibrary& library : _report.libraries) {
+        for (const SelectedLibrary& library : _report->libraries) {
             if (library.kind != LibraryKind::kGame) {
                 copyFile(library.file, _folder / destinationOf(library));
-                _binaries.push_back({library.file, true});
+                _binaries.emplace_back(library.file, true);
             }
         }
-        copyGame(_request.game, _folder / kGameFolder);
+        copyGame(_request->game, _folder / kGameFolder);
         writeNotices();
         writeLauncher();
         writeManifest();
@@ -217,35 +214,35 @@ class Exporter {
   private:
     /// @brief Copies the runtime's program under the game's name.
     void copyProgram() {
-        const std::filesystem::path program = _request.runtime / runtimeProgramName();
+        const std::filesystem::path program = _request->runtime / runtimeProgramName();
         copyFile(program, _folder / std::format("{}{}", _name, kProgramExtension));
-        _binaries.push_back({program, true});
+        _binaries.emplace_back(program, true);
     }
 
     /// @brief Copies what any plugin needs, whole: `lib/` (on Windows, the libraries next to the program) and `vulkan/`
     /// (the Vulkan driver's manifest the macOS runtime carries). A library made for the tests is left out.
     void copyLib() {
         const auto isTestLibrary = [](const std::filesystem::path& file) {
-            return file.filename().string().find("test") != std::string::npos;
+            return file.filename().string().contains("test");
         };
         if (kWindows) {
             for (const std::filesystem::directory_entry& entry :
-                 std::filesystem::directory_iterator{_request.runtime}) {
+                 std::filesystem::directory_iterator{_request->runtime}) {
                 if (entry.is_regular_file() && entry.path().extension() == plugin::SharedLibrary::getExtension() &&
                     !isTestLibrary(entry.path())) {
                     copyFile(entry.path(), _folder / entry.path().filename());
-                    _binaries.push_back({entry.path(), false});
+                    _binaries.emplace_back(entry.path(), false);
                 }
             }
         }
         for (const std::string_view folder : {std::string_view{"lib"}, std::string_view{"vulkan"}}) {
-            const std::filesystem::path from = _request.runtime / folder;
+            const std::filesystem::path from = _request->runtime / folder;
             std::error_code error;
             for (auto entry = std::filesystem::recursive_directory_iterator{from, error};
                  entry != std::filesystem::recursive_directory_iterator{}; entry.increment(error)) {
                 if (entry->is_regular_file() && !isTestLibrary(entry->path())) {
-                    copyFile(entry->path(), _folder / entry->path().lexically_relative(_request.runtime));
-                    _binaries.push_back({entry->path(), false});
+                    copyFile(entry->path(), _folder / entry->path().lexically_relative(_request->runtime));
+                    _binaries.emplace_back(entry->path(), false);
                 }
             }
         }
@@ -257,7 +254,7 @@ class Exporter {
         std::vector<std::string> missing;
         for (const auto& [binary, required] : _binaries) {
             bool found = false;
-            for (std::string& row : noticesOf(_request.runtime, binary, found)) {
+            for (std::string& row : noticesOf(_request->runtime, binary, found)) {
                 rows.insert(std::move(row));
             }
             if (!found && required) {
@@ -269,7 +266,7 @@ class Exporter {
             for (const std::string& name : missing) {
                 names += std::format("{}{}", names.empty() ? "" : ", ", name);
             }
-            _report.warnings.push_back(std::format(
+            _report->warnings.push_back(std::format(
                 "The runtime has no notices for {} (licenses/by-library/): export from the engine's release zip to "
                 "ship them",
                 names));
@@ -314,34 +311,34 @@ class Exporter {
         }
         std::ranges::sort(files);
         std::string json = std::format("{{\n  \"name\": {},\n  \"engine\": {},\n  \"libraries\": [", jsonString(_name),
-                                       jsonString(_request.engineVersion));
-        for (std::size_t i = 0; i < _report.libraries.size(); ++i) {
-            const SelectedLibrary& library = _report.libraries[i];
+                                       jsonString(_request->engineVersion));
+        for (std::size_t i = 0; i < _report->libraries.size(); ++i) {
+            const SelectedLibrary& library = _report->libraries.at(i);
             json += std::format("{}\n    {{\"file\": {}, \"reasons\": [", i == 0 ? "" : ",",
                                 jsonString(destinationOf(library).generic_string()));
             for (std::size_t r = 0; r < library.reasons.size(); ++r) {
-                json += std::format("{}{}", r == 0 ? "" : ", ", jsonString(library.reasons[r]));
+                json += std::format("{}{}", r == 0 ? "" : ", ", jsonString(library.reasons.at(r)));
             }
             json += "]}";
         }
         json += "\n  ],\n  \"sha256\": {";
         for (std::size_t i = 0; i < files.size(); ++i) {
-            _report.bytes += std::filesystem::file_size(files[i]);
+            _report->bytes += std::filesystem::file_size(files.at(i));
             json += std::format("{}\n    {}: {}", i == 0 ? "" : ",",
-                                jsonString(files[i].lexically_relative(_folder).generic_string()),
-                                jsonString(sha256(files[i])));
+                                jsonString(files.at(i).lexically_relative(_folder).generic_string()),
+                                jsonString(sha256(files.at(i))));
         }
         json += "\n  }\n}\n";
         std::ofstream out{_folder / kExportFile};
         out << json;
         out.close();
-        _report.bytes += std::filesystem::file_size(_folder / kExportFile);
+        _report->bytes += std::filesystem::file_size(_folder / kExportFile);
     }
 
-    const ExportRequest& _request;  ///< What to export.
+    const ExportRequest* _request;  ///< What to export; outlives the exporter.
     std::string _name;              ///< The game's name.
     std::filesystem::path _folder;  ///< The export.
-    ExportReport& _report;          ///< What the export made.
+    ExportReport* _report;          ///< What the export made; outlives the exporter.
     std::vector<std::pair<std::filesystem::path, bool>>
         _binaries;  ///< The files copied, for their notices; true: they must have some.
 };

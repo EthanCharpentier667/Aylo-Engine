@@ -60,7 +60,7 @@ std::optional<Options> parse(const std::vector<std::string>& args) {
     Options options;
     std::vector<std::string> positional;
     for (std::size_t i = 0; i < args.size(); ++i) {
-        const std::string& arg = args[i];
+        const std::string& arg = args.at(i);
         if (arg == "--help" || arg == "-h") {
             std::cout << kUsage;
             return std::nullopt;
@@ -71,9 +71,9 @@ std::optional<Options> parse(const std::vector<std::string>& args) {
                 return std::nullopt;
             }
             if (arg == "--name") {
-                options.name = args[++i];
+                options.name = args.at(++i);
             } else {
-                options.runtime = std::filesystem::path{args[++i]};
+                options.runtime = std::filesystem::path{args.at(++i)};
             }
             continue;
         }
@@ -87,8 +87,8 @@ std::optional<Options> parse(const std::vector<std::string>& args) {
         std::cerr << kUsage;
         return std::nullopt;
     }
-    options.game = positional[0];
-    options.output = positional[1];
+    options.game = positional.at(0);
+    options.output = positional.at(1);
     return options;
 }
 
