@@ -290,7 +290,7 @@ class ChildProcess::Impl {
         ::fcntl(fds.at(0), F_SETFL, ::fcntl(fds.at(0), F_GETFL) | O_NONBLOCK);
         // NOLINTEND(cppcoreguidelines-pro-type-vararg,hicpp-vararg,bugprone-signed-bitwise)
 
-        posix_spawn_file_actions_t actions;
+        posix_spawn_file_actions_t actions{};
         posix_spawn_file_actions_init(&actions);
         posix_spawn_file_actions_addopen(&actions, STDIN_FILENO, "/dev/null", O_RDONLY, 0);
         posix_spawn_file_actions_adddup2(&actions, fds.at(1), STDOUT_FILENO);

@@ -11,6 +11,7 @@
 #include <cassert>
 #include <chrono>
 #include <cstdint>
+#include <utility>
 
 namespace aylo::ecs {
 namespace {
@@ -40,7 +41,7 @@ std::uint32_t FixedTimestep::advance(std::chrono::nanoseconds frameDelta) noexce
     const std::chrono::nanoseconds counted = std::clamp(frameDelta, std::chrono::nanoseconds::zero(), kLongestFrame);
     _accumulated += counted.count() * static_cast<std::int64_t>(_rate);
     const std::int64_t ticks = _accumulated / kUnitsPerTick;
-    if (ticks >= _maxTicks) {
+    if (std::cmp_greater_equal(ticks, _maxTicks)) {
         _accumulated %= kUnitsPerTick;  // the cap: the time beyond it is dropped, only the start of a tick is kept
         return _maxTicks;
     }

@@ -52,6 +52,14 @@ Example games are in [`examples/games/`](examples/games/): `aylo_duel` is a comp
 ./aylo-runtime examples/games/aylo_duel/game
 ```
 
+### Starting example: Aylo-Example-Circle
+
+[**Aylo-Example-Circle**](https://github.com/EthanCharpentier667/Aylo-Example-Circle) is a small public game, written
+only in Luau (a window with a circle in the middle, Vulkan and GLFW), that is kept up to date with the engine: it is
+the reference example of each version of the engine. It is built against an engine release, with no compiler needed,
+and its [releases](https://github.com/EthanCharpentier667/Aylo-Example-Circle/releases) hold the game zipped for Linux,
+macOS and Windows.
+
 Tests: `xmake f -y --Tests=y && xmake build -y && xmake test -v`.
 
 ## Documentation
