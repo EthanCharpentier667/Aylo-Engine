@@ -36,7 +36,7 @@ if engine.isClient then
 	engine.settings.platform = "raylib"
 	engine.settings.renderer = "raylib"
 
-	engine.settings.window.title = "R-Type Duel (raylib)"
+	engine.settings.window.title = "AYLO Duel (raylib)"
 	engine.settings.window.size = { GAME_WIDTH, GAME_HEIGHT }
 
 	engine.settings.audio.backend = "miniaudio"

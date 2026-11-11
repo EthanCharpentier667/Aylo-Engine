@@ -12,7 +12,7 @@ array of raw bytes).
 ## Why we need it
 
 - **Fast iteration:** systems walk the dense arrays linearly, which is what CPUs are fastest at.
-- **Cheap structural changes:** adding or removing a component is O(1). R-Type adds and removes
+- **Cheap structural changes:** adding or removing a component is O(1). A shoot'em up adds and removes
   constantly (bullets, tags like `Invincible`, script components).
 - **R2 (Luau):** the pool stores **raw bytes** described by a [`ComponentInfo`](02-component-registry.md),
   so it works for components that have no C++ type.

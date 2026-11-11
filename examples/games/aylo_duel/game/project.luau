@@ -33,7 +33,7 @@ if engine.isClient then
 	engine.settings.platform = "glfw"
 	engine.settings.renderer = "vulkan"
 
-	engine.settings.window.title = "R-Type Duel"
+	engine.settings.window.title = "AYLO Duel"
 	engine.settings.window.size = { GAME_WIDTH, GAME_HEIGHT }
 
 	engine.settings.audio.backend = "miniaudio"

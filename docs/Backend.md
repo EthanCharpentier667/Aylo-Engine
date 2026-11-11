@@ -83,7 +83,7 @@ aylo::render::vulkan::registerRenderer(registry.renderers);  // "vulkan"
 aylo::core::config::Settings config;
 config.set("platform", "glfw");
 config.set("renderer", "vulkan");
-config.set("window.title", "R-Type");
+config.set("window.title", "AYLO");
 config.set("window.size", std::vector<double>{1280, 720});
 config.set("vulkan.debugging", true);
 
@@ -275,7 +275,7 @@ lists of strings.
 ```
 platform        = "glfw"
 renderer        = "vulkan"
-window.title    = "R-Type"
+window.title    = "AYLO"
 window.size     = { 1280, 720 }
 vulkan.layers   = { "VK_LAYER_KHRONOS_validation" }
 vulkan.debugging = true

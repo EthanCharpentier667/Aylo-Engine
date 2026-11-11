@@ -1,6 +1,6 @@
-# Walkthrough: R-Type Duel
+# Walkthrough: AYLO Duel
 
-R-Type Duel is a complete two-player game written only in Luau, in `examples/games/aylo_duel/game/`. Two players sit
+AYLO Duel is a complete two-player game written only in Luau, in `examples/games/aylo_duel/game/`. Two players sit
 on either side of an arena. Each moves up and down, clicks to fire lasers, and the first to hit the other wins. This
 page reads it file by file.
 

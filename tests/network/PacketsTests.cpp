@@ -62,7 +62,7 @@ TEST(Packets, ConnectRequestLayout) {
 
     ASSERT_EQ(encoded.size(), 64U);
     const std::vector<std::byte> head =
-        toBytes({0x01, 0x50, 0x59, 0x54, 0x52, 0x02, 0x01, 0x0D, 0x0C, 0x0B, 0x0A, 1, 0, 0, 0, 0, 0, 0, 0});
+        toBytes({0x01, 0x4F, 0x4C, 0x59, 0x41, 0x02, 0x01, 0x0D, 0x0C, 0x0B, 0x0A, 1, 0, 0, 0, 0, 0, 0, 0});
     EXPECT_TRUE(std::equal(head.begin(), head.end(), encoded.begin()));
     for (std::size_t index = head.size(); index < encoded.size(); ++index) {
         EXPECT_EQ(encoded[index], std::byte{0}) << index;

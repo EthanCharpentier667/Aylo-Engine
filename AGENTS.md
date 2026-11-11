@@ -9,7 +9,7 @@ the files it opens, so do it by hand.
 
 ## What this is
 
-R-Type is an Epitech Tek3 project: AYLO Engine (Another Yet Lightweight Optimized Engine), a game engine (C++23,
+AYLO Engine (Another Yet Lightweight Optimized Engine) is an Epitech Tek3 project: a game engine (C++23,
 `xmake`, clang) with a Vulkan renderer, Luau scripting, physics, audio and a replicated client/server network model. It
 does not contain a game; it runs one.
 
@@ -108,9 +108,7 @@ scripting, replication  <-  engine  <-  executables, examples
 
 - Configure: `xmake f -y` (`-m release` for release). Build all: `xmake build -y`. One target: `xmake build engine`.
 - Run (the build copies `aylo-runtime` to the repository root): `./aylo-runtime` (client) and `./aylo-runtime --server`,
-  on `game/` or the folder given as first argument (`<dir>`); other `--name value` flags reach `project.luau` as `engine.args`. `./aylo-server` and
-  `./aylo-client` at the root are `sh` wrappers (`.bat` ones on Windows) that start it with the right side (the names
-  the subject asks for).
+  on `game/` or the folder given as first argument (`<dir>`); other `--name value` flags reach `project.luau` as `engine.args`.
 - The editor: `./aylo-editor <dir>` (both sides in one world, the scenes edited in panels:
   `docs/Editor.md`).
 - Duel example: `xmake f -y --aylo_duel=y`, then `xmake run aylo_duel server [--port <port>]` and
@@ -162,7 +160,7 @@ If a step cannot be run or fails, say so; never claim it done.
 - Pull requests are drafts, from the template, one per issue, stacked with `gh stack` when they depend on each other
   (`open-pr` skill).
 - Issues are titled `[Area] <summary>` (`[Area] <ID>: <summary>` for tasks of a plan). Priority, Size and Status live in
-  the project "R-Type" (number 8), not in labels; parents and blocked-by links are real GitHub relationships, not text
+  the project "Aylo Engine" (number 8), not in labels; parents and blocked-by links are real GitHub relationships, not text
   (`plan-issues` skill).
 - No `Co-Authored-By` or other AI attribution in commits or pull requests.
 

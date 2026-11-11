@@ -32,7 +32,7 @@ namespace aylo::engine::scripting {
 /// @code{.lua}
 /// if engine.isClient then
 ///     engine.settings.renderer = "vulkan"
-///     engine.settings.window.title = "R-Type"
+///     engine.settings.window.title = "AYLO"
 ///     engine.settings.window.size = { 800, 600 }
 /// end
 /// @endcode

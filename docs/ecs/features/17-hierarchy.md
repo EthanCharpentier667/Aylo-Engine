@@ -2,7 +2,7 @@
 
 ## What it is
 
-A hierarchy links entities as **parent and children**: the R-Type "Force" pod attached to the player
+A hierarchy links entities as **parent and children**: the "Force" pod of a shoot'em up attached to the player
 ship, turrets on a boss, a UI panel and its buttons. A child's position is relative to its parent, and
 despawning the parent despawns the children.
 
@@ -10,7 +10,7 @@ despawning the parent despawns the children.
 
 - **R1:** UI, cameras following targets and attached effects all need it.
 - **R4:** every generic engine has scene hierarchies.
-- R-Type: bosses made of parts, ships with attachments.
+- A shoot'em up: bosses made of parts, ships with attachments.
 
 ## How others do it
 

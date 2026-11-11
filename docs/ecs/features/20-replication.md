@@ -6,7 +6,7 @@ Replication is how the **server's world is mirrored on the clients**. The model 
 down**: clients send their inputs; the authoritative server simulates and sends back what changed.
 There is no client-side prediction or rollback.
 
-This doc describes the network plugins for an **R-Type-like game**: one shared screen, a few players
+This doc describes the network plugins for an **shoot'em up-like game**: one shared screen, a few players
 (typically up to 4), and many short-lived bullets and enemies.
 
 ## Why we need it
@@ -28,7 +28,7 @@ This doc describes the network plugins for an **R-Type-like game**: one shared s
 
 Quake 3-style **deltas from the last acknowledged tick**, driven by the ECS's
 [change detection](08-change-detection.md) and [reflection](15-reflection-and-serialization.md), with a
-per-component **replication mode** suited to R-Type's bullets.
+per-component **replication mode** suited to a shoot'em up's bullets.
 
 ## How it works
 
@@ -123,7 +123,7 @@ changed since a client's acknowledged tick (see [Systems](12-systems.md#configur
 
 ### Replication modes
 
-R-Type has hundreds of bullets whose motion is predictable. Each component chooses a mode:
+A shoot'em up has hundreds of bullets whose motion is predictable. Each component chooses a mode:
 
 | Mode | Sent | Example |
 |---|---|---|

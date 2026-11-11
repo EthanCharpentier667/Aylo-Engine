@@ -82,9 +82,7 @@ the side from its first argument, to show that one binary can run both sides, an
 `ethan_game` shows the step before: its gameplay is still C++, given to the `Engine` as `EngineConfig::setup`.
 
 The runtime takes `--server` for itself (it is not in `engine.args`); every other flag goes to the game. The build copies
-`aylo-runtime` to the repository root (rule `aylo.copy_to_root` in the root `xmake.lua`). The repository root also holds
-two committed `sh` wrappers, `aylo-server` (`aylo-runtime --server "$@"`) and `aylo-client`, the names the subject
-asks for, and their Windows twins `aylo-server.bat` and `aylo-client.bat` (`.gitattributes` keeps them CRLF). The copy finds the project's shared libraries in the build folder through a relative rpath on Linux and
+`aylo-runtime` to the repository root (rule `aylo.copy_to_root` in the root `xmake.lua`). The copy finds the project's shared libraries in the build folder through a relative rpath on Linux and
 macOS. On Windows, the rule copies the build folder's DLLs next to them.
 
 ## What a build adds, in order

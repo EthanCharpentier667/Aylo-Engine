@@ -1,6 +1,6 @@
 ---
 name: open-pr
-description: Open a draft pull request, or a stack of them, for the R-Type repository with the template, labels, assignee, milestone and project fields set. Use when asked to "open a PR", "create a pull request", "submit", "push this for review", or when a branch is ready for review.
+description: Open a draft pull request, or a stack of them, for the Aylo-Engine repository with the template, labels, assignee, milestone and project fields set. Use when asked to "open a PR", "create a pull request", "submit", "push this for review", or when a branch is ready for review.
 ---
 
 # Open a pull request
@@ -23,7 +23,7 @@ this whole skill, the template, labels, assignee, milestone and project fields i
 - **Labels**: the area labels of the issue (`ecs`, `luau`, `scripting`, `network`, `physics`, `Vulkan`...), plus
   `documentation`, `bug` or `enhancement` as fits. Priority and size are not labels.
 - **Milestone**: the issue's, when it has one (`gh issue view <n> --json milestone`).
-- **Project**: add it to project "R-Type" (number 8, owner `$OWNER`, the repository owner) with Status "In review".
+- **Project**: add it to project "Aylo Engine" (number 8, owner `$OWNER`, the repository owner) with Status "In review".
 
 ## Single pull request
 

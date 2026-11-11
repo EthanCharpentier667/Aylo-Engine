@@ -7,7 +7,7 @@ body:
     attributes:
       value: |
         Title: `[Area] <summary>`, or `[Area] <ID>: <summary>` for a task listed in a plan document (`NET-06`, `SCR-03`).
-        After submitting, in the project "R-Type": set **Status**, **Priority** and **Size**. In the issue: link the
+        After submitting, in the project "Aylo Engine": set **Status**, **Priority** and **Size**. In the issue: link the
         epic as the parent (sub-issue) and add the issues it is blocked by as real **blocked by** relationships, not as
         text. The `plan-issues` skill does all of this with `gh`.
 

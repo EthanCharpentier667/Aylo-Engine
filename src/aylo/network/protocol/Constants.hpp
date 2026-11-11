@@ -12,8 +12,8 @@
 
 namespace aylo::network::protocol {
 
-/// @brief Identifies R-Type datagrams ("RTYP"); anything else is dropped.
-inline constexpr std::uint32_t kProtocolId = 0x52545950;
+/// @brief Identifies AYLO datagrams ("AYLO"); anything else is dropped.
+inline constexpr std::uint32_t kProtocolId = 0x41594C4F;
 
 /// @brief Bumped by every change of a wire layout or of a constant below.
 inline constexpr std::uint16_t kProtocolVersion = 1;

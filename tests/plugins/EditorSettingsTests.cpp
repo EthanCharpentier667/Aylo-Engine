@@ -37,9 +37,9 @@ TEST(EditorSettings, ReadsTheSceneAndTheTextEditor) {
 
 TEST(EditorSettings, ReadsTheGameWindowTitle) {
     Settings settings;
-    settings.set("window.title", std::string{"R-Type Duel"});
+    settings.set("window.title", std::string{"AYLO Duel"});
 
-    EXPECT_EQ(aylo::editor::readEditorOptions(settings).gameTitle, "R-Type Duel");
+    EXPECT_EQ(aylo::editor::readEditorOptions(settings).gameTitle, "AYLO Duel");
     EXPECT_TRUE(aylo::editor::readEditorOptions(Settings{}).gameTitle.empty());
 }
 

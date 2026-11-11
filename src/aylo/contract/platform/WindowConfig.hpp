@@ -19,7 +19,7 @@ namespace aylo::contract::platform {
 /// config file (fromSettings()); every field has a default.
 struct AYLO_CONTRACT_PLATFORM_API WindowConfig {
     glm::uvec2 size{1280, 720};  ///< In screen coordinates.
-    std::string title = "R-Type";
+    std::string title = "AYLO";
     bool resizable = true;
     bool fullscreen = false;  ///< On the primary monitor, at its current resolution.
     /// @brief The window system, on Linux: "auto" (Wayland in a Wayland session, X11 otherwise or if Wayland fails),

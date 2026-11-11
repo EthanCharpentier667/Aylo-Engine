@@ -97,7 +97,7 @@ Never write an API key in a script. Write `{{env:NAME}}` in a header instead, li
 the environment variable `NAME` on the machine that runs the server:
 
 ```sh
-EXAMPLE_API_KEY=sk-... ./aylo-server
+EXAMPLE_API_KEY=sk-... ./aylo-runtime --server
 ```
 
 The engine puts the value in the header when it sends the request. Your scripts never see it, and only the variables

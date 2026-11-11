@@ -33,7 +33,7 @@ struct Backend {
 /// return {
 ///     platform = "glfw",
 ///     renderer = "vulkan",
-///     window = { title = "R-Type", size = { 1280, 720 } },  -- for every platform
+///     window = { title = "AYLO", size = { 1280, 720 } },  -- for every platform
 ///     vulkan = { debugging = true },                         -- only for the "vulkan" renderer
 /// }
 /// @endcode

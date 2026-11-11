@@ -21,7 +21,7 @@ namespace aylo::core::config {
 ///
 /// @details Flat: nested tables are flattened into dotted keys. The config file
 /// @code{.lua}
-/// return { renderer = "vulkan", window = { title = "R-Type", size = { 1280, 720 } } }
+/// return { renderer = "vulkan", window = { title = "AYLO", size = { 1280, 720 } } }
 /// @endcode
 /// gives the keys `renderer`, `window.title` and `window.size`. Each part of the engine reads its own section()
 /// and turns it into its own typed configuration, checking it with checkKeys() so that a typo is reported instead

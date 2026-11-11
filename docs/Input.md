@@ -186,7 +186,7 @@ auto& fire = input.addAction("fire", ActionType::kButton)
 
 ```cpp
 aylo::platform::GlfwPlatform window;
-window.init({.title = "R-Type"});
+window.init({.title = "AYLO"});
 
 while (window.isOpen()) {
     for (const auto& event : window.pollEvents()) {

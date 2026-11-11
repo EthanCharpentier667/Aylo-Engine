@@ -109,11 +109,11 @@ TEST(SettingsLoader, StoresNumberAndStringArrays) {
 
 TEST(SettingsLoader, GroupsNeedNoDeclaration) {
     const auto settings = run(R"(
-        engine.settings.window.title = "R-Type"
+        engine.settings.window.title = "AYLO"
         engine.settings.physics.debug.color.red = 1
     )");
 
-    EXPECT_EQ(settings.getString("window.title", ""), "R-Type");
+    EXPECT_EQ(settings.getString("window.title", ""), "AYLO");
     EXPECT_DOUBLE_EQ(settings.getNumber("physics.debug.color.red", 0), 1);
 }
 

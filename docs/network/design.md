@@ -269,7 +269,7 @@ Every datagram starts with a **packet kind** byte.
 
 | Value | Kind | Direction | Content after the kind byte |
 |---|---|---|---|
-| `0x01` | `kConnectRequest` | C → S | protocol id `u32` (`0x52545950`, "RTYP"), protocol version `u16`, resume client id `u32` and resume token `u64` (both 0 for a new connection, [6.8](#68-reconnecting-after-a-connection-loss)), zero padding up to 64 bytes in total |
+| `0x01` | `kConnectRequest` | C → S | protocol id `u32` (`0x41594C4F`, "AYLO"), protocol version `u16`, resume client id `u32` and resume token `u64` (both 0 for a new connection, [6.8](#68-reconnecting-after-a-connection-loss)), zero padding up to 64 bytes in total |
 | `0x02` | `kChallenge` | S → C | challenge `u64` |
 | `0x03` | `kChallengeResponse` | C → S | challenge `u64`, zero padding up to 64 bytes in total |
 | `0x04` | `kAccepted` | S → C | session token `u32`, client id `u32`, resume token `u64` |

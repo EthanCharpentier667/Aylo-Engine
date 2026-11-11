@@ -74,7 +74,7 @@ The first byte of every datagram is its **kind**:
 | Offset | Size | Field | Value |
 |---|---|---|---|
 | 0 | 1 | kind | `0x01` |
-| 1 | 4 | protocolId | `0x52545950` ("RTYP", written little-endian: `50 59 54 52`) |
+| 1 | 4 | protocolId | `0x41594C4F` ("AYLO", written little-endian: `4F 4C 59 41`) |
 | 5 | 2 | version | `1` |
 | 7 | 4 | resumeClient | `0` for a new session, or the client id to resume (4.7) |
 | 11 | 8 | resumeToken | `0`, or the resume token of that client |

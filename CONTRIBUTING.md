@@ -25,7 +25,7 @@ Requirements and platforms are in the [README](README.md#requirements).
 ## Workflow
 
 1. **An issue first.** Every change starts from an issue titled `[Area] <summary>` (bug or feature template). Its
-   priority, size and status live in the GitHub project "R-Type".
+   priority, size and status live in the GitHub project "Aylo Engine".
 2. **A branch per issue**, from `main`, named `<type>/<area>/<name>` in kebab-case: `feat/network/reconnect`,
    `fix/vulkan/swapchain-resize`, `docs/manual/physics`.
 3. **Atomic commits** in [Conventional Commits](https://www.conventionalcommits.org/) form, lowercase summary, and a body

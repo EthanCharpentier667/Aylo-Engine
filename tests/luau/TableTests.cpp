@@ -392,9 +392,9 @@ TEST(Table, CppSeesChangesMadeByScript) {
 TEST(Table, ReadsTableReturnedByScript) {
     const auto runtime = makeRuntime();
 
-    const Table table = runForTable(runtime, "return {name = 'r-type', lives = 3, {1, 2}}");
+    const Table table = runForTable(runtime, "return {name = 'aylo', lives = 3, {1, 2}}");
 
-    EXPECT_EQ(table.get("name")->as<std::string>(), "r-type");
+    EXPECT_EQ(table.get("name")->as<std::string>(), "aylo");
     EXPECT_DOUBLE_EQ(number(table, "lives"), 3.0);
     EXPECT_EQ(table.size().value(), 1U);
     EXPECT_EQ(table.count().value(), 3U);

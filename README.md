@@ -4,9 +4,9 @@
 [![Manual](https://img.shields.io/badge/manual-online-blue)](https://ethancharpentier667.github.io/Aylo-Engine/)
 [![Developer docs](https://img.shields.io/badge/developer%20docs-online-blue)](https://ethancharpentier667.github.io/Aylo-Engine/engine/)
 
-**AYLO** (*Another Yet Lightweight Optimized Engine*) is a C++23 game engine made for the Epitech R-Type project:
+**AYLO** (*Another Yet Lightweight Optimized Engine*) is a C++23 game engine made at Epitech (Tek3):
 a Vulkan renderer, Luau scripting, physics, audio and an authoritative client/server network model over UDP. It does
-not contain a game: it runs one. A game is a folder of Luau scripts and assets; R-Type is one of them.
+not contain a game: it runs one. A game is a folder of Luau scripts and assets (see `examples/games/`).
 
 ## Features
 
@@ -36,15 +36,14 @@ xmake's package manager into a per-user cache: nothing else is installed on the 
 xmake f -y                 # configure (add -m release for a release build)
 xmake build -y             # build: copies aylo-runtime and aylo-editor to the repository root
 
-./aylo-server            # the R-Type server (on game/), same as ./aylo-runtime --server
-./aylo-client            # the R-Type client, same as ./aylo-runtime
+./aylo-runtime --server    # the server (on game/)
+./aylo-runtime             # a client (on game/)
 ./aylo-runtime <game_dir>  # any game: a folder with a project.luau
 ./aylo-editor <game_dir>   # the editor
 ```
 
 The server listens on UDP port 4242. Other flags (`--port <port>`, `--host <address>`...) reach the game's
-`project.luau` as `engine.args`, which decides what to do with them. On Windows, use `aylo-server.bat` and
-`aylo-client.bat`.
+`project.luau` as `engine.args`, which decides what to do with them.
 
 Example games are in [`examples/games/`](examples/games/): `aylo_duel` is a complete two-player game.
 

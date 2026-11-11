@@ -271,5 +271,5 @@ not depend on the order of the additions.
 
 ## Open questions
 
-- Fixed tick rate for R-Type: 60 Hz, or 30 Hz to halve network traffic? (Team) The default is 60 Hz;
+- Fixed tick rate: 60 Hz, or 30 Hz to halve network traffic? (Team) The default is 60 Hz;
   `setFixedTimestep()` changes it.

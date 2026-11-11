@@ -1,6 +1,6 @@
 ---
 name: plan-issues
-description: Turn a plan document or a feature into a GitHub epic with child issues, sub-issue links, blocked-by dependencies and project fields, with the gh CLI, in the R-Type repository. Use when asked to "create the issues for this plan", "file the tasks", "create an epic", "break this down into issues", "link issues", "set blocked by", "add to the project", or to file a single issue or bug.
+description: Turn a plan document or a feature into a GitHub epic with child issues, sub-issue links, blocked-by dependencies and project fields, with the gh CLI, in the Aylo-Engine repository. Use when asked to "create the issues for this plan", "file the tasks", "create an epic", "break this down into issues", "link issues", "set blocked by", "add to the project", or to file a single issue or bug.
 ---
 
 # Plan and file issues
@@ -8,7 +8,7 @@ description: Turn a plan document or a feature into a GitHub epic with child iss
 Uses `gh` only (works in Claude Code and Codex). The repository is the current one: `OWNER=$(gh repo view --json owner --jq .owner.login)`, and `$R` is
 `repos/$(gh repo view --json nameWithOwner --jq .nameWithOwner)`. Issue types may not exist on a user-owned repository: do not set one.
 
-The project "R-Type" (user project number 8) holds the metadata and is the single source of truth: **Status**
+The project "Aylo Engine" (user project number 8) holds the metadata and is the single source of truth: **Status**
 (Backlog | Ready | In progress | In review | Done), **Priority** (P0 | P1 | P2 | P3), **Size** (XS | S | M | L | XL),
 **Sprint**. Do not use priority or weight labels; area labels (`ecs`, `luau`, `scripting`, `network`, `physics`,
 `Vulkan`, `documentation`, `bug`, `enhancement`, `epic`) stay.

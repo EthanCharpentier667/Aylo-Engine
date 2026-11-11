@@ -108,7 +108,7 @@ backend named after it, handed to that backend's factory only (as `vulkan = { ..
 return {
     platform = "glfw",
     renderer = "vulkan",
-    window = { title = "R-Type", size = { 1280, 720 } },
+    window = { title = "AYLO", size = { 1280, 720 } },
 
     audio = {
         backend = "miniaudio",   -- a registered name: "miniaudio", "null", later "fmod"

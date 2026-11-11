@@ -443,7 +443,7 @@ This task creates the empty shells and the vocabulary they share:
    | `Channel` | `kUnreliable = 0`, `kReliable = 1` ([design 6.5](design.md#65-messages-and-channels)) |
    | `DisconnectReason`, `RejectReason` | Wire values of [5](#5-values-fixed-by-this-spec) |
 
-5. `protocol/Constants.hpp` defines `kProtocolId = 0x52545950` ("RTYP"), `kProtocolVersion = 1`,
+5. `protocol/Constants.hpp` defines `kProtocolId = 0x41594C4F` ("AYLO"), `kProtocolVersion = 1`,
    `kMaxPacketSize = 1200`, `kMaxMessageSize = 1000`, `kHandshakePadding = 64`, `kReliableWindow = 256`,
    `kMaxPendingReliable = 1024`, `kMaxDatagramsPerFlush = 8`, `kSentPacketHistory = 1024`.
 6. `NetworkSettings` holds every tunable transport value with the design's default:

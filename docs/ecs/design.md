@@ -48,7 +48,7 @@ The design builds on what already exists in the repository:
 | R1 | **Bevy-style engine.** The ECS owns the main loop; window, rendering, input, audio, scripting and networking are plugins. | An `App` with plugins, schedules, resources (including main-thread-only ones), events. |
 | R2 | **Luau scripting, Luau-first games.** A component is described by one Luau type ("class"), systems by another; users arrange them in files as they like. Scripts can create components, systems and entities, and **game plugins are written in Luau whenever possible**. | Components registered **at runtime**, a **type-erased** core, dynamic queries, script systems, **Luau plugins**, handles instead of pointers. |
 | R3 | **Multiplayer, authoritative server.** Clients send inputs; the server simulates and sends the new state back. | **Reflection** (serialize any component), **change detection** (send only what changed), **stable names** (ids differ between processes), several worlds per process. |
-| R4 | **Generic and reusable** beyond R-Type. | No game code in the core, a storage-agnostic API, everything else as plugins. |
+| R4 | **Generic and reusable** beyond a single game. | No game code in the core, a storage-agnostic API, everything else as plugins. |
 
 The requirements are referenced as **R1–R4** in the rest of the document.
 
@@ -371,7 +371,7 @@ There is no universally best model: one memory order cannot be contiguous for ev
 components, so each design chooses which operations it makes cheap.
 
 **Our choice.** **Hybrid as the target, sparse set first.** `StorageKind` is part of `ComponentInfo`
-from day one; v1 implements `kSparseSet` only and treats `kTable` as `kSparseSet`. R-Type is
+from day one; v1 implements `kSparseSet` only and treats `kTable` as `kSparseSet`. A shoot'em up is
 churn-heavy (bullets, tags, script components) with moderate entity counts, where sparse sets win;
 tables come in v3 for generic games with large, stable populations.
 
@@ -1138,7 +1138,7 @@ this document.
 
 ## Collisions: From Overlap to Event
 
-Collisions are the busiest workload of an R-Type-like game: hundreds of bullets against dozens of
+Collisions are the busiest workload of a shoot'em up-like game: hundreds of bullets against dozens of
 enemies, every tick. This section follows one tick of the `CollisionPlugin` (C++, server side) from
 component data to `Collision` events read by gameplay, and lists what makes it fast.
 
@@ -1257,7 +1257,7 @@ flowchart LR
 | Damage applied in C++ | The C++ damage system reads every `Collision`; Luau only receives rarer, higher-level events (`game.EnemyKilled`), so the per-event C++ → Luau crossing stays small |
 | Started / ended events (optional) | For long contacts (a laser beam), compare this tick's sorted pair list with the previous one and emit `CollisionStarted` / `CollisionEnded` instead of one event per tick |
 
-Expected cost: a few microseconds to a few tens of microseconds per tick at R-Type scale, an order of
+Expected cost: a few microseconds to a few tens of microseconds per tick at shoot'em up scale, an order of
 magnitude to measure with the benchmark harness rather than assume.
 
 Other broad phases, for reference:
@@ -1429,7 +1429,7 @@ any v3 work, so changes are kept only when measurements support them.
 | Can the `luau` xmake package expose `Luau.Ast` to parse `export type` annotations? Is the fallback (`ecs.f32(50)`) needed? | Charles |
 | Which aliases does `generateTypes()` emit (`f32`, `i32`, `Entity`, `vec2`, `AssetId`)? | Charles + ECS |
 | What must Luau plugins reach beyond components and systems (resources, events, States, assets, plugin dependencies)? | Charles + ECS |
-| Which R-Type parts need a C++ game plugin for speed (collisions, bullet patterns)? Decide from benchmarks. | Team |
+| Which parts of a shoot'em up need a C++ game plugin for speed (collisions, bullet patterns)? Decide from benchmarks. | Team |
 | `IRenderer` as a `NonSend` resource; a batched `draw(std::span<const Sprite>)` | Ethan |
 | Naming: renderer `Sprite` (draw command) vs ECS `SpriteRenderer` | Ethan |
 | Text rendering in `IRenderer` (score, menus, "Game Over") | Ethan |
