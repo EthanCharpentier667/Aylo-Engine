@@ -22,6 +22,8 @@
 
 #include "core/asset/AssetFiles.hpp"
 #include "core/asset/AssetId.hpp"
+#include "core/vfs/DirectorySource.hpp"
+#include "core/vfs/FileSource.hpp"
 #include "rtype/contract/audiodevice/AudioTypes.hpp"
 #include "rtype/contract/audiodevice/IAudioDevice.hpp"
 #include "rtype/contract/audiodevice/exceptions/AudioExceptions.hpp"

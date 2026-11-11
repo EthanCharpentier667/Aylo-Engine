@@ -21,6 +21,7 @@
 
 #include "core/asset/AssetFiles.hpp"
 #include "core/asset/AssetId.hpp"
+#include "core/vfs/FileSource.hpp"
 #include "plugins/particle/IParticleEffectLoader.hpp"
 #include "plugins/particle/ParticleEffect.hpp"
 #include "rtype/contract/renderer/exceptions/ParticleExceptions.hpp"

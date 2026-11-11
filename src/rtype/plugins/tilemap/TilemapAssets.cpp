@@ -16,9 +16,9 @@
 #include <utility>
 #include <vector>
 
-#include "core/asset/AssetFiles.hpp"
 #include "core/asset/AssetId.hpp"
 #include "core/asset/AssetStore.hpp"
+#include "core/vfs/FileSource.hpp"
 #include "plugins/tilemap/Tilemap.hpp"
 #include "plugins/tilemap/detail/TiledJson.hpp"
 #include "rtype/contract/renderer/drawing/Texture.hpp"

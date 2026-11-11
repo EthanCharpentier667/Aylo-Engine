@@ -16,13 +16,13 @@
 #include <span>
 #include <string>
 #include <string_view>
-#include <system_error>
 #include <utility>
 #include <vector>
 
 #include "core/asset/AssetFiles.hpp"
 #include "core/asset/exceptions/AssetExceptions.hpp"
 #include "core/vfs/DirectorySource.hpp"
+#include "core/vfs/FileSource.hpp"
 #include "plugins/capsule/Capsule.hpp"
 #include "plugins/capsule/Capsules.hpp"
 #include "plugins/capsule/exceptions/CapsuleException.hpp"
@@ -84,7 +84,7 @@ CapsuleFiles::Reread CapsuleFiles::reload(Capsules& capsules, std::span<const st
 
 std::vector<std::string> CapsuleFiles::scan() const {
     std::vector<std::string> files;
-    for (std::string& file : _assets->list("")) {
+    for (const std::string& file : _assets->list("")) {
         if (format::isCapsuleFile(std::filesystem::path{file})) {
             files.push_back(core::asset::normalizePath(file));
         }

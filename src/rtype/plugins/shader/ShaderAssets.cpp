@@ -23,6 +23,8 @@
 #include "core/asset/AssetFiles.hpp"
 #include "core/asset/AssetId.hpp"
 #include "core/asset/exceptions/AssetExceptions.hpp"
+#include "core/vfs/DirectorySource.hpp"
+#include "core/vfs/FileSource.hpp"
 #include "plugins/shader/detail/ShaderCompiler.hpp"
 #include "rtype/contract/renderer/shaders/CompiledShader.hpp"
 

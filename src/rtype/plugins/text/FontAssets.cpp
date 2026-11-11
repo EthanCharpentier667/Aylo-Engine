@@ -16,6 +16,7 @@
 
 #include "core/asset/AssetId.hpp"
 #include "core/asset/AssetStore.hpp"
+#include "core/vfs/FileSource.hpp"
 #include "plugins/text/Font.hpp"
 #include "plugins/text/detail/FontJson.hpp"
 
