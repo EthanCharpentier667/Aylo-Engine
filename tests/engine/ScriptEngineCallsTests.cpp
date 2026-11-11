@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ScriptEngineCallsTests
 */
@@ -11,26 +11,26 @@
 #include <string>
 #include <utility>
 
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/schedule/RunMode.hpp"
+#include "aylo/scripting/ScriptHost.hpp"
 #include "core/asset/AssetId.hpp"
 #include "plugins/input/Input.hpp"
 #include "plugins/input/InputPlugin.hpp"
 #include "plugins/sprite/AtlasAssets.hpp"
 #include "plugins/sprite/SpriteAtlas.hpp"
 #include "plugins/sprite/SpritePlugin.hpp"
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/schedule/RunMode.hpp"
-#include "rtype/scripting/ScriptHost.hpp"
 
 namespace {
 /// @brief A client App with the sprite and input plugins, and a script host on it.
 struct ScriptApp {
-    rtype::ecs::App app{rtype::ecs::RunMode::kClient};
-    std::unique_ptr<rtype::scripting::ScriptHost> host;
+    aylo::ecs::App app{aylo::ecs::RunMode::kClient};
+    std::unique_ptr<aylo::scripting::ScriptHost> host;
 
     ScriptApp() {
-        app.addPlugin(rtype::plugins::sprite::SpritePlugin{});
-        app.addPlugin(rtype::plugins::input::InputPlugin{});
-        auto created = rtype::scripting::ScriptHost::create(app, {});
+        app.addPlugin(aylo::plugins::sprite::SpritePlugin{});
+        app.addPlugin(aylo::plugins::input::InputPlugin{});
+        auto created = aylo::scripting::ScriptHost::create(app, {});
         EXPECT_TRUE(created) << (created ? "" : std::string{created.error().message()});
         host = std::move(*created);
     }
@@ -62,14 +62,14 @@ TEST(ScriptEngineCalls, AScriptBuildsAtlasesFromTheSpritePlugin) {
     )"),
               "");
 
-    const auto& atlases = script.app.getWorld().getResources().require<rtype::plugins::sprite::AtlasAssets>();
-    const auto* ship = atlases.get(rtype::core::asset::AssetId::fromPath("game.ship"));
+    const auto& atlases = script.app.getWorld().getResources().require<aylo::plugins::sprite::AtlasAssets>();
+    const auto* ship = atlases.get(aylo::core::asset::AssetId::fromPath("game.ship"));
     ASSERT_NE(ship, nullptr);
     EXPECT_EQ(ship->getFrames().size(), 5U);
-    const auto* fly = ship->findAnimation(rtype::plugins::sprite::animationId("fly"));
+    const auto* fly = ship->findAnimation(aylo::plugins::sprite::animationId("fly"));
     ASSERT_NE(fly, nullptr);
     EXPECT_EQ(fly->frames.size(), 5U);
-    const auto* laser = atlases.get(rtype::core::asset::AssetId::fromPath("game.laser"));
+    const auto* laser = atlases.get(aylo::core::asset::AssetId::fromPath("game.laser"));
     ASSERT_NE(laser, nullptr);
     ASSERT_EQ(laser->getFrames().size(), 3U);
     EXPECT_FLOAT_EQ(laser->getFrames().at(1).source.getX(), 189.0F);
@@ -92,7 +92,7 @@ TEST(ScriptEngineCalls, AScriptDeclaresInputActionsAndReadsThem) {
     )"),
               "");
 
-    auto& input = script.app.getWorld().getResources().require<rtype::plugins::input::Input>();
+    auto& input = script.app.getWorld().getResources().require<aylo::plugins::input::Input>();
     EXPECT_NO_THROW(static_cast<void>(input.getAction("move")));
     EXPECT_NO_THROW(static_cast<void>(input.getAction("shoot")));
 }

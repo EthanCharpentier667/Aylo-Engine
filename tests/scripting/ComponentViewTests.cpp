@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ComponentViewTests
 */
@@ -16,34 +16,34 @@
 #include <string_view>
 #include <vector>
 
+#include "aylo/ecs/component/ComponentInfo.hpp"
+#include "aylo/ecs/entity/Entity.hpp"
+#include "aylo/ecs/type/String.hpp"
+#include "aylo/ecs/world/World.hpp"
+#include "aylo/luau/Runtime.hpp"
+#include "aylo/luau/RuntimeConfig.hpp"
+#include "aylo/luau/Table.hpp"
+#include "aylo/luau/Userdata.hpp"
+#include "aylo/luau/Value.hpp"
+#include "aylo/scripting/ErrorKind.hpp"
+#include "aylo/scripting/component/ComponentDeclaration.hpp"
+#include "aylo/scripting/component/ComponentRegistration.hpp"
+#include "aylo/scripting/view/ComponentView.hpp"
+#include "aylo/scripting/view/FieldAccess.hpp"
+#include "aylo/scripting/view/ViewScope.hpp"
+#include "aylo/scripting/view/ViewTypes.hpp"
 #include "core/asset/AssetId.hpp"
-#include "rtype/ecs/component/ComponentInfo.hpp"
-#include "rtype/ecs/entity/Entity.hpp"
-#include "rtype/ecs/type/String.hpp"
-#include "rtype/ecs/world/World.hpp"
-#include "rtype/luau/Runtime.hpp"
-#include "rtype/luau/RuntimeConfig.hpp"
-#include "rtype/luau/Table.hpp"
-#include "rtype/luau/Userdata.hpp"
-#include "rtype/luau/Value.hpp"
-#include "rtype/scripting/ErrorKind.hpp"
-#include "rtype/scripting/component/ComponentDeclaration.hpp"
-#include "rtype/scripting/component/ComponentRegistration.hpp"
-#include "rtype/scripting/view/ComponentView.hpp"
-#include "rtype/scripting/view/FieldAccess.hpp"
-#include "rtype/scripting/view/ViewScope.hpp"
-#include "rtype/scripting/view/ViewTypes.hpp"
 
 namespace {
-namespace sc = rtype::scripting::component;
-namespace sv = rtype::scripting::view;
-using rtype::ecs::FieldType;
+namespace sc = aylo::scripting::component;
+namespace sv = aylo::scripting::view;
+using aylo::ecs::FieldType;
 
 /// @brief A registered component with its description and a value, the pieces a view is made of.
 struct Fixture {
-    rtype::ecs::World world;
-    rtype::luau::Runtime runtime{makeRuntime()};
-    rtype::ecs::ComponentInfo info;
+    aylo::ecs::World world;
+    aylo::luau::Runtime runtime{makeRuntime()};
+    aylo::ecs::ComponentInfo info;
     std::vector<std::byte> bytes;
     std::shared_ptr<sv::ViewScope> scope{std::make_shared<sv::ViewScope>()};
 
@@ -58,10 +58,10 @@ struct Fixture {
         EXPECT_TRUE(sv::registerViewTypes(runtime));
     }
 
-    static rtype::luau::Runtime makeRuntime() {
-        auto created = rtype::luau::Runtime::create({
-            .libs = rtype::luau::RuntimeConfig::Libs::kStandard,
-            .optimizationLevel = rtype::luau::RuntimeConfig::OptimizationLevel::kStandard,
+    static aylo::luau::Runtime makeRuntime() {
+        auto created = aylo::luau::Runtime::create({
+            .libs = aylo::luau::RuntimeConfig::Libs::kStandard,
+            .optimizationLevel = aylo::luau::RuntimeConfig::OptimizationLevel::kStandard,
         });
         EXPECT_TRUE(created);
         return std::move(*created);
@@ -75,7 +75,7 @@ struct Fixture {
                                                                             .generation = scope->generation,
                                                                             .readOnly = readOnly});
         ASSERT_TRUE(userdata);
-        ASSERT_TRUE(runtime.globals().set(name, rtype::luau::Value{*userdata}));
+        ASSERT_TRUE(runtime.globals().set(name, aylo::luau::Value{*userdata}));
     }
 
     /// @brief Runs a script and returns the message of its error, empty when it succeeded.
@@ -142,9 +142,9 @@ TEST(ComponentView, RoundTripsEverySupportedFieldType) {
     Fixture fixture{makeEverything()};
     fixture.expose("v");
 
-    const auto entity = fixture.runtime.usertype<rtype::ecs::Entity>().create(rtype::ecs::Entity{7, 3});
+    const auto entity = fixture.runtime.usertype<aylo::ecs::Entity>().create(aylo::ecs::Entity{7, 3});
     ASSERT_TRUE(entity);
-    ASSERT_TRUE(fixture.runtime.globals().set("other", rtype::luau::Value{*entity}));
+    ASSERT_TRUE(fixture.runtime.globals().set("other", aylo::luau::Value{*entity}));
     EXPECT_EQ(fixture.run(R"(
         v.flag = true
         v.i8 = -128
@@ -186,7 +186,7 @@ TEST(ComponentView, RoundTripsEverySupportedFieldType) {
     EXPECT_EQ(fixture.number("f64"), 0.1);
     EXPECT_EQ(fixture.read<std::int8_t>("i8"), -128);
     EXPECT_EQ(fixture.read<std::uint64_t>("u64"), 9007199254740992ULL);
-    EXPECT_EQ(fixture.read<rtype::ecs::Entity>("target"), (rtype::ecs::Entity{7, 3}));
+    EXPECT_EQ(fixture.read<aylo::ecs::Entity>("target"), (aylo::ecs::Entity{7, 3}));
     const auto same = fixture.runtime.globals().get("sameTarget");
     ASSERT_TRUE(same);
     EXPECT_TRUE(*same->tryAs<bool>());
@@ -214,23 +214,23 @@ TEST(ComponentView, RoundTripsVectorAndAssetIdFields) {
     EXPECT_EQ((fixture.read<std::array<float, 2>>("position")), (std::array<float, 2>{1.5F, -2.0F}));
     EXPECT_EQ((fixture.read<std::array<float, 3>>("tint")), (std::array<float, 3>{1.0F, 2.0F, 3.0F}));
     EXPECT_EQ((fixture.read<std::array<float, 4>>("color")), (std::array<float, 4>{0.25F, 0.5F, 0.75F, 1.0F}));
-    const auto expected = rtype::core::asset::AssetId::fromPath("assets/ship.png").value;
+    const auto expected = aylo::core::asset::AssetId::fromPath("assets/ship.png").value;
     EXPECT_EQ(fixture.read<std::uint64_t>("texture"), expected);
 
     const auto position = fixture.runtime.globals().get("position");
     ASSERT_TRUE(position);
-    const auto* positionTable = position->tryAs<rtype::luau::Table>();
+    const auto* positionTable = position->tryAs<aylo::luau::Table>();
     ASSERT_NE(positionTable, nullptr);
     EXPECT_EQ(*positionTable->get("x")->tryAs<double>(), 1.5);
     EXPECT_EQ(*positionTable->get("y")->tryAs<double>(), -2.0);
     const auto tint = fixture.runtime.globals().get("tint");
     ASSERT_TRUE(tint);
-    ASSERT_NE(tint->tryAs<rtype::luau::Value::Vector>(), nullptr);
-    EXPECT_EQ(*tint->tryAs<rtype::luau::Value::Vector>(), (rtype::luau::Value::Vector{1.0F, 2.0F, 3.0F}));
+    ASSERT_NE(tint->tryAs<aylo::luau::Value::Vector>(), nullptr);
+    EXPECT_EQ(*tint->tryAs<aylo::luau::Value::Vector>(), (aylo::luau::Value::Vector{1.0F, 2.0F, 3.0F}));
     const auto color = fixture.runtime.globals().get("color");
     ASSERT_TRUE(color);
-    ASSERT_NE(color->tryAs<rtype::luau::Table>(), nullptr);
-    EXPECT_EQ(*color->tryAs<rtype::luau::Table>()->get("w")->tryAs<double>(), 1.0);
+    ASSERT_NE(color->tryAs<aylo::luau::Table>(), nullptr);
+    EXPECT_EQ(*color->tryAs<aylo::luau::Table>()->get("w")->tryAs<double>(), 1.0);
     EXPECT_TRUE(*fixture.runtime.globals().get("sameTexture")->tryAs<bool>());
     EXPECT_EQ(*fixture.runtime.globals().get("text")->tryAs<std::string>(), std::format("AssetId({:016x})", expected));
 }
@@ -243,7 +243,7 @@ TEST(ComponentView, CopiesAnAssetIdFromOneFieldToAnother) {
 
     EXPECT_EQ(fixture.run(R"(v.a = "ship.png"; v.b = v.a)"), "");
 
-    EXPECT_EQ(fixture.read<std::uint64_t>("b"), rtype::core::asset::AssetId::fromPath("ship.png").value);
+    EXPECT_EQ(fixture.read<std::uint64_t>("b"), aylo::core::asset::AssetId::fromPath("ship.png").value);
 }
 
 TEST(ComponentView, ReadsAVectorOfACppStyleLayoutInPlace) {
@@ -310,12 +310,12 @@ TEST(FieldAccess, RefusesToReadATableVectorWithoutARuntime) {
     // A runtime of its own, where the types are registered by the test: AssetId lives in a static library, so on
     // macOS each binary has its own type_info for it and the one registered by the scripting library is not found.
     auto runtime = Fixture::makeRuntime();
-    auto entities = runtime.usertype<rtype::ecs::Entity>("Entity");
-    auto assetIds = runtime.usertype<rtype::core::asset::AssetId>("AssetId");
+    auto entities = runtime.usertype<aylo::ecs::Entity>("Entity");
+    auto assetIds = runtime.usertype<aylo::core::asset::AssetId>("AssetId");
     ASSERT_TRUE(entities);
     ASSERT_TRUE(assetIds);
     const sv::FieldReadContext context{.runtime = nullptr, .entities = *entities, .assetIds = *assetIds};
-    const rtype::ecs::FieldInfo field{.name = "position", .type = FieldType::kVec2, .offset = 0};
+    const aylo::ecs::FieldInfo field{.name = "position", .type = FieldType::kVec2, .offset = 0};
     const std::array<std::byte, 8> bytes{};
 
     const auto result = sv::readField("test.Spatial", field, bytes, context);
@@ -432,14 +432,14 @@ TEST(ComponentView, RefusesWritesThroughAReadOnlyView) {
 
 TEST(Entity, ComparesByValueAndShowsItsIndexAndGeneration) {
     Fixture fixture{makeShield()};
-    const auto entities = fixture.runtime.usertype<rtype::ecs::Entity>();
-    const auto first = entities.create(rtype::ecs::Entity{1, 2});
-    const auto same = entities.create(rtype::ecs::Entity{1, 2});
-    const auto other = entities.create(rtype::ecs::Entity{1, 3});
+    const auto entities = fixture.runtime.usertype<aylo::ecs::Entity>();
+    const auto first = entities.create(aylo::ecs::Entity{1, 2});
+    const auto same = entities.create(aylo::ecs::Entity{1, 2});
+    const auto other = entities.create(aylo::ecs::Entity{1, 3});
     ASSERT_TRUE(first && same && other);
-    ASSERT_TRUE(fixture.runtime.globals().set("first", rtype::luau::Value{*first}));
-    ASSERT_TRUE(fixture.runtime.globals().set("same", rtype::luau::Value{*same}));
-    ASSERT_TRUE(fixture.runtime.globals().set("other", rtype::luau::Value{*other}));
+    ASSERT_TRUE(fixture.runtime.globals().set("first", aylo::luau::Value{*first}));
+    ASSERT_TRUE(fixture.runtime.globals().set("same", aylo::luau::Value{*same}));
+    ASSERT_TRUE(fixture.runtime.globals().set("other", aylo::luau::Value{*other}));
 
     ASSERT_EQ(
         fixture.run("equal = first == same; different = first ~= other; text = tostring(first); key = first.bits"), "");
@@ -452,9 +452,9 @@ TEST(Entity, ComparesByValueAndShowsItsIndexAndGeneration) {
 
 TEST(FillFromTable, WritesTheNamedFieldsAndKeepsTheOthers) {
     Fixture fixture{makeShield()};
-    auto table = rtype::luau::Table::create(fixture.runtime);
+    auto table = aylo::luau::Table::create(fixture.runtime);
     ASSERT_TRUE(table);
-    ASSERT_TRUE(table->set("strength", rtype::luau::Value{10.0}));
+    ASSERT_TRUE(table->set("strength", aylo::luau::Value{10.0}));
     const float regen = 2.0F;
     for (const auto& field : fixture.info.type.fields) {
         if (field.name == "regen") {
@@ -471,18 +471,18 @@ TEST(FillFromTable, WritesTheNamedFieldsAndKeepsTheOthers) {
 
 TEST(FillFromTable, RefusesAnUnknownFieldAndABadValue) {
     Fixture fixture{makeShield()};
-    auto unknown = rtype::luau::Table::create(fixture.runtime);
+    auto unknown = aylo::luau::Table::create(fixture.runtime);
     ASSERT_TRUE(unknown);
-    ASSERT_TRUE(unknown->set("bogus", rtype::luau::Value{1.0}));
-    auto wrong = rtype::luau::Table::create(fixture.runtime);
+    ASSERT_TRUE(unknown->set("bogus", aylo::luau::Value{1.0}));
+    auto wrong = aylo::luau::Table::create(fixture.runtime);
     ASSERT_TRUE(wrong);
-    ASSERT_TRUE(wrong->set("strength", rtype::luau::Value{std::string{"high"}}));
+    ASSERT_TRUE(wrong->set("strength", aylo::luau::Value{std::string{"high"}}));
 
     const auto unknownResult = sv::fillFromTable(fixture.info.type, *unknown, fixture.bytes);
     const auto wrongResult = sv::fillFromTable(fixture.info.type, *wrong, fixture.bytes);
 
     ASSERT_FALSE(unknownResult);
-    EXPECT_EQ(unknownResult.error().kind(), rtype::scripting::ErrorKind::kInvalidValue);
+    EXPECT_EQ(unknownResult.error().kind(), aylo::scripting::ErrorKind::kInvalidValue);
     EXPECT_NE(unknownResult.error().message().find("bogus"), std::string_view::npos);
     ASSERT_FALSE(wrongResult);
     EXPECT_NE(wrongResult.error().message().find("strength"), std::string_view::npos);
@@ -501,7 +501,7 @@ TEST(ComponentView, ReadsAndWritesAStringField) {
 
     EXPECT_EQ(*fixture.runtime.globals().get("before")->tryAs<std::string>(), "");
     EXPECT_EQ(*fixture.runtime.globals().get("after")->tryAs<std::string>(), "Ana");
-    EXPECT_EQ(fixture.read<rtype::ecs::String>("name"), rtype::ecs::String{"Ana"});
+    EXPECT_EQ(fixture.read<aylo::ecs::String>("name"), aylo::ecs::String{"Ana"});
 }
 
 TEST(ComponentView, CutsAStringLongerThanItsCapacity) {
@@ -514,7 +514,7 @@ TEST(ComponentView, CutsAStringLongerThanItsCapacity) {
     )"),
               "");
 
-    EXPECT_EQ(fixture.number("length"), static_cast<double>(rtype::ecs::String::kCapacity));
+    EXPECT_EQ(fixture.number("length"), static_cast<double>(aylo::ecs::String::kCapacity));
 }
 
 TEST(ComponentView, RefusesANumberInAStringField) {

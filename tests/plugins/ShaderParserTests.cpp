@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ShaderParserTests
 */
@@ -14,14 +14,14 @@
 #include <string>
 #include <string_view>
 
+#include "aylo/contract/renderer/shaders/CompiledShader.hpp"
 #include "plugins/shader/detail/ShaderParser.hpp"
 #include "plugins/shader/exceptions/ShaderExceptions.hpp"
-#include "rtype/contract/renderer/shaders/CompiledShader.hpp"
 
-using rtype::contract::renderer::ShaderValueType;
-using rtype::plugins::shader::detail::ParsedShader;
-using rtype::plugins::shader::detail::parseShader;
-using rtype::plugins::shader::exceptions::ShaderException;
+using aylo::contract::renderer::ShaderValueType;
+using aylo::plugins::shader::detail::ParsedShader;
+using aylo::plugins::shader::detail::parseShader;
+using aylo::plugins::shader::exceptions::ShaderException;
 
 namespace {
 /// @return The float at @p offset of @p block.
@@ -126,7 +126,7 @@ TEST(ShaderParser, RejectsWhatItCannotRead) {
 
 TEST(ShaderParser, RejectsReservedAndDuplicateNames) {
     EXPECT_NE(errorOf("uniform vec4 COLOR;\nvoid fragment() {}").find("reserved"), std::string::npos);
-    EXPECT_NE(errorOf("uniform float rtypeX;\nvoid fragment() {}").find("reserved"), std::string::npos);
+    EXPECT_NE(errorOf("uniform float ayloX;\nvoid fragment() {}").find("reserved"), std::string::npos);
     EXPECT_NE(errorOf("uniform float a;\ninstance uniform float a;\nvoid fragment() {}").find("twice"),
               std::string::npos);
 }

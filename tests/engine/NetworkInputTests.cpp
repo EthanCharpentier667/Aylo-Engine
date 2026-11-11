@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** NetworkInputTests
 */
@@ -13,34 +13,34 @@
 #include <optional>
 #include <string_view>
 
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/call/CallTraits.hpp"
-#include "rtype/ecs/schedule/RunMode.hpp"
-#include "rtype/ecs/time/FixedTimestep.hpp"
-#include "rtype/ecs/time/TimePlugin.hpp"
-#include "rtype/ecs/type/String.hpp"
-#include "rtype/engine/NetworkInput.hpp"
-#include "rtype/plugins/GlmReflection.hpp"
-#include "rtype/replication/component/Owner.hpp"
-#include "rtype/replication/component/PlayerInput.hpp"
-#include "rtype/replication/input/InputKind.hpp"
-#include "rtype/replication/input/InputLayout.hpp"
-#include "rtype/replication/standalone/StandalonePlugin.hpp"
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/call/CallTraits.hpp"
+#include "aylo/ecs/schedule/RunMode.hpp"
+#include "aylo/ecs/time/FixedTimestep.hpp"
+#include "aylo/ecs/time/TimePlugin.hpp"
+#include "aylo/ecs/type/String.hpp"
+#include "aylo/engine/NetworkInput.hpp"
+#include "aylo/plugins/GlmReflection.hpp"
+#include "aylo/replication/component/Owner.hpp"
+#include "aylo/replication/component/PlayerInput.hpp"
+#include "aylo/replication/input/InputKind.hpp"
+#include "aylo/replication/input/InputLayout.hpp"
+#include "aylo/replication/standalone/StandalonePlugin.hpp"
 
 namespace {
-using rtype::engine::ActionReading;
-using rtype::replication::input::InputKind;
+using aylo::engine::ActionReading;
+using aylo::replication::input::InputKind;
 }  // namespace
 
 TEST(NetworkInput, ReadsEachActionOfTheLayoutAsItsKind) {
-    rtype::replication::input::InputLayout layout;
+    aylo::replication::input::InputLayout layout;
     layout.add("shoot", InputKind::kButton);
     layout.add("move", InputKind::kVector2);
     layout.add("throttle", InputKind::kAxis);
     layout.add("dash", InputKind::kButton);  // the reader does not know it: stays neutral
 
-    const rtype::replication::component::PlayerInput read =
-        rtype::engine::readNetworkInput(layout, [](const std::string_view name) -> std::optional<ActionReading> {
+    const aylo::replication::component::PlayerInput read =
+        aylo::engine::readNetworkInput(layout, [](const std::string_view name) -> std::optional<ActionReading> {
             if (name == "shoot") {
                 return ActionReading{.held = true};
             }
@@ -62,9 +62,9 @@ TEST(NetworkInput, ReadsEachActionOfTheLayoutAsItsKind) {
 }
 
 TEST(NetworkInput, AddsNoSystemWithoutTheInputCall) {
-    rtype::ecs::App app;
+    aylo::ecs::App app;
 
-    rtype::engine::addNetworkInput(app);  // no input plugin: nothing to read, nothing thrown
+    aylo::engine::addNetworkInput(app);  // no input plugin: nothing to read, nothing thrown
 
     SUCCEED();
 }
@@ -73,9 +73,9 @@ namespace {
 namespace fake_input {
 /// @brief The arguments and the result of `rtype.input.read`, named and laid out as the Engine reads them.
 struct ReadActionArguments {
-    rtype::ecs::String action;
+    aylo::ecs::String action;
 };
-RTYPE_ECS_CALL_DATA(ReadActionArguments, "rtype.input.ReadActionArguments", action);
+AYLO_ECS_CALL_DATA(ReadActionArguments, "rtype.input.ReadActionArguments", action);
 
 struct ActionState {
     glm::vec2 value{0.0F};
@@ -83,26 +83,26 @@ struct ActionState {
     bool pressed{false};
     bool released{false};
 };
-RTYPE_ECS_CALL_DATA(ActionState, "rtype.input.ActionState", value, held, pressed, released);
+AYLO_ECS_CALL_DATA(ActionState, "rtype.input.ActionState", value, held, pressed, released);
 
 ActionState read(const ReadActionArguments& /*arguments*/) { return ActionState{.value = {1.0F, 0.0F}, .held = true}; }
 }  // namespace fake_input
 }  // namespace
 
 TEST(NetworkInput, AStandaloneWorldGivesTheInputToTheEntityOfTheLocalClient) {
-    rtype::ecs::App app{rtype::ecs::RunMode::kStandalone};
-    app.addPlugin(rtype::ecs::TimePlugin::manual(std::chrono::milliseconds{20}, rtype::ecs::FixedTimestep{50, 5}));
+    aylo::ecs::App app{aylo::ecs::RunMode::kStandalone};
+    app.addPlugin(aylo::ecs::TimePlugin::manual(std::chrono::milliseconds{20}, aylo::ecs::FixedTimestep{50, 5}));
     app.addCall("rtype.input.read", &fake_input::read);
-    app.addPlugin(rtype::replication::standalone::StandalonePlugin{});
-    app.getWorld().getResources().getMut<rtype::replication::input::InputLayout>()->add("fire", InputKind::kButton);
-    rtype::engine::addNetworkInput(app);
-    const rtype::ecs::Entity ship = app.getWorld().spawn(rtype::replication::component::Owner{.client = 1},
-                                                         rtype::replication::component::PlayerInput{});
+    app.addPlugin(aylo::replication::standalone::StandalonePlugin{});
+    app.getWorld().getResources().getMut<aylo::replication::input::InputLayout>()->add("fire", InputKind::kButton);
+    aylo::engine::addNetworkInput(app);
+    const aylo::ecs::Entity ship = app.getWorld().spawn(aylo::replication::component::Owner{.client = 1},
+                                                        aylo::replication::component::PlayerInput{});
 
     app.runFrame();  // PostUpdate reads the player's input
     app.runFrame();  // the FixedUpdate hands it to the ship
 
-    const auto& layout = *app.getWorld().getResources().get<rtype::replication::input::InputLayout>();
+    const auto& layout = *app.getWorld().getResources().get<aylo::replication::input::InputLayout>();
     EXPECT_TRUE(
-        layout.isHeld(*app.getWorld().getComponents().get<rtype::replication::component::PlayerInput>(ship), "fire"));
+        layout.isHeld(*app.getWorld().getComponents().get<aylo::replication::component::PlayerInput>(ship), "fire"));
 }

@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** CapsuleFilesTests
 */
@@ -22,6 +22,17 @@
 #include <utility>
 #include <vector>
 
+#include "aylo/core/reload/HotReloader.hpp"
+#include "aylo/core/reload/ReloadOutcome.hpp"
+#include "aylo/core/reload/ReloadReport.hpp"
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/change/Mut.hpp"
+#include "aylo/ecs/command/Commands.hpp"
+#include "aylo/ecs/component/ComponentTraits.hpp"
+#include "aylo/ecs/component/Components.hpp"
+#include "aylo/ecs/entity/Entity.hpp"
+#include "aylo/ecs/hierarchy/Children.hpp"
+#include "aylo/ecs/world/World.hpp"
 #include "core/asset/exceptions/AssetExceptions.hpp"
 #include "core/vfs/FileSource.hpp"
 #include "plugins/AssetDirectory.hpp"
@@ -36,33 +47,22 @@
 #include "plugins/capsule/LoadedCapsule.hpp"
 #include "plugins/capsule/ReloadedCapsules.hpp"
 #include "plugins/capsule/exceptions/CapsuleException.hpp"
-#include "rtype/core/reload/HotReloader.hpp"
-#include "rtype/core/reload/ReloadOutcome.hpp"
-#include "rtype/core/reload/ReloadReport.hpp"
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/change/Mut.hpp"
-#include "rtype/ecs/command/Commands.hpp"
-#include "rtype/ecs/component/ComponentTraits.hpp"
-#include "rtype/ecs/component/Components.hpp"
-#include "rtype/ecs/entity/Entity.hpp"
-#include "rtype/ecs/hierarchy/Children.hpp"
-#include "rtype/ecs/world/World.hpp"
 
-namespace rtype::test::capsule_files {
+namespace aylo::test::capsule_files {
 struct Health {
     std::int32_t value{1};
 };
-RTYPE_ECS_COMPONENT(Health, "test.files.Health", value);
+AYLO_ECS_COMPONENT(Health, "test.files.Health", value);
 
 struct Armor {
     std::int32_t value{0};
     std::int32_t extra{0};
 };
-RTYPE_ECS_COMPONENT(Armor, "test.files.Armor", value, extra);
-}  // namespace rtype::test::capsule_files
+AYLO_ECS_COMPONENT(Armor, "test.files.Armor", value, extra);
+}  // namespace aylo::test::capsule_files
 
-namespace capsule = rtype::plugins::capsule;
-namespace tf = rtype::test::capsule_files;
+namespace capsule = aylo::plugins::capsule;
+namespace tf = aylo::test::capsule_files;
 
 namespace {
 constexpr std::string_view kTurret = R"([node path="."]
@@ -106,15 +106,15 @@ class CapsuleFilesTest : public ::testing::Test {
     }
 
     /// @brief Polls the reloader twice, as its debounce wants the same stamp two times.
-    static std::vector<rtype::core::reload::ReloadReport> settle(rtype::core::reload::HotReloader& reloader) {
+    static std::vector<aylo::core::reload::ReloadReport> settle(aylo::core::reload::HotReloader& reloader) {
         static_cast<void>(reloader.poll());
         return reloader.poll();
     }
 
     std::filesystem::path _game{std::filesystem::temp_directory_path() /
-                                std::format("rtype_capsule_files_{:08x}", std::random_device{}())};
+                                std::format("aylo_capsule_files_{:08x}", std::random_device{}())};
     std::filesystem::file_time_type _time{std::filesystem::file_time_type::clock::now()};  ///< Of the last write.
-    rtype::ecs::World world;                                                               ///< Holds the components.
+    aylo::ecs::World world;                                                                ///< Holds the components.
     capsule::Capsules capsules;  ///< What the files are read into.
 };
 }  // namespace
@@ -196,8 +196,8 @@ TEST_F(CapsuleFilesTest, TheReloadableReadsWhatTheReloaderSees) {
     static_cast<void>(files.loadAll(capsules));
     capsule::ReloadedCapsules reloaded;
     std::vector<std::string> log;
-    rtype::core::reload::HotReloader reloader{_game.parent_path(),
-                                              [&](std::string_view line) { log.emplace_back(line); }};
+    aylo::core::reload::HotReloader reloader{_game.parent_path(),
+                                             [&](std::string_view line) { log.emplace_back(line); }};
     const std::filesystem::path assets = _game.filename();  // the assets, in the reloader's root
     auto reloadable = std::make_unique<capsule::CapsuleReloadable>(&files, &capsules, &reloaded, assets);
     EXPECT_EQ(reloadable->name(), "capsules");
@@ -208,16 +208,16 @@ TEST_F(CapsuleFilesTest, TheReloadableReadsWhatTheReloaderSees) {
 
     write("actors/turret.actor", "[node path=\".\"]\ntest.files.Armor = { value = 4 }\n");
     write("sprites/ship.png", "not followed");
-    std::vector<rtype::core::reload::ReloadReport> reports = settle(reloader);
+    std::vector<aylo::core::reload::ReloadReport> reports = settle(reloader);
     ASSERT_EQ(reports.size(), 1U);
-    EXPECT_EQ(reports[0].outcome.status, rtype::core::reload::ReloadOutcome::Status::kApplied);
+    EXPECT_EQ(reports[0].outcome.status, aylo::core::reload::ReloadOutcome::Status::kApplied);
     EXPECT_EQ(reloaded.capsules.size(), 2U);  // the turret and the boss, for the next frame
     EXPECT_EQ(capsules.find("actors/boss.actor")->getVersion(), 1U);
 
     write("actors/turret.actor", "[node path=\".\"]\ntest.files.Armor = { value = oops }\n");
     reports = settle(reloader);
     ASSERT_EQ(reports.size(), 1U);
-    EXPECT_EQ(reports[0].outcome.status, rtype::core::reload::ReloadOutcome::Status::kFailed);
+    EXPECT_EQ(reports[0].outcome.status, aylo::core::reload::ReloadOutcome::Status::kFailed);
     EXPECT_NE(reports[0].outcome.message.find("actors/turret.actor:2:"), std::string::npos)
         << reports[0].outcome.message;
     EXPECT_EQ(capsules.find("actors/turret.actor")->getVersion(), 1U);  // kept
@@ -227,30 +227,30 @@ TEST_F(CapsuleFilesTest, TheReloadableReadsWhatTheReloaderSees) {
 TEST_F(CapsuleFilesTest, TheGameLoadsItsFilesAndReloadsWhatTheySpawned) {
     write("actors/turret.actor", kTurret);
     write("scenes/level.scene", "[node path=\".\"]\n[node path=\"Turret\" instance=\"actors/turret.actor\"]\n");
-    rtype::core::reload::HotReloader reloader{_game.parent_path(), [](std::string_view /*line*/) {}};
-    rtype::ecs::App app;
-    app.insertResource(rtype::plugins::AssetDirectory{.path = _game});
-    app.insertResource(rtype::plugins::HotReload{.reloader = &reloader});
+    aylo::core::reload::HotReloader reloader{_game.parent_path(), [](std::string_view /*line*/) {}};
+    aylo::ecs::App app;
+    app.insertResource(aylo::plugins::AssetDirectory{.path = _game});
+    app.insertResource(aylo::plugins::HotReload{.reloader = &reloader});
     static_cast<void>(app.getWorld().getComponents().registerType<tf::Health>());
     static_cast<void>(app.getWorld().getComponents().registerType<tf::Armor>());
     app.addPlugin(capsule::CapsulePlugin{});
     app.finishPlugins();
     EXPECT_EQ(reloader.size(), 1U);
-    rtype::ecs::Commands commands{app.getWorld()};
-    const rtype::ecs::Entity level =
+    aylo::ecs::Commands commands{app.getWorld()};
+    const aylo::ecs::Entity level =
         capsule::loadCapsule(commands, app.getWorld().getResources().require<capsule::Capsules>(),
                              *app.getWorld().getResources().getMut<capsule::LoadedCapsule>(),
                              capsule::CapsuleId::fromPath("scenes/level.scene"))
             .getEntity();
     commands.flush();
-    const rtype::ecs::Entity turret = app.getWorld().getComponents().get<rtype::ecs::Children>(level)->entities.at(0);
+    const aylo::ecs::Entity turret = app.getWorld().getComponents().get<aylo::ecs::Children>(level)->entities.at(0);
     EXPECT_EQ(app.getWorld().getComponents().get<tf::Health>(turret)->value, 5);
 
     write("actors/turret.actor", "[node path=\".\"]\ntest.files.Health = { value = 8 }\n");
     EXPECT_EQ(settle(reloader).size(), 1U);
     app.runFrame();
     ASSERT_TRUE(app.getWorld().isAlive(level));
-    const rtype::ecs::Entity reloaded = app.getWorld().getComponents().get<rtype::ecs::Children>(level)->entities.at(0);
+    const aylo::ecs::Entity reloaded = app.getWorld().getComponents().get<aylo::ecs::Children>(level)->entities.at(0);
     EXPECT_EQ(app.getWorld().getComponents().get<tf::Health>(reloaded)->value, 8);
     EXPECT_EQ(app.getWorld().getComponents().get<capsule::CapsuleInstance>(reloaded)->version, 1U);
     EXPECT_TRUE(app.getWorld().getResources().get<capsule::ReloadedCapsules>()->capsules.empty());
@@ -258,8 +258,8 @@ TEST_F(CapsuleFilesTest, TheGameLoadsItsFilesAndReloadsWhatTheySpawned) {
 
 TEST_F(CapsuleFilesTest, WithoutHotReloadTheGameOnlyLoadsItsFiles) {
     write("actors/turret.actor", kTurret);
-    rtype::ecs::App app;
-    app.insertResource(rtype::plugins::AssetDirectory{.path = _game});
+    aylo::ecs::App app;
+    app.insertResource(aylo::plugins::AssetDirectory{.path = _game});
     static_cast<void>(app.getWorld().getComponents().registerType<tf::Health>());
     static_cast<void>(app.getWorld().getComponents().registerType<tf::Armor>());
     app.addPlugin(capsule::CapsulePlugin{});
@@ -272,16 +272,16 @@ TEST_F(CapsuleFilesTest, WithoutHotReloadTheGameOnlyLoadsItsFiles) {
 
 TEST_F(CapsuleFilesTest, ReloadsWhatACapsuleAToolRedefinedSpawnedWithoutHotReload) {
     write("actors/turret.actor", kTurret);
-    rtype::ecs::App app;
-    app.insertResource(rtype::plugins::AssetDirectory{.path = _game});
+    aylo::ecs::App app;
+    app.insertResource(aylo::plugins::AssetDirectory{.path = _game});
     static_cast<void>(app.getWorld().getComponents().registerType<tf::Health>());
     static_cast<void>(app.getWorld().getComponents().registerType<tf::Armor>());
     app.addPlugin(capsule::CapsulePlugin{});
     app.finishPlugins();
-    rtype::ecs::Resources& resources = app.getWorld().getResources();
+    aylo::ecs::Resources& resources = app.getWorld().getResources();
     const capsule::CapsuleId id = capsule::CapsuleId::fromPath("actors/turret.actor");
-    rtype::ecs::Commands commands{app.getWorld()};
-    const rtype::ecs::Entity turret =
+    aylo::ecs::Commands commands{app.getWorld()};
+    const aylo::ecs::Entity turret =
         capsule::spawnCapsule(commands, resources.require<capsule::Capsules>(), id).getEntity();
     commands.flush();
 
@@ -297,14 +297,14 @@ TEST_F(CapsuleFilesTest, ReloadsWhatACapsuleAToolRedefinedSpawnedWithoutHotReloa
 
 namespace {
 /// @brief Capsule files held in memory, as a pack holds them.
-class MemoryAssets final : public rtype::core::vfs::FileSource {
+class MemoryAssets final : public aylo::core::vfs::FileSource {
   public:
     explicit MemoryAssets(std::map<std::string, std::string> files) : _files{std::move(files)} {}
 
     [[nodiscard]] std::string read(const std::string_view path) const override {
         const auto found = _files.find(std::string{path});
         if (found == _files.end()) {
-            throw rtype::core::asset::exceptions::AssetLoadException{std::format("no '{}' in memory", path)};
+            throw aylo::core::asset::exceptions::AssetLoadException{std::format("no '{}' in memory", path)};
         }
         return found->second;
     }

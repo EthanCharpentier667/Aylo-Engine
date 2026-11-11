@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** FontJsonTests
 */
@@ -10,15 +10,15 @@
 #include <glm/ext/vector_uint2.hpp>
 #include <string_view>
 
+#include "aylo/contract/renderer/drawing/Texture.hpp"
 #include "core/asset/AssetId.hpp"
 #include "plugins/text/Font.hpp"
 #include "plugins/text/detail/FontJson.hpp"
 #include "plugins/text/exceptions/TextExceptions.hpp"
-#include "rtype/contract/renderer/drawing/Texture.hpp"
 
-using rtype::plugins::text::Font;
-using rtype::plugins::text::Glyph;
-using rtype::plugins::text::detail::parseFontJson;
+using aylo::plugins::text::Font;
+using aylo::plugins::text::Glyph;
+using aylo::plugins::text::detail::parseFontJson;
 
 namespace {
 /// @brief A font of a space, an 'A' and a kerning pair, as msdf-atlas-gen writes it with -yorigin top.
@@ -62,10 +62,10 @@ void expectA(const Glyph& glyph) {
 TEST(FontJson, ReadsTheAtlasAndTheMetrics) {
     const Font font = parseFontJson(kFontTop, "assets/fonts/test.json");
     EXPECT_EQ(font.getTexturePath(), "assets/fonts/test.png");
-    EXPECT_EQ(font.getTexture(), rtype::core::asset::AssetId::fromPath("assets/fonts/test.png"));
+    EXPECT_EQ(font.getTexture(), aylo::core::asset::AssetId::fromPath("assets/fonts/test.png"));
     EXPECT_EQ(font.getTextureDesc().size, (glm::uvec2{256, 128}));
-    EXPECT_EQ(font.getTextureDesc().filter, rtype::contract::renderer::TextureFilter::kLinear);
-    EXPECT_EQ(font.getTextureDesc().encoding, rtype::contract::renderer::TextureEncoding::kLinear);
+    EXPECT_EQ(font.getTextureDesc().filter, aylo::contract::renderer::TextureFilter::kLinear);
+    EXPECT_EQ(font.getTextureDesc().encoding, aylo::contract::renderer::TextureEncoding::kLinear);
     EXPECT_FLOAT_EQ(font.getDistanceRange(), 4.0F);
     EXPECT_FLOAT_EQ(font.getMetrics().lineHeight, 1.25F);
     EXPECT_FLOAT_EQ(font.getMetrics().ascender, -1.0F);
@@ -100,14 +100,14 @@ TEST(FontJson, RejectsAnAtlasThatIsNotMsdf) {
     constexpr std::string_view kHardMask = R"({ "atlas": { "type": "hardmask", "distanceRange": 0,
         "width": 1, "height": 1 }, "metrics": {}, "glyphs": [] })";
     EXPECT_THROW(static_cast<void>(parseFontJson(kHardMask, "mask.json")),
-                 rtype::plugins::text::exceptions::FontException);
+                 aylo::plugins::text::exceptions::FontException);
 }
 
 TEST(FontJson, NamesTheFileOfABrokenFont) {
     try {
         static_cast<void>(parseFontJson("{ not json", "broken.json"));
         FAIL() << "expected a FontException";
-    } catch (const rtype::plugins::text::exceptions::FontException& error) {
+    } catch (const aylo::plugins::text::exceptions::FontException& error) {
         EXPECT_NE(std::string_view{error.what()}.find("broken.json"), std::string_view::npos);
     }
 }

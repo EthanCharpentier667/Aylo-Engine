@@ -1,7 +1,7 @@
 # Capsule file format
 
 The text format of capsule files: what `format::readCapsule()` reads and `format::writeCapsule()` writes
-(`src/rtype/plugins/capsule/format/CapsuleText.*`). What a capsule is and how it spawns is in
+(`src/aylo/plugins/capsule/format/CapsuleText.*`). What a capsule is and how it spawns is in
 [`ecs/features/18-capsules.md`](ecs/features/18-capsules.md); the same format for game developers is the manual's
 *Capsule file format* page (`manual/pages/capsule-format.md`). Why this format and not TOML:
 [`benchmarks/capsule-format.md`](benchmarks/capsule-format.md).
@@ -89,7 +89,7 @@ An attribute not in this table is an error. An attribute given twice keeps its l
 
 Each `name = { ... }` after a `[node]` gives the node a component, by the name it was registered with (a C++
 component, or one a script declared: files are read once every plugin and script is built). The fields are written
-by the names reflection gives them (`RTYPE_ECS_COMPONENT`, or the script's declaration), in any order.
+by the names reflection gives them (`AYLO_ECS_COMPONENT`, or the script's declaration), in any order.
 
 - A field left out keeps its starting value: the component's defaults, or on an instance node the instanced root's
   value.

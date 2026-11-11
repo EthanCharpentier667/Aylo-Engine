@@ -1,7 +1,7 @@
 # Accessibility
 
 What the engine offers for players with disabilities, what a game must do with it, and what the engine still lacks.
-The game developer's side is the manual page [Accessibility](https://charles-mahoudeau.github.io/rtype/accessibility/); this page is for engine
+The game developer's side is the manual page [Accessibility](https://charles-mahoudeau.github.io/aylo/accessibility/); this page is for engine
 developers, to know where the gaps are.
 
 ## By category

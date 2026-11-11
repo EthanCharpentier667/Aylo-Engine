@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** EditorExportTests
 */
@@ -12,9 +12,9 @@
 
 #include "editor/shipping/GameExport.hpp"
 
-using rtype::editor::shipping::ExportChoice;
-using rtype::editor::shipping::ExportResult;
-using rtype::editor::shipping::runExport;
+using aylo::editor::shipping::ExportChoice;
+using aylo::editor::shipping::ExportResult;
+using aylo::editor::shipping::runExport;
 
 TEST(EditorExport, GivesTheChoiceToTheExporterAndItsResultBack) {
     ExportChoice seen;

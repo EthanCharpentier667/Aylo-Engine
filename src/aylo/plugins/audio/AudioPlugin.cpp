@@ -1,0 +1,273 @@
+/*
+** EPITECH PROJECT, 2026
+** aylo
+** File description:
+** AudioPlugin
+*/
+
+#include "plugins/audio/AudioPlugin.hpp"
+
+#include <algorithm>
+#include <array>
+#include <glm/ext/vector_float2.hpp>
+#include <iostream>
+#include <memory>
+#include <optional>
+#include <span>
+#include <string>
+#include <string_view>
+#include <unordered_map>
+#include <utility>
+
+#include "aylo/contract/audiodevice/AudioTypes.hpp"
+#include "aylo/contract/audiodevice/IAudioDevice.hpp"
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/entity/Entity.hpp"
+#include "aylo/ecs/event/Events.hpp"
+#include "aylo/ecs/hierarchy/Parent.hpp"
+#include "aylo/ecs/query/Query.hpp"
+#include "aylo/ecs/query/QueryTerms.hpp"
+#include "aylo/ecs/resource/Resources.hpp"
+#include "aylo/ecs/schedule/Phase.hpp"
+#include "aylo/ecs/schedule/Schedule.hpp"
+#include "aylo/ecs/system/EventReader.hpp"
+#include "aylo/ecs/system/ResourceParam.hpp"
+#include "aylo/ecs/system/Side.hpp"
+#include "core/asset/AssetId.hpp"
+#include "core/config/Settings.hpp"
+#include "plugins/AssetDirectory.hpp"
+#include "plugins/audio/AudioAssets.hpp"
+#include "plugins/audio/AudioCalls.hpp"
+#include "plugins/audio/AudioConfig.hpp"
+#include "plugins/audio/AudioEvents.hpp"
+#include "plugins/audio/AudioListener.hpp"
+#include "plugins/audio/AudioRegistry.hpp"
+#include "plugins/audio/AudioResources.hpp"
+#include "plugins/audio/AudioSource.hpp"
+#include "plugins/audio/AudioVolumes.hpp"
+#include "plugins/transform/Transform.hpp"
+#include "plugins/transform/TransformPlugin.hpp"
+
+namespace aylo::plugins::audio {
+namespace {
+/// @brief The entities that hear: the first one placed is the listener.
+using Listeners = ecs::Query<ecs::Optional<const transform::GlobalTransform>, ecs::Optional<const transform::Transform>,
+                             ecs::Optional<const ecs::Parent>, ecs::With<AudioListener>>;
+
+/// @return Where an entity is: its GlobalTransform, or its Transform while it has no GlobalTransform yet (spawned this
+/// frame: the TransformPlugin's commands give it one at the end of PostUpdate); nothing if it has neither, or for such
+/// a new entity with a parent, whose Transform is not a place in the world.
+[[nodiscard]] std::optional<glm::vec2> positionOf(const transform::GlobalTransform* global,
+                                                  const transform::Transform* local, const ecs::Parent* parent) {
+    if (global != nullptr) {
+        return global->position;
+    }
+    if (local != nullptr && parent == nullptr) {
+        return local->position;
+    }
+    return std::nullopt;
+}
+
+/// @return Where the listener is, or nothing if no entity with an AudioListener is placed.
+[[nodiscard]] std::optional<glm::vec2> findListener(Listeners& listeners) {
+    for (auto [entity, global, local, parent] : listeners) {
+        if (const std::optional<glm::vec2> position = positionOf(global, local, parent)) {
+            return position;
+        }
+    }
+    return std::nullopt;
+}
+
+/// @return The pan of a sound at @p position for a listener at @p listener: -1 left, 0 centre, 1 right; 0 when either
+/// is unknown.
+[[nodiscard]] float panOf(std::optional<glm::vec2> position, std::optional<glm::vec2> listener, float panDistance) {
+    if (!position || !listener) {
+        return 0.0F;
+    }
+    return std::clamp((position->x - listener->x) / panDistance, -1.0F, 1.0F);
+}
+
+/// @brief Gives the device the volumes that differ from those it has (all of them the first time).
+void applyVolumes(Audio& audio, const plugins::audio::AudioVolumes& volumes) {
+    const std::optional<plugins::audio::AudioVolumes> applied = audio.appliedVolumes;
+    if (!applied || applied->master != volumes.master) {
+        audio.device->setMasterVolume(volumes.master);
+    }
+    if (!applied || applied->music != volumes.music) {
+        audio.device->setBusVolume(contract::audiodevice::Bus::kMusic, volumes.music);
+    }
+    if (!applied || applied->effects != volumes.effects) {
+        audio.device->setBusVolume(contract::audiodevice::Bus::kEffects, volumes.effects);
+    }
+    audio.appliedVolumes = volumes;
+}
+
+/// @brief Stops the current music, if one plays, fading out over @p fadeOut seconds.
+void stopMusic(Audio& audio, float fadeOut) {
+    if (audio.music != contract::audiodevice::VoiceId{}) {
+        audio.device->stop(audio.music, fadeOut);
+        audio.music = {};
+    }
+}
+
+/// @brief Startup: creates the device the configuration names, and starts the volumes from the config.
+void createDevice(ecs::NonSendMut<AudioSetup> setup, ecs::NonSendMut<Audio> audio,
+                  ecs::ResMut<plugins::audio::AudioVolumes> volumes) {
+    const plugins::audio::AudioConfig config =
+        plugins::audio::AudioConfig::fromSettings(setup->settings.section("audio"));
+    audio->device = setup->registry->createDevice(setup->settings);
+    audio->panDistance = config.panDistance;
+    *volumes = config.volume;
+    applyVolumes(*audio, *volumes);
+}
+
+/// @brief PostUpdate: destroys the unloaded sounds and loads the queued ones.
+void loadSounds(ecs::NonSendMut<Audio> audio, ecs::ResMut<AudioAssets> sounds) {
+    if (audio->device) {
+        updateSounds(*sounds, *audio->device);
+    }
+}
+
+/// @brief Starts the pending music if its sound is loaded, crossfading from the current track; forgets it if its sound
+/// failed or was never asked for.
+void startPendingMusic(Audio& audio, const AudioAssets& sounds) {
+    if (!audio.pendingMusic) {
+        return;
+    }
+    const PlayMusic music = *audio.pendingMusic;
+    if (const std::optional<contract::audiodevice::SoundId> sound = sounds.getSound(music.sound)) {
+        stopMusic(audio, music.crossfade);
+        audio.music = audio.device->play(
+            *sound, contract::audiodevice::PlayParams{
+                        .bus = contract::audiodevice::Bus::kMusic, .loop = true, .fadeIn = music.crossfade});
+        audio.pendingMusic.reset();
+        return;
+    }
+    const AudioAssets::Entry* entry = sounds.get(music.sound);
+    if (entry == nullptr || entry->state == SoundState::kFailed) {
+        std::cerr << "[AudioPlugin] The music " << (entry != nullptr ? entry->path : "asked for")
+                  << " cannot play: its sound is not loaded\n";
+        audio.pendingMusic.reset();
+    }
+}
+
+/// @brief PostUpdate: plays the one-shot sounds, then the music events.
+void playEvents(ecs::NonSendMut<Audio> audio, ecs::Res<AudioAssets> sounds, ecs::EventReader<PlaySound> playSounds,
+                ecs::EventReader<StopMusic> stopMusics, ecs::EventReader<PlayMusic> playMusics, Listeners listeners) {
+    if (!audio->device) {
+        return;
+    }
+    const std::optional<glm::vec2> listener = findListener(listeners);
+    for (const PlaySound& event : playSounds) {
+        if (const std::optional<contract::audiodevice::SoundId> sound = sounds->getSound(event.sound)) {
+            static_cast<void>(audio->device->play(
+                *sound, contract::audiodevice::PlayParams{.bus = event.bus,
+                                                          .volume = event.volume,
+                                                          .pitch = event.pitch,
+                                                          .pan = panOf(event.position, listener, audio->panDistance)}));
+        }
+    }
+    for (const StopMusic& event : stopMusics) {
+        stopMusic(*audio, event.fadeOut);
+        audio->pendingMusic.reset();
+    }
+    for (const PlayMusic& event : playMusics) {
+        audio->pendingMusic = event;
+    }
+    startPendingMusic(*audio, *sounds);
+}
+
+/// @brief PostUpdate: keeps one voice per AudioSource, and stops the voices of the sources that went.
+void followSources(ecs::NonSendMut<Audio> audio, ecs::Res<AudioAssets> sounds,
+                   ecs::Query<const AudioSource, ecs::Optional<const transform::GlobalTransform>,
+                              ecs::Optional<const transform::Transform>, ecs::Optional<const ecs::Parent>>
+                       sources,
+                   Listeners listeners) {
+    if (!audio->device) {
+        return;
+    }
+    contract::audiodevice::IAudioDevice& device = *audio->device;
+    const std::optional<glm::vec2> listener = findListener(listeners);
+    std::unordered_map<ecs::Entity, SourceVoice> kept;
+    for (auto [entity, source, global, local, parent] : sources) {
+        const std::optional<glm::vec2> position = source.spatial ? positionOf(global, local, parent) : std::nullopt;
+        const float pan = panOf(position, listener, audio->panDistance);
+        const auto known = audio->sources.find(entity);
+        if (known != audio->sources.end() && known->second.sound == source.sound) {
+            device.setVolume(known->second.voice, source.volume);
+            device.setPitch(known->second.voice, source.pitch);
+            device.setPan(known->second.voice, pan);
+            kept.emplace(entity, known->second);
+            continue;
+        }
+        if (known != audio->sources.end()) {
+            device.stop(known->second.voice);
+        }
+        const std::optional<contract::audiodevice::SoundId> sound = sounds->getSound(source.sound);
+        if (!sound) {
+            continue;
+        }
+        const contract::audiodevice::VoiceId voice = device.play(
+            *sound,
+            contract::audiodevice::PlayParams{
+                .bus = source.bus, .volume = source.volume, .pitch = source.pitch, .pan = pan, .loop = source.loop});
+        kept.emplace(entity, SourceVoice{.voice = voice, .sound = source.sound});
+    }
+    for (const auto& [entity, gone] : audio->sources) {
+        if (!kept.contains(entity)) {
+            device.stop(gone.voice);
+        }
+    }
+    audio->sources = std::move(kept);
+}
+
+/// @brief PostUpdate: applies the volumes that changed, then lets the backend reclaim its voices.
+void updateDevice(ecs::NonSendMut<Audio> audio, ecs::Res<plugins::audio::AudioVolumes> volumes) {
+    if (!audio->device) {
+        return;
+    }
+    applyVolumes(*audio, *volumes);
+    audio->device->update();
+}
+}  // namespace
+
+AudioPlugin::AudioPlugin(std::unique_ptr<plugins::audio::AudioRegistry> registry, core::config::Settings settings)
+    : _registry{std::move(registry)}, _settings{std::move(settings)} {}
+
+std::string_view AudioPlugin::getName() const noexcept { return kName; }
+
+std::span<const std::string_view> AudioPlugin::getDependencies() const noexcept {
+    static constexpr std::array<std::string_view, 1> kDependencies{transform::TransformPlugin::kName};
+    return kDependencies;
+}
+
+void AudioPlugin::build(ecs::App& app) {
+    ecs::Events& events = app.getWorld().getEvents();
+    static_cast<void>(events.registerType<PlaySound>());
+    static_cast<void>(events.registerType<PlayMusic>());
+    static_cast<void>(events.registerType<StopMusic>());
+
+    ecs::Resources& resources = app.getWorld().getResources();
+    resources.insertNonSend(AudioSetup{.registry = std::move(_registry), .settings = std::move(_settings)});
+    resources.insertNonSend(Audio{});
+    resources.insertIfAbsent<AudioAssets>();
+    resources.getMut<AudioAssets>()->setSource(assetSourceOf(resources));
+    resources.insertIfAbsent<plugins::audio::AudioVolumes>();
+    static_cast<void>(app.getWorld().getComponents().registerType<AudioSource>());
+    static_cast<void>(app.getWorld().getComponents().registerType<AudioListener>());
+    addAudioCalls(app);
+
+    app.addSystem(ecs::Phase::kStartup, std::string{kCreateSystem}, &createDevice).setSide(ecs::Side::kClient);
+    app.addSystem(ecs::Phase::kPostUpdate, std::string{kSoundsSystem}, &loadSounds).setSide(ecs::Side::kClient);
+    app.addSystem(ecs::Phase::kPostUpdate, std::string{kPlaySystem}, &playEvents)
+        .after(std::string{kSoundsSystem})
+        .after(std::string{plugins::transform::TransformPlugin::kPropagateSystem})
+        .setSide(ecs::Side::kClient);
+    app.addSystem(ecs::Phase::kPostUpdate, std::string{kSourcesSystem}, &followSources)
+        .after(std::string{kPlaySystem})
+        .setSide(ecs::Side::kClient);
+    app.addSystem(ecs::Phase::kPostUpdate, std::string{kUpdateSystem}, &updateDevice)
+        .after(std::string{kSourcesSystem})
+        .setSide(ecs::Side::kClient);
+}
+}  // namespace aylo::plugins::audio

@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** PluginSignatureTests
 */
@@ -20,19 +20,19 @@
 #include <string_view>
 #include <system_error>
 
-#include "rtype/engine/Exceptions.hpp"
-#include "rtype/engine/plugin/PluginSignature.hpp"
+#include "aylo/engine/Exceptions.hpp"
+#include "aylo/engine/plugin/PluginSignature.hpp"
 
-using rtype::engine::exceptions::RuntimeError;
-using rtype::engine::plugin::parsePublicKey;
-using rtype::engine::plugin::PublicKey;
-using rtype::engine::plugin::verifyPluginSignature;
+using aylo::engine::exceptions::RuntimeError;
+using aylo::engine::plugin::parsePublicKey;
+using aylo::engine::plugin::PublicKey;
+using aylo::engine::plugin::verifyPluginSignature;
 
 namespace {
 /// @brief A key pair.
 struct Keys {
     PublicKey publicKey{};
-    std::array<std::uint8_t, rtype::engine::plugin::kSecretKeySize> secretKey{};
+    std::array<std::uint8_t, aylo::engine::plugin::kSecretKeySize> secretKey{};
 
     Keys() { crypto_sign_keypair(publicKey.data(), secretKey.data()); }
 };
@@ -52,10 +52,10 @@ class PluginSignatureTest : public ::testing::Test {
 
     /// @brief Writes the signature of @p text by @p developer, whose certificate comes from @p root.
     void sign(const Keys& root, const Keys& developer, const std::string_view text) const {
-        std::array<std::uint8_t, rtype::engine::plugin::kSignatureSize> certificate{};
+        std::array<std::uint8_t, aylo::engine::plugin::kSignatureSize> certificate{};
         crypto_sign_detached(certificate.data(), nullptr, developer.publicKey.data(), developer.publicKey.size(),
                              root.secretKey.data());
-        std::array<std::uint8_t, rtype::engine::plugin::kSignatureSize> signature{};
+        std::array<std::uint8_t, aylo::engine::plugin::kSignatureSize> signature{};
         const std::span bytes{reinterpret_cast<const std::uint8_t*>(text.data()), text.size()};
         crypto_sign_detached(signature.data(), nullptr, bytes.data(), bytes.size(), developer.secretKey.data());
         std::ofstream file{std::filesystem::path{_library} += ".sig", std::ios::binary};
@@ -65,7 +65,7 @@ class PluginSignatureTest : public ::testing::Test {
     }
 
     std::filesystem::path _directory{std::filesystem::temp_directory_path() /
-                                     std::format("rtype_signature_{:08x}", std::random_device{}())};
+                                     std::format("aylo_signature_{:08x}", std::random_device{}())};
     std::filesystem::path _library{_directory / "boss.so"};
     Keys _root;
     Keys _developer;

@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** main
 */
@@ -28,6 +28,24 @@
 #include <utility>
 #include <vector>
 
+#include "aylo/contract/platform/event/Event.hpp"
+#include "aylo/contract/platform/input/Key.hpp"
+#include "aylo/contract/renderer/drawing/BlendMode.hpp"
+#include "aylo/contract/renderer/drawing/Color.hpp"
+#include "aylo/contract/renderer/drawing/Texture.hpp"
+#include "aylo/contract/renderer/particle/Particle.hpp"
+#include "aylo/contract/renderer/particle/ParticleSystemDesc.hpp"
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/app/MinimalPlugins.hpp"
+#include "aylo/ecs/command/Commands.hpp"
+#include "aylo/ecs/component/ComponentTraits.hpp"
+#include "aylo/ecs/query/Query.hpp"
+#include "aylo/ecs/query/QueryTerms.hpp"
+#include "aylo/ecs/resource/ResourceTraits.hpp"
+#include "aylo/ecs/schedule/Phase.hpp"
+#include "aylo/ecs/system/EventReader.hpp"
+#include "aylo/ecs/system/EventWriter.hpp"
+#include "aylo/ecs/system/ResourceParam.hpp"
 #include "core/asset/AssetId.hpp"
 #include "core/config/Settings.hpp"
 #include "platform/glfw/Registration.hpp"
@@ -52,34 +70,16 @@
 #include "plugins/transform/Transform.hpp"
 #include "plugins/transform/TransformPlugin.hpp"
 #include "render/vulkan/Registration.hpp"
-#include "rtype/contract/platform/event/Event.hpp"
-#include "rtype/contract/platform/input/Key.hpp"
-#include "rtype/contract/renderer/drawing/BlendMode.hpp"
-#include "rtype/contract/renderer/drawing/Color.hpp"
-#include "rtype/contract/renderer/drawing/Texture.hpp"
-#include "rtype/contract/renderer/particle/Particle.hpp"
-#include "rtype/contract/renderer/particle/ParticleSystemDesc.hpp"
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/app/MinimalPlugins.hpp"
-#include "rtype/ecs/command/Commands.hpp"
-#include "rtype/ecs/component/ComponentTraits.hpp"
-#include "rtype/ecs/query/Query.hpp"
-#include "rtype/ecs/query/QueryTerms.hpp"
-#include "rtype/ecs/resource/ResourceTraits.hpp"
-#include "rtype/ecs/schedule/Phase.hpp"
-#include "rtype/ecs/system/EventReader.hpp"
-#include "rtype/ecs/system/EventWriter.hpp"
-#include "rtype/ecs/system/ResourceParam.hpp"
 
-using namespace rtype;
-using namespace rtype::plugins::particle;
-using rtype::contract::renderer::BlendMode;
-using rtype::contract::renderer::Color;
-using rtype::core::asset::AssetId;
-using rtype::plugins::sprite::SpriteRenderer;
-using rtype::plugins::text::FontAssets;
-using rtype::plugins::text::TextRenderer;
-using rtype::plugins::transform::Transform;
+using namespace aylo;
+using namespace aylo::plugins::particle;
+using aylo::contract::renderer::BlendMode;
+using aylo::contract::renderer::Color;
+using aylo::core::asset::AssetId;
+using aylo::plugins::sprite::SpriteRenderer;
+using aylo::plugins::text::FontAssets;
+using aylo::plugins::text::TextRenderer;
+using aylo::plugins::transform::Transform;
 
 namespace {
 constexpr glm::vec2 kWindow{1280.0F, 800.0F};
@@ -95,31 +95,31 @@ struct Assets {
     AssetId fountain;   // The looping effect between the panels.
     AssetId trail;      // The effect that follows the mouse.
 };
-RTYPE_ECS_RESOURCE(Assets, "example.Assets");
+AYLO_ECS_RESOURCE(Assets, "example.Assets");
 
 // Where the mouse is, in window pixels (world units here).
 struct Mouse {
     glm::vec2 position{kWindow * 0.5F};
 };
-RTYPE_ECS_RESOURCE(Mouse, "example.Mouse");
+AYLO_ECS_RESOURCE(Mouse, "example.Mouse");
 
 // Where the fountain and the trail are simulated, switched by Space.
 struct Mode {
     contract::renderer::ParticleSimulation simulation = contract::renderer::ParticleSimulation::kGpu;
 };
-RTYPE_ECS_RESOURCE(Mode, "example.Mode");
+AYLO_ECS_RESOURCE(Mode, "example.Mode");
 
 // The emitter that follows the mouse.
 struct Trail {};
-RTYPE_ECS_COMPONENT(Trail, "example.Trail");
+AYLO_ECS_COMPONENT(Trail, "example.Trail");
 
 // An emitter respawned when the mode switches: an emitter never changes path while it plays.
 struct Switched {};
-RTYPE_ECS_COMPONENT(Switched, "example.Switched");
+AYLO_ECS_COMPONENT(Switched, "example.Switched");
 
 // The text that shows the mode.
 struct Hud {};
-RTYPE_ECS_COMPONENT(Hud, "example.Hud");
+AYLO_ECS_COMPONENT(Hud, "example.Hud");
 
 // The text of the HUD for @p simulation.
 std::string describe(contract::renderer::ParticleSimulation simulation) {
@@ -359,19 +359,19 @@ int main(int argc, char** argv) {
         const std::span<char*> args{argv, static_cast<std::size_t>(argc)};
         const bool validation = args.size() > 1 && std::string_view{args.back()} == "--validation";
         auto registry = std::make_unique<plugins::graphics::BackendRegistry>();
-        rtype::platform::glfw::registerPlatform(registry->platforms);
+        aylo::platform::glfw::registerPlatform(registry->platforms);
         render::vulkan::registerRenderer(registry->renderers);
 
         ecs::App app;
         app.addPlugins(ecs::MinimalPlugins{})
-            .addPlugin(rtype::plugins::transform::TransformPlugin{})
-            .addPlugin(rtype::plugins::input::InputPlugin{})
+            .addPlugin(aylo::plugins::transform::TransformPlugin{})
+            .addPlugin(aylo::plugins::input::InputPlugin{})
             .addPlugin(plugins::graphics::GraphicsPlugin{std::move(registry), makeSettings(validation)})
-            .addPlugin(rtype::plugins::shader::ShaderPlugin{})
-            .addPlugin(rtype::plugins::sprite::SpritePlugin{})
-            .addPlugin(rtype::plugins::sprite::SpriteDrawPlugin{})
-            .addPlugin(rtype::plugins::text::TextPlugin{})
-            .addPlugin(rtype::plugins::particle::ParticlePlugin{});
+            .addPlugin(aylo::plugins::shader::ShaderPlugin{})
+            .addPlugin(aylo::plugins::sprite::SpritePlugin{})
+            .addPlugin(aylo::plugins::sprite::SpriteDrawPlugin{})
+            .addPlugin(aylo::plugins::text::TextPlugin{})
+            .addPlugin(aylo::plugins::particle::ParticlePlugin{});
         app.insertResource(plugins::graphics::ClearColor{.value = kClear});
         app.insertResource(Assets{});
         app.insertResource(Mouse{});

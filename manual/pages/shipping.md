@@ -6,7 +6,7 @@ is in it, how to export, and what your players will see the first time they run 
 
 ## Download the engine
 
-Releases are on [GitHub](https://github.com/Charles-Mahoudeau/rtype/releases). Each one holds one `.zip` per platform:
+Releases are on [GitHub](https://github.com/Charles-Mahoudeau/aylo/releases). Each one holds one `.zip` per platform:
 
 ```
 aylo-engine-<version>-<os>-<arch>.zip
@@ -71,11 +71,11 @@ Export your game with `tools/aylo-export`: the folder of your game first, then w
 
 ```
 Exported to exports/my_game (10.4 MB)
-  librtype-plugin-graphics.so: named in plugins (client)
-  librtype-plugin-input.so: linked by librtype-plugin-graphics.so; required by rtype.graphics
-  librtype-plugin-transform.so: every game; linked by librtype-plugin-graphics.so
-  librtype-platform-glfw.so: backend 'glfw' (platform)
-  librtype-render-vulkan.so: backend 'vulkan' (renderer)
+  libaylo-plugin-graphics.so: named in plugins (client)
+  libaylo-plugin-input.so: linked by libaylo-plugin-graphics.so; required by rtype.graphics
+  libaylo-plugin-transform.so: every game; linked by libaylo-plugin-graphics.so
+  libaylo-platform-glfw.so: backend 'glfw' (platform)
+  libaylo-render-vulkan.so: backend 'vulkan' (renderer)
 ```
 
 It reads your `project.luau` the way the engine does, once for the server and once for a player, and keeps only the
@@ -194,7 +194,7 @@ Every zip also has a GitHub **attestation**: a statement signed by GitHub that t
 workflow from a given commit. With the [GitHub CLI](https://cli.github.com):
 
 ```sh
-gh attestation verify aylo-engine-0.3.0-linux-x86_64.zip --repo Charles-Mahoudeau/rtype
+gh attestation verify aylo-engine-0.3.0-linux-x86_64.zip --repo Charles-Mahoudeau/aylo
 ```
 
 It prints the commit and the workflow, or fails if the file is not what the project built.

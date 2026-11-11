@@ -1,0 +1,31 @@
+/*
+** EPITECH PROJECT, 2026
+** aylo
+** File description:
+** Registration
+*/
+
+#pragma once
+
+#include "Export.hpp"
+#include "aylo/contract/renderer/RendererRegistry.hpp"
+
+namespace aylo::render::vulkan {
+
+/// @brief Registers the renderers of this module: "vulkan" (VulkanRenderer).
+///
+/// @details Settings of the "vulkan" section, all optional (see VulkanRenderer::Config):
+/// - `engineName` (string);
+/// - `layers`, `extraExtensions` (lists of strings);
+/// - `debugging` (boolean);
+/// - `minSeverity` ("verbose", "info", "warning" or "error");
+/// - `preferredDeviceType` ("discrete_gpu", "integrated_gpu", "virtual_gpu", "cpu" or "other", default
+///   "discrete_gpu");
+/// - `synchronizationValidation` (boolean, default true), `bestPractices` (boolean, default false): extra checks of
+///   VK_LAYER_KHRONOS_validation, ignored when it is not in `layers`;
+/// - `presentMode` ("fifo", "mailbox" or "immediate", default "fifo"; FIFO when the surface does not support it);
+/// - `shaderDirectory` (string, default "shaders"): where the built-in SPIR-V shaders are loaded from, relative to the
+///   executable's directory unless absolute. The game's shaders are the shader plugin's (docs/Shaders.md).
+AYLO_RENDER_VULKAN_API void registerRenderer(contract::renderer::RendererRegistry& registry);
+
+}  // namespace aylo::render::vulkan

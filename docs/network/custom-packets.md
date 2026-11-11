@@ -117,7 +117,7 @@ packing: the engine parses and checks it again, so a script cannot send anything
   mismatch drops the packet (counted) (a client with other scripts is not refused at connection). A manifest check is
   still to do.
 - **The name is on the wire**, not a 2-byte id.
-- **No C++ `RTYPE_REPLICATION_PACKET` macro and no ECS event per packet**: all packets arrive as one event,
+- **No C++ `AYLO_REPLICATION_PACKET` macro and no ECS event per packet**: all packets arrive as one event,
   `net.PacketReceived { name, sender, values }`, which `engine.net.received` turns into tables. `Entity` fields are not
   supported.
 - **`PacketRegistry`** (`net.PacketRegistry`) holds the declarations; `rtype.net.declarePacket`,

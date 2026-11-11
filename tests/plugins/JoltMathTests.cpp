@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** JoltMathTests
 */
@@ -21,7 +21,7 @@
 
 #include "plugins/physics/detail/JoltMath.hpp"
 
-namespace detail = rtype::plugins::physics::detail;
+namespace detail = aylo::plugins::physics::detail;
 
 namespace {
 constexpr float kTolerance = 1e-6F;

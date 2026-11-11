@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** AtlasJsonTests
 */
@@ -18,12 +18,12 @@
 #include "plugins/sprite/detail/AtlasJson.hpp"
 #include "plugins/sprite/exceptions/SpriteExceptions.hpp"
 
-using rtype::plugins::sprite::AnimationDirection;
-using rtype::plugins::sprite::animationId;
-using rtype::plugins::sprite::SpriteAnimation;
-using rtype::plugins::sprite::SpriteAtlas;
-using rtype::plugins::sprite::detail::parseAtlasJson;
-using rtype::plugins::sprite::exceptions::AtlasException;
+using aylo::plugins::sprite::AnimationDirection;
+using aylo::plugins::sprite::animationId;
+using aylo::plugins::sprite::SpriteAnimation;
+using aylo::plugins::sprite::SpriteAtlas;
+using aylo::plugins::sprite::detail::parseAtlasJson;
+using aylo::plugins::sprite::exceptions::AtlasException;
 
 namespace {
 /// @brief What Aseprite exports ("JSON Hash"): three frames whose names do not sort in file order, and three tags.
@@ -57,7 +57,7 @@ const SpriteAnimation& animationOf(const SpriteAtlas& atlas, std::string_view na
 TEST(AtlasJson, FindsTheImageNextToTheFile) {
     const SpriteAtlas atlas = parse(kAseprite);
     EXPECT_EQ(atlas.getTexturePath(), "assets/sprites/ship.png");
-    EXPECT_EQ(atlas.getTexture(), rtype::core::asset::AssetId::fromPath("assets/sprites/ship.png"));
+    EXPECT_EQ(atlas.getTexture(), aylo::core::asset::AssetId::fromPath("assets/sprites/ship.png"));
 }
 
 TEST(AtlasJson, KeepsTheFramesInTheFileOrder) {

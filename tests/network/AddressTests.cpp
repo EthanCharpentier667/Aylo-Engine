@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** AddressTests
 */
@@ -12,9 +12,9 @@
 #include <optional>
 #include <unordered_set>
 
-#include "rtype/network/io/Address.hpp"
+#include "aylo/network/io/Address.hpp"
 
-using rtype::network::io::Address;
+using aylo::network::io::Address;
 
 namespace {
 constexpr std::uint16_t kPort = 4242;

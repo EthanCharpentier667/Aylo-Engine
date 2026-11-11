@@ -6,8 +6,8 @@ contract of `IRenderer`. Each effect chooses where it runs, CPU or GPU, and an e
 the CPU when the renderer cannot simulate it, so every backend can show every effect.
 
 > Status: **design agreed, nothing implemented yet.** Snippets omit the Epitech header and most `[[nodiscard]]`/
-> `noexcept` for brevity. Names are relative to `rtype::plugins::particle` unless qualified; `graphics::` is
-> `rtype::contract::renderer`. Decisions and what is still open are in [Open questions](#14-open-questions).
+> `noexcept` for brevity. Names are relative to `aylo::plugins::particle` unless qualified; `graphics::` is
+> `aylo::contract::renderer`. Decisions and what is still open are in [Open questions](#14-open-questions).
 
 ## Contents
 
@@ -71,7 +71,7 @@ The renderer never includes the ECS, so something must turn entities, transforms
 `IRenderer`: that is the plugin, as `TextPlugin` is for `IRenderer::draw(Text)`.
 
 ```
-src/rtype/contract/renderer/   namespace rtype::contract::renderer   (target contract-renderer)
+src/aylo/contract/renderer/   namespace aylo::contract::renderer   (target contract-renderer)
 ├── Particle.hpp                      ParticleSystemId, ParticleSimulation, ParticleInstance, ParticleEmission,
 │                                     ParticleDraw
 ├── ParticleSystemDesc.hpp            the simulation half of an effect: shape, spawn, initial values, forces, curves
@@ -79,7 +79,7 @@ src/rtype/contract/renderer/   namespace rtype::contract::renderer   (target con
 ├── ParticleRandom.hpp                the hashed random numbers, shared by CPU and GPU
 └── IRenderer.hpp                     + the particle calls (create, destroy, simulate, draw)
 
-src/rtype/plugins/particle/           namespace rtype::plugins::particle               (target plugins)
+src/aylo/plugins/particle/           namespace aylo::plugins::particle               (target plugins)
 ├── ParticlePlugin.hpp/.cpp           the plugin: registers, inserts the resources, adds the systems
 ├── ParticleEffect.hpp                an effect: a ParticleSystemDesc plus how its particles look
 ├── ParticleEffectAssets.hpp/.cpp     the effects by AssetId (resource), with the file loaders by extension
@@ -92,13 +92,13 @@ src/rtype/plugins/particle/           namespace rtype::plugins::particle        
 ├── CpuSimulation.hpp/.cpp            the CPU simulation of a ParticleSystemDesc
 └── exceptions/ParticleExceptions.hpp ParticleLoadException
 
-src/rtype/render/vulkan/rendering/    namespace rtype::render::vulkan::rendering       (target render-vulkan)
+src/aylo/render/vulkan/rendering/    namespace aylo::render::vulkan::rendering       (target render-vulkan)
 ├── ParticlePass.hpp/.cpp             draws the particles of both paths (particle.vert, sprite.frag reused)
 ├── ParticleConstants.hpp/.cpp        what every particle of a draw shares, as push constants
 ├── ParticleVertexInput.hpp/.cpp      ParticleInstance as per-instance vertex input
 └── DrawList.hpp/.cpp                 the order of the sprite batches and the particle draws of a frame
 
-src/rtype/render/vulkan/particle/     namespace rtype::render::vulkan::particle        (target render-vulkan)
+src/aylo/render/vulkan/particle/     namespace aylo::render::vulkan::particle        (target render-vulkan)
 ├── GpuParticleSystem.hpp/.cpp        one GPU system: its buffers and lookup tables
 ├── ParticleSimulationPass.hpp/.cpp   records emit, simulate (and later sort) for every system of the frame
 └── shaders: particle_emit.comp, particle_simulate.comp

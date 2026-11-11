@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** NullBackendTests
 */
@@ -11,7 +11,7 @@
 
 #include "backend/null/NullBackend.hpp"
 
-namespace rtype::test::plugins {
+namespace aylo::test::plugins {
 
 TEST(NullBackendTests, PlatformReportsConfiguredSizeAndNoEvents) {
     backend::null::NullPlatform platform;
@@ -46,4 +46,4 @@ TEST(NullBackendTests, RendererGivesDistinctValidIds) {
     renderer.endFrame();
 }
 
-}  // namespace rtype::test::plugins
+}  // namespace aylo::test::plugins

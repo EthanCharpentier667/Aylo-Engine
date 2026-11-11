@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** TypeRegistryTests
 */
@@ -14,29 +14,29 @@
 #include <tl/expected.hpp>
 #include <utility>
 
-#include "rtype/ecs/error/Error.hpp"
-#include "rtype/ecs/error/Result.hpp"
-#include "rtype/ecs/type/TypeInfo.hpp"
-#include "rtype/ecs/type/TypeRegistry.hpp"
-#include "rtype/ecs/type/TypeTraits.hpp"
+#include "aylo/ecs/error/Error.hpp"
+#include "aylo/ecs/error/Result.hpp"
+#include "aylo/ecs/type/TypeInfo.hpp"
+#include "aylo/ecs/type/TypeRegistry.hpp"
+#include "aylo/ecs/type/TypeTraits.hpp"
 
-namespace rtype::test::type_registry {
+namespace aylo::test::type_registry {
 /// @brief A second kind of type, defined only here, to show the registry does not depend on components.
 struct GadgetInfo {
-    rtype::ecs::TypeInfo type;  ///< What every kind shares.
-    std::int32_t charges{0};    ///< This kind's own option.
+    aylo::ecs::TypeInfo type;  ///< What every kind shares.
+    std::int32_t charges{0};   ///< This kind's own option.
 };
 
 /// @brief What is chosen when registering a C++ gadget.
 struct GadgetOptions {
     std::int32_t charges{0};  ///< Number of charges.
 };
-}  // namespace rtype::test::type_registry
+}  // namespace aylo::test::type_registry
 
-namespace gadget = rtype::test::type_registry;
+namespace gadget = aylo::test::type_registry;
 
 template <>
-struct rtype::ecs::KindTraits<gadget::GadgetInfo> {
+struct aylo::ecs::KindTraits<gadget::GadgetInfo> {
     using Options = gadget::GadgetOptions;
     static constexpr TypeKind kKind = TypeKind::kResource;  // any kind but components works for this test
     static constexpr std::string_view kName = "gadget";
@@ -69,7 +69,7 @@ struct rtype::ecs::KindTraits<gadget::GadgetInfo> {
 };
 
 namespace {
-using GadgetRegistry = rtype::ecs::TypeRegistry<gadget::GadgetInfo>;
+using GadgetRegistry = aylo::ecs::TypeRegistry<gadget::GadgetInfo>;
 
 /// @return A valid run-time gadget.
 gadget::GadgetInfo makeLamp(std::int32_t charges = 3) {
@@ -79,38 +79,38 @@ gadget::GadgetInfo makeLamp(std::int32_t charges = 3) {
 
 TEST(TypeRegistry, RegistersAndFindsAnotherKind) {
     GadgetRegistry registry;
-    const rtype::ecs::Result<rtype::ecs::TypeId> id = registry.registerType(makeLamp());
+    const aylo::ecs::Result<aylo::ecs::TypeId> id = registry.registerType(makeLamp());
     ASSERT_TRUE(id);
     EXPECT_EQ(*id, 0U);
     EXPECT_EQ(registry.getCount(), 1U);
     const gadget::GadgetInfo* lamp = registry.findByName("test.Lamp");
     ASSERT_NE(lamp, nullptr);
     EXPECT_EQ(lamp->charges, 3);
-    EXPECT_EQ(lamp->type.layoutHash, rtype::ecs::computeLayoutHash(lamp->type));  // set by the registry
+    EXPECT_EQ(lamp->type.layoutHash, aylo::ecs::computeLayoutHash(lamp->type));  // set by the registry
     EXPECT_EQ(registry.findById(*id), lamp);
 }
 
 TEST(TypeRegistry, RegisteringTheSameTypeAgainReturnsItsId) {
     GadgetRegistry registry;
-    const rtype::ecs::TypeId first = *registry.registerType(makeLamp());
+    const aylo::ecs::TypeId first = *registry.registerType(makeLamp());
     EXPECT_EQ(*registry.registerType(makeLamp()), first);
     EXPECT_EQ(registry.getCount(), 1U);
 }
 
 TEST(TypeRegistry, AppliesTheKindsOwnRules) {
     GadgetRegistry registry;
-    const rtype::ecs::Result<rtype::ecs::TypeId> id = registry.registerType(makeLamp(-1));
+    const aylo::ecs::Result<aylo::ecs::TypeId> id = registry.registerType(makeLamp(-1));
     ASSERT_FALSE(id);
-    EXPECT_EQ(id.error().getKind(), rtype::ecs::ErrorKind::kInvalidType);
+    EXPECT_EQ(id.error().getKind(), aylo::ecs::ErrorKind::kInvalidType);
     EXPECT_EQ(registry.getCount(), 0U);
 }
 
 TEST(TypeRegistry, ComparesTheKindsOwnOptions) {
     GadgetRegistry registry;
     ASSERT_TRUE(registry.registerType(makeLamp(3)));
-    const rtype::ecs::Result<rtype::ecs::TypeId> id = registry.registerType(makeLamp(5));
+    const aylo::ecs::Result<aylo::ecs::TypeId> id = registry.registerType(makeLamp(5));
     ASSERT_FALSE(id);
-    EXPECT_EQ(id.error().getKind(), rtype::ecs::ErrorKind::kOptionsMismatch);
+    EXPECT_EQ(id.error().getKind(), aylo::ecs::ErrorKind::kOptionsMismatch);
     EXPECT_EQ(std::string{id.error().getMessage()},
               "Gadget 'test.Lamp' is already registered with charges '3', not '5'");
 }
@@ -120,8 +120,8 @@ TEST(TypeRegistry, SharedChecksNameTheKind) {
     ASSERT_TRUE(registry.registerType(makeLamp()));
     gadget::GadgetInfo bigger = makeLamp();
     bigger.type.size = 8;
-    const rtype::ecs::Result<rtype::ecs::TypeId> id = registry.registerType(std::move(bigger));
+    const aylo::ecs::Result<aylo::ecs::TypeId> id = registry.registerType(std::move(bigger));
     ASSERT_FALSE(id);
-    EXPECT_EQ(id.error().getKind(), rtype::ecs::ErrorKind::kLayoutMismatch);
+    EXPECT_EQ(id.error().getKind(), aylo::ecs::ErrorKind::kLayoutMismatch);
     EXPECT_NE(std::string{id.error().getMessage()}.find("Gadget 'test.Lamp'"), std::string::npos);
 }

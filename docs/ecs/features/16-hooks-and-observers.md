@@ -46,7 +46,7 @@ struct TypeHooks {
 };
 ```
 
-`detail::makeHooks<T>()` (in the type core, used by `RTYPE_ECS_COMPONENT` and later by resources)
+`detail::makeHooks<T>()` (in the type core, used by `AYLO_ECS_COMPONENT` and later by resources)
 generates them from the C++ type, and leaves them **null** when the operation is trivial, or when the type
 does not support it (no default constructor: no `construct`; move-only: no `copy`). A null hook means "use `memset` / `memcpy` / nothing", which is the fast path and
 the case for every Luau component.
@@ -64,8 +64,8 @@ the case for every Luau component.
 known" are written as systems:
 
 ```c++
-void checkNewSprites(rtype::ecs::Query<const SpriteRenderer, rtype::ecs::Added<SpriteRenderer>> sprites,
-                     rtype::ecs::Res<rtype::plugins::graphics::TextureAssets> textures) {
+void checkNewSprites(aylo::ecs::Query<const SpriteRenderer, aylo::ecs::Added<SpriteRenderer>> sprites,
+                     aylo::ecs::Res<aylo::plugins::graphics::TextureAssets> textures) {
     for (auto [entity, sprite] : sprites) {
         if (textures->get(sprite.texture) == nullptr) {
             std::cerr << "A SpriteRenderer uses a texture nobody loaded\n";

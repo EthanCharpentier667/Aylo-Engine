@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ReplicationPluginTests
 */
@@ -13,45 +13,45 @@
 #include <string_view>
 #include <vector>
 
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/call/Calls.hpp"
-#include "rtype/ecs/component/ComponentInfo.hpp"
-#include "rtype/ecs/component/Components.hpp"
-#include "rtype/ecs/event/EventCursor.hpp"
-#include "rtype/ecs/event/EventInfo.hpp"
-#include "rtype/ecs/event/Events.hpp"
-#include "rtype/ecs/exceptions/TypeExceptions.hpp"
-#include "rtype/ecs/schedule/RunMode.hpp"
-#include "rtype/ecs/type/Field.hpp"
-#include "rtype/ecs/type/TypeInfo.hpp"
-#include "rtype/ecs/type/TypeTraits.hpp"
-#include "rtype/replication/ReplicationPlugin.hpp"
-#include "rtype/replication/client/ClientCalls.hpp"
-#include "rtype/replication/component/NetworkId.hpp"
-#include "rtype/replication/component/Owner.hpp"
-#include "rtype/replication/component/PlayerInput.hpp"
-#include "rtype/replication/event/ClientConnected.hpp"
-#include "rtype/replication/event/ClientDisconnected.hpp"
-#include "rtype/replication/input/InputKind.hpp"
-#include "rtype/replication/input/InputLayout.hpp"
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/call/Calls.hpp"
+#include "aylo/ecs/component/ComponentInfo.hpp"
+#include "aylo/ecs/component/Components.hpp"
+#include "aylo/ecs/event/EventCursor.hpp"
+#include "aylo/ecs/event/EventInfo.hpp"
+#include "aylo/ecs/event/Events.hpp"
+#include "aylo/ecs/exceptions/TypeExceptions.hpp"
+#include "aylo/ecs/schedule/RunMode.hpp"
+#include "aylo/ecs/type/Field.hpp"
+#include "aylo/ecs/type/TypeInfo.hpp"
+#include "aylo/ecs/type/TypeTraits.hpp"
+#include "aylo/replication/ReplicationPlugin.hpp"
+#include "aylo/replication/client/ClientCalls.hpp"
+#include "aylo/replication/component/NetworkId.hpp"
+#include "aylo/replication/component/Owner.hpp"
+#include "aylo/replication/component/PlayerInput.hpp"
+#include "aylo/replication/event/ClientConnected.hpp"
+#include "aylo/replication/event/ClientDisconnected.hpp"
+#include "aylo/replication/input/InputKind.hpp"
+#include "aylo/replication/input/InputLayout.hpp"
 
 namespace {
-using rtype::ecs::App;
-using rtype::ecs::ComponentInfo;
-using rtype::ecs::EventCursor;
-using rtype::ecs::EventInfo;
-using rtype::ecs::FieldType;
-using rtype::ecs::Presence;
-using rtype::ecs::ReplicationMode;
-using rtype::ecs::RunMode;
-using rtype::ecs::TypeTraits;
-using rtype::replication::ReplicationPlugin;
-using rtype::replication::component::kMaxInputAxes;
-using rtype::replication::component::NetworkId;
-using rtype::replication::component::Owner;
-using rtype::replication::component::PlayerInput;
-using rtype::replication::event::ClientConnected;
-using rtype::replication::event::ClientDisconnected;
+using aylo::ecs::App;
+using aylo::ecs::ComponentInfo;
+using aylo::ecs::EventCursor;
+using aylo::ecs::EventInfo;
+using aylo::ecs::FieldType;
+using aylo::ecs::Presence;
+using aylo::ecs::ReplicationMode;
+using aylo::ecs::RunMode;
+using aylo::ecs::TypeTraits;
+using aylo::replication::ReplicationPlugin;
+using aylo::replication::component::kMaxInputAxes;
+using aylo::replication::component::NetworkId;
+using aylo::replication::component::Owner;
+using aylo::replication::component::PlayerInput;
+using aylo::replication::event::ClientConnected;
+using aylo::replication::event::ClientDisconnected;
 
 /// @return The registered description of the component with this name, or nullptr.
 const ComponentInfo* findComponent(const App& app, std::string_view name) {
@@ -67,7 +67,7 @@ const EventInfo* findEvent(const App& app, std::string_view name) {
 std::vector<std::string_view> replicatedNames(const App& app) {
     const auto& registry = app.getWorld().getComponents().getRegistry();
     std::vector<std::string_view> names;
-    for (const rtype::ecs::TypeId id : registry.getReplicatedIds()) {
+    for (const aylo::ecs::TypeId id : registry.getReplicatedIds()) {
         names.emplace_back(registry.findById(id)->type.name);
     }
     return names;
@@ -116,7 +116,7 @@ TEST(ReplicationPlugin, RefusesATypeTheGameRegisteredWithOtherOptions) {
     App app;
     static_cast<void>(app.getWorld().getComponents().registerType<Owner>());  // not replicated
 
-    EXPECT_THROW(app.addPlugin(ReplicationPlugin{}), rtype::ecs::exceptions::TypeRegistrationException);
+    EXPECT_THROW(app.addPlugin(ReplicationPlugin{}), aylo::ecs::exceptions::TypeRegistrationException);
 }
 
 TEST(ReplicationPlugin, GivesEachComponentItsPresenceAndReplication) {
@@ -142,12 +142,12 @@ TEST(ReplicationPlugin, GivesEachComponentItsPresenceAndReplication) {
 }
 
 TEST(ReplicationPlugin, ReplicatesParentButNotChildren) {
-    rtype::ecs::App app;
-    app.addPlugin(rtype::replication::ReplicationPlugin{});
+    aylo::ecs::App app;
+    app.addPlugin(aylo::replication::ReplicationPlugin{});
     const ComponentInfo* parent = findComponent(app, "rtype.Parent");
     ASSERT_NE(parent, nullptr);
-    EXPECT_EQ(parent->type.presence, rtype::ecs::Presence::kBoth);
-    EXPECT_EQ(parent->type.replication, rtype::ecs::ReplicationMode::kEveryChange);
+    EXPECT_EQ(parent->type.presence, aylo::ecs::Presence::kBoth);
+    EXPECT_EQ(parent->type.replication, aylo::ecs::ReplicationMode::kEveryChange);
     EXPECT_EQ(findComponent(app, "rtype.Children"), nullptr);
 }
 
@@ -246,19 +246,19 @@ TEST(ReplicationTypes, RegisterWithTheirCompileTimeLayoutHash) {
 
 TEST(ReplicationPlugin, InsertsTheInputLayoutOnceAndKeepsItsActions) {
     App app;
-    app.getWorld().getResources().insert(rtype::replication::input::InputLayout{});
-    app.getWorld().getResources().requireMut<rtype::replication::input::InputLayout>()->add(
-        "fire", rtype::replication::input::InputKind::kButton);
+    app.getWorld().getResources().insert(aylo::replication::input::InputLayout{});
+    app.getWorld().getResources().requireMut<aylo::replication::input::InputLayout>()->add(
+        "fire", aylo::replication::input::InputKind::kButton);
     app.addPlugin(ReplicationPlugin{});
 
-    EXPECT_EQ(app.getWorld().getResources().require<rtype::replication::input::InputLayout>().actions().size(), 1U);
+    EXPECT_EQ(app.getWorld().getResources().require<aylo::replication::input::InputLayout>().actions().size(), 1U);
 }
 
 TEST(ReplicationPlugin, InsertsAnEmptyInputLayout) {
     App app;
     app.addPlugin(ReplicationPlugin{});
 
-    EXPECT_TRUE(app.getWorld().getResources().has<rtype::replication::input::InputLayout>());
+    EXPECT_TRUE(app.getWorld().getResources().has<aylo::replication::input::InputLayout>());
 }
 
 TEST(ReplicationPlugin, RegistersTheClientCallsOnTheClientSideOnly) {
@@ -267,7 +267,6 @@ TEST(ReplicationPlugin, RegistersTheClientCallsOnTheClientSideOnly) {
         app.addPlugin(ReplicationPlugin{});
 
         const bool client = mode != RunMode::kServer;
-        EXPECT_EQ(app.getWorld().getCalls().findByName(rtype::replication::client::kLocalClientCall) != nullptr,
-                  client);
+        EXPECT_EQ(app.getWorld().getCalls().findByName(aylo::replication::client::kLocalClientCall) != nullptr, client);
     }
 }

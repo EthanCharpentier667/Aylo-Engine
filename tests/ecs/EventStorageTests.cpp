@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** EventStorageTests
 */
@@ -14,10 +14,10 @@
 #include <span>
 #include <utility>
 
-#include "rtype/ecs/event/EventInfo.hpp"
-#include "rtype/ecs/event/EventTraits.hpp"
-#include "rtype/ecs/storage/EventStorage.hpp"
-#include "rtype/ecs/storage/ViewAs.hpp"
+#include "aylo/ecs/event/EventInfo.hpp"
+#include "aylo/ecs/event/EventTraits.hpp"
+#include "aylo/ecs/storage/EventStorage.hpp"
+#include "aylo/ecs/storage/ViewAs.hpp"
 
 namespace {
 /// @brief Number of Counter instances alive, to detect leaks and double destruction.
@@ -34,39 +34,39 @@ struct Counter {
 };
 }  // namespace
 
-namespace rtype::test::event_storage {
+namespace aylo::test::event_storage {
 struct Hit {
     std::int32_t damage;
 };
-RTYPE_ECS_EVENT(Hit, "test.storage.Hit", damage);
+AYLO_ECS_EVENT(Hit, "test.storage.Hit", damage);
 
 struct Tracked {
     std::int32_t value;
     Counter counter;
 };
-RTYPE_ECS_EVENT(Tracked, "test.storage.Tracked");
+AYLO_ECS_EVENT(Tracked, "test.storage.Tracked");
 
 struct Packet {
     std::unique_ptr<std::int32_t> payload;
 };
-RTYPE_ECS_EVENT(Packet, "test.storage.Packet");
+AYLO_ECS_EVENT(Packet, "test.storage.Packet");
 
 struct alignas(16) Aligned16 {
     std::array<float, 4> values;
 };
-RTYPE_ECS_EVENT(Aligned16, "test.storage.Aligned16", values);
+AYLO_ECS_EVENT(Aligned16, "test.storage.Aligned16", values);
 
 struct GameOver {};
-RTYPE_ECS_EVENT(GameOver, "test.storage.GameOver");
-}  // namespace rtype::test::event_storage
+AYLO_ECS_EVENT(GameOver, "test.storage.GameOver");
+}  // namespace aylo::test::event_storage
 
-namespace evs = rtype::test::event_storage;
+namespace evs = aylo::test::event_storage;
 
 namespace {
 /// @return The description of `T`, kept alive for the whole test run: a storage only points to it.
 template <typename T>
-const rtype::ecs::EventInfo& infoOf() {
-    static const rtype::ecs::EventInfo info = rtype::ecs::EventTraits<T>::makeInfo();
+const aylo::ecs::EventInfo& infoOf() {
+    static const aylo::ecs::EventInfo info = aylo::ecs::EventTraits<T>::makeInfo();
     return info;
 }
 
@@ -77,19 +77,19 @@ std::span<std::byte> bytesOf(T& value) {
 
 /// @return The value of the event with this number.
 template <typename T>
-const T& eventAt(const rtype::ecs::storage::EventStorage& queue, rtype::ecs::EventSequence sequence) {
-    return *rtype::ecs::storage::viewAs<T>(queue.get(sequence));
+const T& eventAt(const aylo::ecs::storage::EventStorage& queue, aylo::ecs::EventSequence sequence) {
+    return *aylo::ecs::storage::viewAs<T>(queue.get(sequence));
 }
 
 /// @brief Sends a Hit with this damage.
-void sendHit(rtype::ecs::storage::EventStorage& queue, std::int32_t damage) {
+void sendHit(aylo::ecs::storage::EventStorage& queue, std::int32_t damage) {
     evs::Hit hit{.damage = damage};
     queue.sendMove(bytesOf(hit));
 }
 }  // namespace
 
 TEST(EventStorage, StartsEmpty) {
-    const rtype::ecs::storage::EventStorage queue{infoOf<evs::Hit>()};
+    const aylo::ecs::storage::EventStorage queue{infoOf<evs::Hit>()};
     EXPECT_EQ(queue.getCount(), 0U);
     EXPECT_EQ(queue.getFirst(), 0U);
     EXPECT_EQ(queue.getEnd(), 0U);
@@ -97,7 +97,7 @@ TEST(EventStorage, StartsEmpty) {
 }
 
 TEST(EventStorage, NumbersEventsInTheOrderTheyAreSent) {
-    rtype::ecs::storage::EventStorage queue{infoOf<evs::Hit>()};
+    aylo::ecs::storage::EventStorage queue{infoOf<evs::Hit>()};
     sendHit(queue, 10);
     sendHit(queue, 20);
     EXPECT_EQ(queue.getCount(), 2U);
@@ -108,7 +108,7 @@ TEST(EventStorage, NumbersEventsInTheOrderTheyAreSent) {
 }
 
 TEST(EventStorage, KeepsEventsForOneMoreUpdate) {
-    rtype::ecs::storage::EventStorage queue{infoOf<evs::Hit>()};
+    aylo::ecs::storage::EventStorage queue{infoOf<evs::Hit>()};
     sendHit(queue, 1);
     queue.update();
     sendHit(queue, 2);
@@ -126,7 +126,7 @@ TEST(EventStorage, KeepsEventsForOneMoreUpdate) {
 }
 
 TEST(EventStorage, ClearDropsEverythingAndKeepsTheNumbering) {
-    rtype::ecs::storage::EventStorage queue{infoOf<evs::Hit>()};
+    aylo::ecs::storage::EventStorage queue{infoOf<evs::Hit>()};
     sendHit(queue, 1);
     queue.update();
     sendHit(queue, 2);
@@ -139,7 +139,7 @@ TEST(EventStorage, ClearDropsEverythingAndKeepsTheNumbering) {
 }
 
 TEST(EventStorage, SendCopyLeavesTheSourceIntact) {
-    rtype::ecs::storage::EventStorage queue{infoOf<evs::Hit>()};
+    aylo::ecs::storage::EventStorage queue{infoOf<evs::Hit>()};
     const evs::Hit hit{.damage = 7};
     queue.sendCopy(std::as_bytes(std::span{&hit, 1}));
     EXPECT_EQ(eventAt<evs::Hit>(queue, 0).damage, 7);
@@ -147,7 +147,7 @@ TEST(EventStorage, SendCopyLeavesTheSourceIntact) {
 }
 
 TEST(EventStorage, StoresMoveOnlyEvents) {
-    rtype::ecs::storage::EventStorage queue{infoOf<evs::Packet>()};
+    aylo::ecs::storage::EventStorage queue{infoOf<evs::Packet>()};
     evs::Packet packet{.payload = std::make_unique<std::int32_t>(42)};
     queue.sendMove(bytesOf(packet));
     EXPECT_EQ(packet.payload, nullptr);
@@ -158,7 +158,7 @@ TEST(EventStorage, StoresMoveOnlyEvents) {
 TEST(EventStorage, DestroysEventsWhenDroppedClearedAndDestroyed) {
     liveCounters = 0;
     {
-        rtype::ecs::storage::EventStorage queue{infoOf<evs::Tracked>()};
+        aylo::ecs::storage::EventStorage queue{infoOf<evs::Tracked>()};
         for (std::int32_t index = 0; index < 3; ++index) {
             evs::Tracked event{.value = index, .counter = {}};
             queue.sendMove(bytesOf(event));
@@ -178,19 +178,19 @@ TEST(EventStorage, DestroysEventsWhenDroppedClearedAndDestroyed) {
 }
 
 TEST(EventStorage, KeepsEventsAligned) {
-    rtype::ecs::storage::EventStorage queue{infoOf<evs::Aligned16>()};
+    aylo::ecs::storage::EventStorage queue{infoOf<evs::Aligned16>()};
     for (int index = 0; index < 3; ++index) {
         evs::Aligned16 event{.values = {1.F, 2.F, 3.F, 4.F}};
         queue.sendMove(bytesOf(event));
     }
     queue.update();
-    for (rtype::ecs::EventSequence sequence = queue.getFirst(); sequence < queue.getEnd(); ++sequence) {
+    for (aylo::ecs::EventSequence sequence = queue.getFirst(); sequence < queue.getEnd(); ++sequence) {
         EXPECT_EQ(reinterpret_cast<std::uintptr_t>(queue.get(sequence).data()) % 16, 0U);
     }
 }
 
 TEST(EventStorage, CountsEventsWithoutData) {
-    rtype::ecs::storage::EventStorage queue{infoOf<evs::GameOver>()};
+    aylo::ecs::storage::EventStorage queue{infoOf<evs::GameOver>()};
     queue.sendMove({});
     queue.sendMove({});
     EXPECT_EQ(queue.getCount(), 2U);
@@ -198,10 +198,10 @@ TEST(EventStorage, CountsEventsWithoutData) {
 }
 
 TEST(EventStorage, MoveTransfersTheEvents) {
-    rtype::ecs::storage::EventStorage queue{infoOf<evs::Hit>()};
+    aylo::ecs::storage::EventStorage queue{infoOf<evs::Hit>()};
     sendHit(queue, 5);
     queue.update();
-    const rtype::ecs::storage::EventStorage moved{std::move(queue)};
+    const aylo::ecs::storage::EventStorage moved{std::move(queue)};
     EXPECT_EQ(moved.getCount(), 1U);
     EXPECT_EQ(eventAt<evs::Hit>(moved, 0).damage, 5);
 }

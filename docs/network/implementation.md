@@ -53,7 +53,7 @@ What the network can rely on as of **2026-10-19** (`main` at `2649ee9`):
 
 | Part | State | What the network uses from it |
 |---|---|---|
-| `ecs`: `World`, `Entity`, components, resources, events | Done | Spawn and despawn entities, add/get/remove components by `ComponentId` and by type, `isAlive`, ECS events (`RTYPE_ECS_EVENT`, `Events::send` / `read` / `update`) |
+| `ecs`: `World`, `Entity`, components, resources, events | Done | Spawn and despawn entities, add/get/remove components by `ComponentId` and by type, `isAlive`, ECS events (`AYLO_ECS_EVENT`, `Events::send` / `read` / `update`) |
 | `ecs`: type core (`TypeInfo`, `FieldInfo`, `ReplicationMode`, `Presence`, `layoutHash`) | Done | The field list of every replicated component, its replication mode, its layout hash, `TypeRegistry::getReplicatedIds()` |
 | `ecs`: change ticks (`Tick`, `ComponentTicks`, `isNewerThan`, `World::advanceChangeTick`) | Done | "Changed since the client's known tick" (M2) |
 | `core`: `hash/NameHash.hpp` (FNV-1a 64) | Done | Manifest and schema hashes |
@@ -103,7 +103,7 @@ Consequences for the plan:
 | **M2 · Scalable replication** | Hundreds of bullets, smooth display | Per-entity confirmations, delta snapshots, `kSpawnOnly`, size budget, interpolation, statistics | No |
 | **M3 · Server architecture and robustness** | The subject's server requirements (N2, N3, N4) | I/O thread, one thread per room, lobby, rate limits, error budget, fuzz and integration tests | No |
 | **M4 · Reconnection** | A short connection loss does not end a game (N8) | Lingering sessions, resume tokens, client retry, ECS events | No |
-| **M5 · Custom packets** | Kill feed, chat, lobby "ready" | Packet schemas, `RTYPE_REPLICATION_PACKET`, send and receive as ECS events; Luau bindings | Luau bindings only (Luau bridge) |
+| **M5 · Custom packets** | Kill feed, chat, lobby "ready" | Packet schemas, `AYLO_REPLICATION_PACKET`, send and receive as ECS events; Luau bindings | Luau bindings only (Luau bridge) |
 | **M6 · Client prediction** | The local ship reacts instantly | Input ring, reconciliation, correction smoothing | No |
 | **M7 · Engine integration** | `client` and `server` executables, listen server | Engine split, `StandalonePlugin`, prefabs, quantization | Yes: prefabs, field options |
 | **M8 · Docs and tuning** | The protocol document required by the subject, defaults from measures | RFC-style protocol, ECS docs updates, benchmarks | No |
@@ -165,57 +165,57 @@ says (no flat-namespace exception as in `ecs`). Only what every feature shares s
 `exceptions/` holds local setup errors.
 
 ```
-src/rtype/network/                rtype::network — rtype-network (shared), Asio only
+src/aylo/network/                aylo::network — aylo-network (shared), Asio only
 ├── xmake.lua
-├── Export.hpp                    RTYPE_NETWORK_API
+├── Export.hpp                    AYLO_NETWORK_API
 ├── Types.hpp                     ClientId, Channel, DisconnectReason, RejectReason, Clock, TimePoint, Bytes
 ├── NetworkSettings.hpp           every transport setting, with the design's defaults
 ├── RandomSource.hpp              std::random_device by default, replaceable in tests
-├── bytes/                        rtype::network::bytes
+├── bytes/                        aylo::network::bytes
 │   └── ByteWriter, ByteReader, WriteStream, ReadStream, Codec (.tpp), Overloaded (NET-04)
-├── protocol/                     rtype::network::protocol
+├── protocol/                     aylo::network::protocol
 │   └── Constants (kProtocolId, kMaxPacketSize...), Sequence (isNewer), SequenceBuffer (.tpp), Packets + PacketCodec
-├── connection/                   rtype::network::connection
+├── connection/                   aylo::network::connection
 │   └── Connection, ReliableSender, ReliableReceiver, ConnectionStats
-├── io/                           rtype::network::io  (the only folder whose .cpp files include Asio)
+├── io/                           aylo::network::io  (the only folder whose .cpp files include Asio)
 │   └── Address, UdpSocket, later IoThread pieces (NET-24)
-├── server/                       rtype::network::server
+├── server/                       aylo::network::server
 │   └── ServerCore, Session, NetServer, RoomMessages (ServerEvent, ServerCommand), later NetServerThread,
 │       MessageQueue (.tpp), lobby messages (NET-24, NET-26)
-├── client/                       rtype::network::client
+├── client/                       aylo::network::client
 │   └── ClientCore, ClientEvent, NetClient
-└── exceptions/                   rtype::network::exceptions
+└── exceptions/                   aylo::network::exceptions
     └── NetworkExceptions (SocketException...)
 
-src/rtype/replication/            rtype::replication — rtype-replication (shared), depends on ecs + network
-├── xmake.lua, Export.hpp         RTYPE_REPLICATION_API
+src/aylo/replication/            aylo::replication — aylo-replication (shared), depends on ecs + network
+├── xmake.lua, Export.hpp         AYLO_REPLICATION_API
 ├── ReplicationSettings.hpp
 ├── MessageType.hpp               0x20–0xFF
 ├── ReplicationPlugin.hpp/.cpp    ReplicationPlugin "rtype.replication": registers every component and event below,
 │                                 inserts the InputLayout resource; added by the server and client plugins
-├── component/                    rtype::replication::component
+├── component/                    aylo::replication::component
 │   └── NetworkId, Owner, PlayerInput
-├── event/                        rtype::replication::event
+├── event/                        aylo::replication::event
 │   └── ClientConnected, ClientDisconnected, later ClientLost, ClientReconnected... (M4)
-├── query/                        rtype::replication::query
+├── query/                        aylo::replication::query
 │   └── ReplicatedRead (a SystemParam over one read DynamicQuery per replicated component),
 │       Untracked (a SystemParam over one With / Without<NetworkId> DynamicQuery per replicated component)
-├── serialization/                rtype::replication::serialization
+├── serialization/                aylo::replication::serialization
 │   └── EntityMapper, FieldSerializer
-├── manifest/                     rtype::replication::manifest
+├── manifest/                     aylo::replication::manifest
 │   └── Manifest, ManifestReceiver, ManifestCheck
-├── input/                        rtype::replication::input
+├── input/                        aylo::replication::input
 │   └── InputKind, InputLayout, InputMessage, InputBuffer
-├── snapshot/                     rtype::replication::snapshot
+├── snapshot/                     aylo::replication::snapshot
 │   └── Snapshot (encode / decode), later SnapshotHistory, KnownEntities (M2)
-├── server/                       rtype::replication::server
+├── server/                       aylo::replication::server
 │   └── ServerPlugin "rtype.replication.server", ServerState (resource), later Room, RoomManager (NET-25)
-├── client/                       rtype::replication::client
+├── client/                       aylo::replication::client
 │   └── ClientPlugin "rtype.replication.client", ClientState (resource), later Interpolator (NET-22),
 │       Predictor (NET-36, NET-37)
-├── packet/                       rtype::replication::packet  (M5)
-│   └── PacketDescriptor, PacketRegistry, RTYPE_REPLICATION_PACKET
-└── exceptions/                   rtype::replication::exceptions
+├── packet/                       aylo::replication::packet  (M5)
+│   └── PacketDescriptor, PacketRegistry, AYLO_REPLICATION_PACKET
+└── exceptions/                   aylo::replication::exceptions
     └── ReplicationExceptions (ManifestException...)
 
 tests/network/      network-tests      (SimulatedLink.hpp lives here, test-only)
@@ -224,7 +224,7 @@ examples/network/Prototype/            prototype-server, prototype-client
 ```
 
 Files are named after their class (`connection/Connection.hpp`, `.cpp`, `.tpp` for templates) and included as
-`rtype/network/<feature>/<File>.hpp`. The snippets of the tasks below omit the namespaces for brevity: each type
+`aylo/network/<feature>/<File>.hpp`. The snippets of the tasks below omit the namespaces for brevity: each type
 lives in the namespace of the folder listed here.
 
 ### Rules every task follows
@@ -232,9 +232,9 @@ lives in the namespace of the folder listed here.
 These apply to every task; the acceptance criteria below do not repeat them.
 
 - **Definition of done** of `CLAUDE.md`: builds on Linux, macOS and Windows (`xmake build -y`), `clang-format`
-  and `clang-tidy` clean, unit tests for the success *and* failure paths, rule of five, `RTYPE_NETWORK_API` /
-  `RTYPE_REPLICATION_API` on exported symbols.
-- **No `<asio.hpp>` outside `src/rtype/network/*.cpp`.** Headers expose `Address`, `UdpSocket` (pimpl) and
+  and `clang-tidy` clean, unit tests for the success *and* failure paths, rule of five, `AYLO_NETWORK_API` /
+  `AYLO_REPLICATION_API` on exported symbols.
+- **No `<asio.hpp>` outside `src/aylo/network/*.cpp`.** Headers expose `Address`, `UdpSocket` (pimpl) and
   plain types only.
 - **`network` never includes an `ecs` header; `ecs` never includes `network` or `replication`.**
   `replication` never includes `plugins` headers, nor `plugins` those of `replication`: the glue between
@@ -405,9 +405,9 @@ and settings that every later task uses, so that every other task only adds file
 
 **What it is for.** The network is two libraries with a strict split ([design 3](design.md#3-targets-and-dependencies)):
 
-- `rtype-network` moves bytes between machines: sockets, connections, acks, reliability. It knows nothing about the
+- `aylo-network` moves bytes between machines: sockets, connections, acks, reliability. It knows nothing about the
   ECS, so it can be tested alone and reused by anything.
-- `rtype-replication` is the only code that knows both the ECS and the network: it turns a `World` into messages
+- `aylo-replication` is the only code that knows both the ECS and the network: it turns a `World` into messages
   and back.
 
 This task creates the empty shells and the vocabulary they share:
@@ -425,14 +425,14 @@ This task creates the empty shells and the vocabulary they share:
 
 **What it must do.**
 
-1. `network` builds as a static library `rtype-network` that depends on Asio only. Asio is a **private** package:
+1. `network` builds as a static library `aylo-network` that depends on Asio only. Asio is a **private** package:
    no public header includes it, so the libraries and executables that use `network` never see Asio
    (as GLFW never leaves `platform/glfw/`).
-2. `replication` builds as a static library `rtype-replication` that depends on `ecs` and `network`, both public
+2. `replication` builds as a static library `aylo-replication` that depends on `ecs` and `network`, both public
    (its headers use their types). Both are linked into the executable: no plugin links them, and the build refuses
    a shared library that does (`rtype.static_modules`).
-3. Exported symbols use `RTYPE_NETWORK_API` / `RTYPE_REPLICATION_API`, defined like `RTYPE_ECS_API` (empty for the
-   static build, through `RTYPE_NETWORK_STATIC` / `RTYPE_REPLICATION_STATIC`).
+3. Exported symbols use `AYLO_NETWORK_API` / `AYLO_REPLICATION_API`, defined like `AYLO_ECS_API` (empty for the
+   static build, through `AYLO_NETWORK_STATIC` / `AYLO_REPLICATION_STATIC`).
 4. `Types.hpp` defines:
 
    | Type | Meaning |
@@ -466,7 +466,7 @@ This task creates the empty shells and the vocabulary they share:
 
 **API (recommendation).**
 ```c++
-namespace rtype::network {
+namespace aylo::network {
 using ClientId = std::uint32_t;
 inline constexpr ClientId kNoClient = 0;
 using Clock = std::chrono::steady_clock;
@@ -479,7 +479,7 @@ enum class DisconnectReason : std::uint8_t {
 enum class RejectReason : std::uint8_t { kVersionMismatch = 1, kServerFull, kSessionExpired };
 
 using RandomSource = std::function<std::uint64_t()>;
-[[nodiscard]] RTYPE_NETWORK_API RandomSource makeSystemRandom();
+[[nodiscard]] AYLO_NETWORK_API RandomSource makeSystemRandom();
 
 struct NetworkSettings {
     std::uint16_t port{4242};
@@ -488,18 +488,18 @@ struct NetworkSettings {
     std::chrono::milliseconds keepalive{100};
     // ... every field of the table above
 };
-}  // namespace rtype::network
+}  // namespace aylo::network
 ```
 
 **Tasks.**
-- [ ] `src/rtype/network/xmake.lua`: shared target `network` (`rtype-network`), globs `**.cpp`,
-  `add_requires("asio 1.36.x")` used privately, `RTYPE_NETWORK_BUILD` define, `$(projectdir)/src` include dir
+- [ ] `src/aylo/network/xmake.lua`: shared target `network` (`aylo-network`), globs `**.cpp`,
+  `add_requires("asio 1.36.x")` used privately, `AYLO_NETWORK_BUILD` define, `$(projectdir)/src` include dir
   public. On Windows: `_WIN32_WINNT=0x0A00` (private) and `ws2_32` (plus `mswsock` if Asio needs it).
-- [ ] `src/rtype/replication/xmake.lua`: shared target `replication` (`rtype-replication`), `add_deps("ecs", "network")`.
-- [ ] `Export.hpp` of both, modelled on `src/rtype/ecs/Export.hpp`.
+- [ ] `src/aylo/replication/xmake.lua`: shared target `replication` (`aylo-replication`), `add_deps("ecs", "network")`.
+- [ ] `Export.hpp` of both, modelled on `src/aylo/ecs/Export.hpp`.
 - [ ] `network/Types.hpp`, `network/protocol/Constants.hpp`, `network/NetworkSettings.hpp`,
   `network/RandomSource.hpp/.cpp`.
-- [ ] Root `xmake.lua`: `includes` both modules and add them to the `rtype` phony target.
+- [ ] Root `xmake.lua`: `includes` both modules and add them to the `aylo` phony target.
 - [ ] `tests/network/` (`network-tests`) and `tests/replication/` (`replication-tests`), included from
   `tests/xmake.lua`, with a test that includes every public header of the module.
 - [ ] Create the feature folders of [4](#folders-and-namespaces) only when a file goes in them.
@@ -571,10 +571,10 @@ NET-15 (inputs), NET-16 / NET-17 (snapshots).
 
 **API (recommendation).**
 ```c++
-namespace rtype::network::bytes {
+namespace aylo::network::bytes {
 /// @brief Writes little-endian values into a buffer owned by the caller. Invalid for good after a write that
 /// does not fit.
-class RTYPE_NETWORK_API ByteWriter {
+class AYLO_NETWORK_API ByteWriter {
   public:
     explicit ByteWriter(std::span<std::byte> buffer) noexcept;
 
@@ -596,7 +596,7 @@ class RTYPE_NETWORK_API ByteWriter {
 };
 
 /// @brief Reads little-endian values from a buffer owned by the caller. Invalid for good after a read past the end.
-class RTYPE_NETWORK_API ByteReader {
+class AYLO_NETWORK_API ByteReader {
   public:
     explicit ByteReader(std::span<const std::byte> data) noexcept;
 
@@ -615,7 +615,7 @@ class RTYPE_NETWORK_API ByteReader {
     std::size_t _position{0};          ///< Next byte to read.
     bool _valid{true};                 ///< False after the first read past the end.
 };
-}  // namespace rtype::network::bytes
+}  // namespace aylo::network::bytes
 ```
 
 **Tasks.**
@@ -697,7 +697,7 @@ first and are tested on their own.
 
 **API (recommendation).**
 ```c++
-namespace rtype::network::protocol {
+namespace aylo::network::protocol {
 /// @return True if sequence `a` is newer than `b`, across the wrap from 65535 to 0.
 [[nodiscard]] constexpr bool isNewer(std::uint16_t a, std::uint16_t b) noexcept;
 
@@ -723,7 +723,7 @@ class SequenceBuffer {
     };
     std::array<Entry, N> _entries{};  ///< Slot `s % N` for sequence `s`.
 };
-}  // namespace rtype::network::protocol
+}  // namespace aylo::network::protocol
 ```
 
 **Tasks.**
@@ -840,9 +840,9 @@ the streams alone by NET-13, NET-15 and the snapshot code; NET-28 fuzzes every `
 
 **API (recommendation): streams** (`bytes/`, on top of `ByteWriter` / `ByteReader`).
 ```c++
-namespace rtype::network::bytes {
+namespace aylo::network::bytes {
 /// @brief Writing side of a serialize() function. Every call is a no-op once the stream is invalid.
-class RTYPE_NETWORK_API WriteStream {
+class AYLO_NETWORK_API WriteStream {
   public:
     explicit WriteStream(ByteWriter& writer) noexcept;
     template <typename T> void value(const T& value) noexcept;             // integers, floats, wire enums
@@ -857,7 +857,7 @@ class RTYPE_NETWORK_API WriteStream {
 };
 
 /// @brief Reading side: same functions, taking references to fill. Any failed check makes the stream invalid.
-class RTYPE_NETWORK_API ReadStream {
+class AYLO_NETWORK_API ReadStream {
   public:
     explicit ReadStream(ByteReader& reader) noexcept;
     template <typename T> void value(T& value) noexcept;          // an enum must pass isValidWireValue (below)
@@ -873,12 +873,12 @@ class RTYPE_NETWORK_API ReadStream {
 
 /// @brief Declared next to every wire enum, found by ADL: `value()` on an enum does not compile without it.
 [[nodiscard]] constexpr bool isValidWireValue(DisconnectReason reason) noexcept;   // 1 to 7, never 0
-}  // namespace rtype::network::bytes
+}  // namespace aylo::network::bytes
 ```
 
 **API (recommendation): the codec** (`bytes/Codec.hpp` + `Codec.tpp`).
 ```c++
-namespace rtype::network::bytes {
+namespace aylo::network::bytes {
 /// @brief A message of a codec: its kind and its fields, listed once for both directions.
 template <typename M, typename Kind>
 concept CodecMessage = std::is_default_constructible_v<M> && requires {
@@ -902,7 +902,7 @@ class Codec<Kind, std::variant<Messages...>> {
     /// @return Nullopt on an unknown kind, a failed check, missing bytes or bytes left over.
     [[nodiscard]] static std::optional<Message> decode(std::span<const std::byte> bytes) noexcept;
 };
-}  // namespace rtype::network::bytes
+}  // namespace aylo::network::bytes
 ```
 
 `decode` reads the kind byte and jumps to the matching alternative through a table built at compile time from the
@@ -910,7 +910,7 @@ variant (no chain of `if`s). Callers handle the result with `std::visit` or `std
 
 **API (recommendation): the transport packets** (`protocol/Packets.hpp`).
 ```c++
-namespace rtype::network::protocol {
+namespace aylo::network::protocol {
 enum class PacketKind : std::uint8_t {
     kConnectRequest = 0x01, kChallenge = 0x02, kChallengeResponse = 0x03,
     kAccepted = 0x04, kRejected = 0x05, kData = 0x06, kDisconnect = 0x07,
@@ -953,7 +953,7 @@ struct Data {
 
 using Packet = std::variant<ConnectRequest, Challenge, ChallengeResponse, Accepted, Rejected, Data, Disconnect>;
 using PacketCodec = bytes::Codec<PacketKind, Packet>;
-}  // namespace rtype::network::protocol
+}  // namespace aylo::network::protocol
 ```
 
 ```c++
@@ -1219,16 +1219,16 @@ class SimulatedLink {
   public:
     SimulatedLink(LinkConditions conditions, std::uint32_t seed);
     void setConditions(LinkConditions conditions) noexcept;
-    void send(int to, rtype::network::Bytes datagram, rtype::network::TimePoint now);
-    [[nodiscard]] std::vector<rtype::network::Bytes> receive(int at, rtype::network::TimePoint now);
+    void send(int to, aylo::network::Bytes datagram, aylo::network::TimePoint now);
+    [[nodiscard]] std::vector<aylo::network::Bytes> receive(int at, aylo::network::TimePoint now);
     [[nodiscard]] LinkStats getStats() const noexcept;
 
   private:
     struct InFlight {
         int to;                             ///< Endpoint 0 or 1.
-        rtype::network::TimePoint arrival;  ///< When receive() may return it.
+        aylo::network::TimePoint arrival;  ///< When receive() may return it.
         std::uint64_t order;                ///< Send order, to break ties between equal arrival times.
-        rtype::network::Bytes bytes;
+        aylo::network::Bytes bytes;
     };
     /// @return A number in [0, 1) from _random, converted by hand: (_random() >> 8) * 2^-24. The standard
     /// distributions may give other numbers on another standard library; this gives the same everywhere.
@@ -1243,7 +1243,7 @@ class SimulatedLink {
 
 class FakeClock {
   public:
-    [[nodiscard]] rtype::network::TimePoint now() const noexcept;
+    [[nodiscard]] aylo::network::TimePoint now() const noexcept;
     void advance(std::chrono::nanoseconds duration) noexcept;
 };
 ```
@@ -1328,7 +1328,7 @@ the simulated link.
 
 **API (recommendation).**
 ```c++
-namespace rtype::network::connection {
+namespace aylo::network::connection {
 struct ReceivedMessage {
     Channel channel;
     Bytes payload;
@@ -1336,7 +1336,7 @@ struct ReceivedMessage {
 
 /// @brief Transport state for one peer: sequence numbers, acks, RTT, message packing. Never touches a socket or a
 /// clock.
-class RTYPE_NETWORK_API Connection {
+class AYLO_NETWORK_API Connection {
   public:
     Connection(std::uint32_t sessionToken, const NetworkSettings& settings, TimePoint now);
 
@@ -1368,7 +1368,7 @@ class RTYPE_NETWORK_API Connection {
     std::vector<ReceivedMessage> _received;
     // rtt, last send time, last receive time...
 };
-}  // namespace rtype::network::connection
+}  // namespace aylo::network::connection
 ```
 
 **Tasks.**
@@ -1437,7 +1437,7 @@ custom packets).
 
 **API (recommendation).**
 ```c++
-namespace rtype::network::connection {
+namespace aylo::network::connection {
 class ReliableSender {
   public:
     std::uint16_t push(Bytes payload);                                    // assigns the id
@@ -1454,7 +1454,7 @@ class ReliableReceiver {
     bool receive(std::uint16_t id, std::span<const std::byte> payload);
     [[nodiscard]] std::vector<Bytes> takeDelivered();
 };
-}  // namespace rtype::network::connection
+}  // namespace aylo::network::connection
 ```
 
 **Tasks.**
@@ -1529,8 +1529,8 @@ log line about a peer.
 
 **API (recommendation).**
 ```c++
-namespace rtype::network::io {
-class RTYPE_NETWORK_API Address {
+namespace aylo::network::io {
+class AYLO_NETWORK_API Address {
   public:
     [[nodiscard]] static std::optional<Address> resolve(std::string_view host, std::uint16_t port);
     [[nodiscard]] std::string toString() const;
@@ -1547,7 +1547,7 @@ struct Datagram {
     Bytes bytes;
 };
 
-class RTYPE_NETWORK_API UdpSocket {
+class AYLO_NETWORK_API UdpSocket {
   public:
     /// @throws exceptions::SocketException if the port cannot be bound.
     explicit UdpSocket(std::uint16_t port);
@@ -1563,8 +1563,8 @@ class RTYPE_NETWORK_API UdpSocket {
     struct Impl;                  ///< io_context, socket, receive buffer: the only place Asio appears.
     std::unique_ptr<Impl> _impl;
 };
-}  // namespace rtype::network::io
-// + template <> struct std::hash<rtype::network::io::Address>
+}  // namespace aylo::network::io
+// + template <> struct std::hash<aylo::network::io::Address>
 ```
 
 **Tasks.**
@@ -1666,7 +1666,7 @@ limits inside), NET-30 (lingering sessions). The event and command types are use
 
 **API (recommendation).**
 ```c++
-namespace rtype::network::server {
+namespace aylo::network::server {
 // RoomMessages.hpp: what a room receives and sends.
 struct ClientJoined { ClientId client; };
 struct ClientMessage { ClientId client; Channel channel; Bytes payload; };
@@ -1680,7 +1680,7 @@ using ServerCommand = std::variant<SendMessage, KickClient>;              // + S
 
 struct OutgoingDatagram { io::Address to; Bytes bytes; };
 
-class RTYPE_NETWORK_API ServerCore {
+class AYLO_NETWORK_API ServerCore {
   public:
     ServerCore(NetworkSettings settings, RandomSource random);
     void setWelcomeMessages(std::vector<Bytes> messages);
@@ -1699,7 +1699,7 @@ class RTYPE_NETWORK_API ServerCore {
     ClientId _nextClient{1};
     // queued handshake replies, events, settings, random source...
 };
-}  // namespace rtype::network::server
+}  // namespace aylo::network::server
 ```
 
 **Tasks.**
@@ -1760,14 +1760,14 @@ extends the state machine).
 
 **API (recommendation).**
 ```c++
-namespace rtype::network::client {
+namespace aylo::network::client {
 struct ConnectionAccepted { ClientId client; };
 struct ServerMessage { Channel channel; Bytes payload; };
 struct Disconnected { DisconnectReason reason; };
 struct ConnectFailed { std::optional<RejectReason> reason; };  ///< nullopt: no answer within 5 s.
 using ClientEvent = std::variant<ConnectionAccepted, ServerMessage, Disconnected, ConnectFailed>;
 
-class RTYPE_NETWORK_API ClientCore {
+class AYLO_NETWORK_API ClientCore {
   public:
     explicit ClientCore(NetworkSettings settings);
     void connect(TimePoint now);
@@ -1780,7 +1780,7 @@ class RTYPE_NETWORK_API ClientCore {
     [[nodiscard]] std::vector<ClientEvent> takeEvents();
     [[nodiscard]] ClientId getClientId() const noexcept;
 };
-}  // namespace rtype::network::client
+}  // namespace aylo::network::client
 ```
 
 **Tasks.**
@@ -1834,8 +1834,8 @@ thread).
 
 **API (recommendation).**
 ```c++
-namespace rtype::network::server {
-class RTYPE_NETWORK_API NetServer {
+namespace aylo::network::server {
+class AYLO_NETWORK_API NetServer {
   public:
     explicit NetServer(NetworkSettings settings);
     void setWelcomeMessages(std::vector<Bytes> messages);
@@ -1845,10 +1845,10 @@ class RTYPE_NETWORK_API NetServer {
     void shutdown(TimePoint now);
     [[nodiscard]] std::vector<ServerEvent> takeEvents();
 };
-}  // namespace rtype::network::server
+}  // namespace aylo::network::server
 
-namespace rtype::network::client {
-class RTYPE_NETWORK_API NetClient {
+namespace aylo::network::client {
+class AYLO_NETWORK_API NetClient {
   public:
     NetClient(io::Address server, NetworkSettings settings);
     void connect(TimePoint now);
@@ -1858,7 +1858,7 @@ class RTYPE_NETWORK_API NetClient {
     void disconnect(TimePoint now);
     [[nodiscard]] std::vector<ClientEvent> takeEvents();
 };
-}  // namespace rtype::network::client
+}  // namespace aylo::network::client
 ```
 
 **Tasks.**
@@ -1923,7 +1923,7 @@ The plugin only registers: it adds no system and does no I/O.
 
 **API (recommendation).**
 ```c++
-namespace rtype::replication::component {
+namespace aylo::replication::component {
 struct NetworkId { std::uint32_t value; };
 struct Owner { std::uint32_t client; };
 inline constexpr std::size_t kMaxInputAxes = 16;
@@ -1933,25 +1933,25 @@ struct PlayerInput {
     std::array<float, kMaxInputAxes> axes;
     std::uint32_t sequence;
 };
-}  // namespace rtype::replication::component
-// RTYPE_ECS_COMPONENT(NetworkId, "net.NetworkId", value); ... with their presence and replication options
+}  // namespace aylo::replication::component
+// AYLO_ECS_COMPONENT(NetworkId, "net.NetworkId", value); ... with their presence and replication options
 
-namespace rtype::replication::event {
+namespace aylo::replication::event {
 struct ClientConnected { std::uint32_t client; };
 struct ClientDisconnected { std::uint32_t client; std::uint8_t reason; };
-}  // namespace rtype::replication::event
+}  // namespace aylo::replication::event
 
-namespace rtype::replication {
+namespace aylo::replication {
 /// @brief Registers every replication component and event, and inserts the InputLayout resource (NET-15).
 /// Added by ServerPlugin, ClientPlugin and StandalonePlugin (`replication/standalone/`: client 1, loopback packets,
 /// local input; see the design, "Standalone").
-class RTYPE_REPLICATION_API ReplicationPlugin : public ecs::Plugin {
+class AYLO_REPLICATION_API ReplicationPlugin : public ecs::Plugin {
   public:
     static constexpr std::string_view kName = "rtype.replication";
     [[nodiscard]] std::string_view getName() const noexcept override;
     void build(ecs::App& app) override;  // plus the rule of five, like every Plugin
 };
-}  // namespace rtype::replication
+}  // namespace aylo::replication
 ```
 
 **Tasks.**
@@ -1975,7 +1975,7 @@ the ECS already keeps for every type, so no component needs network code of its 
 **What it is for.** Snapshots carry component values: a ship's position, its health, its owner. There are many
 component types, some written in C++, later some in Luau, and the network must handle all of them the same way.
 The ECS already describes every type: its `TypeInfo` lists the fields with their name, type, offset and count
-(`FieldInfo`, filled by `RTYPE_ECS_COMPONENT`). The serializer walks that list and writes each field with the
+(`FieldInfo`, filled by `AYLO_ECS_COMPONENT`). The serializer walks that list and writes each field with the
 right encoding. Adding a replicated component then needs no network code at all.
 
 Copying the component's bytes as they are in memory would not work: the byte order may differ, padding bytes would
@@ -2024,7 +2024,7 @@ packets) and NET-42 (quantization changes the encodings of this table).
 
 **API (recommendation).**
 ```c++
-namespace rtype::replication::serialization {
+namespace aylo::replication::serialization {
 /// @brief Translates entity references between the local world and the network.
 class EntityMapper {
   public:
@@ -2035,13 +2035,13 @@ class EntityMapper {
     [[nodiscard]] virtual ecs::Entity toLocal(std::uint32_t networkId) const noexcept = 0;
 };
 
-[[nodiscard]] RTYPE_REPLICATION_API bool isSerializable(const ecs::TypeInfo& info) noexcept;
-[[nodiscard]] RTYPE_REPLICATION_API std::size_t computeWireSize(const ecs::TypeInfo& info) noexcept;
-RTYPE_REPLICATION_API void writeFields(network::bytes::ByteWriter& writer, const ecs::TypeInfo& info,
+[[nodiscard]] AYLO_REPLICATION_API bool isSerializable(const ecs::TypeInfo& info) noexcept;
+[[nodiscard]] AYLO_REPLICATION_API std::size_t computeWireSize(const ecs::TypeInfo& info) noexcept;
+AYLO_REPLICATION_API void writeFields(network::bytes::ByteWriter& writer, const ecs::TypeInfo& info,
                                        std::span<const std::byte> value, const EntityMapper& mapper) noexcept;
-[[nodiscard]] RTYPE_REPLICATION_API bool readFields(network::bytes::ByteReader& reader, const ecs::TypeInfo& info,
+[[nodiscard]] AYLO_REPLICATION_API bool readFields(network::bytes::ByteReader& reader, const ecs::TypeInfo& info,
                                                     std::span<std::byte> value, const EntityMapper& mapper) noexcept;
-}  // namespace rtype::replication::serialization
+}  // namespace aylo::replication::serialization
 ```
 
 **Tasks.**
@@ -2118,15 +2118,15 @@ check, short ids when reading), later NET-33 (packets) and NET-41 (prefabs) add 
 
 **API (recommendation).**
 ```c++
-namespace rtype::replication {
+namespace aylo::replication {
 enum class MessageType : std::uint8_t {
     kManifestComponent = 0x20, kManifestPacket = 0x21, kManifestCapsule = 0x22, kManifestInputAction = 0x23,
     kManifestEnd = 0x24, kSnapshot = 0x30, kInput = 0x31, kCustomPacket = 0x32,
 };
-}  // namespace rtype::replication
+}  // namespace aylo::replication
 
-namespace rtype::replication::manifest {
-class RTYPE_REPLICATION_API Manifest {
+namespace aylo::replication::manifest {
+class AYLO_REPLICATION_API Manifest {
   public:
     /// @throws exceptions::ManifestException on a non-serializable replicated type or too many entries.
     [[nodiscard]] static Manifest build(const ecs::World& world, const input::InputLayout& inputs);
@@ -2142,14 +2142,14 @@ struct ManifestCheck {
     std::string mismatch;              ///< Set on failure: the first difference, for the player.
 };
 
-class RTYPE_REPLICATION_API ManifestReceiver {
+class AYLO_REPLICATION_API ManifestReceiver {
   public:
     bool receive(std::span<const std::byte> message);
     [[nodiscard]] bool isComplete() const noexcept;
     [[nodiscard]] ManifestCheck check(const ecs::World& world, const input::InputLayout& inputs) const;
     [[nodiscard]] const ReplicationSettings& getServerSettings() const noexcept;
 };
-}  // namespace rtype::replication::manifest
+}  // namespace aylo::replication::manifest
 ```
 
 **Tasks.**
@@ -2236,10 +2236,10 @@ replays inputs by sequence).
 
 **API (recommendation).**
 ```c++
-namespace rtype::replication::input {
+namespace aylo::replication::input {
 enum class InputKind : std::uint8_t { kButton = 1, kAxis = 2, kVector2 = 3 };
 
-class RTYPE_REPLICATION_API InputLayout {
+class AYLO_REPLICATION_API InputLayout {
   public:
     void add(std::string name, InputKind kind);
     void freeze() noexcept;
@@ -2264,18 +2264,18 @@ struct InputMessage {
     std::uint32_t lastAppliedSnapshot;
     std::vector<InputSample> inputs;  ///< 1 to 3, oldest first.
 };
-[[nodiscard]] RTYPE_REPLICATION_API network::Bytes encodeInput(const InputMessage& message, const InputLayout& layout);
-[[nodiscard]] RTYPE_REPLICATION_API std::optional<InputMessage> decodeInput(std::span<const std::byte> message,
+[[nodiscard]] AYLO_REPLICATION_API network::Bytes encodeInput(const InputMessage& message, const InputLayout& layout);
+[[nodiscard]] AYLO_REPLICATION_API std::optional<InputMessage> decodeInput(std::span<const std::byte> message,
                                                                             const InputLayout& layout) noexcept;
 
-class RTYPE_REPLICATION_API InputBuffer {
+class AYLO_REPLICATION_API InputBuffer {
   public:
     void push(const InputSample& sample);
     [[nodiscard]] const InputSample& next();
     void reset() noexcept;
     [[nodiscard]] std::uint32_t getLastProcessed() const noexcept;
 };
-}  // namespace rtype::replication::input
+}  // namespace aylo::replication::input
 ```
 
 **Tasks.**
@@ -2437,9 +2437,9 @@ room), NET-38 (engine glue).
 
 **API (recommendation).**
 ```c++
-namespace rtype::replication::server {
+namespace aylo::replication::server {
 /// @brief The server's replication: opens the NetServer, hands out NetworkIds, applies inputs, sends snapshots.
-class RTYPE_REPLICATION_API ServerPlugin : public ecs::Plugin {
+class AYLO_REPLICATION_API ServerPlugin : public ecs::Plugin {
   public:
     static constexpr std::string_view kName = "rtype.replication.server";
     static constexpr std::string_view kApplyInputsSystem = "net.applyInputs";  // game systems run .after() it
@@ -2450,7 +2450,7 @@ class RTYPE_REPLICATION_API ServerPlugin : public ecs::Plugin {
 };
 
 /// @brief The resource: what the systems share.
-class RTYPE_REPLICATION_API ServerState {
+class AYLO_REPLICATION_API ServerState {
   public:
     [[nodiscard]] std::uint32_t getServerTick() const noexcept;
     [[nodiscard]] std::size_t getClientCount() const noexcept;
@@ -2468,13 +2468,13 @@ class RTYPE_REPLICATION_API ServerState {
     std::uint32_t _nextNetworkId{1};
     std::uint32_t _serverTick{0};
 };
-}  // namespace rtype::replication::server
+}  // namespace aylo::replication::server
 ```
 
 **Tasks.**
 - [ ] `snapshot/Snapshot.hpp/.cpp`, `server/ServerState.hpp/.cpp`, `server/ServerPlugin.hpp/.cpp`.
 - [ ] `query/ReplicatedRead.hpp/.cpp`: the `ReplicatedRead` type and its `SystemParam` specialization, declared in
-  `rtype::ecs` in the same header (every file that adds a system taking it includes that header):
+  `aylo::ecs` in the same header (every file that adds a system taking it includes that header):
   - `State`: one `DynamicQuery` with a `kRead` term per id of `getComponents().getRegistry().getReplicatedIds()`,
     built by `init`; a failed `DynamicQuery::create` throws a `ReplicationException` naming the component;
   - `get(state, context)`: a `ReplicatedRead` that keeps the queries, `context.world`'s components and
@@ -2604,11 +2604,11 @@ reconnection), NET-36 (prediction uses the last processed input), NET-38 (engine
 
 **API (recommendation).**
 ```c++
-namespace rtype::replication::client {
+namespace aylo::replication::client {
 enum class ManifestStatus : std::uint8_t { kWaiting, kAccepted, kMismatch };
 
 /// @brief The client's replication: connects, checks the manifest, applies snapshots, sends inputs.
-class RTYPE_REPLICATION_API ClientPlugin : public ecs::Plugin {
+class AYLO_REPLICATION_API ClientPlugin : public ecs::Plugin {
   public:
     static constexpr std::string_view kName = "rtype.replication.client";
     static constexpr std::string_view kSendInputSystem = "net.sendInput";  // the game's input system runs .before() it
@@ -2619,7 +2619,7 @@ class RTYPE_REPLICATION_API ClientPlugin : public ecs::Plugin {
 };
 
 /// @brief The resource: what the systems share, and what the game reads.
-class RTYPE_REPLICATION_API ClientState {
+class AYLO_REPLICATION_API ClientState {
   public:
     [[nodiscard]] ManifestStatus getManifestStatus() const noexcept;
     [[nodiscard]] std::string_view getMismatch() const noexcept;
@@ -2636,7 +2636,7 @@ class RTYPE_REPLICATION_API ClientState {
     std::uint32_t _nextInputSequence{1};
     std::deque<input::InputSample> _recentInputs;  ///< The last three, oldest first.
 };
-}  // namespace rtype::replication::client
+}  // namespace aylo::replication::client
 ```
 
 **Tasks.**
@@ -2852,7 +2852,7 @@ class MessageQueue {
 };
 struct RoomChannel { MessageQueue<ServerEvent> inbox; MessageQueue<ServerCommand> outbox; };
 
-class RTYPE_NETWORK_API NetServerThread {
+class AYLO_NETWORK_API NetServerThread {
   public:
     explicit NetServerThread(NetworkSettings settings);
     void start();                                       // binds, then runs the io_context on the I/O thread
@@ -2891,7 +2891,7 @@ class Room {   // implemented by the game (later: an App, NET-38)
 };
 using RoomFactory = std::function<std::unique_ptr<Room>(network::server::RoomId)>;
 
-class RTYPE_REPLICATION_API RoomManager {
+class AYLO_REPLICATION_API RoomManager {
   public:
     RoomManager(network::server::NetServerThread& server, RoomFactory factory, ReplicationSettings settings);
     network::server::RoomId create();       // thread started, channel registered with the I/O thread
@@ -3046,13 +3046,13 @@ connection with new tokens.
 | M5 | M | NET-14 | [8.1](design.md#81-declaring-a-packet) |
 
 **Summary.** Packet descriptors (name, direction, channel, ordered fields), their schema hash, the
-`RTYPE_REPLICATION_PACKET` macro and the manifest entries.
+`AYLO_REPLICATION_PACKET` macro and the manifest entries.
 
 **Tasks.**
 - [ ] `PacketDescriptor` and `PacketRegistry` (frozen once the manifest is built); field types of design 8.1,
   including `string` with `maxLength`; reserved field name `sender`.
 - [ ] Schema hash exactly as design 8.1 (FNV-1a of name, direction, channel, fields in order).
-- [ ] `RTYPE_REPLICATION_PACKET(Type, "name", direction, channel, fields...)` mirroring `RTYPE_ECS_COMPONENT`
+- [ ] `AYLO_REPLICATION_PACKET(Type, "name", direction, channel, fields...)` mirroring `AYLO_ECS_COMPONENT`
   (reuse its field-description machinery; `Entity` written as a `NetworkId`). C++ packets cannot hold strings in v1
   unless a fixed-capacity string type is added (decide in review).
 - [ ] Every packet is also registered as an ECS event with the packet's name.
@@ -3140,7 +3140,7 @@ left to do once the engine is split.
 
 | Milestone | Size | Blocked by | Design |
 |---|---|---|---|
-| M7 | S | NET-20, NET-39, **ECS `StandalonePlugin`** ([#128](https://github.com/Charles-Mahoudeau/rtype/issues/128)) | [7](design.md#7-replication-rtype-replication), [ECS 20](../ecs/features/20-replication.md#one-server-tick-one-client-frame) |
+| M7 | S | NET-20, NET-39, **ECS `StandalonePlugin`** ([#128](https://github.com/Charles-Mahoudeau/aylo/issues/128)) | [7](design.md#7-replication-aylo-replication), [ECS 20](../ecs/features/20-replication.md#one-server-tick-one-client-frame) |
 
 **Tasks.**
 - [ ] The input glue of the prototype (reads `plugins::input::Input`, fills `PlayerInput` through the `InputLayout`)
@@ -3237,7 +3237,7 @@ check.
 
 | Blocker | Owner | Blocks |
 |---|---|---|
-| ECS `StandalonePlugin` ([#128](https://github.com/Charles-Mahoudeau/rtype/issues/128)) | ECS | NET-38 |
+| ECS `StandalonePlugin` ([#128](https://github.com/Charles-Mahoudeau/aylo/issues/128)) | ECS | NET-38 |
 | ECS hook to finish a plugin's setup once every plugin was built (optional) | ECS | Nothing: `ReplicatedRead` is built when `ServerPlugin` adds its systems, so it is added last, checked by `net.start` |
 | Capsules (`plugin-capsule`, done) | plugins | NET-41 |
 | ECS field network options (quantization) | ECS | NET-42 |

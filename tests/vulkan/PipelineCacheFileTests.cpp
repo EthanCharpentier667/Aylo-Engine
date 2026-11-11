@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** PipelineCacheFileTests
 */
@@ -28,9 +28,9 @@
 
 #include "render/vulkan/pipeline/PipelineCacheFile.hpp"
 
-using rtype::render::vulkan::pipeline::isCompatiblePipelineCache;
-using rtype::render::vulkan::pipeline::readPipelineCacheFile;
-using rtype::render::vulkan::pipeline::writePipelineCacheFile;
+using aylo::render::vulkan::pipeline::isCompatiblePipelineCache;
+using aylo::render::vulkan::pipeline::readPipelineCacheFile;
+using aylo::render::vulkan::pipeline::writePipelineCacheFile;
 
 namespace {
 /// @return The properties of a made-up device: vendor 0x10DE, device 0x2484, a UUID of 1, 2, 3...
@@ -57,7 +57,7 @@ std::vector<std::byte> makeCache(const vk::PhysicalDeviceProperties& properties,
 /// @return The name of a directory no other fixture uses, even in another run of the tests at the same time.
 std::string makeUniqueDirectoryName() {
     std::random_device device;
-    return std::format("rtype_pipeline_cache_tests_{:08x}{:08x}", device(), device());
+    return std::format("aylo_pipeline_cache_tests_{:08x}{:08x}", device(), device());
 }
 
 /// @brief A fresh temporary directory of its own, created by the constructor and removed, with only what it holds, when

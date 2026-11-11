@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ScheduleTests
 */
@@ -14,98 +14,98 @@
 #include <string_view>
 #include <vector>
 
-#include "rtype/ecs/command/Commands.hpp"
-#include "rtype/ecs/component/ComponentTraits.hpp"
-#include "rtype/ecs/event/EventInfo.hpp"
-#include "rtype/ecs/event/EventTraits.hpp"
-#include "rtype/ecs/exceptions/ScheduleException.hpp"
-#include "rtype/ecs/query/Query.hpp"
-#include "rtype/ecs/resource/ResourceTraits.hpp"
-#include "rtype/ecs/schedule/Phase.hpp"
-#include "rtype/ecs/schedule/RunMode.hpp"
-#include "rtype/ecs/schedule/Schedule.hpp"
-#include "rtype/ecs/system/EventReader.hpp"
-#include "rtype/ecs/system/EventWriter.hpp"
-#include "rtype/ecs/system/ResourceParam.hpp"
-#include "rtype/ecs/system/Side.hpp"
-#include "rtype/ecs/system/System.hpp"
-#include "rtype/ecs/type/TypeInfo.hpp"
-#include "rtype/ecs/world/World.hpp"
+#include "aylo/ecs/command/Commands.hpp"
+#include "aylo/ecs/component/ComponentTraits.hpp"
+#include "aylo/ecs/event/EventInfo.hpp"
+#include "aylo/ecs/event/EventTraits.hpp"
+#include "aylo/ecs/exceptions/ScheduleException.hpp"
+#include "aylo/ecs/query/Query.hpp"
+#include "aylo/ecs/resource/ResourceTraits.hpp"
+#include "aylo/ecs/schedule/Phase.hpp"
+#include "aylo/ecs/schedule/RunMode.hpp"
+#include "aylo/ecs/schedule/Schedule.hpp"
+#include "aylo/ecs/system/EventReader.hpp"
+#include "aylo/ecs/system/EventWriter.hpp"
+#include "aylo/ecs/system/ResourceParam.hpp"
+#include "aylo/ecs/system/Side.hpp"
+#include "aylo/ecs/system/System.hpp"
+#include "aylo/ecs/type/TypeInfo.hpp"
+#include "aylo/ecs/world/World.hpp"
 
-namespace rtype::test::schedule {
+namespace aylo::test::schedule {
 struct Marker {};
-RTYPE_ECS_COMPONENT(Marker, "test.schedule.Marker");
+AYLO_ECS_COMPONENT(Marker, "test.schedule.Marker");
 
 struct ServerRuns {
     int count;
 };
-RTYPE_ECS_RESOURCE(ServerRuns, "test.schedule.ServerRuns", count);
+AYLO_ECS_RESOURCE(ServerRuns, "test.schedule.ServerRuns", count);
 
 struct ClientRuns {
     int count;
 };
-RTYPE_ECS_RESOURCE(ClientRuns, "test.schedule.ClientRuns", count);
+AYLO_ECS_RESOURCE(ClientRuns, "test.schedule.ClientRuns", count);
 
 struct BothRuns {
     int count;
 };
-RTYPE_ECS_RESOURCE(BothRuns, "test.schedule.BothRuns", count);
+AYLO_ECS_RESOURCE(BothRuns, "test.schedule.BothRuns", count);
 
 struct SeenInPhase {
     int count;
 };
-RTYPE_ECS_RESOURCE(SeenInPhase, "test.schedule.SeenInPhase", count);
+AYLO_ECS_RESOURCE(SeenInPhase, "test.schedule.SeenInPhase", count);
 
 struct SeenAfterPhase {
     int count;
 };
-RTYPE_ECS_RESOURCE(SeenAfterPhase, "test.schedule.SeenAfterPhase", count);
+AYLO_ECS_RESOURCE(SeenAfterPhase, "test.schedule.SeenAfterPhase", count);
 
 struct Health {
     int value;
 };
-RTYPE_ECS_COMPONENT(Health, "test.schedule.Health", value);
+AYLO_ECS_COMPONENT(Health, "test.schedule.Health", value);
 
 struct Glow {
     float intensity;
 };
-RTYPE_ECS_COMPONENT(Glow, "test.schedule.Glow", intensity);
+AYLO_ECS_COMPONENT(Glow, "test.schedule.Glow", intensity);
 
 struct Score {
     int value;
 };
-RTYPE_ECS_RESOURCE(Score, "test.schedule.Score", value);
+AYLO_ECS_RESOURCE(Score, "test.schedule.Score", value);
 
 struct Hit {
     int damage;
 };
-RTYPE_ECS_EVENT(Hit, "test.schedule.Hit", damage);
+AYLO_ECS_EVENT(Hit, "test.schedule.Hit", damage);
 
 struct Heal {
     int amount;
 };
-RTYPE_ECS_EVENT(Heal, "test.schedule.Heal", amount);
-}  // namespace rtype::test::schedule
+AYLO_ECS_EVENT(Heal, "test.schedule.Heal", amount);
+}  // namespace aylo::test::schedule
 
 namespace {
-using rtype::ecs::Commands;
-using rtype::ecs::EventId;
-using rtype::ecs::Phase;
-using rtype::ecs::Query;
-using rtype::ecs::ResMut;
-using rtype::ecs::RunMode;
-using rtype::ecs::Schedule;
-using rtype::ecs::Side;
-using rtype::ecs::World;
-using rtype::ecs::exceptions::ScheduleException;
-using rtype::test::schedule::BothRuns;
-using rtype::test::schedule::ClientRuns;
-using rtype::test::schedule::Heal;
-using rtype::test::schedule::Hit;
-using rtype::test::schedule::Marker;
-using rtype::test::schedule::SeenAfterPhase;
-using rtype::test::schedule::SeenInPhase;
-using rtype::test::schedule::ServerRuns;
+using aylo::ecs::Commands;
+using aylo::ecs::EventId;
+using aylo::ecs::Phase;
+using aylo::ecs::Query;
+using aylo::ecs::ResMut;
+using aylo::ecs::RunMode;
+using aylo::ecs::Schedule;
+using aylo::ecs::Side;
+using aylo::ecs::World;
+using aylo::ecs::exceptions::ScheduleException;
+using aylo::test::schedule::BothRuns;
+using aylo::test::schedule::ClientRuns;
+using aylo::test::schedule::Heal;
+using aylo::test::schedule::Hit;
+using aylo::test::schedule::Marker;
+using aylo::test::schedule::SeenAfterPhase;
+using aylo::test::schedule::SeenInPhase;
+using aylo::test::schedule::ServerRuns;
 
 void noop() {}
 
@@ -115,28 +115,28 @@ void countBoth(ResMut<BothRuns> runs) { ++runs->count; }
 
 void spawnMarker(Commands& commands) { static_cast<void>(commands.spawn().add(Marker{})); }
 
-void countInPhase(Query<rtype::ecs::With<Marker>> markers, ResMut<SeenInPhase> seen) {
+void countInPhase(Query<aylo::ecs::With<Marker>> markers, ResMut<SeenInPhase> seen) {
     for (auto [entity] : markers) {
         ++seen->count;
     }
 }
 
-void countAfterPhase(Query<rtype::ecs::With<Marker>> markers, ResMut<SeenAfterPhase> seen) {
+void countAfterPhase(Query<aylo::ecs::With<Marker>> markers, ResMut<SeenAfterPhase> seen) {
     for (auto [entity] : markers) {
         ++seen->count;
     }
 }
 
-void writeHealth(Query<rtype::test::schedule::Health> /*healths*/) {}
-void readHealth(Query<const rtype::test::schedule::Health> /*healths*/) {}
-void writeGlow(Query<rtype::test::schedule::Glow> /*glows*/) {}
-void readHealthWriteGlow(Query<const rtype::test::schedule::Health, rtype::test::schedule::Glow> /*both*/) {}
-void writeScore(ResMut<rtype::test::schedule::Score> /*score*/) {}
-void appendScore(rtype::ecs::ResAppend<rtype::test::schedule::Score> /*score*/) {}
-void readScore(rtype::ecs::Res<rtype::test::schedule::Score> /*score*/) {}
-void sendHit(rtype::ecs::EventWriter<Hit> /*hits*/) {}
-void readHit(rtype::ecs::EventReader<Hit> /*hits*/) {}
-void sendHeal(rtype::ecs::EventWriter<Heal> /*heals*/) {}
+void writeHealth(Query<aylo::test::schedule::Health> /*healths*/) {}
+void readHealth(Query<const aylo::test::schedule::Health> /*healths*/) {}
+void writeGlow(Query<aylo::test::schedule::Glow> /*glows*/) {}
+void readHealthWriteGlow(Query<const aylo::test::schedule::Health, aylo::test::schedule::Glow> /*both*/) {}
+void writeScore(ResMut<aylo::test::schedule::Score> /*score*/) {}
+void appendScore(aylo::ecs::ResAppend<aylo::test::schedule::Score> /*score*/) {}
+void readScore(aylo::ecs::Res<aylo::test::schedule::Score> /*score*/) {}
+void sendHit(aylo::ecs::EventWriter<Hit> /*hits*/) {}
+void readHit(aylo::ecs::EventReader<Hit> /*hits*/) {}
+void sendHeal(aylo::ecs::EventWriter<Heal> /*heals*/) {}
 
 /// @return The order of a schedule, as strings, to compare it.
 std::vector<std::string> orderOf(const Schedule& schedule) {
@@ -414,7 +414,7 @@ TEST(Schedule, StandaloneStillRejectsTwoServerSystemsWithNoOrder) {
 TEST(Schedule, ChecksAmbiguitiesWhateverTheRunMode) {
     World world;
     Schedule schedule{world, RunMode::kServer, Phase::kUpdate};
-    world.getComponents().registerType<rtype::test::schedule::Glow>({.presence = rtype::ecs::Presence::kClientOnly});
+    world.getComponents().registerType<aylo::test::schedule::Glow>({.presence = aylo::ecs::Presence::kClientOnly});
     schedule.addSystem("server", &writeGlow);
     schedule.addSystem("client", &writeGlow).setSide(Side::kClient);  // never run on a server
     expectBuildError(schedule, {"'client' and 'server'"});            // they do run together in standalone
@@ -422,7 +422,7 @@ TEST(Schedule, ChecksAmbiguitiesWhateverTheRunMode) {
 
 TEST(Schedule, AcceptsAClientSystemThatWritesClientOnlyComponents) {
     World world;
-    world.getComponents().registerType<rtype::test::schedule::Glow>({.presence = rtype::ecs::Presence::kClientOnly});
+    world.getComponents().registerType<aylo::test::schedule::Glow>({.presence = aylo::ecs::Presence::kClientOnly});
     Schedule schedule{world, RunMode::kClient, Phase::kUpdate};
     schedule.addSystem("glow", &readHealthWriteGlow).setSide(Side::kClient);  // reading a replicated one is fine
     EXPECT_NO_THROW(schedule.build());
@@ -430,8 +430,8 @@ TEST(Schedule, AcceptsAClientSystemThatWritesClientOnlyComponents) {
 
 TEST(Schedule, RefusesAClientSystemThatWritesAReplicatedComponent) {
     World world;
-    world.getComponents().registerType<rtype::test::schedule::Health>(
-        {.replication = rtype::ecs::ReplicationMode::kEveryChange});
+    world.getComponents().registerType<aylo::test::schedule::Health>(
+        {.replication = aylo::ecs::ReplicationMode::kEveryChange});
     Schedule schedule{world, RunMode::kClient, Phase::kUpdate};
     auto config = schedule.addSystem("heal", &writeHealth);
     try {
@@ -447,7 +447,7 @@ TEST(Schedule, RefusesAClientSystemThatWritesAReplicatedComponent) {
 
 TEST(Schedule, RefusesAClientSystemThatWritesAServerOnlyComponent) {
     World world;
-    world.getComponents().registerType<rtype::test::schedule::Health>({.presence = rtype::ecs::Presence::kServerOnly});
+    world.getComponents().registerType<aylo::test::schedule::Health>({.presence = aylo::ecs::Presence::kServerOnly});
     Schedule schedule{world, RunMode::kClient, Phase::kUpdate};
     EXPECT_THROW(schedule.addSystem("heal", &writeHealth).setSide(Side::kClient), ScheduleException);
 }
@@ -460,8 +460,8 @@ TEST(Schedule, AcceptsAClientSystemThatWritesALocalComponent) {
 
 TEST(Schedule, AcceptsAServerOrBothSystemThatWritesAReplicatedComponent) {
     World world;
-    world.getComponents().registerType<rtype::test::schedule::Health>(
-        {.replication = rtype::ecs::ReplicationMode::kEveryChange});
+    world.getComponents().registerType<aylo::test::schedule::Health>(
+        {.replication = aylo::ecs::ReplicationMode::kEveryChange});
     Schedule schedule{world, RunMode::kStandalone, Phase::kUpdate};
     EXPECT_NO_THROW(schedule.addSystem("server", &writeHealth).setSide(Side::kServer));
     EXPECT_NO_THROW(schedule.addSystem("both", &writeHealth).setSide(Side::kBoth));
@@ -506,8 +506,7 @@ namespace {
 template <typename Function>
 Schedule::SystemSpec makeSpec(World& world, const std::string& name, Function function,
                               std::vector<std::string> after = {}, std::vector<std::string> before = {}) {
-    return {
-        .system = rtype::ecs::System{world, name, function}, .after = std::move(after), .before = std::move(before)};
+    return {.system = aylo::ecs::System{world, name, function}, .after = std::move(after), .before = std::move(before)};
 }
 
 /// @brief Expects replaceSystems() to throw a ScheduleException whose message contains @p text.

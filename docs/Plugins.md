@@ -44,17 +44,17 @@ and the materials are in `plugin-shader`.
 | `ui` | The user interface, laid out by Yoga: nodes, widgets, focus | `graphics`, `input`, `text` |
 | `http` | HTTPS requests for scripts: `HttpClient`, `HttpResponse`, `rtype.http.request` (libcurl) | |
 | `json` | JSON for scripts: `rtype.json.encode`, `rtype.json.decode` (nlohmann::json), `engine.json.encode`, `decode`, `tryDecode`, `map` | |
-| `Editor` | The editor (`rtype-editor`, in `src/rtype/editor/`, not a feature of a game): the game in a panel, its entities and their components, the frame rate, scenes and particles edited. Added by the `aylo-editor` program, see [`Editor.md`](Editor.md) | `graphics`, `capsule` |
+| `Editor` | The editor (`aylo-editor`, in `src/aylo/editor/`, not a feature of a game): the game in a panel, its entities and their components, the frame rate, scenes and particles edited. Added by the `aylo-editor` program, see [`Editor.md`](Editor.md) | `graphics`, `capsule` |
 
 A plugin states what it requires in `getDependencies()`. The `App` refuses a plugin whose requirement was not added
 first, naming both, so a program adds a plugin after the ones it requires:
 
 ```cpp
-app.addPlugin(rtype::plugins::transform::TransformPlugin{});
-app.addPlugin(rtype::plugins::input::InputPlugin{});
-app.addPlugin(rtype::plugins::graphics::GraphicsPlugin{std::move(backends), settings});
-app.addPlugin(rtype::plugins::shader::ShaderPlugin{});
-app.addPlugin(rtype::plugins::text::TextPlugin{});
+app.addPlugin(aylo::plugins::transform::TransformPlugin{});
+app.addPlugin(aylo::plugins::input::InputPlugin{});
+app.addPlugin(aylo::plugins::graphics::GraphicsPlugin{std::move(backends), settings});
+app.addPlugin(aylo::plugins::shader::ShaderPlugin{});
+app.addPlugin(aylo::plugins::text::TextPlugin{});
 ```
 
 ### What every game has
@@ -76,8 +76,8 @@ A plugin links the plugins whose code it uses. `physics-debug` links `physics` f
 `PhysicsPlugin`, as it only reads the component. `sprite` links `graphics` and `shader` for `SpriteDrawPlugin`, so a
 server that adds `SpritePlugin` loads them, though it opens no window.
 
-Headers of a shared library export what other binaries use: `RTYPE_<TARGET>_API` on classes and functions that have
-code in a `.cpp`, `RTYPE_HEADER_ONLY_API` on the interfaces and exceptions that have none. The `detail/` functions the
+Headers of a shared library export what other binaries use: `AYLO_<TARGET>_API` on classes and functions that have
+code in a `.cpp`, `AYLO_HEADER_ONLY_API` on the interfaces and exceptions that have none. The `detail/` functions the
 tests call are exported too.
 
 ## Loading
@@ -117,17 +117,17 @@ one rather than crash later. Raise `kLibraryAbiVersion` when `LibraryEntry` or `
 
 ### Entry points
 
-A library exports one C function. A plugin library writes it with `RTYPE_PLUGIN_LIBRARY`:
+A library exports one C function. A plugin library writes it with `AYLO_PLUGIN_LIBRARY`:
 
 ```cpp
-RTYPE_PLUGIN_LIBRARY(registrar) {
-    registrar.getPlugins().add("game.Boss", [](const rtype::core::config::Settings& settings) {
+AYLO_PLUGIN_LIBRARY(registrar) {
+    registrar.getPlugins().add("game.Boss", [](const aylo::core::config::Settings& settings) {
         return std::make_unique<BossPlugin>(settings);
     });
 }
 ```
 
-A backend knows no ECS, so it writes `RTYPE_LIBRARY` and fills the registry it finds. The plugin that owns the registry
+A backend knows no ECS, so it writes `AYLO_LIBRARY` and fills the registry it finds. The plugin that owns the registry
 offers it under a name the contract declares, such as `kRendererRegistryService`, and takes it back when it is built.
 It also offers the registry's names (`LibraryRegistrar::provideNames()`), so what does not know the contract can list
 the backends each library brings: the game export ([release/export.md](release/export.md)) keeps only the libraries of
@@ -154,7 +154,7 @@ id the asset would have. They test `engine.hasCall()` for that, and use `engine.
 
 Three steps, and no file of the engine changes:
 
-1. A folder `<game>/plugins/<name>/`, with the sources, one `RTYPE_PLUGIN_LIBRARY`, and this `xmake.lua`:
+1. A folder `<game>/plugins/<name>/`, with the sources, one `AYLO_PLUGIN_LIBRARY`, and this `xmake.lua`:
 
    ```lua
    target("game-boss")

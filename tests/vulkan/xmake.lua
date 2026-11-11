@@ -8,6 +8,6 @@ target("vulkan-tests")
     add_rules("glsl.spirv")
     add_files("shaders/*.vert")
     -- The renderer's shader headers, so a test shader checks they compile together (ShaderLayout.glsl).
-    set_values("glsl.includedirs", path.join(os.projectdir(), "src/rtype/render/vulkan/shaders/include"))
+    set_values("glsl.includedirs", path.join(os.projectdir(), "src/aylo/render/vulkan/shaders/include"))
     add_packages("gtest", "glslang")
     add_tests("default")

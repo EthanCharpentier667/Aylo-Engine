@@ -1,6 +1,6 @@
 # Tilemaps and parallax
 
-The tilemap plugin (`src/rtype/plugins/tilemap/`, `rtype::plugins::tilemap`) draws levels made in
+The tilemap plugin (`src/aylo/plugins/tilemap/`, `aylo::plugins::tilemap`) draws levels made in
 [Tiled](https://www.mapeditor.org/) and parallax backgrounds. It knows nothing of the renderer: it pushes the sprites
 of the tiles the camera shows to the backend's `SpriteQueue`, which the `GraphicsPlugin` draws with the sprite entities.
 The game adds it, after `GraphicsPlugin`, which it requires.

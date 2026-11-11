@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ShaderAssetsTests
 */
@@ -16,14 +16,14 @@
 #include <system_error>
 #include <vector>
 
+#include "aylo/ecs/resource/ResourceTraits.hpp"
 #include "core/asset/AssetId.hpp"
 #include "plugins/shader/ShaderAssets.hpp"
-#include "rtype/ecs/resource/ResourceTraits.hpp"
 
-using rtype::core::asset::AssetId;
-using rtype::plugins::shader::ShaderAssets;
+using aylo::core::asset::AssetId;
+using aylo::plugins::shader::ShaderAssets;
 
-static_assert(rtype::ecs::Resource<ShaderAssets>);
+static_assert(aylo::ecs::Resource<ShaderAssets>);
 
 namespace {
 /// @brief A minimal valid shader.
@@ -37,7 +37,7 @@ class TemporaryFile {
   public:
     TemporaryFile(const std::string& name, std::string_view text)
         : _directory{std::filesystem::temp_directory_path() /
-                     std::format("rtype_shader_assets_{:08x}", std::random_device{}())},
+                     std::format("aylo_shader_assets_{:08x}", std::random_device{}())},
           _path{_directory / name} {
         std::filesystem::create_directories(_directory);
         std::ofstream{_path, std::ios::binary} << text;
@@ -98,7 +98,7 @@ TEST(ShaderAssets, RecordsAShaderThatDoesNotCompile) {
 
 TEST(ShaderAssets, RecordsAMissingFile) {
     ShaderAssets shaders;
-    const AssetId id = shaders.load(std::filesystem::temp_directory_path() / "rtype_missing_shader.glsl");
+    const AssetId id = shaders.load(std::filesystem::temp_directory_path() / "aylo_missing_shader.glsl");
     EXPECT_EQ(shaders.get(id), nullptr);
     ASSERT_NE(shaders.getEntry(id), nullptr);
     EXPECT_FALSE(shaders.getEntry(id)->error.empty());

@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** TextPluginTests
 */
@@ -15,6 +15,13 @@
 
 #include "FakeBackend.hpp"
 #include "TestImages.hpp"
+#include "aylo/contract/renderer/drawing/Text.hpp"
+#include "aylo/contract/renderer/math/Rect.hpp"
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/entity/Entity.hpp"
+#include "aylo/ecs/schedule/RunMode.hpp"
+#include "aylo/ecs/time/TimePlugin.hpp"
+#include "aylo/ecs/world/World.hpp"
 #include "core/asset/AssetId.hpp"
 #include "plugins/graphics/GraphicsPlugin.hpp"
 #include "plugins/graphics/TextureAssets.hpp"
@@ -28,33 +35,26 @@
 #include "plugins/text/TextPlugin.hpp"
 #include "plugins/text/TextRenderer.hpp"
 #include "plugins/transform/Transform.hpp"
-#include "rtype/contract/renderer/drawing/Text.hpp"
-#include "rtype/contract/renderer/math/Rect.hpp"
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/entity/Entity.hpp"
-#include "rtype/ecs/schedule/RunMode.hpp"
-#include "rtype/ecs/time/TimePlugin.hpp"
-#include "rtype/ecs/world/World.hpp"
 
-using rtype::contract::renderer::math::Rect;
-using rtype::core::asset::AssetId;
-using rtype::plugins::text::Font;
-using rtype::plugins::text::FontAssets;
-using rtype::plugins::text::Glyph;
-using rtype::plugins::text::TextRenderer;
-using rtype::plugins::transform::Transform;
+using aylo::contract::renderer::math::Rect;
+using aylo::core::asset::AssetId;
+using aylo::plugins::text::Font;
+using aylo::plugins::text::FontAssets;
+using aylo::plugins::text::Glyph;
+using aylo::plugins::text::TextRenderer;
+using aylo::plugins::transform::Transform;
 
 namespace {
 /// @brief An App with the GraphicsPlugin over the fake backend, and the font "ui": an 'A' one em high and half an em
 /// wide, the baseline one em down, lines 1.5 ems apart, its atlas font.png (2x1 pixels) loaded.
 class TextApp {
   public:
-    TextApp() : _state{std::make_shared<rtype::test::plugins::FakeBackendState>()}, _app{rtype::ecs::RunMode::kClient} {
-        rtype::test::plugins::addDrawingPlugins(_app, rtype::test::plugins::makeFakeRegistry(_state),
-                                                rtype::test::plugins::makeFakeSettings());
-        _app.addPlugin(rtype::ecs::TimePlugin::manual(std::chrono::seconds{1}));
-        static_cast<void>(world().getResources().getMut<rtype::plugins::graphics::TextureAssets>()->load(
-            "font.png", rtype::test::plugins::twoPixelPng()));
+    TextApp() : _state{std::make_shared<aylo::test::plugins::FakeBackendState>()}, _app{aylo::ecs::RunMode::kClient} {
+        aylo::test::plugins::addDrawingPlugins(_app, aylo::test::plugins::makeFakeRegistry(_state),
+                                               aylo::test::plugins::makeFakeSettings());
+        _app.addPlugin(aylo::ecs::TimePlugin::manual(std::chrono::seconds{1}));
+        static_cast<void>(world().getResources().getMut<aylo::plugins::graphics::TextureAssets>()->load(
+            "font.png", aylo::test::plugins::twoPixelPng()));
         Font font{"font.png", {}, 3.0F, Font::Metrics{.lineHeight = 1.5F, .ascender = -1.0F, .descender = 0.5F}};
         font.addGlyph(U'A', Glyph{.advance = 0.5F,
                                   .plane = Rect{{0.0F, -1.0F}, {0.5F, 1.0F}},
@@ -67,21 +67,21 @@ class TextApp {
     TextApp(TextApp&& other) = delete;
     TextApp& operator=(TextApp&& other) = delete;
 
-    [[nodiscard]] rtype::ecs::App& app() noexcept { return _app; }
-    [[nodiscard]] rtype::ecs::World& world() noexcept { return _app.getWorld(); }
-    [[nodiscard]] rtype::test::plugins::FakeBackendState& state() noexcept { return *_state; }
+    [[nodiscard]] aylo::ecs::App& app() noexcept { return _app; }
+    [[nodiscard]] aylo::ecs::World& world() noexcept { return _app.getWorld(); }
+    [[nodiscard]] aylo::test::plugins::FakeBackendState& state() noexcept { return *_state; }
     [[nodiscard]] AssetId font() const noexcept { return _font; }
 
     /// @brief Spawns an entity at @p position drawing @p text.
-    rtype::ecs::Entity spawnText(glm::vec2 position, TextRenderer text) {
-        const rtype::ecs::Entity entity = world().spawn();
+    aylo::ecs::Entity spawnText(glm::vec2 position, TextRenderer text) {
+        const aylo::ecs::Entity entity = world().spawn();
         world().getComponents().add(entity, Transform{.position = position});
         world().getComponents().add(entity, std::move(text));
         return entity;
     }
 
     /// @return The texts drawn by one more frame.
-    std::vector<rtype::contract::renderer::Text> drawFrame() {
+    std::vector<aylo::contract::renderer::Text> drawFrame() {
         _state->texts.clear();
         _state->drawOrder.clear();
         _app.runFrame();
@@ -89,15 +89,15 @@ class TextApp {
     }
 
   private:
-    std::shared_ptr<rtype::test::plugins::FakeBackendState> _state;  ///< Drives the fakes.
-    rtype::ecs::App _app;                                            ///< The App under test.
-    AssetId _font;                                                   ///< The font "ui".
+    std::shared_ptr<aylo::test::plugins::FakeBackendState> _state;  ///< Drives the fakes.
+    aylo::ecs::App _app;                                            ///< The App under test.
+    AssetId _font;                                                  ///< The font "ui".
 };
 }  // namespace
 
 TEST(TextPlugin, ComesWithTheGraphicsPlugin) {
     TextApp app;
-    EXPECT_TRUE(app.app().hasPlugin(rtype::plugins::text::TextPlugin::kName));
+    EXPECT_TRUE(app.app().hasPlugin(aylo::plugins::text::TextPlugin::kName));
     EXPECT_TRUE(app.world().getResources().has<FontAssets>());
     EXPECT_TRUE(app.world().getComponents().find("rtype.TextRenderer"));
 }
@@ -109,7 +109,7 @@ TEST(TextPlugin, DrawsATextAtItsEntity) {
         TextRenderer{.text = "AA", .font = app.font(), .size = 10.0F, .color = {1.0F, 0.0F, 0.0F, 1.0F}}));
     const auto texts = app.drawFrame();
     ASSERT_EQ(texts.size(), 1U);
-    const rtype::contract::renderer::Text& text = texts.at(0);
+    const aylo::contract::renderer::Text& text = texts.at(0);
     EXPECT_EQ(text.position, (glm::vec2{100.0F, 50.0F}));
     EXPECT_EQ(text.glyphs.size(), 2U);
     EXPECT_FLOAT_EQ(text.glyphs.at(1).bounds.getX(), 5.0F);
@@ -121,20 +121,20 @@ TEST(TextPlugin, DrawsATextAtItsEntity) {
 TEST(TextPlugin, DrawsATextWithItsMaterialAndInstanceValues) {
     TextApp app;
     app.state().shaders = true;
-    rtype::ecs::World& world = app.app().getWorld();
-    auto& shaders = *world.getResources().getMut<rtype::plugins::shader::ShaderAssets>();
-    const rtype::core::asset::AssetId shader =
+    aylo::ecs::World& world = app.app().getWorld();
+    auto& shaders = *world.getResources().getMut<aylo::plugins::shader::ShaderAssets>();
+    const aylo::core::asset::AssetId shader =
         shaders.add("flash", "instance uniform float flash = 0.25;\nvoid fragment() { COLOR.rgb += flash; }\n");
-    const rtype::core::asset::AssetId material =
-        world.getResources().getMut<rtype::plugins::shader::MaterialAssets>()->add("hit", {.shader = shader});
-    const rtype::ecs::Entity entity =
+    const aylo::core::asset::AssetId material =
+        world.getResources().getMut<aylo::plugins::shader::MaterialAssets>()->add("hit", {.shader = shader});
+    const aylo::ecs::Entity entity =
         app.spawnText({0.0F, 0.0F}, TextRenderer{.text = "A", .font = app.font(), .material = material});
-    const rtype::contract::renderer::CompiledShader& compiled = *shaders.get(shader);
+    const aylo::contract::renderer::CompiledShader& compiled = *shaders.get(shader);
     world.getComponents().add(entity,
-                              rtype::plugins::shader::MaterialInstance::of(compiled).set(compiled, "flash", 0.75F));
+                              aylo::plugins::shader::MaterialInstance::of(compiled).set(compiled, "flash", 0.75F));
     const auto texts = app.drawFrame();
     ASSERT_EQ(texts.size(), 1U);
-    EXPECT_NE(texts.at(0).material, rtype::contract::renderer::MaterialId{});
+    EXPECT_NE(texts.at(0).material, aylo::contract::renderer::MaterialId{});
     EXPECT_FLOAT_EQ(texts.at(0).instanceValues[0].x, 0.75F);
 }
 
@@ -142,10 +142,10 @@ TEST(TextPlugin, DrawsATextWithTheDefaultMaterialUntilItsIsCreated) {
     TextApp app;
     static_cast<void>(app.spawnText(
         {0.0F, 0.0F},
-        TextRenderer{.text = "A", .font = app.font(), .material = rtype::core::asset::AssetId::fromPath("hit")}));
+        TextRenderer{.text = "A", .font = app.font(), .material = aylo::core::asset::AssetId::fromPath("hit")}));
     const auto texts = app.drawFrame();
     ASSERT_EQ(texts.size(), 1U);
-    EXPECT_EQ(texts.at(0).material, rtype::contract::renderer::MaterialId{});
+    EXPECT_EQ(texts.at(0).material, aylo::contract::renderer::MaterialId{});
 }
 
 TEST(TextPlugin, PivotsATextOnItsAnchor) {
@@ -167,10 +167,10 @@ TEST(TextPlugin, SkipsATextWithoutItsFont) {
 TEST(TextPlugin, SortsTheTextsWithTheSpritesByLayer) {
     TextApp app;
     static_cast<void>(app.spawnText({0.0F, 0.0F}, TextRenderer{.text = "A", .font = app.font(), .layer = 10}));
-    const rtype::ecs::Entity ship = app.world().spawn();
+    const aylo::ecs::Entity ship = app.world().spawn();
     app.world().getComponents().add(ship, Transform{});
     app.world().getComponents().add(
-        ship, rtype::plugins::sprite::SpriteRenderer{.texture = AssetId::fromPath("font.png"), .layer = 5});
+        ship, aylo::plugins::sprite::SpriteRenderer{.texture = AssetId::fromPath("font.png"), .layer = 5});
     static_cast<void>(app.drawFrame());
     EXPECT_EQ(app.state().drawOrder, (std::vector<char>{'s', 't'}));  // The text, layer 10, on top.
 }

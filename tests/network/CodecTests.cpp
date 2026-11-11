@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** CodecTests
 */
@@ -16,13 +16,13 @@
 #include <variant>
 #include <vector>
 
-#include "rtype/network/Types.hpp"
-#include "rtype/network/bytes/ByteWriter.hpp"
-#include "rtype/network/bytes/Codec.hpp"
-#include "rtype/network/bytes/Overloaded.hpp"
-#include "rtype/network/bytes/SizeStream.hpp"
+#include "aylo/network/Types.hpp"
+#include "aylo/network/bytes/ByteWriter.hpp"
+#include "aylo/network/bytes/Codec.hpp"
+#include "aylo/network/bytes/Overloaded.hpp"
+#include "aylo/network/bytes/SizeStream.hpp"
 
-namespace bytes = rtype::network::bytes;
+namespace bytes = aylo::network::bytes;
 
 namespace {
 enum class ToyKind : std::uint8_t {
@@ -66,7 +66,7 @@ struct Flags {
     static constexpr ToyKind kKind = ToyKind::kFlags;
     bool enabled{false};
     Color color{Color::kRed};
-    rtype::network::DisconnectReason reason{rtype::network::DisconnectReason::kGraceful};
+    aylo::network::DisconnectReason reason{aylo::network::DisconnectReason::kGraceful};
 
     template <typename Self, typename Stream>
     static void serialize(Self& self, Stream& stream) {
@@ -190,13 +190,13 @@ using ToyMessage = std::variant<Scalars, Flags, Label, Items, Padded, Tail, Mark
 using ToyCodec = bytes::Codec<ToyKind, ToyMessage>;
 
 template <typename M>
-rtype::network::Bytes encodeOf(const M& message) {
+aylo::network::Bytes encodeOf(const M& message) {
     return ToyCodec::encode(message);
 }
 
 template <typename M>
 std::optional<M> roundTrip(const M& message) {
-    const rtype::network::Bytes encoded = ToyCodec::encode(message);
+    const aylo::network::Bytes encoded = ToyCodec::encode(message);
     const std::optional<ToyMessage> decoded = ToyCodec::decode(encoded);
     if (!decoded || !std::holds_alternative<M>(*decoded)) {
         return std::nullopt;
@@ -220,7 +220,7 @@ TEST(Codec, RoundTripsEveryScalarType) {
 }
 
 TEST(Codec, RoundTripsBoolAndEnums) {
-    const Flags message{.enabled = true, .color = Color::kBlue, .reason = rtype::network::DisconnectReason::kKicked};
+    const Flags message{.enabled = true, .color = Color::kBlue, .reason = aylo::network::DisconnectReason::kKicked};
 
     EXPECT_EQ(roundTrip(message), message);
 }
@@ -241,13 +241,13 @@ TEST(Codec, RoundTripsBytesAndConstants) {
 }
 
 TEST(Codec, WritesTheKindByteThenLittleEndianFields) {
-    const rtype::network::Bytes encoded = encodeOf(Marked{.value = 0x0102});
+    const aylo::network::Bytes encoded = encodeOf(Marked{.value = 0x0102});
 
     EXPECT_EQ(encoded, toBytes({0x07, 0xEF, 0xBE, 0x02, 0x01}));
 }
 
 TEST(Codec, DecodeReturnsTheRightAlternative) {
-    const rtype::network::Bytes encoded = encodeOf(Padded{.value = 9});
+    const aylo::network::Bytes encoded = encodeOf(Padded{.value = 9});
     const std::optional<ToyMessage> decoded = ToyCodec::decode(encoded);
 
     ASSERT_TRUE(decoded);
@@ -266,7 +266,7 @@ TEST(Codec, RejectsAnUnknownKind) {
 }
 
 TEST(Codec, RejectsInputTruncatedAtEveryByte) {
-    const rtype::network::Bytes full = encodeOf(Scalars{.a = 1, .b = 2, .c = 3, .d = 4, .e = 5, .f = 6});
+    const aylo::network::Bytes full = encodeOf(Scalars{.a = 1, .b = 2, .c = 3, .d = 4, .e = 5, .f = 6});
 
     for (std::size_t size = 0; size < full.size(); ++size) {
         EXPECT_FALSE(ToyCodec::decode(std::span{full}.first(size))) << "size " << size;
@@ -275,7 +275,7 @@ TEST(Codec, RejectsInputTruncatedAtEveryByte) {
 }
 
 TEST(Codec, RejectsOneByteLeftOver) {
-    rtype::network::Bytes encoded = encodeOf(Marked{.value = 1});
+    aylo::network::Bytes encoded = encodeOf(Marked{.value = 1});
     encoded.push_back(std::byte{0});
 
     EXPECT_FALSE(ToyCodec::decode(encoded));
@@ -331,7 +331,7 @@ TEST(Codec, EncodeFailsOnALimitBrokenByTheMessage) {
 }
 
 TEST(Codec, PadToWritesZerosOnTheWritingSide) {
-    const rtype::network::Bytes encoded = encodeOf(Padded{.value = 0x01020304});
+    const aylo::network::Bytes encoded = encodeOf(Padded{.value = 0x01020304});
 
     EXPECT_EQ(encoded, toBytes({0x05, 4, 3, 2, 1, 0, 0, 0}));
 }
@@ -373,7 +373,7 @@ TEST(Codec, RestCanBeEmpty) {
 
 TEST(Codec, RestIsWrittenAfterTheFields) {
     const std::vector<std::byte> payload = toBytes({7, 8});
-    const rtype::network::Bytes encoded = encodeOf(Tail{.head = 1, .payload = payload});
+    const aylo::network::Bytes encoded = encodeOf(Tail{.head = 1, .payload = payload});
 
     EXPECT_EQ(encoded, toBytes({0x06, 1, 7, 8}));
 }

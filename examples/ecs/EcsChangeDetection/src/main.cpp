@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** main
 */
@@ -13,23 +13,23 @@
 #include <iostream>
 #include <optional>
 
-#include "rtype/ecs/change/ComponentTicks.hpp"
-#include "rtype/ecs/change/Mut.hpp"
-#include "rtype/ecs/component/ComponentTraits.hpp"
-#include "rtype/ecs/component/Components.hpp"
-#include "rtype/ecs/entity/Entity.hpp"
-#include "rtype/ecs/query/Query.hpp"
-#include "rtype/ecs/query/QueryTerms.hpp"
-#include "rtype/ecs/system/System.hpp"
-#include "rtype/ecs/world/World.hpp"
+#include "aylo/ecs/change/ComponentTicks.hpp"
+#include "aylo/ecs/change/Mut.hpp"
+#include "aylo/ecs/component/ComponentTraits.hpp"
+#include "aylo/ecs/component/Components.hpp"
+#include "aylo/ecs/entity/Entity.hpp"
+#include "aylo/ecs/query/Query.hpp"
+#include "aylo/ecs/query/QueryTerms.hpp"
+#include "aylo/ecs/system/System.hpp"
+#include "aylo/ecs/world/World.hpp"
 
-using namespace rtype::ecs;
+using namespace aylo::ecs;
 
 namespace {
 struct Health {
     int value;
 };
-RTYPE_ECS_COMPONENT(Health, "example.Health", value);
+AYLO_ECS_COMPONENT(Health, "example.Health", value);
 
 /// @brief Lists the entities whose Health was added or written since this system last ran.
 void reportChanged(Query<const Health, Changed<Health>> query) {

@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ValuePackTests
 */
@@ -11,29 +11,29 @@
 #include <string>
 #include <utility>
 
-#include "rtype/luau/ErrorKind.hpp"
-#include "rtype/luau/Function.hpp"
-#include "rtype/luau/Ref.hpp"
-#include "rtype/luau/Runtime.hpp"
-#include "rtype/luau/RuntimeConfig.hpp"
-#include "rtype/luau/Table.hpp"
-#include "rtype/luau/Value.hpp"
-#include "rtype/luau/ValuePack.hpp"
-#include "rtype/luau/detail/RawState.hpp"
-#include "rtype/luau/detail/Stack.hpp"
+#include "aylo/luau/ErrorKind.hpp"
+#include "aylo/luau/Function.hpp"
+#include "aylo/luau/Ref.hpp"
+#include "aylo/luau/Runtime.hpp"
+#include "aylo/luau/RuntimeConfig.hpp"
+#include "aylo/luau/Table.hpp"
+#include "aylo/luau/Value.hpp"
+#include "aylo/luau/ValuePack.hpp"
+#include "aylo/luau/detail/RawState.hpp"
+#include "aylo/luau/detail/Stack.hpp"
 
 namespace {
-using Value = rtype::luau::Value;
-using ValuePack = rtype::luau::ValuePack;
+using Value = aylo::luau::Value;
+using ValuePack = aylo::luau::ValuePack;
 
 /// @brief More values than a Lua stack can hold (Luau caps it at 8000 slots).
 constexpr std::size_t kTooManyValues = 10000;
 
 /// @brief Creates a runtime with the standard libraries, failing the test if it cannot be created.
-rtype::luau::Runtime makeRuntime() {
-    auto runtime = rtype::luau::Runtime::create({
-        .libs = rtype::luau::RuntimeConfig::Libs::kStandard,
-        .optimizationLevel = rtype::luau::RuntimeConfig::OptimizationLevel::kStandard,
+aylo::luau::Runtime makeRuntime() {
+    auto runtime = aylo::luau::Runtime::create({
+        .libs = aylo::luau::RuntimeConfig::Libs::kStandard,
+        .optimizationLevel = aylo::luau::RuntimeConfig::OptimizationLevel::kStandard,
     });
     EXPECT_TRUE(runtime);
     return std::move(*runtime);
@@ -85,14 +85,14 @@ TEST(ValuePack, PushReturnsValueCount) {
     pack.add({false});
     pack.add({3.0});
 
-    EXPECT_EQ(rtype::luau::detail::pushValuePack(rtype::luau::detail::rawState(runtime), pack).value(), 3U);
+    EXPECT_EQ(aylo::luau::detail::pushValuePack(aylo::luau::detail::rawState(runtime), pack).value(), 3U);
 }
 
 TEST(ValuePack, PushWithoutValuesReturnsZero) {
     const auto runtime = makeRuntime();
     const ValuePack pack{};
 
-    EXPECT_EQ(rtype::luau::detail::pushValuePack(rtype::luau::detail::rawState(runtime), pack).value(), 0U);
+    EXPECT_EQ(aylo::luau::detail::pushValuePack(aylo::luau::detail::rawState(runtime), pack).value(), 0U);
 }
 
 TEST(ValuePack, PushGrowsStackBeyondMinimum) {
@@ -104,7 +104,7 @@ TEST(ValuePack, PushGrowsStackBeyondMinimum) {
         pack.add({static_cast<double>(i)});
     }
 
-    EXPECT_EQ(rtype::luau::detail::pushValuePack(rtype::luau::detail::rawState(runtime), pack).value(), kValueCount);
+    EXPECT_EQ(aylo::luau::detail::pushValuePack(aylo::luau::detail::rawState(runtime), pack).value(), kValueCount);
 }
 
 TEST(ValuePack, PushFailsWithStackOverflowWhenStackCannotGrow) {
@@ -114,22 +114,22 @@ TEST(ValuePack, PushFailsWithStackOverflowWhenStackCannotGrow) {
         pack.add({0.0});
     }
 
-    const auto pushed = rtype::luau::detail::pushValuePack(rtype::luau::detail::rawState(runtime), pack);
+    const auto pushed = aylo::luau::detail::pushValuePack(aylo::luau::detail::rawState(runtime), pack);
 
     ASSERT_FALSE(pushed);
-    EXPECT_EQ(pushed.error().kind(), rtype::luau::ErrorKind::kStackOverflow);
+    EXPECT_EQ(pushed.error().kind(), aylo::luau::ErrorKind::kStackOverflow);
 }
 
 TEST(ValuePack, PushFailsForTableOfAnotherState) {
     const auto runtime = makeRuntime();
     const auto foreign = makeRuntime();
     ValuePack pack{};
-    pack.add({rtype::luau::Table::create(foreign).value()});
+    pack.add({aylo::luau::Table::create(foreign).value()});
 
-    const auto pushed = rtype::luau::detail::pushValuePack(rtype::luau::detail::rawState(runtime), pack);
+    const auto pushed = aylo::luau::detail::pushValuePack(aylo::luau::detail::rawState(runtime), pack);
 
     ASSERT_FALSE(pushed);
-    EXPECT_EQ(pushed.error().kind(), rtype::luau::ErrorKind::kRuntime);
+    EXPECT_EQ(pushed.error().kind(), aylo::luau::ErrorKind::kRuntime);
 }
 
 TEST(ValuePack, FromStackReadsRangeInOrder) {
@@ -138,9 +138,9 @@ TEST(ValuePack, FromStackReadsRangeInOrder) {
     pushed.add({std::string{"first"}});
     pushed.add({2.0});
     pushed.add({true});
-    ASSERT_EQ(rtype::luau::detail::pushValuePack(rtype::luau::detail::rawState(runtime), pushed).value(), 3U);
+    ASSERT_EQ(aylo::luau::detail::pushValuePack(aylo::luau::detail::rawState(runtime), pushed).value(), 3U);
 
-    const auto pack = rtype::luau::detail::readValuePack(rtype::luau::detail::rawState(runtime), 2, 2);
+    const auto pack = aylo::luau::detail::readValuePack(aylo::luau::detail::rawState(runtime), 2, 2);
 
     ASSERT_TRUE(pack);
     ASSERT_EQ(pack->size(), 2U);
@@ -152,10 +152,10 @@ TEST(ValuePack, FromStackDoesNotPop) {
     const auto runtime = makeRuntime();
     ValuePack pushed{};
     pushed.add({1.0});
-    ASSERT_EQ(rtype::luau::detail::pushValuePack(rtype::luau::detail::rawState(runtime), pushed).value(), 1U);
+    ASSERT_EQ(aylo::luau::detail::pushValuePack(aylo::luau::detail::rawState(runtime), pushed).value(), 1U);
 
-    ASSERT_TRUE(rtype::luau::detail::readValuePack(rtype::luau::detail::rawState(runtime), 1, 1));
-    const auto pack = rtype::luau::detail::readValuePack(rtype::luau::detail::rawState(runtime), 1, 1);
+    ASSERT_TRUE(aylo::luau::detail::readValuePack(aylo::luau::detail::rawState(runtime), 1, 1));
+    const auto pack = aylo::luau::detail::readValuePack(aylo::luau::detail::rawState(runtime), 1, 1);
 
     ASSERT_TRUE(pack);
     ASSERT_EQ(pack->size(), 1U);
@@ -165,7 +165,7 @@ TEST(ValuePack, FromStackDoesNotPop) {
 TEST(ValuePack, FromStackWithZeroCountIsEmpty) {
     const auto runtime = makeRuntime();
 
-    const auto pack = rtype::luau::detail::readValuePack(rtype::luau::detail::rawState(runtime), 1, 0);
+    const auto pack = aylo::luau::detail::readValuePack(aylo::luau::detail::rawState(runtime), 1, 0);
 
     ASSERT_TRUE(pack);
     EXPECT_EQ(pack->size(), 0U);
@@ -175,15 +175,15 @@ TEST(ValuePack, FromStackFailsWithPositionOfUnreadableValue) {
     const auto runtime = makeRuntime();
     const auto script = runtime.load("chunk", "return 1, coroutine.create(function() end)");
     ASSERT_TRUE(script);
-    script->closure().push(rtype::luau::detail::rawState(runtime));
+    script->closure().push(aylo::luau::detail::rawState(runtime));
     const auto function =
-        rtype::luau::Function::fromRef(rtype::luau::Ref::pop(rtype::luau::detail::rawState(runtime)), "chunk");
+        aylo::luau::Function::fromRef(aylo::luau::Ref::pop(aylo::luau::detail::rawState(runtime)), "chunk");
 
     // A thread cannot be read yet: calling the function pops its results with ValuePack::pop.
     const auto pack = function.call();
 
     ASSERT_FALSE(pack);
-    EXPECT_EQ(pack.error().kind(), rtype::luau::ErrorKind::kTypeMismatch);
+    EXPECT_EQ(pack.error().kind(), aylo::luau::ErrorKind::kTypeMismatch);
     EXPECT_TRUE(pack.error().message().starts_with("value #2: ")) << pack.error().message();
 }
 
@@ -193,16 +193,16 @@ TEST(ValuePack, PopReadsTopValuesInOrderAndPopsThem) {
     pushed.add({std::string{"bottom"}});
     pushed.add({1.0});
     pushed.add({2.0});
-    ASSERT_EQ(rtype::luau::detail::pushValuePack(rtype::luau::detail::rawState(runtime), pushed).value(), 3U);
+    ASSERT_EQ(aylo::luau::detail::pushValuePack(aylo::luau::detail::rawState(runtime), pushed).value(), 3U);
 
-    const auto pack = rtype::luau::detail::popValuePack(rtype::luau::detail::rawState(runtime), 2);
+    const auto pack = aylo::luau::detail::popValuePack(aylo::luau::detail::rawState(runtime), 2);
 
     ASSERT_TRUE(pack);
     ASSERT_EQ(pack->size(), 2U);
     EXPECT_EQ(pack->values()[0].as<double>(), 1.0);
     EXPECT_EQ(pack->values()[1].as<double>(), 2.0);
     // Only the bottom value is left.
-    const auto rest = rtype::luau::detail::popValuePack(rtype::luau::detail::rawState(runtime), 1);
+    const auto rest = aylo::luau::detail::popValuePack(aylo::luau::detail::rawState(runtime), 1);
     ASSERT_TRUE(rest);
     ASSERT_EQ(rest->size(), 1U);
     EXPECT_EQ(rest->values()[0].as<std::string>(), "bottom");
@@ -211,7 +211,7 @@ TEST(ValuePack, PopReadsTopValuesInOrderAndPopsThem) {
 TEST(ValuePack, PopWithZeroCountIsEmpty) {
     const auto runtime = makeRuntime();
 
-    const auto pack = rtype::luau::detail::popValuePack(rtype::luau::detail::rawState(runtime), 0);
+    const auto pack = aylo::luau::detail::popValuePack(aylo::luau::detail::rawState(runtime), 0);
 
     ASSERT_TRUE(pack);
     EXPECT_EQ(pack->size(), 0U);

@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** PhysicsWorldTests
 */
@@ -19,10 +19,10 @@
 #include "plugins/physics/detail/JoltRuntime.hpp"
 #include "plugins/physics/exceptions/PhysicsExceptions.hpp"
 
-using rtype::plugins::physics::PhysicsSettings;
-using rtype::plugins::physics::PhysicsWorld;
-using rtype::plugins::physics::detail::JoltRuntime;
-using rtype::plugins::physics::exceptions::PhysicsException;
+using aylo::plugins::physics::PhysicsSettings;
+using aylo::plugins::physics::PhysicsWorld;
+using aylo::plugins::physics::detail::JoltRuntime;
+using aylo::plugins::physics::exceptions::PhysicsException;
 
 namespace {
 constexpr float kFixedDelta = 1.0F / 60.0F;

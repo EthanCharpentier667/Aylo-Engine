@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ScriptRequireTests
 */
@@ -13,29 +13,29 @@
 #include <string_view>
 
 #include "ScriptsDirectory.hpp"
-#include "rtype/core/reload/ReloadOutcome.hpp"
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/schedule/Phase.hpp"
-#include "rtype/ecs/time/FixedTimestep.hpp"
-#include "rtype/ecs/time/TimePlugin.hpp"
-#include "rtype/scripting/ScriptHost.hpp"
-#include "rtype/scripting/exceptions/ScriptLoadException.hpp"
-#include "rtype/scripting/plugin/ScriptingPlugin.hpp"
+#include "aylo/core/reload/ReloadOutcome.hpp"
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/schedule/Phase.hpp"
+#include "aylo/ecs/time/FixedTimestep.hpp"
+#include "aylo/ecs/time/TimePlugin.hpp"
+#include "aylo/scripting/ScriptHost.hpp"
+#include "aylo/scripting/exceptions/ScriptLoadException.hpp"
+#include "aylo/scripting/plugin/ScriptingPlugin.hpp"
 
 namespace {
-using rtype::core::reload::ReloadOutcome;
-using rtype::tests::ScriptsDirectory;
-using Status = rtype::core::reload::ReloadOutcome::Status;
+using aylo::core::reload::ReloadOutcome;
+using aylo::tests::ScriptsDirectory;
+using Status = aylo::core::reload::ReloadOutcome::Status;
 
 /// @brief An App with the scripting plugin over a scripts directory; the host is kept for the reloads.
 struct Game {
-    rtype::ecs::App app;
-    rtype::scripting::ScriptHost* host{nullptr};
+    aylo::ecs::App app;
+    aylo::scripting::ScriptHost* host{nullptr};
 
     explicit Game(const std::filesystem::path& directory) {
-        app.addPlugin(rtype::ecs::TimePlugin::manual(std::chrono::seconds{1}, rtype::ecs::FixedTimestep{1, 5}));
-        app.addPlugin(rtype::scripting::ScriptingPlugin{
-            {.directory = directory, .onBuilt = [this](rtype::scripting::ScriptHost& built) { host = &built; }}});
+        app.addPlugin(aylo::ecs::TimePlugin::manual(std::chrono::seconds{1}, aylo::ecs::FixedTimestep{1, 5}));
+        app.addPlugin(aylo::scripting::ScriptingPlugin{
+            {.directory = directory, .onBuilt = [this](aylo::scripting::ScriptHost& built) { host = &built; }}});
     }
 
     [[nodiscard]] bool hasComponent(const std::string_view name) const {
@@ -43,7 +43,7 @@ struct Game {
     }
 
     [[nodiscard]] bool hasSystem(const std::string_view name) const {
-        return app.getSchedules().getSchedule(rtype::ecs::Phase::kFixedUpdate).contains(name);
+        return app.getSchedules().getSchedule(aylo::ecs::Phase::kFixedUpdate).contains(name);
     }
 };
 
@@ -57,7 +57,7 @@ std::string systemScript(const std::string_view name) {
 std::string buildError(const std::filesystem::path& directory) {
     try {
         const Game game{directory};
-    } catch (const rtype::scripting::exceptions::ScriptLoadException& error) {
+    } catch (const aylo::scripting::exceptions::ScriptLoadException& error) {
         return error.what();
     }
     return {};
@@ -65,7 +65,7 @@ std::string buildError(const std::filesystem::path& directory) {
 }  // namespace
 
 TEST(ScriptRequire, ASiblingRequireReturnsTheValueOfTheModule) {
-    const ScriptsDirectory scripts{"rtype-require-sibling"};
+    const ScriptsDirectory scripts{"aylo-require-sibling"};
     scripts.write("a_config.luau", "return { name = 'Configured' }");
     scripts.write("main.luau", R"(require("./b_user"))");
     scripts.write("b_user.luau", R"(
@@ -79,7 +79,7 @@ TEST(ScriptRequire, ASiblingRequireReturnsTheValueOfTheModule) {
 }
 
 TEST(ScriptRequire, AScriptsAliasRequiresFromTheRootOfScripts) {
-    const ScriptsDirectory scripts{"rtype-require-alias"};
+    const ScriptsDirectory scripts{"aylo-require-alias"};
     scripts.write("lib/util.luau", "return { name = 'FromUtil' }");
     scripts.write("main.luau", R"(require("./ui/panel"))");
     scripts.write("ui/panel.luau", R"(
@@ -93,7 +93,7 @@ TEST(ScriptRequire, AScriptsAliasRequiresFromTheRootOfScripts) {
 }
 
 TEST(ScriptRequire, AFolderWithAnInitFileIsRequiredByItsName) {
-    const ScriptsDirectory scripts{"rtype-require-init"};
+    const ScriptsDirectory scripts{"aylo-require-init"};
     scripts.write("lib/init.luau", "return { name = 'FromInit' }");
     scripts.write("main.luau", R"(
         engine.ecs.component("game." .. require("@scripts/lib").name, { fields = {} })
@@ -105,7 +105,7 @@ TEST(ScriptRequire, AFolderWithAnInitFileIsRequiredByItsName) {
 }
 
 TEST(ScriptRequire, AModuleRequiredByTwoFilesRunsOnce) {
-    const ScriptsDirectory scripts{"rtype-require-once"};
+    const ScriptsDirectory scripts{"aylo-require-once"};
     // A system name can only be declared once: a second run of z_lib would fail the build.
     scripts.write("z_lib.luau", systemScript("game.Once"));
     scripts.write("a_user.luau", R"(require("./z_lib"))");
@@ -121,7 +121,7 @@ TEST(ScriptRequire, AModuleRequiredByTwoFilesRunsOnce) {
 }
 
 TEST(ScriptRequire, AReturnedTableIsFrozen) {
-    const ScriptsDirectory scripts{"rtype-require-frozen"};
+    const ScriptsDirectory scripts{"aylo-require-frozen"};
     scripts.write("a_lib.luau", "return { value = 1 }");
     scripts.write("main.luau", R"(require("./b_user"))");
     scripts.write("b_user.luau", R"(
@@ -136,7 +136,7 @@ TEST(ScriptRequire, AReturnedTableIsFrozen) {
 }
 
 TEST(ScriptRequire, ErrorsNameTheScriptsChunk) {
-    const ScriptsDirectory scripts{"rtype-require-chunk"};
+    const ScriptsDirectory scripts{"aylo-require-chunk"};
     scripts.write("main.luau", "require('./nested/bad')");
     scripts.write("nested/bad.luau", "\nerror('boom')");
 
@@ -146,7 +146,7 @@ TEST(ScriptRequire, ErrorsNameTheScriptsChunk) {
 }
 
 TEST(ScriptRequire, ARequireErrorNamesTheRequiringFileAndLine) {
-    const ScriptsDirectory scripts{"rtype-require-error"};
+    const ScriptsDirectory scripts{"aylo-require-error"};
     scripts.write("main.luau", "local x = 1\nlocal y = require('./missing')");
 
     const std::string message = buildError(scripts.path());
@@ -156,7 +156,7 @@ TEST(ScriptRequire, ARequireErrorNamesTheRequiringFileAndLine) {
 }
 
 TEST(ScriptRequire, AModuleCannotRequireOutsideScripts) {
-    const ScriptsDirectory scripts{"rtype-require-escape"};
+    const ScriptsDirectory scripts{"aylo-require-escape"};
     scripts.write("main.luau", "require('../../outside')");
 
     const std::string message = buildError(scripts.path());
@@ -165,7 +165,7 @@ TEST(ScriptRequire, AModuleCannotRequireOutsideScripts) {
 }
 
 TEST(ScriptRequire, ADeclarationBelongsToTheModuleThatMadeIt) {
-    const ScriptsDirectory scripts{"rtype-require-owner"};
+    const ScriptsDirectory scripts{"aylo-require-owner"};
     scripts.write("a_lib.luau", systemScript("game.FromLib"));
     scripts.write("main.luau", "require('./b_main')");
     scripts.write("b_main.luau", "require('./a_lib')\n" + systemScript("game.FromMain"));
@@ -193,7 +193,7 @@ TEST(ScriptRequire, ADeclarationBelongsToTheModuleThatMadeIt) {
 }
 
 TEST(ScriptRequire, ReloadingAModuleGivesTheNewValueToLaterRequires) {
-    const ScriptsDirectory scripts{"rtype-require-reload"};
+    const ScriptsDirectory scripts{"aylo-require-reload"};
     scripts.write("a_lib.luau", "return { n = 1 }");
     const std::string user =
         "engine.ecs.system('game.Val' .. require('./a_lib').n, "
@@ -211,7 +211,7 @@ TEST(ScriptRequire, ReloadingAModuleGivesTheNewValueToLaterRequires) {
 }
 
 TEST(ScriptRequire, AFailedReloadOfAModuleKeepsTheOldValue) {
-    const ScriptsDirectory scripts{"rtype-require-rollback"};
+    const ScriptsDirectory scripts{"aylo-require-rollback"};
     scripts.write("a_lib.luau", "return { n = 1 }");
     const std::string user =
         "engine.ecs.system('game.Val' .. require('./a_lib').n, "
@@ -229,7 +229,7 @@ TEST(ScriptRequire, AFailedReloadOfAModuleKeepsTheOldValue) {
 }
 
 TEST(ScriptRequire, AFileNobodyRequiresIsNeverRun) {
-    const ScriptsDirectory scripts{"rtype-require-unused"};
+    const ScriptsDirectory scripts{"aylo-require-unused"};
     scripts.write("main.luau", systemScript("game.Main"));
     scripts.write("unused.luau", "error('never run')");
 
@@ -239,8 +239,8 @@ TEST(ScriptRequire, AFileNobodyRequiresIsNeverRun) {
 }
 
 TEST(ScriptRequire, AHostWithoutAResolverRunsScriptsWithoutRequire) {
-    rtype::ecs::App app;
-    auto host = rtype::scripting::ScriptHost::create(app, {});
+    aylo::ecs::App app;
+    auto host = aylo::scripting::ScriptHost::create(app, {});
     ASSERT_TRUE(host);
 
     EXPECT_TRUE((*host)->run("plain.luau", "local answer = 42"));

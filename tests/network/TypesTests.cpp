@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** TypesTests
 */
@@ -9,19 +9,19 @@
 
 #include <type_traits>
 
-#include "rtype/network/Types.hpp"
+#include "aylo/network/Types.hpp"
 
 namespace {
 
-using rtype::network::Channel;
-using rtype::network::DisconnectReason;
-using rtype::network::RejectReason;
+using aylo::network::Channel;
+using aylo::network::DisconnectReason;
+using aylo::network::RejectReason;
 
 }  // namespace
 
-TEST(Types, NoClientIsZero) { EXPECT_EQ(rtype::network::kNoClient, 0U); }
+TEST(Types, NoClientIsZero) { EXPECT_EQ(aylo::network::kNoClient, 0U); }
 
-TEST(Types, ClockIsMonotonic) { EXPECT_TRUE(rtype::network::Clock::is_steady); }
+TEST(Types, ClockIsMonotonic) { EXPECT_TRUE(aylo::network::Clock::is_steady); }
 
 TEST(Types, ChannelWireValues) {
     EXPECT_EQ(static_cast<unsigned>(Channel::kUnreliable), 0U);

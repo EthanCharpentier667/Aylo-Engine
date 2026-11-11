@@ -16,7 +16,7 @@ table and use in components and calls.
 Game.assets = {
 	ship = engine.assets.atlas({
 		name = "game.ship",
-		texture = "r-typesheet24.gif",
+		texture = "spritesheet24.gif",
 		grid = { frameSize = { x = 48, y = 48 }, count = 5, spacing = { x = 17, y = 0 }, offset = { x = 9, y = 9 } },
 		animations = { fly = { frames = { 0, 1, 2, 3, 4 }, frameDuration = 0.1 } },
 	}),

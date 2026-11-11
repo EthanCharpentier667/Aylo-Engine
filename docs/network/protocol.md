@@ -4,7 +4,7 @@
 |---|---|
 | **Status** | Implemented (`kProtocolVersion = 1`) |
 | **Transport** | UDP, one port (default `4242`) |
-| **Source of truth** | `src/rtype/network/protocol/`, `src/rtype/network/connection/Connection.cpp`, `src/rtype/replication/` |
+| **Source of truth** | `src/aylo/network/protocol/`, `src/aylo/network/connection/Connection.cpp`, `src/aylo/replication/` |
 | **Background** | [overview.md](overview.md) (the short story), [design.md](design.md) (the reasons) |
 
 This document specifies the bytes a client and a server exchange, precisely enough to write a new client for an AYLO
@@ -362,7 +362,7 @@ sample per tick and repeats the last one when none arrived.
 ## 11. CustomPacket (both ways)
 
 Packets the game declares in Luau (`net.packet`, see the manual's
-[Networking](https://charles-mahoudeau.github.io/rtype/networking/) page), for what is not state: a chat line, a "ready"
+[Networking](https://charles-mahoudeau.github.io/aylo/networking/) page), for what is not state: a chat line, a "ready"
 button, a kill feed.
 
 | Size | Field |

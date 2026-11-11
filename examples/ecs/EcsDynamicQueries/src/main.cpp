@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** main
 */
@@ -16,32 +16,32 @@
 #include <span>
 #include <vector>
 
-#include "rtype/ecs/component/ComponentInfo.hpp"
-#include "rtype/ecs/component/ComponentTraits.hpp"
-#include "rtype/ecs/component/Components.hpp"
-#include "rtype/ecs/entity/Entity.hpp"
-#include "rtype/ecs/error/Result.hpp"
-#include "rtype/ecs/query/DynamicQuery.hpp"
-#include "rtype/ecs/query/QueryBuilder.hpp"
-#include "rtype/ecs/query/QueryIteration.hpp"
-#include "rtype/ecs/query/QueryMatch.hpp"
-#include "rtype/ecs/type/Field.hpp"
-#include "rtype/ecs/world/World.hpp"
+#include "aylo/ecs/component/ComponentInfo.hpp"
+#include "aylo/ecs/component/ComponentTraits.hpp"
+#include "aylo/ecs/component/Components.hpp"
+#include "aylo/ecs/entity/Entity.hpp"
+#include "aylo/ecs/error/Result.hpp"
+#include "aylo/ecs/query/DynamicQuery.hpp"
+#include "aylo/ecs/query/QueryBuilder.hpp"
+#include "aylo/ecs/query/QueryIteration.hpp"
+#include "aylo/ecs/query/QueryMatch.hpp"
+#include "aylo/ecs/type/Field.hpp"
+#include "aylo/ecs/world/World.hpp"
 
-using namespace rtype::ecs;
+using namespace aylo::ecs;
 
 namespace {
 struct Position {
     float x;
     float y;
 };
-RTYPE_ECS_COMPONENT(Position, "example.Position", x, y);
+AYLO_ECS_COMPONENT(Position, "example.Position", x, y);
 
 struct Velocity {
     float x;
     float y;
 };
-RTYPE_ECS_COMPONENT(Velocity, "example.Velocity", x, y);
+AYLO_ECS_COMPONENT(Velocity, "example.Velocity", x, y);
 
 /// @return The float stored at `offset` in `bytes`.
 float readFloat(std::span<const std::byte> bytes, std::size_t offset) {

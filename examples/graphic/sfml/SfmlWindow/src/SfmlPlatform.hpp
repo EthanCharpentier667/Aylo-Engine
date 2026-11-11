@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** SfmlPlatform
 */
@@ -15,9 +15,9 @@
 #include <string>
 #include <vector>
 
-#include "rtype/contract/platform/IPlatform.hpp"
-#include "rtype/contract/platform/WindowConfig.hpp"
-#include "rtype/contract/platform/event/Event.hpp"
+#include "aylo/contract/platform/IPlatform.hpp"
+#include "aylo/contract/platform/WindowConfig.hpp"
+#include "aylo/contract/platform/event/Event.hpp"
 
 namespace example {
 
@@ -28,7 +28,7 @@ namespace example {
 /// no interop interface (such as IVulkanSurfaceSource): SfmlRenderer needs none.
 ///
 /// Kept short on purpose: only the common keys and the mouse are translated, and gamepads are ignored.
-class SfmlPlatform final : public rtype::contract::platform::IPlatform {
+class SfmlPlatform final : public aylo::contract::platform::IPlatform {
   public:
     /// @brief Does not open anything yet: the engine calls init().
     SfmlPlatform() = default;
@@ -44,9 +44,9 @@ class SfmlPlatform final : public rtype::contract::platform::IPlatform {
     void setSize(glm::uvec2 size) override;
 
     /// @throws std::runtime_error If init() was already called.
-    void init(const rtype::contract::platform::WindowConfig& config) override;
+    void init(const aylo::contract::platform::WindowConfig& config) override;
 
-    [[nodiscard]] std::vector<rtype::contract::platform::Event> pollEvents() override;
+    [[nodiscard]] std::vector<aylo::contract::platform::Event> pollEvents() override;
     [[nodiscard]] bool isOpen() const noexcept override;
     void close() override;
     void setCursorLocked(bool locked) override;

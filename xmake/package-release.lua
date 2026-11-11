@@ -103,7 +103,7 @@ task("package-release")
                     os.cp(file .. layout.linksExtension, to .. layout.linksExtension)
                 end
                 local filename = path.filename(file)
-                if windows and (filename == "rtype-plugin-transform.dll" or filename == "rtype-plugin-input.dll") then
+                if windows and (filename == "aylo-plugin-transform.dll" or filename == "aylo-plugin-input.dll") then
                     os.cp(file, path.join(runtime, filename))
                 end
             end

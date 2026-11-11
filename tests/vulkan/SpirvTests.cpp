@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** SpirvTests
 */
@@ -23,14 +23,14 @@
 
 namespace {
 
-namespace pipeline = rtype::render::vulkan::pipeline;
-using rtype::render::vulkan::exceptions::ShaderException;
+namespace pipeline = aylo::render::vulkan::pipeline;
+using aylo::render::vulkan::exceptions::ShaderException;
 
 /// @brief A file in the temporary directory, removed when the object is destroyed.
 class TemporaryFile {
   public:
     explicit TemporaryFile(const std::string& name)
-        : _path{std::filesystem::temp_directory_path() / ("rtype-spirv-tests-" + name)} {}
+        : _path{std::filesystem::temp_directory_path() / ("aylo-spirv-tests-" + name)} {}
     ~TemporaryFile() {
         std::error_code error;
         std::filesystem::remove(_path, error);
@@ -61,20 +61,20 @@ std::vector<char> toBytes(std::span<const std::uint32_t> words) {
 }  // namespace
 
 TEST(Spirv, EmbeddedShaderIsSpirv) {
-    const std::span<const std::uint32_t> code{rtype_shader_test_vert};
+    const std::span<const std::uint32_t> code{aylo_shader_test_vert};
     ASSERT_FALSE(code.empty());
     EXPECT_EQ(code.front(), pipeline::kSpirvMagic);
     EXPECT_NO_THROW(pipeline::validateSpirv(code, "test.vert"));
 }
 
 TEST(Spirv, ShaderUsingTheSharedLayoutCompiles) {
-    const std::span<const std::uint32_t> code{rtype_shader_layout_vert};
+    const std::span<const std::uint32_t> code{aylo_shader_layout_vert};
     ASSERT_FALSE(code.empty());
     EXPECT_NO_THROW(pipeline::validateSpirv(code, "layout.vert"));
 }
 
 TEST(Spirv, ShaderUsingTheParticleSystemLayoutCompiles) {
-    const std::span<const std::uint32_t> code{rtype_shader_particle_layout_vert};
+    const std::span<const std::uint32_t> code{aylo_shader_particle_layout_vert};
     ASSERT_FALSE(code.empty());
     EXPECT_NO_THROW(pipeline::validateSpirv(code, "particle_layout.vert"));
 }
@@ -87,19 +87,19 @@ TEST(Spirv, ValidateRejectsEmptyAndNonSpirv) {
 
 TEST(Spirv, ReadsBackAWrittenModule) {
     const TemporaryFile file{"valid.spv"};
-    file.write(toBytes(rtype_shader_test_vert));
+    file.write(toBytes(aylo_shader_test_vert));
     const std::vector<std::uint32_t> code = pipeline::readSpirv(file.getPath());
-    EXPECT_EQ(code, std::vector<std::uint32_t>(std::begin(rtype_shader_test_vert), std::end(rtype_shader_test_vert)));
+    EXPECT_EQ(code, std::vector<std::uint32_t>(std::begin(aylo_shader_test_vert), std::end(aylo_shader_test_vert)));
 }
 
 TEST(Spirv, RejectsMissingFile) {
-    EXPECT_THROW((void)pipeline::readSpirv(std::filesystem::temp_directory_path() / "rtype-spirv-tests-missing.spv"),
+    EXPECT_THROW((void)pipeline::readSpirv(std::filesystem::temp_directory_path() / "aylo-spirv-tests-missing.spv"),
                  ShaderException);
 }
 
 TEST(Spirv, RejectsSizeNotMultipleOfFour) {
     const TemporaryFile file{"truncated.spv"};
-    std::vector<char> bytes = toBytes(rtype_shader_test_vert);
+    std::vector<char> bytes = toBytes(aylo_shader_test_vert);
     bytes.pop_back();
     file.write(bytes);
     EXPECT_THROW((void)pipeline::readSpirv(file.getPath()), ShaderException);

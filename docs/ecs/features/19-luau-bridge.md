@@ -4,7 +4,7 @@
 
 The bridge is the layer that lets **Luau scripts declare and run game code on the ECS**: components
 (as Luau types), systems (as Luau classes), plugins, events, resources, input actions and
-entities; capsules (actors and levels) are files, which scripts spawn through engine calls. It sits between Charles's `rtype-luau` runtime and the ECS's type-erased API, in the engine's
+entities; capsules (actors and levels) are files, which scripts spawn through engine calls. It sits between Charles's `aylo-luau` runtime and the ECS's type-erased API, in the engine's
 `ScriptPlugin` / `LuauPlugin`.
 
 This doc is the **contract** the ECS offers; the binding code itself belongs to the scripting side
@@ -34,7 +34,7 @@ This doc is the **contract** the ECS offers; the binding code itself belongs to 
 - **Systems = Luau classes** with declared access.
 - **Plugins = Luau modules** with a `build(app)` method.
 - Everything goes through the ECS's **type-erased, non-throwing API**; errors come back to Luau through
-  `rtype::luau::Result` / `Error`.
+  `aylo::luau::Result` / `Error`.
 
 ## How it works
 
@@ -240,7 +240,7 @@ local RtypePlugin = ecs.plugin("rtype.Game")
 function RtypePlugin:build(app)
     app:load("components/Shield.luau")       -- by path: no require() across files
     app:load("systems/ShieldRegen.luau")
-    app:addPlugin("scripts/rtype/weapons/plugin.luau")
+    app:addPlugin("scripts/aylo/weapons/plugin.luau")
     app:state("game.Phase", { "Menu", "Lobby", "Playing", "GameOver" })
     app:event("game.BossDefeated", { type = "BossDefeated" })
     app:resource("game.Score", { type = "Score", replication = "everyChange" })
@@ -302,7 +302,7 @@ System sides decide what runs where: `server` (gameplay, default), `client` (pre
 
 A system is declared on both sides, whatever its side, and only its engine calls may be missing on the side it does not
 run on: its components, resources and events must exist there, and the systems it is ordered against too. A script that
-names what only one side has (the sprites, the audio, `net.applyInputs`) lives in files only that side's entry requires (`server/main`, `client/main`), as `examples/games/rtype_duel/game/scripts/` does; a test of `engine.isClient` is the way to share one file:
+names what only one side has (the sprites, the audio, `net.applyInputs`) lives in files only that side's entry requires (`server/main`, `client/main`), as `examples/games/aylo_duel/game/scripts/` does; a test of `engine.isClient` is the way to share one file:
 
 ```luau
 engine.ecs.component("game.Explosion", { fields = {}, presence = "clientOnly" }) -- on both sides
@@ -318,7 +318,7 @@ engine.ecs.system("game.RemoveExplosions", { side = "client", ... })
   [Systems](12-systems.md), [Commands](09-commands.md), [Events](11-events.md),
   [Resources](10-resources.md), [Capsules](18-capsules.md), [Reflection](15-reflection-and-serialization.md),
   [App and plugins](14-app-and-plugins.md).
-- External: Charles's `rtype::luau::Runtime`, `Result`, `Error`, `generateTypes()`; Ethan's `Input` /
+- External: Charles's `aylo::luau::Runtime`, `Result`, `Error`, `generateTypes()`; Ethan's `Input` /
   `InputAction`.
 
 ## Pitfalls

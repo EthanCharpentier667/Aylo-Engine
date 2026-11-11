@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** main
 */
@@ -9,28 +9,28 @@
 #include <iostream>
 #include <variant>
 
+#include "aylo/contract/platform/event/Event.hpp"
+#include "aylo/contract/platform/input/Key.hpp"
 #include "platform/glfw/GlfwPlatform.hpp"
 #include "plugins/input/Control.hpp"
 #include "plugins/input/Input.hpp"
 #include "plugins/input/InputAction.hpp"
-#include "rtype/contract/platform/event/Event.hpp"
-#include "rtype/contract/platform/input/Key.hpp"
 
-using rtype::contract::platform::input::GamepadAxis;
-using rtype::contract::platform::input::GamepadButton;
-using rtype::contract::platform::input::Key;
-using rtype::contract::platform::input::MouseButton;
-using namespace rtype::contract::platform::event;
-using rtype::plugins::input::ActionType;
-using rtype::plugins::input::Control;
+using aylo::contract::platform::input::GamepadAxis;
+using aylo::contract::platform::input::GamepadButton;
+using aylo::contract::platform::input::Key;
+using aylo::contract::platform::input::MouseButton;
+using namespace aylo::contract::platform::event;
+using aylo::plugins::input::ActionType;
+using aylo::plugins::input::Control;
 
 int main() {
     try {
         /// @note Create a window with the specified width, height, and title
-        rtype::platform::glfw::GlfwPlatform window;
+        aylo::platform::glfw::GlfwPlatform window;
         window.init({.size = {800, 600}, .title = "GLFW Window Example"});
         /// @note Input does not know the window: it only reads the events the window produces.
-        rtype::plugins::input::Input input;
+        aylo::plugins::input::Input input;
 
         /// @note Declare the actions once. Each one can be driven by any number of devices.
 

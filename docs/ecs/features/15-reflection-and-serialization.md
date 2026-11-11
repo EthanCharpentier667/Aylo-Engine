@@ -34,7 +34,7 @@ not work at all.
 
 **One `FieldInfo` list per component**, stored in its [`ComponentInfo`](02-component-registry.md):
 
-- from C++, written once by `RTYPE_ECS_COMPONENT(Type, "name", field1, field2, ...)`;
+- from C++, written once by `AYLO_ECS_COMPONENT(Type, "name", field1, field2, ...)`;
 - from Luau, read from the component's `export type` (see [Luau bridge](19-luau-bridge.md)).
 
 **One generic serializer** walks the field list. Nothing is serialized per type by hand.
@@ -50,7 +50,7 @@ struct Transform {
     glm::vec2 scale;
 };
 
-RTYPE_ECS_COMPONENT(Transform, "rtype.Transform", position, rotation, scale);
+AYLO_ECS_COMPONENT(Transform, "rtype.Transform", position, rotation, scale);
 ```
 
 Resulting description of `rtype.Transform` (size 20, alignment 4):
@@ -88,8 +88,8 @@ Replication wants fewer bytes than the in-memory form. Fields can carry options:
 
 ```c++
 app.component<Transform>()
-    .replicate(rtype::ecs::ReplicationMode::kEveryChange)
-    .quantize("position", rtype::ecs::Quantize::fixedPoint(16, 1.F / 8.F));
+    .replicate(aylo::ecs::ReplicationMode::kEveryChange)
+    .quantize("position", aylo::ecs::Quantize::fixedPoint(16, 1.F / 8.F));
 ```
 
 ### `kEntity` and `kAssetId` fields

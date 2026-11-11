@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** main
 */
@@ -22,6 +22,17 @@
 #include <string>
 #include <string_view>
 
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/app/AppExit.hpp"
+#include "aylo/ecs/app/MinimalPlugins.hpp"
+#include "aylo/ecs/command/Commands.hpp"
+#include "aylo/ecs/entity/Entity.hpp"
+#include "aylo/ecs/hierarchy/Parent.hpp"
+#include "aylo/ecs/query/Query.hpp"
+#include "aylo/ecs/resource/ResourceTraits.hpp"
+#include "aylo/ecs/schedule/Phase.hpp"
+#include "aylo/ecs/system/EventWriter.hpp"
+#include "aylo/ecs/system/ResourceParam.hpp"
 #include "plugins/physics/Collider.hpp"
 #include "plugins/physics/PhysicsPlugin.hpp"
 #include "plugins/physics/PhysicsSettings.hpp"
@@ -30,21 +41,10 @@
 #include "plugins/transform/Reparent.hpp"
 #include "plugins/transform/Transform.hpp"
 #include "plugins/transform/TransformPlugin.hpp"
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/app/AppExit.hpp"
-#include "rtype/ecs/app/MinimalPlugins.hpp"
-#include "rtype/ecs/command/Commands.hpp"
-#include "rtype/ecs/entity/Entity.hpp"
-#include "rtype/ecs/hierarchy/Parent.hpp"
-#include "rtype/ecs/query/Query.hpp"
-#include "rtype/ecs/resource/ResourceTraits.hpp"
-#include "rtype/ecs/schedule/Phase.hpp"
-#include "rtype/ecs/system/EventWriter.hpp"
-#include "rtype/ecs/system/ResourceParam.hpp"
 
-using namespace rtype::ecs;
-using namespace rtype::plugins::physics;
-using namespace rtype::plugins::transform;
+using namespace aylo::ecs;
+using namespace aylo::plugins::physics;
+using namespace aylo::plugins::transform;
 
 namespace {
 constexpr std::uint64_t kPrintEvery = 30;
@@ -61,7 +61,7 @@ struct Boss {
     Entity pod;
     std::uint64_t printed{0};  // The last tick printed.
 };
-RTYPE_ECS_RESOURCE(Boss, "example.Boss");
+AYLO_ECS_RESOURCE(Boss, "example.Boss");
 
 // Startup: `add(Parent{...})` links two entities; the World keeps the parent's Children in sync.
 void spawnBoss(ResMut<Boss> scene, Commands& commands) {
@@ -139,7 +139,7 @@ int main() {
     try {
         App app;
         app.addPlugins(MinimalPlugins{});
-        app.addPlugin(rtype::plugins::transform::TransformPlugin{});
+        app.addPlugin(aylo::plugins::transform::TransformPlugin{});
         app.addPlugin(PhysicsPlugin{PhysicsSettings{.gravity = {0.0F, 0.0F}, .unitsPerMeter = 100.0F}});
         app.insertResource(Boss{});
         app.addSystem(Phase::kStartup, "example.spawnBoss", &spawnBoss);

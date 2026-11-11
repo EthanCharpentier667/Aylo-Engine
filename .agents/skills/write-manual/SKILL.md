@@ -13,7 +13,7 @@ change.** A feature with no manual page is not done (root `AGENTS.md`, rule 2).
 
 Any change that alters what a script can observe:
 
-- an engine call added, renamed, or given a new argument, result, default or error (`rtype.<plugin>.<verb>`);
+- an engine call added, renamed, or given a new argument, result, default or error (`aylo.<plugin>.<verb>`);
 - a component, resource or event of a plugin: a field, a type, a default, the side it lives on;
 - a setup form (`engine.assets`, `engine.input`...) or an `engine.*` helper;
 - a `project.luau` setting or a plugin name;
@@ -53,7 +53,7 @@ Say what a thing is for before how it works. No marketing, no filler, no "simply
 6. **See also**: links to the related pages.
 
 **Examples must be true.** Every snippet is Luau that runs: names, argument tables and phases are those of the
-engine. Prefer taking them from, or checking them against, `examples/games/rtype_duel/game/` and the script tests. If you
+engine. Prefer taking them from, or checking them against, `examples/games/aylo_duel/game/` and the script tests. If you
 can, run the snippet (a script test, or the duel game) before you publish it. An example that was not checked is worse
 than none.
 

@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** DirectorySourceTests
 */
@@ -21,8 +21,8 @@
 #include "core/vfs/DirectorySource.hpp"
 #include "core/vfs/FileSource.hpp"
 
-using rtype::core::asset::exceptions::AssetLoadException;
-using rtype::core::vfs::DirectorySource;
+using aylo::core::asset::exceptions::AssetLoadException;
+using aylo::core::vfs::DirectorySource;
 
 namespace {
 /// @brief A folder `<root>/assets` with a few files, and a secret file next to it; removed when the test ends.
@@ -47,7 +47,7 @@ class DirectorySourceTest : public ::testing::Test {
     }
 
     std::filesystem::path _root{std::filesystem::temp_directory_path() /
-                                std::format("rtype_directory_source_{:08x}", std::random_device{}())};
+                                std::format("aylo_directory_source_{:08x}", std::random_device{}())};
     std::filesystem::path _assets{_root / "assets"};
 };
 }  // namespace
@@ -82,7 +82,7 @@ TEST_F(DirectorySourceTest, ListsItsFilesAtAnyDepthSorted) {
 
 TEST_F(DirectorySourceTest, ReadsBytes) {
     write("bytes.bin", std::string_view{"\x00\xff", 2});
-    const std::vector<std::byte> bytes = rtype::core::vfs::readBytes(DirectorySource{_assets}, "bytes.bin");
+    const std::vector<std::byte> bytes = aylo::core::vfs::readBytes(DirectorySource{_assets}, "bytes.bin");
 
     ASSERT_EQ(bytes.size(), 2U);
     EXPECT_EQ(bytes[0], std::byte{0x00});

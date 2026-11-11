@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ScriptsDirectory
 */
@@ -13,7 +13,7 @@
 #include <string_view>
 #include <system_error>
 
-namespace rtype::tests {
+namespace aylo::tests {
 /// @brief A scripts directory in the temporary directory, removed with it.
 class ScriptsDirectory {
   public:
@@ -59,4 +59,4 @@ class ScriptsDirectory {
   private:
     std::filesystem::path _path;  ///< The directory.
 };
-}  // namespace rtype::tests
+}  // namespace aylo::tests

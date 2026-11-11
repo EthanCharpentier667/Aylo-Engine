@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** AdminTests
 */
@@ -17,22 +17,22 @@
 #include <variant>
 #include <vector>
 
-#include "rtype/network/NetworkSettings.hpp"
-#include "rtype/network/Types.hpp"
-#include "rtype/network/admin/AdminClient.hpp"
-#include "rtype/network/admin/AdminProtocol.hpp"
-#include "rtype/network/admin/AdminServer.hpp"
-#include "rtype/network/client/NetClient.hpp"
-#include "rtype/network/io/Address.hpp"
-#include "rtype/network/io/UdpSocket.hpp"
-#include "rtype/network/server/NetServer.hpp"
-#include "rtype/network/simulation/LinkSimulator.hpp"
+#include "aylo/network/NetworkSettings.hpp"
+#include "aylo/network/Types.hpp"
+#include "aylo/network/admin/AdminClient.hpp"
+#include "aylo/network/admin/AdminProtocol.hpp"
+#include "aylo/network/admin/AdminServer.hpp"
+#include "aylo/network/client/NetClient.hpp"
+#include "aylo/network/io/Address.hpp"
+#include "aylo/network/io/UdpSocket.hpp"
+#include "aylo/network/server/NetServer.hpp"
+#include "aylo/network/simulation/LinkSimulator.hpp"
 
-namespace network = rtype::network;
-namespace admin = rtype::network::admin;
-namespace client = rtype::network::client;
-namespace server = rtype::network::server;
-namespace simulation = rtype::network::simulation;
+namespace network = aylo::network;
+namespace admin = aylo::network::admin;
+namespace client = aylo::network::client;
+namespace server = aylo::network::server;
+namespace simulation = aylo::network::simulation;
 
 namespace {
 constexpr const char* kToken = "s3cret";

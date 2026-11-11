@@ -4,13 +4,13 @@
 
 The engine builds one generic program, `aylo-runtime`, and copies it to the repository root. It runs a game folder:
 `game/` in the current directory, or the folder you give as first argument. It runs the client by default and the server
-(no window, no graphics) with `--server`. At the repository root, the scripts `r-type_server` and `r-type_client`
-(`.bat` files on Windows) start it for you on the matching side, so `./r-type_server` is `./aylo-runtime --server`.
+(no window, no graphics) with `--server`. At the repository root, the scripts `aylo-server` and `aylo-client`
+(`.bat` files on Windows) start it for you on the matching side, so `./aylo-server` is `./aylo-runtime --server`.
 
 ```sh
 xmake build -y
-./aylo-runtime --server examples/games/rtype_duel/game
-./aylo-runtime examples/games/rtype_duel/game      # one per player
+./aylo-runtime --server examples/games/aylo_duel/game
+./aylo-runtime examples/games/aylo_duel/game      # one per player
 ```
 
 The folder must contain a `project.luau`. A client also needs the `assets/` folder and refuses to start without it; a

@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** CommandsPatchTests
 */
@@ -15,45 +15,45 @@
 #include <span>
 #include <string>
 
-#include "rtype/ecs/change/ComponentTicks.hpp"
-#include "rtype/ecs/command/Commands.hpp"
-#include "rtype/ecs/component/ComponentInfo.hpp"
-#include "rtype/ecs/component/ComponentTraits.hpp"
-#include "rtype/ecs/entity/Entity.hpp"
-#include "rtype/ecs/hierarchy/Children.hpp"
-#include "rtype/ecs/hierarchy/Parent.hpp"
-#include "rtype/ecs/world/World.hpp"
+#include "aylo/ecs/change/ComponentTicks.hpp"
+#include "aylo/ecs/command/Commands.hpp"
+#include "aylo/ecs/component/ComponentInfo.hpp"
+#include "aylo/ecs/component/ComponentTraits.hpp"
+#include "aylo/ecs/entity/Entity.hpp"
+#include "aylo/ecs/hierarchy/Children.hpp"
+#include "aylo/ecs/hierarchy/Parent.hpp"
+#include "aylo/ecs/world/World.hpp"
 
-namespace rtype::test::patch {
+namespace aylo::test::patch {
 struct Position {
     float x{0.F};
     float y{0.F};
 };
-RTYPE_ECS_COMPONENT(Position, "test.patch.Position", x, y);
+AYLO_ECS_COMPONENT(Position, "test.patch.Position", x, y);
 
 struct Health {
     std::int32_t value{0};
 };
-RTYPE_ECS_COMPONENT(Health, "test.patch.Health", value);
+AYLO_ECS_COMPONENT(Health, "test.patch.Health", value);
 
 struct Named {
     std::string name;
     std::int32_t rank{0};
 };
-RTYPE_ECS_COMPONENT(Named, "test.patch.Named");
+AYLO_ECS_COMPONENT(Named, "test.patch.Named");
 
 struct Frozen {};
-RTYPE_ECS_COMPONENT(Frozen, "test.patch.Frozen");
+AYLO_ECS_COMPONENT(Frozen, "test.patch.Frozen");
 
 /// @brief Registered only by the flush of the commands that use it.
 struct Late {
     std::int32_t value{0};
 };
-RTYPE_ECS_COMPONENT(Late, "test.patch.Late", value);
-}  // namespace rtype::test::patch
+AYLO_ECS_COMPONENT(Late, "test.patch.Late", value);
+}  // namespace aylo::test::patch
 
-namespace ecs = rtype::ecs;
-namespace tp = rtype::test::patch;
+namespace ecs = aylo::ecs;
+namespace tp = aylo::test::patch;
 
 TEST(CommandsPatch, KeepsWhatItDoesNotWrite) {
     ecs::World world;

@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ScriptStandaloneTests
 */
@@ -18,38 +18,38 @@
 #include <string_view>
 #include <vector>
 
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/event/EventCursor.hpp"
-#include "rtype/ecs/event/EventTraits.hpp"
-#include "rtype/ecs/schedule/RunMode.hpp"
-#include "rtype/ecs/time/FixedTimestep.hpp"
-#include "rtype/ecs/time/TimePlugin.hpp"
-#include "rtype/replication/component/Owner.hpp"
-#include "rtype/replication/component/PlayerInput.hpp"
-#include "rtype/replication/input/InputKind.hpp"
-#include "rtype/replication/input/InputLayout.hpp"
-#include "rtype/replication/standalone/LocalSession.hpp"
-#include "rtype/replication/standalone/StandalonePlugin.hpp"
-#include "rtype/scripting/plugin/ScriptingPlugin.hpp"
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/event/EventCursor.hpp"
+#include "aylo/ecs/event/EventTraits.hpp"
+#include "aylo/ecs/schedule/RunMode.hpp"
+#include "aylo/ecs/time/FixedTimestep.hpp"
+#include "aylo/ecs/time/TimePlugin.hpp"
+#include "aylo/replication/component/Owner.hpp"
+#include "aylo/replication/component/PlayerInput.hpp"
+#include "aylo/replication/input/InputKind.hpp"
+#include "aylo/replication/input/InputLayout.hpp"
+#include "aylo/replication/standalone/LocalSession.hpp"
+#include "aylo/replication/standalone/StandalonePlugin.hpp"
+#include "aylo/scripting/plugin/ScriptingPlugin.hpp"
 
-namespace rtype::test::script_standalone {
+namespace aylo::test::script_standalone {
 /// @brief What a script reports: the test reads them, since a failing Luau assert only logs.
 struct Checked {
     std::string what;
 };
-RTYPE_ECS_EVENT(Checked, "test.standalone.Checked", what);
-}  // namespace rtype::test::script_standalone
+AYLO_ECS_EVENT(Checked, "test.standalone.Checked", what);
+}  // namespace aylo::test::script_standalone
 
 namespace {
-using rtype::ecs::App;
-using rtype::ecs::RunMode;
-using rtype::replication::component::Owner;
-using rtype::replication::component::PlayerInput;
-using rtype::replication::input::InputKind;
-using rtype::replication::input::InputLayout;
-using rtype::replication::standalone::LocalSession;
-using rtype::replication::standalone::StandalonePlugin;
-using rtype::test::script_standalone::Checked;
+using aylo::ecs::App;
+using aylo::ecs::RunMode;
+using aylo::replication::component::Owner;
+using aylo::replication::component::PlayerInput;
+using aylo::replication::input::InputKind;
+using aylo::replication::input::InputLayout;
+using aylo::replication::standalone::LocalSession;
+using aylo::replication::standalone::StandalonePlugin;
+using aylo::test::script_standalone::Checked;
 
 constexpr std::chrono::milliseconds kFrame{20};
 constexpr std::uint8_t kTickRate = 50;
@@ -128,14 +128,14 @@ std::string uniqueSuffix() {
 class StandaloneWorld {
   public:
     explicit StandaloneWorld(const std::string_view source)
-        : _directory{std::filesystem::temp_directory_path() / ("rtype-standalone-" + uniqueSuffix())} {
+        : _directory{std::filesystem::temp_directory_path() / ("aylo-standalone-" + uniqueSuffix())} {
         std::filesystem::create_directories(_directory);
         std::ofstream{_directory / "main.luau"} << source;
         _app.getWorld().getEvents().registerType<Checked>();
-        _app.addPlugin(rtype::ecs::TimePlugin::manual(kFrame, rtype::ecs::FixedTimestep{kTickRate, 5}));
+        _app.addPlugin(aylo::ecs::TimePlugin::manual(kFrame, aylo::ecs::FixedTimestep{kTickRate, 5}));
         _app.addPlugin(StandalonePlugin{});
         _app.getWorld().getResources().getMut<InputLayout>()->add("fire", InputKind::kButton);
-        _app.addPlugin(rtype::scripting::ScriptingPlugin{
+        _app.addPlugin(aylo::scripting::ScriptingPlugin{
             {.directory = _directory, .options = {.isClient = true, .isServer = true}}});
     }
 
@@ -164,7 +164,7 @@ class StandaloneWorld {
   private:
     std::filesystem::path _directory;  ///< The scripts, removed with the object.
     App _app{RunMode::kStandalone};
-    rtype::ecs::EventCursor _cursor;
+    aylo::ecs::EventCursor _cursor;
 };
 
 bool has(const std::vector<std::string>& list, const std::string& what) {

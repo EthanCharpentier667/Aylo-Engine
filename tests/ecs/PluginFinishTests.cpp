@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** PluginFinishTests
 */
@@ -12,23 +12,23 @@
 #include <utility>
 #include <vector>
 
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/app/Plugin.hpp"
-#include "rtype/ecs/resource/ResourceTraits.hpp"
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/app/Plugin.hpp"
+#include "aylo/ecs/resource/ResourceTraits.hpp"
 
-namespace rtype::test::plugin_finish {
+namespace aylo::test::plugin_finish {
 /// @brief Inserted by a plugin's build, read by another's finish.
 struct Late {
     int value;
 };
-RTYPE_ECS_RESOURCE(Late, "test.finish.Late", value);
-}  // namespace rtype::test::plugin_finish
+AYLO_ECS_RESOURCE(Late, "test.finish.Late", value);
+}  // namespace aylo::test::plugin_finish
 
 namespace {
 /// @brief Logs its build and its finish as "<name>.build" and "<name>.finish", and runs what it is given in them.
-class LoggingPlugin : public rtype::ecs::Plugin {
+class LoggingPlugin : public aylo::ecs::Plugin {
   public:
-    using Step = void (*)(rtype::ecs::App& app, std::vector<std::string>& log);
+    using Step = void (*)(aylo::ecs::App& app, std::vector<std::string>& log);
 
     LoggingPlugin(std::string name, std::vector<std::string>& log, Step onBuild = nullptr, Step onFinish = nullptr)
         : _name{std::move(name)}, _log{&log}, _onBuild{onBuild}, _onFinish{onFinish} {}
@@ -40,14 +40,14 @@ class LoggingPlugin : public rtype::ecs::Plugin {
 
     [[nodiscard]] std::string_view getName() const noexcept override { return _name; }
 
-    void build(rtype::ecs::App& app) override {
+    void build(aylo::ecs::App& app) override {
         _log->push_back(_name + ".build");
         if (_onBuild != nullptr) {
             _onBuild(app, *_log);
         }
     }
 
-    void finish(rtype::ecs::App& app) override {
+    void finish(aylo::ecs::App& app) override {
         _log->push_back(_name + ".finish");
         if (_onFinish != nullptr) {
             _onFinish(app, *_log);
@@ -64,7 +64,7 @@ class LoggingPlugin : public rtype::ecs::Plugin {
 
 TEST(PluginFinish, FinishesEveryPluginOnceInOrderBeforeTheFirstFrame) {
     std::vector<std::string> log;
-    rtype::ecs::App app;
+    aylo::ecs::App app;
     app.addPlugin(LoggingPlugin{"a", log}).addPlugin(LoggingPlugin{"b", log});
     EXPECT_EQ(log, (std::vector<std::string>{"a.build", "b.build"}));
     app.runFrame();
@@ -75,14 +75,14 @@ TEST(PluginFinish, FinishesEveryPluginOnceInOrderBeforeTheFirstFrame) {
 
 TEST(PluginFinish, AFinishSeesWhatLaterPluginsBuilt) {
     std::vector<std::string> log;
-    rtype::ecs::App app;
-    app.addPlugin(LoggingPlugin{"reader", log, nullptr, [](rtype::ecs::App& app, std::vector<std::string>& log) {
+    aylo::ecs::App app;
+    app.addPlugin(LoggingPlugin{"reader", log, nullptr, [](aylo::ecs::App& app, std::vector<std::string>& log) {
                                     const auto* late =
-                                        app.getWorld().getResources().get<rtype::test::plugin_finish::Late>();
+                                        app.getWorld().getResources().get<aylo::test::plugin_finish::Late>();
                                     log.push_back(late != nullptr ? std::to_string(late->value) : "none");
                                 }});
-    app.addPlugin(LoggingPlugin{"writer", log, [](rtype::ecs::App& app, std::vector<std::string>& /*log*/) {
-                                    app.insertResource(rtype::test::plugin_finish::Late{.value = 7});
+    app.addPlugin(LoggingPlugin{"writer", log, [](aylo::ecs::App& app, std::vector<std::string>& /*log*/) {
+                                    app.insertResource(aylo::test::plugin_finish::Late{.value = 7});
                                 }});
     app.finishPlugins();
     EXPECT_EQ(log, (std::vector<std::string>{"reader.build", "writer.build", "reader.finish", "7", "writer.finish"}));
@@ -90,7 +90,7 @@ TEST(PluginFinish, AFinishSeesWhatLaterPluginsBuilt) {
 
 TEST(PluginFinish, FinishesAPluginAddedLaterRightAfterItsBuild) {
     std::vector<std::string> log;
-    rtype::ecs::App app;
+    aylo::ecs::App app;
     app.finishPlugins();
     app.addPlugin(LoggingPlugin{"late", log});
     EXPECT_EQ(log, (std::vector<std::string>{"late.build", "late.finish"}));
@@ -98,8 +98,8 @@ TEST(PluginFinish, FinishesAPluginAddedLaterRightAfterItsBuild) {
 
 TEST(PluginFinish, FinishesAPluginAddedByAFinishOnce) {
     std::vector<std::string> log;
-    rtype::ecs::App app;
-    app.addPlugin(LoggingPlugin{"parent", log, nullptr, [](rtype::ecs::App& app, std::vector<std::string>& log) {
+    aylo::ecs::App app;
+    app.addPlugin(LoggingPlugin{"parent", log, nullptr, [](aylo::ecs::App& app, std::vector<std::string>& log) {
                                     app.addPlugin(LoggingPlugin{"child", log});
                                 }});
     app.finishPlugins();

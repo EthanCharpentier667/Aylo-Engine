@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ParticleCurveTests
 */
@@ -11,20 +11,20 @@
 #include <cstddef>
 #include <limits>
 
-#include "rtype/contract/renderer/drawing/Color.hpp"
-#include "rtype/contract/renderer/exceptions/ParticleExceptions.hpp"
-#include "rtype/contract/renderer/particle/ParticleCurve.hpp"
+#include "aylo/contract/renderer/drawing/Color.hpp"
+#include "aylo/contract/renderer/exceptions/ParticleExceptions.hpp"
+#include "aylo/contract/renderer/particle/ParticleCurve.hpp"
 
 namespace {
-using rtype::contract::renderer::bakeCurve;
-using rtype::contract::renderer::BakedCurve;
-using rtype::contract::renderer::bakeGradient;
-using rtype::contract::renderer::Color;
-using rtype::contract::renderer::Curve;
-using rtype::contract::renderer::Gradient;
-using rtype::contract::renderer::kParticleCurveSamples;
-using rtype::contract::renderer::sampleBaked;
-using rtype::contract::renderer::exceptions::ParticleException;
+using aylo::contract::renderer::bakeCurve;
+using aylo::contract::renderer::BakedCurve;
+using aylo::contract::renderer::bakeGradient;
+using aylo::contract::renderer::Color;
+using aylo::contract::renderer::Curve;
+using aylo::contract::renderer::Gradient;
+using aylo::contract::renderer::kParticleCurveSamples;
+using aylo::contract::renderer::sampleBaked;
+using aylo::contract::renderer::exceptions::ParticleException;
 
 constexpr float kTolerance = 1e-5F;
 

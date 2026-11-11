@@ -1,12 +1,12 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** main
 */
 
 // Measures what animated sprites cost the whole frame: 10 000 of them by default, each playing an animation of the same
-// atlas (the six frames of examples/assets/r-typesheet26.gif) from its own start, drifting and bouncing off the
+// atlas (the six frames of examples/assets/spritesheet26.gif) from its own start, drifting and bouncing off the
 // window's edges, so every frame updates their Transform, advances their animation, sorts them and draws them in one
 // batch.
 //
@@ -37,6 +37,18 @@
 #include <utility>
 #include <vector>
 
+#include "aylo/contract/renderer/drawing/Color.hpp"
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/app/AppExit.hpp"
+#include "aylo/ecs/app/MinimalPlugins.hpp"
+#include "aylo/ecs/command/Commands.hpp"
+#include "aylo/ecs/component/ComponentTraits.hpp"
+#include "aylo/ecs/query/Query.hpp"
+#include "aylo/ecs/resource/ResourceTraits.hpp"
+#include "aylo/ecs/schedule/Phase.hpp"
+#include "aylo/ecs/system/EventWriter.hpp"
+#include "aylo/ecs/system/ResourceParam.hpp"
+#include "aylo/ecs/time/Time.hpp"
 #include "core/asset/AssetId.hpp"
 #include "core/config/Settings.hpp"
 #include "platform/glfw/Registration.hpp"
@@ -54,31 +66,19 @@
 #include "plugins/transform/Transform.hpp"
 #include "plugins/transform/TransformPlugin.hpp"
 #include "render/vulkan/Registration.hpp"
-#include "rtype/contract/renderer/drawing/Color.hpp"
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/app/AppExit.hpp"
-#include "rtype/ecs/app/MinimalPlugins.hpp"
-#include "rtype/ecs/command/Commands.hpp"
-#include "rtype/ecs/component/ComponentTraits.hpp"
-#include "rtype/ecs/query/Query.hpp"
-#include "rtype/ecs/resource/ResourceTraits.hpp"
-#include "rtype/ecs/schedule/Phase.hpp"
-#include "rtype/ecs/system/EventWriter.hpp"
-#include "rtype/ecs/system/ResourceParam.hpp"
-#include "rtype/ecs/time/Time.hpp"
 
-using namespace rtype;
-using namespace rtype::contract::renderer;
-using namespace rtype::plugins::graphics;
-using namespace rtype::plugins::sprite;
-using rtype::core::asset::AssetId;
-using namespace rtype::plugins::sprite;
-using rtype::plugins::transform::Transform;
+using namespace aylo;
+using namespace aylo::contract::renderer;
+using namespace aylo::plugins::graphics;
+using namespace aylo::plugins::sprite;
+using aylo::core::asset::AssetId;
+using namespace aylo::plugins::sprite;
+using aylo::plugins::transform::Transform;
 
 namespace {
 constexpr float kWidth = 1280.0F;
 constexpr float kHeight = 720.0F;
-constexpr rtype::contract::renderer::Color kClear{0.02F, 0.02F, 0.04F, 1.0F};
+constexpr aylo::contract::renderer::Color kClear{0.02F, 0.02F, 0.04F, 1.0F};
 
 // The atlas: six 63x48 frames, 2 pixels apart, played at 12 frames per second.
 constexpr glm::vec2 kFrameSize{63.0F, 48.0F};
@@ -100,7 +100,7 @@ struct Options {
 struct Drift {
     glm::vec2 velocity{0.0F};
 };
-RTYPE_ECS_COMPONENT(Drift, "example.Drift");
+AYLO_ECS_COMPONENT(Drift, "example.Drift");
 
 // The measure: frame times of the current second and of the whole run.
 struct Measure {
@@ -110,12 +110,12 @@ struct Measure {
     std::vector<float> second;
     std::vector<float> run;
 };
-RTYPE_ECS_RESOURCE(Measure, "example.Measure");
+AYLO_ECS_RESOURCE(Measure, "example.Measure");
 
 // Startup: builds the atlas and spawns the sprites, scattered, each from its own point of the animation.
 void spawnSprites(ecs::ResMut<AtlasAssets> atlases, ecs::Res<Measure> measure, ecs::Commands& commands) {
     SpriteAtlas atlas =
-        SpriteAtlas::grid("examples/assets/r-typesheet26.gif", kFrameSize, kFrames, {2.0F, 0.0F}, 0, {1.0F, 1.0F});
+        SpriteAtlas::grid("examples/assets/spritesheet26.gif", kFrameSize, kFrames, {2.0F, 0.0F}, 0, {1.0F, 1.0F});
     atlas.addAnimation("fly", {0, 1, 2, 3, 4, 5}, kFrameDuration);
     const AssetId sheet = atlases->add("benchmark", std::move(atlas));
 
@@ -224,17 +224,17 @@ int main(int argc, char** argv) {
     try {
         const Options options = parseOptions({argv, static_cast<std::size_t>(argc)});
         auto registry = std::make_unique<BackendRegistry>();
-        rtype::platform::glfw::registerPlatform(registry->platforms);
+        aylo::platform::glfw::registerPlatform(registry->platforms);
         render::vulkan::registerRenderer(registry->renderers);
 
         ecs::App app;
         app.addPlugins(ecs::MinimalPlugins{})
-            .addPlugin(rtype::plugins::transform::TransformPlugin{})
-            .addPlugin(rtype::plugins::input::InputPlugin{})
+            .addPlugin(aylo::plugins::transform::TransformPlugin{})
+            .addPlugin(aylo::plugins::input::InputPlugin{})
             .addPlugin(GraphicsPlugin{std::move(registry), makeSettings(options)})
-            .addPlugin(rtype::plugins::shader::ShaderPlugin{})
-            .addPlugin(rtype::plugins::sprite::SpritePlugin{})
-            .addPlugin(rtype::plugins::sprite::SpriteDrawPlugin{});
+            .addPlugin(aylo::plugins::shader::ShaderPlugin{})
+            .addPlugin(aylo::plugins::sprite::SpritePlugin{})
+            .addPlugin(aylo::plugins::sprite::SpriteDrawPlugin{});
         app.insertResource(ClearColor{.value = kClear});
         app.insertResource(Measure{.count = options.count, .seconds = options.seconds});
         app.addSystem(ecs::Phase::kStartup, "example.spawnSprites", &spawnSprites);

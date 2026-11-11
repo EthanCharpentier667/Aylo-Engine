@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** TestImages
 */
@@ -11,7 +11,7 @@
 #include <cstdint>
 #include <span>
 
-namespace rtype::test::plugins {
+namespace aylo::test::plugins {
 /// @brief A 2x1 RGBA PNG: an opaque red pixel, then a half-transparent green one.
 inline constexpr std::uint8_t kTwoPixelPng[] = {
     0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52, 0x00, 0x00,
@@ -21,4 +21,4 @@ inline constexpr std::uint8_t kTwoPixelPng[] = {
 
 /// @return The PNG's bytes.
 inline std::span<const std::byte> twoPixelPng() noexcept { return std::as_bytes(std::span{kTwoPixelPng}); }
-}  // namespace rtype::test::plugins
+}  // namespace aylo::test::plugins

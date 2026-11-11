@@ -1,0 +1,558 @@
+/*
+** EPITECH PROJECT, 2026
+** aylo
+** File description:
+** ClientState
+*/
+
+#include "aylo/replication/client/ClientState.hpp"
+
+#include <algorithm>
+#include <cstddef>
+#include <cstdint>
+#include <memory>
+#include <optional>
+#include <span>
+#include <string_view>
+#include <unordered_map>
+#include <unordered_set>
+#include <utility>
+#include <variant>
+#include <vector>
+
+#include "aylo/ecs/command/Commands.hpp"
+#include "aylo/ecs/component/ComponentInfo.hpp"
+#include "aylo/ecs/component/Components.hpp"
+#include "aylo/ecs/entity/Entity.hpp"
+#include "aylo/ecs/type/TypeInfo.hpp"
+#include "aylo/ecs/world/World.hpp"
+#include "aylo/network/NetworkSettings.hpp"
+#include "aylo/network/Types.hpp"
+#include "aylo/network/bytes/ByteReader.hpp"
+#include "aylo/network/bytes/ByteWriter.hpp"
+#include "aylo/network/client/ClientEvent.hpp"
+#include "aylo/network/client/NetClient.hpp"
+#include "aylo/network/io/Address.hpp"
+#include "aylo/replication/MessageType.hpp"
+#include "aylo/replication/ReplicationSettings.hpp"
+#include "aylo/replication/component/NetworkId.hpp"
+#include "aylo/replication/component/Owner.hpp"
+#include "aylo/replication/component/PlayerInput.hpp"
+#include "aylo/replication/input/InputLayout.hpp"
+#include "aylo/replication/input/InputMessage.hpp"
+#include "aylo/replication/manifest/Manifest.hpp"
+#include "aylo/replication/serialization/EntityMapper.hpp"
+#include "aylo/replication/serialization/FieldSerializer.hpp"
+#include "aylo/replication/snapshot/Snapshot.hpp"
+
+namespace aylo::replication::client {
+namespace {
+/// @brief Turns every reference into the null entity: the mapper of the validation, which touches no state.
+class NullMapper final : public serialization::EntityMapper {
+  public:
+    NullMapper() = default;
+    ~NullMapper() override = default;
+    NullMapper(const NullMapper& other) = delete;
+    NullMapper& operator=(const NullMapper& other) = delete;
+    NullMapper(NullMapper&& other) = delete;
+    NullMapper& operator=(NullMapper&& other) = delete;
+
+    [[nodiscard]] std::uint32_t toNetwork(const ecs::Entity /*entity*/) const noexcept override { return 0; }
+
+    [[nodiscard]] ecs::Entity toLocal(const std::uint32_t /*networkId*/) const noexcept override { return {}; }
+};
+
+/// @brief Gives the local entity of the NetworkIds the client knows.
+class MapMapper final : public serialization::EntityMapper {
+  public:
+    /// @param entities The `NetworkId → Entity` map; it must outlive the mapper.
+    explicit MapMapper(const std::unordered_map<std::uint32_t, ecs::Entity>& entities) noexcept
+        : _entities{&entities} {}
+    ~MapMapper() override = default;
+    MapMapper(const MapMapper& other) = delete;
+    MapMapper& operator=(const MapMapper& other) = delete;
+    MapMapper(MapMapper&& other) = delete;
+    MapMapper& operator=(MapMapper&& other) = delete;
+
+    /// @return 0: the client never writes entities to the network.
+    [[nodiscard]] std::uint32_t toNetwork(const ecs::Entity /*entity*/) const noexcept override { return 0; }
+
+    [[nodiscard]] ecs::Entity toLocal(const std::uint32_t networkId) const noexcept override {
+        const auto found = _entities->find(networkId);
+        return found == _entities->end() ? ecs::Entity{} : found->second;
+    }
+
+  private:
+    const std::unordered_map<std::uint32_t, ecs::Entity>* _entities;  ///< The `NetworkId → Entity` map.
+};
+
+/// @brief Gives back the NetworkId of a local entity, to write a value of the world as the server wrote it.
+/// @details A search through the map: only a value with an entity field asks, and its entity is usually found first.
+class NetworkIdMapper final : public serialization::EntityMapper {
+  public:
+    /// @param entities The `NetworkId → Entity` map; it must outlive the mapper.
+    explicit NetworkIdMapper(const std::unordered_map<std::uint32_t, ecs::Entity>& entities) noexcept
+        : _entities{&entities} {}
+    ~NetworkIdMapper() override = default;
+    NetworkIdMapper(const NetworkIdMapper& other) = delete;
+    NetworkIdMapper& operator=(const NetworkIdMapper& other) = delete;
+    NetworkIdMapper(NetworkIdMapper&& other) = delete;
+    NetworkIdMapper& operator=(NetworkIdMapper&& other) = delete;
+
+    /// @return The NetworkId the entity was received as, or 0 (the null entity) for one the server did not send.
+    [[nodiscard]] std::uint32_t toNetwork(const ecs::Entity entity) const noexcept override {
+        const auto found = std::ranges::find(*_entities, entity, [](const auto& known) { return known.second; });
+        return found == _entities->end() ? 0 : found->first;
+    }
+
+    /// @return The null entity: only used to write.
+    [[nodiscard]] ecs::Entity toLocal(const std::uint32_t /*networkId*/) const noexcept override { return {}; }
+
+  private:
+    const std::unordered_map<std::uint32_t, ecs::Entity>* _entities;  ///< The `NetworkId → Entity` map.
+};
+
+/// @brief Tells whether an entity already holds a value received from the server: its own value, written as the
+/// server writes it, gives the same bytes. Exact for every serializable type, lists and entity fields included.
+[[nodiscard]] bool holdsValue(const ecs::Components& components, const ecs::Entity entity, const ecs::ComponentId id,
+                              const ecs::TypeInfo& type, const std::span<const std::byte> received,
+                              const serialization::EntityMapper& mapper) {
+    if (!components.has(entity, id)) {
+        return false;
+    }
+    if (type.size == 0) {
+        return true;  // a tag has no value: having it is holding it
+    }
+    const std::span<const std::byte> current = components.get(entity, id);
+    if (current.size() < type.size || serialization::computeWireSize(type, current) != received.size()) {
+        return false;
+    }
+    network::Bytes bytes(received.size());
+    network::bytes::ByteWriter writer{bytes};
+    serialization::writeFields(writer, type, current, mapper);
+    return writer.isValid() && writer.bytesWritten() == received.size() && std::ranges::equal(bytes, received);
+}
+
+/// @brief The key of a component of a replicated entity in ClientState::_pending.
+[[nodiscard]] constexpr std::uint64_t pendingKey(const std::uint32_t networkId, const ecs::ComponentId id) noexcept {
+    constexpr std::uint64_t kIdBits = 32;
+    return (static_cast<std::uint64_t>(networkId) << kIdBits) | id;
+}
+
+/// @brief One value of a component read from the network. A type that owns memory (a list field) is a live object,
+/// built here and destroyed with this: the world takes a copy of it.
+class ReceivedValue {
+  public:
+    explicit ReceivedValue(const ecs::TypeInfo& type) : _bytes(type.size) {
+        if (type.hooks.destruct != nullptr) {
+            type.hooks.construct(_bytes.data());
+            _owned = &type;
+        }
+    }
+    ~ReceivedValue() {
+        if (_owned != nullptr) {
+            _owned->hooks.destruct(_bytes.data());
+        }
+    }
+    ReceivedValue(const ReceivedValue& other) = delete;
+    ReceivedValue& operator=(const ReceivedValue& other) = delete;
+    ReceivedValue(ReceivedValue&& other) noexcept
+        : _bytes{std::move(other._bytes)}, _owned{std::exchange(other._owned, nullptr)} {}
+    ReceivedValue& operator=(ReceivedValue&& other) = delete;
+
+    /// @return The bytes of the value.
+    [[nodiscard]] std::span<std::byte> getBytes() noexcept { return _bytes; }
+
+  private:
+    std::vector<std::byte> _bytes;         ///< The value; its buffer does not move with this object.
+    const ecs::TypeInfo* _owned{nullptr};  ///< The type to destroy the value with; null for plain data.
+};
+
+/// @brief Reads one value of a component.
+/// @return The value, or nothing when the bytes are not a valid value.
+[[nodiscard]] std::optional<ReceivedValue> readValue(const ecs::TypeInfo& type, const std::span<const std::byte> bytes,
+                                                     const serialization::EntityMapper& mapper) {
+    ReceivedValue value{type};
+    network::bytes::ByteReader reader{bytes};
+    if (!serialization::readFields(reader, type, value.getBytes(), mapper) || !reader.isFinished()) {
+        return std::nullopt;
+    }
+    return value;
+}
+}  // namespace
+
+ClientState::ClientState(const network::io::Address& server, const network::NetworkSettings& settings,
+                         const ecs::World& world)
+    : _server{server}, _settings{settings}, _world{&world}, _time{[] { return network::Clock::now(); }} {}
+
+ClientState::~ClientState() = default;
+
+ManifestStatus ClientState::manifestStatus() const noexcept { return _manifestStatus; }
+
+std::string_view ClientState::mismatch() const noexcept { return _mismatch; }
+
+ConnectionStatus ClientState::connectionStatus() const noexcept { return _connection; }
+
+std::optional<network::DisconnectReason> ClientState::disconnectReason() const noexcept { return _disconnectReason; }
+
+std::optional<network::RejectReason> ClientState::rejectReason() const noexcept { return _rejectReason; }
+
+std::optional<network::ClientId> ClientState::clientId() const noexcept { return _clientId; }
+
+const ReplicationSettings& ClientState::serverSettings() const noexcept { return _receiver.serverSettings(); }
+
+std::uint32_t ClientState::lastAppliedTick() const noexcept { return _lastAppliedTick; }
+
+std::uint32_t ClientState::lastProcessedInput() const noexcept { return _lastProcessedInput; }
+
+std::size_t ClientState::droppedCount() const noexcept { return _dropped; }
+
+std::size_t ClientState::staleCount() const noexcept { return _stale; }
+
+network::client::NetClient& ClientState::netClient() noexcept { return *_client; }
+
+void ClientState::setInput(const component::PlayerInput& input) {
+    if (_manifestStatus == ManifestStatus::kAccepted) {
+        _input = input;
+    }
+}
+
+ecs::Entity ClientState::find(const std::uint32_t networkId) const noexcept {
+    const auto found = _entities.find(networkId);
+    return found == _entities.end() ? ecs::Entity{} : found->second;
+}
+
+std::optional<ecs::Entity> ClientState::localPlayer() const noexcept {
+    if (!_clientId) {
+        return std::nullopt;
+    }
+    // The lowest NetworkId wins if the game gave two entities to one client: the answer must not depend on the
+    // iteration order of the map.
+    std::optional<std::uint32_t> best;
+    for (const auto& [networkId, entity] : _entities) {
+        const auto* owner = _world->getComponents().get<component::Owner>(entity);
+        if (owner != nullptr && owner->client == *_clientId && (!best || networkId < *best)) {
+            best = networkId;
+        }
+    }
+    if (!best) {
+        return std::nullopt;
+    }
+    return _entities.at(*best);
+}
+
+void ClientState::setTimeSource(TimeSource source) { _time = std::move(source); }
+
+void ClientState::connect() {
+    _client = std::make_unique<network::client::NetClient>(_server, _settings);
+    _connection = ConnectionStatus::kConnecting;
+    _serverReady = false;
+    _client->connect(_time());
+}
+
+void ClientState::receive(input::InputLayout& inputs, ecs::Commands& commands) {
+    if (!_client) {
+        return;
+    }
+    _client->poll(_time());
+    for (const network::client::ClientEvent& clientEvent : _client->takeEvents()) {
+        handle(clientEvent, inputs, commands);
+    }
+}
+
+void ClientState::handle(const network::client::ClientEvent& clientEvent, input::InputLayout& inputs,
+                         ecs::Commands& commands) {
+    if (const auto* accepted = std::get_if<network::client::ConnectionAccepted>(&clientEvent)) {
+        _connection = ConnectionStatus::kConnected;
+        _clientId = accepted->client;
+        return;
+    }
+    if (const auto* left = std::get_if<network::client::Disconnected>(&clientEvent)) {
+        _connection = ConnectionStatus::kDisconnected;
+        _serverReady = false;
+        _disconnectReason = left->reason;
+        return;
+    }
+    if (const auto* failed = std::get_if<network::client::ConnectFailed>(&clientEvent)) {
+        _connection = ConnectionStatus::kFailed;
+        _rejectReason = failed->reason;
+        return;
+    }
+    const auto& message = std::get<network::client::ServerMessage>(clientEvent);
+    if (message.payload.empty()) {
+        ++_dropped;
+        return;
+    }
+    const auto type = static_cast<std::uint8_t>(message.payload.front());
+    if (type == static_cast<std::uint8_t>(MessageType::kSnapshot)) {
+        // The server sends snapshots to the clients that sent their `Ready` only.
+        _serverReady = _serverReady || _manifestStatus == ManifestStatus::kAccepted;
+        static_cast<void>(applySnapshot(message.payload, commands));
+        return;
+    }
+    if (type == static_cast<std::uint8_t>(MessageType::kCustomPacket)) {
+        if (_manifestStatus != ManifestStatus::kAccepted || _packets.size() >= kMaxPendingPackets) {
+            ++_dropped;
+        } else {
+            _serverReady = true;  // it sends packets to the clients that are ready only
+            _packets.push_back(message.payload);
+        }
+        return;
+    }
+    const bool isManifest = type >= static_cast<std::uint8_t>(MessageType::kManifestComponent) &&
+                            type <= static_cast<std::uint8_t>(MessageType::kManifestEnd);
+    if (!isManifest || _manifestStatus != ManifestStatus::kWaiting || !_receiver.receive(message.payload)) {
+        ++_dropped;
+        return;
+    }
+    if (_receiver.isComplete()) {
+        checkManifest(inputs);
+    }
+}
+
+void ClientState::checkManifest(input::InputLayout& inputs) {
+    inputs.freeze();
+    manifest::ManifestCheck result = _receiver.check(*_world, inputs);
+    if (!result.manifest) {
+        _manifestStatus = ManifestStatus::kMismatch;
+        _mismatch = std::move(result.mismatch);
+        if (_client) {
+            _client->disconnect(_time(), network::DisconnectReason::kManifestMismatch);
+        }
+        return;
+    }
+    _manifest = std::move(result.manifest);
+    _componentSizes = snapshot::computeComponentSizes(*_manifest, *_world);
+    _manifestStatus = ManifestStatus::kAccepted;
+    if (_client) {
+        _client->sendReady();
+    }
+}
+
+bool ClientState::isLive(const ecs::Entity entity) const {
+    return _world->isAlive(entity) || _reserved.contains(entity);
+}
+
+bool ClientState::validate(const snapshot::Snapshot& decoded, const manifest::Manifest& manifest) const {
+    const auto& registry = _world->getComponents().getRegistry();
+    const NullMapper mapper;
+    const auto isValid = [&](const std::vector<snapshot::ComponentValue>& values) {
+        return std::ranges::all_of(values, [&](const snapshot::ComponentValue& value) {
+            const std::optional<ecs::ComponentId> id = manifest.toLocal(value.shortId);
+            const ecs::ComponentInfo* info = id ? registry.findById(*id) : nullptr;
+            return info != nullptr && readValue(info->type, value.bytes, mapper).has_value();
+        });
+    };
+    return std::ranges::all_of(decoded.spawns,
+                               [&](const snapshot::SpawnRecord& record) { return isValid(record.components); }) &&
+           std::ranges::all_of(decoded.updates,
+                               [&](const snapshot::UpdateRecord& record) { return isValid(record.components); }) &&
+           std::ranges::all_of(decoded.removals, [&](const snapshot::RemovalRecord& record) {
+               return manifest.toLocal(record.shortId).has_value();
+           });
+}
+
+void ClientState::spawnEntities(const snapshot::Snapshot& decoded, ecs::Commands& commands) {
+    for (const snapshot::SpawnRecord& record : decoded.spawns) {
+        const auto known = _entities.find(record.networkId);
+        if (known != _entities.end() && isLive(known->second)) {
+            continue;
+        }
+        const ecs::Entity entity = commands.spawn().add(component::NetworkId{.value = record.networkId}).getEntity();
+        _reserved.insert(entity);
+        _entities.insert_or_assign(record.networkId, entity);
+    }
+}
+
+void ClientState::writeValues(const std::uint32_t networkId, const std::vector<snapshot::ComponentValue>& values,
+                              const manifest::Manifest& manifest, ecs::Commands& commands) {
+    const auto entity = _entities.find(networkId);
+    if (entity == _entities.end()) {
+        return;
+    }
+    const ecs::Components& components = _world->getComponents();
+    const auto& registry = components.getRegistry();
+    const MapMapper mapper{_entities};
+    const NetworkIdMapper back{_entities};
+    for (const snapshot::ComponentValue& value : values) {
+        const std::optional<ecs::ComponentId> id = manifest.toLocal(value.shortId);
+        if (!id) {
+            continue;
+        }
+        const ecs::ComponentInfo* info = registry.findById(*id);
+        if (info == nullptr) {
+            continue;
+        }
+        // A value the entity already holds is not written again, so that `Changed` means changed: a snapshot lists
+        // every component every time. Unless commands not applied yet touch it: the world is then not up to date.
+        const std::uint64_t key = pendingKey(networkId, *id);
+        if (!_pending.contains(key) && holdsValue(components, entity->second, *id, info->type, value.bytes, back)) {
+            continue;
+        }
+        if (std::optional<ReceivedValue> received = readValue(info->type, value.bytes, mapper)) {
+            static_cast<void>(commands.add(entity->second, *id, received->getBytes()));
+            _pending.insert(key);
+        }
+    }
+}
+
+void ClientState::removeComponents(const snapshot::Snapshot& decoded, const manifest::Manifest& manifest,
+                                   ecs::Commands& commands) {
+    for (const snapshot::RemovalRecord& record : decoded.removals) {
+        const auto entity = _entities.find(record.networkId);
+        const std::optional<ecs::ComponentId> id = manifest.toLocal(record.shortId);
+        if (entity != _entities.end() && id) {
+            static_cast<void>(commands.remove(entity->second, *id));
+            _pending.insert(pendingKey(record.networkId, *id));
+        }
+    }
+}
+
+void ClientState::despawnEntities(const snapshot::Snapshot& decoded, ecs::Commands& commands) {
+    for (const std::uint32_t networkId : decoded.despawns) {
+        const auto entity = _entities.find(networkId);
+        if (entity != _entities.end()) {
+            commands.despawn(entity->second);
+            _entities.erase(entity);
+        }
+    }
+}
+
+bool ClientState::acceptsPart(const snapshot::Snapshot& decoded) const {
+    if (decoded.tick > _lastAppliedTick) {
+        return true;
+    }
+    return decoded.tick == _lastAppliedTick && decoded.tick == _partTick && decoded.partCount == _partCount &&
+           !_partsSeen.test(decoded.part);
+}
+
+void ClientState::removeUnlistedEntities(const std::unordered_set<std::uint32_t>& listed, ecs::Commands& commands) {
+    for (auto entity = _entities.begin(); entity != _entities.end();) {
+        if (listed.contains(entity->first)) {
+            ++entity;
+            continue;
+        }
+        commands.despawn(entity->second);
+        entity = _entities.erase(entity);
+    }
+}
+
+void ClientState::removeUnlistedComponents(const snapshot::Snapshot& decoded, const manifest::Manifest& manifest,
+                                           ecs::Commands& commands) {
+    const std::span<const ecs::ComponentId> replicated = manifest.components();
+    for (const snapshot::SpawnRecord& record : decoded.spawns) {
+        const ecs::Entity entity = find(record.networkId);
+        std::vector<bool> isListed(replicated.size(), false);
+        for (const snapshot::ComponentValue& value : record.components) {
+            isListed.at(value.shortId) = true;
+        }
+        for (std::size_t shortId = 0; shortId < replicated.size(); ++shortId) {
+            if (!isListed.at(shortId)) {
+                static_cast<void>(commands.remove(entity, replicated[shortId]));     // NOLINT
+                _pending.insert(pendingKey(record.networkId, replicated[shortId]));  // NOLINT
+            }
+        }
+    }
+}
+
+bool ClientState::applySnapshot(const std::span<const std::byte> message, ecs::Commands& commands) {
+    if (_manifestStatus != ManifestStatus::kAccepted || !_manifest) {
+        ++_stale;
+        return false;
+    }
+    const manifest::Manifest& manifest = *_manifest;
+    const std::optional<snapshot::Snapshot> decoded = snapshot::decode(message, _componentSizes);
+    if (!decoded || !validate(*decoded, manifest)) {
+        ++_dropped;
+        return false;
+    }
+    const bool isPart = (decoded->flags & snapshot::kPart) != 0;
+    if (isPart ? !acceptsPart(*decoded) : decoded->tick <= _lastAppliedTick) {
+        ++_stale;
+        return false;
+    }
+    if (commands.isEmpty()) {
+        _reserved.clear();  // what was reserved is alive by now, or gone
+        _pending.clear();   // and the world holds what was written
+    }
+
+    // Every spawn first, so that a field can refer to an entity spawned by the same snapshot.
+    spawnEntities(*decoded, commands);
+    for (const snapshot::SpawnRecord& record : decoded->spawns) {
+        writeValues(record.networkId, record.components, manifest, commands);
+    }
+    for (const snapshot::UpdateRecord& record : decoded->updates) {
+        writeValues(record.networkId, record.components, manifest, commands);
+    }
+    removeComponents(*decoded, manifest, commands);
+    despawnEntities(*decoded, commands);
+    const bool complete = (decoded->flags & snapshot::kComplete) != 0;
+    if (isPart) {
+        if (decoded->tick != _partTick) {  // the first part of a newer tick: the older one's are given up
+            _partTick = decoded->tick;
+            _partCount = decoded->partCount;
+            _partsSeen.reset();
+            _partListed.clear();
+        }
+        _partsSeen.set(decoded->part);
+    }
+    if (complete) {
+        removeUnlistedComponents(*decoded, manifest, commands);
+        std::unordered_set<std::uint32_t> single;
+        std::unordered_set<std::uint32_t>& listed = isPart ? _partListed : single;
+        for (const snapshot::SpawnRecord& record : decoded->spawns) {
+            listed.insert(record.networkId);
+        }
+        if (!isPart || _partsSeen.count() == _partCount) {
+            removeUnlistedEntities(listed, commands);
+        }
+    }
+
+    _lastAppliedTick = decoded->tick;
+    _lastProcessedInput = decoded->lastProcessedInput;
+    return true;
+}
+
+std::optional<network::Bytes> ClientState::nextInputMessage(const input::InputLayout& inputs) {
+    if (_manifestStatus != ManifestStatus::kAccepted) {
+        return std::nullopt;
+    }
+    const component::PlayerInput input = _input.value_or(component::PlayerInput{});
+    _recentInputs.push_back({.sequence = _nextInputSequence++, .buttons = input.buttons, .axes = input.axes});
+    while (_recentInputs.size() > input::kMaxInputsPerMessage) {
+        _recentInputs.pop_front();
+    }
+    return input::encodeInput(
+        {
+            .lastAppliedSnapshot = _lastAppliedTick,
+            .inputs = std::vector<input::InputSample>(_recentInputs.begin(), _recentInputs.end()),
+        },
+        inputs);
+}
+
+void ClientState::sendInput(const input::InputLayout& inputs) {
+    if (!_client || _connection != ConnectionStatus::kConnected) {
+        return;
+    }
+    if (const std::optional<network::Bytes> message = nextInputMessage(inputs)) {
+        static_cast<void>(_client->send(network::Channel::kUnreliable, *message));
+        _client->flush(_time());
+    }
+}
+
+void ClientState::noteDroppedPacket() noexcept { ++_dropped; }
+
+std::vector<network::Bytes> ClientState::takePackets() { return std::exchange(_packets, {}); }
+
+bool ClientState::sendPacket(const network::Channel channel, const std::span<const std::byte> payload) {
+    if (!_client || _connection != ConnectionStatus::kConnected || _manifestStatus != ManifestStatus::kAccepted) {
+        return false;
+    }
+    if (channel != network::Channel::kReliable && !_serverReady) {
+        return false;
+    }
+    const bool queued = _client->send(channel, payload);
+    _client->flush(_time());
+    return queued;
+}
+}  // namespace aylo::replication::client

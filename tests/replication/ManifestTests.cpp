@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ManifestTests
 */
@@ -16,39 +16,39 @@
 #include <string_view>
 #include <vector>
 
-#include "rtype/ecs/component/ComponentInfo.hpp"
-#include "rtype/ecs/component/Components.hpp"
-#include "rtype/ecs/type/Field.hpp"
-#include "rtype/ecs/world/World.hpp"
-#include "rtype/network/Types.hpp"
-#include "rtype/replication/MessageType.hpp"
-#include "rtype/replication/ReplicationSettings.hpp"
-#include "rtype/replication/exceptions/ReplicationExceptions.hpp"
-#include "rtype/replication/input/InputLayout.hpp"
-#include "rtype/replication/manifest/Manifest.hpp"
-#include "rtype/replication/manifest/ManifestMessages.hpp"
-#include "rtype/replication/manifest/ManifestReceiver.hpp"
+#include "aylo/ecs/component/ComponentInfo.hpp"
+#include "aylo/ecs/component/Components.hpp"
+#include "aylo/ecs/type/Field.hpp"
+#include "aylo/ecs/world/World.hpp"
+#include "aylo/network/Types.hpp"
+#include "aylo/replication/MessageType.hpp"
+#include "aylo/replication/ReplicationSettings.hpp"
+#include "aylo/replication/exceptions/ReplicationExceptions.hpp"
+#include "aylo/replication/input/InputLayout.hpp"
+#include "aylo/replication/manifest/Manifest.hpp"
+#include "aylo/replication/manifest/ManifestMessages.hpp"
+#include "aylo/replication/manifest/ManifestReceiver.hpp"
 
 namespace {
-using rtype::ecs::ComponentId;
-using rtype::ecs::ComponentInfo;
-using rtype::ecs::FieldType;
-using rtype::ecs::Presence;
-using rtype::ecs::ReplicationMode;
-using rtype::ecs::World;
-using rtype::network::Bytes;
-using rtype::replication::MessageType;
-using rtype::replication::ReplicationSettings;
-using rtype::replication::exceptions::InputLayoutException;
-using rtype::replication::exceptions::ManifestException;
-using rtype::replication::input::InputKind;
-using rtype::replication::input::InputLayout;
-using rtype::replication::manifest::Manifest;
-using rtype::replication::manifest::ManifestCodec;
-using rtype::replication::manifest::ManifestComponent;
-using rtype::replication::manifest::ManifestEnd;
-using rtype::replication::manifest::ManifestInputAction;
-using rtype::replication::manifest::ManifestReceiver;
+using aylo::ecs::ComponentId;
+using aylo::ecs::ComponentInfo;
+using aylo::ecs::FieldType;
+using aylo::ecs::Presence;
+using aylo::ecs::ReplicationMode;
+using aylo::ecs::World;
+using aylo::network::Bytes;
+using aylo::replication::MessageType;
+using aylo::replication::ReplicationSettings;
+using aylo::replication::exceptions::InputLayoutException;
+using aylo::replication::exceptions::ManifestException;
+using aylo::replication::input::InputKind;
+using aylo::replication::input::InputLayout;
+using aylo::replication::manifest::Manifest;
+using aylo::replication::manifest::ManifestCodec;
+using aylo::replication::manifest::ManifestComponent;
+using aylo::replication::manifest::ManifestEnd;
+using aylo::replication::manifest::ManifestInputAction;
+using aylo::replication::manifest::ManifestReceiver;
 
 /// @brief Registers a replicated component with one `f32` field per name of `fields`, in the given world.
 ComponentId addComponent(World& world, std::string name, const std::vector<std::string>& fields = {"value"},
@@ -465,14 +465,14 @@ namespace {
 struct Backpack {
     std::vector<std::uint32_t> items;
 };
-RTYPE_ECS_COMPONENT(Backpack, "test.manifest.Backpack", items);
+AYLO_ECS_COMPONENT(Backpack, "test.manifest.Backpack", items);
 }  // namespace
 
 TEST(Manifest, ReplicatesAComponentWithAList) {
-    rtype::ecs::World world;
+    aylo::ecs::World world;
     static_cast<void>(world.getComponents().registerType<Backpack>(
-        {.presence = rtype::ecs::Presence::kBoth, .replication = rtype::ecs::ReplicationMode::kEveryChange}));
-    rtype::replication::input::InputLayout layout;
+        {.presence = aylo::ecs::Presence::kBoth, .replication = aylo::ecs::ReplicationMode::kEveryChange}));
+    aylo::replication::input::InputLayout layout;
     layout.freeze();
-    EXPECT_NO_THROW(static_cast<void>(rtype::replication::manifest::Manifest::build(world, layout)));
+    EXPECT_NO_THROW(static_cast<void>(aylo::replication::manifest::Manifest::build(world, layout)));
 }

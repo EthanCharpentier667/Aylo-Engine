@@ -1,8 +1,8 @@
 # AYLO Engine
 
-[![CI](https://github.com/Charles-Mahoudeau/rtype/actions/workflows/ci.yml/badge.svg)](https://github.com/Charles-Mahoudeau/rtype/actions/workflows/ci.yml)
-[![Manual](https://img.shields.io/badge/manual-online-blue)](https://charles-mahoudeau.github.io/rtype/)
-[![Developer docs](https://img.shields.io/badge/developer%20docs-online-blue)](https://charles-mahoudeau.github.io/rtype/engine/)
+[![CI](https://github.com/Charles-Mahoudeau/aylo/actions/workflows/ci.yml/badge.svg)](https://github.com/Charles-Mahoudeau/aylo/actions/workflows/ci.yml)
+[![Manual](https://img.shields.io/badge/manual-online-blue)](https://charles-mahoudeau.github.io/aylo/)
+[![Developer docs](https://img.shields.io/badge/developer%20docs-online-blue)](https://charles-mahoudeau.github.io/aylo/engine/)
 
 **AYLO** (*Another Yet Lightweight Optimized Engine*) is a C++23 game engine made for the Epitech R-Type project:
 a Vulkan renderer, Luau scripting, physics, audio and an authoritative client/server network model over UDP. It does
@@ -36,21 +36,21 @@ xmake's package manager into a per-user cache: nothing else is installed on the 
 xmake f -y                 # configure (add -m release for a release build)
 xmake build -y             # build: copies aylo-runtime and aylo-editor to the repository root
 
-./r-type_server            # the R-Type server (on game/), same as ./aylo-runtime --server
-./r-type_client            # the R-Type client, same as ./aylo-runtime
+./aylo-server            # the R-Type server (on game/), same as ./aylo-runtime --server
+./aylo-client            # the R-Type client, same as ./aylo-runtime
 ./aylo-runtime <game_dir>  # any game: a folder with a project.luau
 ./aylo-editor <game_dir>   # the editor
 ```
 
 The server listens on UDP port 4242. Other flags (`--port <port>`, `--host <address>`...) reach the game's
-`project.luau` as `engine.args`, which decides what to do with them. On Windows, use `r-type_server.bat` and
-`r-type_client.bat`.
+`project.luau` as `engine.args`, which decides what to do with them. On Windows, use `aylo-server.bat` and
+`aylo-client.bat`.
 
-Example games are in [`examples/games/`](examples/games/): `rtype_duel` is a complete two-player game.
+Example games are in [`examples/games/`](examples/games/): `aylo_duel` is a complete two-player game.
 
 ```sh
-./aylo-runtime --server examples/games/rtype_duel/game
-./aylo-runtime examples/games/rtype_duel/game
+./aylo-runtime --server examples/games/aylo_duel/game
+./aylo-runtime examples/games/aylo_duel/game
 ```
 
 Tests: `xmake f -y --Tests=y && xmake build -y && xmake test -v`.
@@ -59,8 +59,8 @@ Tests: `xmake f -y --Tests=y && xmake build -y && xmake test -v`.
 
 | | For | Link |
 |---|---|---|
-| **Game developer manual** | Making a game in Luau | <https://charles-mahoudeau.github.io/rtype/> |
-| **Developer documentation** | Working on the engine: architecture, modules, network protocol, technical study | <https://charles-mahoudeau.github.io/rtype/engine/> ([`docs/`](docs/index.md)) |
+| **Game developer manual** | Making a game in Luau | <https://charles-mahoudeau.github.io/aylo/> |
+| **Developer documentation** | Working on the engine: architecture, modules, network protocol, technical study | <https://charles-mahoudeau.github.io/aylo/engine/> ([`docs/`](docs/index.md)) |
 | **Network protocol** | Writing another client | [`docs/network/protocol.md`](docs/network/protocol.md) |
 | **Contributing** | Workflow, conventions, definition of done | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
 
@@ -71,7 +71,7 @@ Tests: `xmake f -y --Tests=y && xmake build -y && xmake test -v`.
 - Noé Caillaud
 - Jhong Amos Almacin
 
-Questions and bugs: [GitHub issues](https://github.com/Charles-Mahoudeau/rtype/issues).
+Questions and bugs: [GitHub issues](https://github.com/Charles-Mahoudeau/aylo/issues).
 
 ## License
 

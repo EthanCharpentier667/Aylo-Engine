@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** SystemParamTests
 */
@@ -11,68 +11,68 @@
 #include <span>
 #include <vector>
 
-#include "rtype/ecs/command/Commands.hpp"
-#include "rtype/ecs/component/ComponentTraits.hpp"
-#include "rtype/ecs/event/EventTraits.hpp"
-#include "rtype/ecs/query/Query.hpp"
-#include "rtype/ecs/query/QueryTerms.hpp"
-#include "rtype/ecs/resource/ResourceTraits.hpp"
-#include "rtype/ecs/system/EventReader.hpp"
-#include "rtype/ecs/system/EventWriter.hpp"
-#include "rtype/ecs/system/ResourceParam.hpp"
-#include "rtype/ecs/system/SystemAccess.hpp"
-#include "rtype/ecs/system/SystemParam.hpp"
-#include "rtype/ecs/world/World.hpp"
+#include "aylo/ecs/command/Commands.hpp"
+#include "aylo/ecs/component/ComponentTraits.hpp"
+#include "aylo/ecs/event/EventTraits.hpp"
+#include "aylo/ecs/query/Query.hpp"
+#include "aylo/ecs/query/QueryTerms.hpp"
+#include "aylo/ecs/resource/ResourceTraits.hpp"
+#include "aylo/ecs/system/EventReader.hpp"
+#include "aylo/ecs/system/EventWriter.hpp"
+#include "aylo/ecs/system/ResourceParam.hpp"
+#include "aylo/ecs/system/SystemAccess.hpp"
+#include "aylo/ecs/system/SystemParam.hpp"
+#include "aylo/ecs/world/World.hpp"
 
-namespace rtype::test::system_param {
+namespace aylo::test::system_param {
 struct Position {
     float x;
     float y;
 };
-RTYPE_ECS_COMPONENT(Position, "test.system_param.Position", x, y);
+AYLO_ECS_COMPONENT(Position, "test.system_param.Position", x, y);
 
 struct Velocity {
     float x;
     float y;
 };
-RTYPE_ECS_COMPONENT(Velocity, "test.system_param.Velocity", x, y);
+AYLO_ECS_COMPONENT(Velocity, "test.system_param.Velocity", x, y);
 
 struct Time {
     float delta;
 };
-RTYPE_ECS_RESOURCE(Time, "test.system_param.Time", delta);
+AYLO_ECS_RESOURCE(Time, "test.system_param.Time", delta);
 
 struct Renderer {
     int frames;
 };
-RTYPE_ECS_RESOURCE(Renderer, "test.system_param.Renderer", frames);
+AYLO_ECS_RESOURCE(Renderer, "test.system_param.Renderer", frames);
 
 struct Collision {
     std::uint32_t a;
 };
-RTYPE_ECS_EVENT(Collision, "test.system_param.Collision", a);
-}  // namespace rtype::test::system_param
+AYLO_ECS_EVENT(Collision, "test.system_param.Collision", a);
+}  // namespace aylo::test::system_param
 
 namespace {
-using rtype::ecs::Commands;
-using rtype::ecs::EventReader;
-using rtype::ecs::EventWriter;
-using rtype::ecs::NonSend;
-using rtype::ecs::NonSendMut;
-using rtype::ecs::Query;
-using rtype::ecs::Res;
-using rtype::ecs::ResMut;
-using rtype::ecs::SystemAccess;
-using rtype::ecs::SystemContext;
-using rtype::ecs::SystemParam;
-using rtype::ecs::SystemParameter;
-using rtype::ecs::TypeAccess;
-using rtype::ecs::World;
-using rtype::test::system_param::Collision;
-using rtype::test::system_param::Position;
-using rtype::test::system_param::Renderer;
-using rtype::test::system_param::Time;
-using rtype::test::system_param::Velocity;
+using aylo::ecs::Commands;
+using aylo::ecs::EventReader;
+using aylo::ecs::EventWriter;
+using aylo::ecs::NonSend;
+using aylo::ecs::NonSendMut;
+using aylo::ecs::Query;
+using aylo::ecs::Res;
+using aylo::ecs::ResMut;
+using aylo::ecs::SystemAccess;
+using aylo::ecs::SystemContext;
+using aylo::ecs::SystemParam;
+using aylo::ecs::SystemParameter;
+using aylo::ecs::TypeAccess;
+using aylo::ecs::World;
+using aylo::test::system_param::Collision;
+using aylo::test::system_param::Position;
+using aylo::test::system_param::Renderer;
+using aylo::test::system_param::Time;
+using aylo::test::system_param::Velocity;
 
 // The accepted parameter types, exactly as written.
 static_assert(SystemParameter<Query<Position, const Velocity>>);
@@ -133,7 +133,7 @@ TEST(SystemParam, BuildsResourcesAndAddsTheirAccess) {
     SystemAccess access;
     Read::addAccess(read, access);
     Write::addAccess(write, access);
-    const rtype::ecs::ResourceId time = *world.getResources().find("test.system_param.Time");
+    const aylo::ecs::ResourceId time = *world.getResources().find("test.system_param.Time");
     EXPECT_EQ(toVector(access.getResources()), (std::vector<TypeAccess>{{.id = time, .write = true}}));
     EXPECT_FALSE(access.isMainThread());
 }

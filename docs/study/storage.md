@@ -27,7 +27,7 @@ nothing it stores needs one yet. This page explains why, and what would change t
 
 ## How a save stays reliable
 
-The persistence plugin ([manual page](https://charles-mahoudeau.github.io/rtype/persistence/)) stores each save as a
+The persistence plugin ([manual page](https://charles-mahoudeau.github.io/aylo/persistence/)) stores each save as a
 header and the game's text:
 
 ```

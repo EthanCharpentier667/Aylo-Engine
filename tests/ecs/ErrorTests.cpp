@@ -1,57 +1,57 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ErrorTests
 */
 
 #include <gtest/gtest.h>
 
-#include "rtype/ecs/error/Error.hpp"
-#include "rtype/ecs/error/Result.hpp"
+#include "aylo/ecs/error/Error.hpp"
+#include "aylo/ecs/error/Result.hpp"
 
 namespace {
-rtype::ecs::Result<int> parsePositive(int value) {
+aylo::ecs::Result<int> parsePositive(int value) {
     if (value < 0) {
-        return rtype::ecs::fail(rtype::ecs::ErrorKind::kInvalidType, "negative");
+        return aylo::ecs::fail(aylo::ecs::ErrorKind::kInvalidType, "negative");
     }
     return value;
 }
 
-rtype::ecs::Result<void> check(bool ok) {
+aylo::ecs::Result<void> check(bool ok) {
     if (!ok) {
-        return rtype::ecs::fail(rtype::ecs::ErrorKind::kInvalidType, "not ok");
+        return aylo::ecs::fail(aylo::ecs::ErrorKind::kInvalidType, "not ok");
     }
     return {};
 }
 }  // namespace
 
 TEST(Error, KeepsKindAndMessage) {
-    const rtype::ecs::Error error{rtype::ecs::ErrorKind::kInvalidType, "broken"};
-    EXPECT_EQ(error.getKind(), rtype::ecs::ErrorKind::kInvalidType);
+    const aylo::ecs::Error error{aylo::ecs::ErrorKind::kInvalidType, "broken"};
+    EXPECT_EQ(error.getKind(), aylo::ecs::ErrorKind::kInvalidType);
     EXPECT_EQ(error.getMessage(), "broken");
 }
 
 TEST(Error, IsCopyable) {
-    const rtype::ecs::Error error{rtype::ecs::ErrorKind::kInvalidType, "broken"};
-    const rtype::ecs::Error copy{error};  // NOLINT(performance-unnecessary-copy-initialization)
+    const aylo::ecs::Error error{aylo::ecs::ErrorKind::kInvalidType, "broken"};
+    const aylo::ecs::Error copy{error};  // NOLINT(performance-unnecessary-copy-initialization)
     EXPECT_EQ(copy.getMessage(), error.getMessage());
 }
 
 TEST(Result, HoldsAValueOnSuccess) {
-    const rtype::ecs::Result<int> result = parsePositive(3);
+    const aylo::ecs::Result<int> result = parsePositive(3);
     ASSERT_TRUE(result);
     EXPECT_EQ(*result, 3);
     EXPECT_TRUE(check(true));
 }
 
 TEST(Result, FailBuildsTheErrorSide) {
-    const rtype::ecs::Result<int> value = parsePositive(-1);
+    const aylo::ecs::Result<int> value = parsePositive(-1);
     ASSERT_FALSE(value);
-    EXPECT_EQ(value.error().getKind(), rtype::ecs::ErrorKind::kInvalidType);
+    EXPECT_EQ(value.error().getKind(), aylo::ecs::ErrorKind::kInvalidType);
     EXPECT_EQ(value.error().getMessage(), "negative");
 
-    const rtype::ecs::Result<void> none = check(false);
+    const aylo::ecs::Result<void> none = check(false);
     ASSERT_FALSE(none);
     EXPECT_EQ(none.error().getMessage(), "not ok");
 }

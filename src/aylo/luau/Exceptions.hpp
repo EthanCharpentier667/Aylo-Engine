@@ -1,0 +1,72 @@
+/*
+** EPITECH PROJECT, 2026
+** aylo
+** File description:
+** Exceptions
+*/
+
+#pragma once
+
+#include <stdexcept>
+
+#include "Export.hpp"
+
+namespace aylo::luau::exceptions {
+/// @brief Base class of every exception thrown by the Luau module.
+///
+/// Catching it catches any error raised by the module; it can also be caught as a `std::runtime_error`.
+class AYLO_LUAU_API Base : public std::runtime_error {
+  public:
+    using std::runtime_error::runtime_error;
+};
+
+/// @brief Exception thrown when a null Lua state is given where a valid one is required.
+class AYLO_LUAU_API InvalidState : public Base {
+  public:
+    using Base::Base;
+    /// @brief Creates the exception with the message "invalid Lua state".
+    InvalidState() : Base{"invalid luau state"} {}
+};
+
+/// @brief Exception thrown when an empty Ref (default-constructed or moved-from) is used.
+class AYLO_LUAU_API InvalidRef : public Base {
+  public:
+    using Base::Base;
+    /// @brief Creates the exception with the message "use of an empty Luau reference".
+    InvalidRef() : Base{"use of an empty luau reference"} {}
+};
+
+/// @brief Exception thrown when an operation is not supported by the object it is called on.
+///
+/// For instance, binding a native closure to a Function that wraps a function defined in Luau.
+class AYLO_LUAU_API InvalidOperation : public Base {
+  public:
+    using Base::Base;
+    InvalidOperation() : Base{"invalid luau operation"} {}
+};
+
+/// @brief Exception thrown when Luau code called from C++ raises an error.
+///
+/// Its message is the error message raised by the Luau code.
+class AYLO_LUAU_API RuntimeError : public Base {
+  public:
+    using Base::Base;
+    RuntimeError() : Base{"luau runtime error"} {}
+};
+
+/// @brief Exception thrown when the stack of a Lua state cannot grow enough to hold the values pushed onto it.
+class AYLO_LUAU_API StackOverflow : public Base {
+  public:
+    using Base::Base;
+    /// @brief Creates the exception with the message "Lua stack overflow".
+    StackOverflow() : Base{"luau stack overflow"} {}
+};
+
+/// @brief Exception thrown when a feature of the module is not implemented yet.
+class AYLO_LUAU_API NotImplemented : public Base {
+  public:
+    using Base::Base;
+    /// @brief Creates the exception with the message "not implemented".
+    NotImplemented() : Base{"luau feature not implemented"} {}
+};
+}  // namespace aylo::luau::exceptions

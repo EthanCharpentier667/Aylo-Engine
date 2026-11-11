@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** PackTests
 */
@@ -26,12 +26,12 @@
 #include "core/vfs/Pack.hpp"
 #include "core/vfs/exceptions/PackException.hpp"
 
-using rtype::core::asset::exceptions::AssetLoadException;
-using rtype::core::vfs::PackEntry;
-using rtype::core::vfs::PackSource;
-using rtype::core::vfs::SubSource;
-using rtype::core::vfs::writePack;
-using rtype::core::vfs::exceptions::PackException;
+using aylo::core::asset::exceptions::AssetLoadException;
+using aylo::core::vfs::PackEntry;
+using aylo::core::vfs::PackSource;
+using aylo::core::vfs::SubSource;
+using aylo::core::vfs::writePack;
+using aylo::core::vfs::exceptions::PackException;
 
 namespace {
 /// @brief Appends @p value to @p out, little endian, on @p size bytes: what a test writes a pack by hand with.
@@ -88,7 +88,7 @@ class PackTest : public ::testing::Test {
     }
 
     std::filesystem::path _root{std::filesystem::temp_directory_path() /
-                                std::format("rtype_pack_{:08x}", std::random_device{}())};
+                                std::format("aylo_pack_{:08x}", std::random_device{}())};
 };
 }  // namespace
 
@@ -203,7 +203,7 @@ TEST_F(PackTest, ASubSourceIsAFolderOfAnother) {
 TEST_F(PackTest, ASubSourceOfAFolderKeepsItsDirectory) {
     std::filesystem::create_directories(_root / "game" / "assets");
     std::ofstream{_root / "game" / "assets" / "a.txt"} << "a";
-    const SubSource assets{std::make_shared<rtype::core::vfs::DirectorySource>(_root / "game"), "assets"};
+    const SubSource assets{std::make_shared<aylo::core::vfs::DirectorySource>(_root / "game"), "assets"};
 
     EXPECT_EQ(assets.read("a.txt"), "a");
     EXPECT_EQ(assets.list(""), (std::vector<std::string>{"a.txt"}));

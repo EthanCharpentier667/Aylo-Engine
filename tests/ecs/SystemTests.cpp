@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** SystemTests
 */
@@ -13,84 +13,84 @@
 #include <utility>
 #include <vector>
 
-#include "rtype/ecs/change/Tick.hpp"
-#include "rtype/ecs/command/Commands.hpp"
-#include "rtype/ecs/component/ComponentTraits.hpp"
-#include "rtype/ecs/entity/Entity.hpp"
-#include "rtype/ecs/event/EventTraits.hpp"
-#include "rtype/ecs/exceptions/MissingResourceException.hpp"
-#include "rtype/ecs/query/Query.hpp"
-#include "rtype/ecs/query/QueryTerms.hpp"
-#include "rtype/ecs/resource/ResourceTraits.hpp"
-#include "rtype/ecs/system/EventReader.hpp"
-#include "rtype/ecs/system/EventWriter.hpp"
-#include "rtype/ecs/system/ResourceParam.hpp"
-#include "rtype/ecs/system/Side.hpp"
-#include "rtype/ecs/system/System.hpp"
-#include "rtype/ecs/system/SystemAccess.hpp"
-#include "rtype/ecs/world/World.hpp"
+#include "aylo/ecs/change/Tick.hpp"
+#include "aylo/ecs/command/Commands.hpp"
+#include "aylo/ecs/component/ComponentTraits.hpp"
+#include "aylo/ecs/entity/Entity.hpp"
+#include "aylo/ecs/event/EventTraits.hpp"
+#include "aylo/ecs/exceptions/MissingResourceException.hpp"
+#include "aylo/ecs/query/Query.hpp"
+#include "aylo/ecs/query/QueryTerms.hpp"
+#include "aylo/ecs/resource/ResourceTraits.hpp"
+#include "aylo/ecs/system/EventReader.hpp"
+#include "aylo/ecs/system/EventWriter.hpp"
+#include "aylo/ecs/system/ResourceParam.hpp"
+#include "aylo/ecs/system/Side.hpp"
+#include "aylo/ecs/system/System.hpp"
+#include "aylo/ecs/system/SystemAccess.hpp"
+#include "aylo/ecs/world/World.hpp"
 
-namespace rtype::test::system {
+namespace aylo::test::system {
 struct Position {
     float x;
     float y;
 };
-RTYPE_ECS_COMPONENT(Position, "test.system.Position", x, y);
+AYLO_ECS_COMPONENT(Position, "test.system.Position", x, y);
 
 struct Velocity {
     float x;
     float y;
 };
-RTYPE_ECS_COMPONENT(Velocity, "test.system.Velocity", x, y);
+AYLO_ECS_COMPONENT(Velocity, "test.system.Velocity", x, y);
 
 struct Health {
     std::int32_t value;
 };
-RTYPE_ECS_COMPONENT(Health, "test.system.Health", value);
+AYLO_ECS_COMPONENT(Health, "test.system.Health", value);
 
 struct Time {
     float delta;
 };
-RTYPE_ECS_RESOURCE(Time, "test.system.Time", delta);
+AYLO_ECS_RESOURCE(Time, "test.system.Time", delta);
 
 /// @brief What the test systems report back, since a system keeps no state of its own.
 struct Report {
     int seen;
 };
-RTYPE_ECS_RESOURCE(Report, "test.system.Report", seen);
+AYLO_ECS_RESOURCE(Report, "test.system.Report", seen);
 
 struct Renderer {
     int frames;
 };
-RTYPE_ECS_RESOURCE(Renderer, "test.system.Renderer", frames);
+AYLO_ECS_RESOURCE(Renderer, "test.system.Renderer", frames);
 
 struct Collision {
     std::uint32_t a;
 };
-RTYPE_ECS_EVENT(Collision, "test.system.Collision", a);
-}  // namespace rtype::test::system
+AYLO_ECS_EVENT(Collision, "test.system.Collision", a);
+}  // namespace aylo::test::system
 
 namespace {
-using rtype::ecs::Changed;
-using rtype::ecs::Commands;
-using rtype::ecs::Entity;
-using rtype::ecs::EventReader;
-using rtype::ecs::EventWriter;
-using rtype::ecs::NonSendMut;
-using rtype::ecs::Query;
-using rtype::ecs::Res;
-using rtype::ecs::ResMut;
-using rtype::ecs::Side;
-using rtype::ecs::System;
-using rtype::ecs::TypeAccess;
-using rtype::ecs::World;
-using rtype::test::system::Collision;
-using rtype::test::system::Health;
-using rtype::test::system::Position;
-using rtype::test::system::Renderer;
-using rtype::test::system::Report;
-using rtype::test::system::Time;
-using rtype::test::system::Velocity;
+using aylo::ecs::Changed;
+using aylo::ecs::Commands;
+using aylo::ecs::Entity;
+using aylo::ecs::EventReader;
+using aylo::ecs::EventWriter;
+using aylo::ecs::NonSendMut;
+using aylo::ecs::Query;
+using aylo::ecs::Res;
+using aylo::ecs::ResMut;
+using aylo::ecs::Side;
+using aylo::ecs::System;
+using aylo::ecs::TypeAccess;
+using aylo::ecs::World;
+using aylo::test::system::Collision;
+using aylo::test::system::Health;
+using aylo::test::system::Position;
+using aylo::test::system::Renderer;
+using aylo::test::system::Report;
+using aylo::test::system::Time;
+using aylo::test::system::Velocity;
 
 void movement(Query<Position, const Velocity> query, Res<Time> time) {
     for (auto [entity, position, velocity] : query) {
@@ -237,8 +237,8 @@ TEST(System, ReadsEachEventOnceAcrossRuns) {
 TEST(System, AMissingResourceThrowsAndTheRunDoesNotCount) {
     World world;
     System system{world, "test.movement", &movement};
-    const rtype::ecs::Tick lastRun = system.getLastRun();
-    EXPECT_THROW(system.run(), rtype::ecs::exceptions::MissingResourceException);
+    const aylo::ecs::Tick lastRun = system.getLastRun();
+    EXPECT_THROW(system.run(), aylo::ecs::exceptions::MissingResourceException);
     EXPECT_EQ(system.getLastRun(), lastRun);
 }
 

@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** main
 */
@@ -21,20 +21,20 @@
 #include <utility>
 #include <vector>
 
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/component/ComponentInfo.hpp"
-#include "rtype/ecs/component/Components.hpp"
-#include "rtype/ecs/entity/Entity.hpp"
-#include "rtype/ecs/query/QueryBuilder.hpp"
-#include "rtype/ecs/query/QueryMatch.hpp"
-#include "rtype/ecs/schedule/Phase.hpp"
-#include "rtype/ecs/system/DynamicQueries.hpp"
-#include "rtype/ecs/system/QueryList.hpp"
-#include "rtype/ecs/system/ScriptCallable.hpp"
-#include "rtype/ecs/time/TimePlugin.hpp"
-#include "rtype/ecs/type/Field.hpp"
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/component/ComponentInfo.hpp"
+#include "aylo/ecs/component/Components.hpp"
+#include "aylo/ecs/entity/Entity.hpp"
+#include "aylo/ecs/query/QueryBuilder.hpp"
+#include "aylo/ecs/query/QueryMatch.hpp"
+#include "aylo/ecs/schedule/Phase.hpp"
+#include "aylo/ecs/system/DynamicQueries.hpp"
+#include "aylo/ecs/system/QueryList.hpp"
+#include "aylo/ecs/system/ScriptCallable.hpp"
+#include "aylo/ecs/time/TimePlugin.hpp"
+#include "aylo/ecs/type/Field.hpp"
 
-using namespace rtype::ecs;
+using namespace aylo::ecs;
 
 namespace {
 /// @return The float stored at `offset` in `bytes`.

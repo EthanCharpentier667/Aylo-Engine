@@ -150,7 +150,7 @@ declare engine: {
 
 ### Code layout
 
-In `luau`, a `types/` folder (`rtype::luau::types`):
+In `luau`, a `types/` folder (`aylo::luau::types`):
 
 - `TypeOf.hpp` / `.tpp`: the trait, with the specializations of the table above.
 - `Signature.hpp`: the struct.
@@ -218,7 +218,7 @@ A dotted name becomes PascalCase segments joined together: `game.Shield` is `Gam
 
 ### Code layout and emission
 
-- `scripting/types/` (`rtype::scripting::types`) builds a `luau::types::Declarations` from the ECS registry and the
+- `scripting/types/` (`aylo::scripting::types`) builds a `luau::types::Declarations` from the ECS registry and the
   kept system declarations, and writes it with the `luau` writer.
 - The types of `game.d.luau` refer to those of `engine.d.luau` (`Entity`, `Context`...) by name; both files are given
   to luau-lsp.
@@ -249,6 +249,6 @@ Each step builds on the previous one and can be its own pull request.
     - or no annotation, with one overload of `engine.ecs.system` per system name, each with its own `run` type. This
       needs the type checker to select overloads by a string literal reliably; step 7 tells whether it does.
 - How a game turns on writing `game.d.luau`:
-    - a command-line flag (`rtype_duel client --emit-types`), explicit and leaving normal runs untouched (preferred);
+    - a command-line flag (`aylo_duel client --emit-types`), explicit and leaving normal runs untouched (preferred);
     - a setting in `project.luau`;
     - on every debug run.

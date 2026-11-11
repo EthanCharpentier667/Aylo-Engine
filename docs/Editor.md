@@ -1,13 +1,13 @@
 # Editor
 
-The editor is the program `aylo-editor`: a static library, `rtype-editor` (`src/rtype/editor/`, target `editor`), whose
+The editor is the program `aylo-editor`: a static library, `aylo-editor` (`src/aylo/editor/`, target `editor`), whose
 plugin `rtype.Editor` the program adds to the engine, and a `main` (`editor/app/main.cpp`). It runs the game inside the "Game" panel of a window of docked panels made with Dear ImGui (the docking
 branch), and edits its scenes the way Unity does: while editing, the gameplay is paused and the panels change the
 scene's capsule, saved to its file; while playing, they change the running world, and Stop puts the scene back. For what
 a game developer does with it, see `manual/pages/editor.md`.
 
 ```sh
-./aylo-editor examples/games/rtype_duel/game
+./aylo-editor examples/games/aylo_duel/game
 ```
 
 ```lua
@@ -19,8 +19,8 @@ engine.settings.editor.scene = "scenes/level.scene"  -- optional: the scene open
 A program of its own, not a feature of a game and not a mode of the runtime. Game developers make their game in
 `aylo-editor` and ship it with `aylo-runtime`, which does not know the editor:
 
-- **Not in `plugins/`.** A game never ships it. It has its own folder, namespace `rtype::editor` and export macro
-  `RTYPE_EDITOR_API` (empty: the library is static, `RTYPE_EDITOR_STATIC`).
+- **Not in `plugins/`.** A game never ships it. It has its own folder, namespace `aylo::editor` and export macro
+  `AYLO_EDITOR_API` (empty: the library is static, `AYLO_EDITOR_STATIC`).
 - **A program, like the runtime.** `aylo-editor` links `engine` and `editor` (both static), and the Engine loads the
   plugins and backends from their libraries as in `aylo-runtime`. The editor library links the plugin libraries it uses
   (graphics, capsule, particle) for their types, which the Engine opens again by name: one copy, as the same file.
@@ -238,7 +238,7 @@ background it would fail out of sight.
 | Particles | `panels/ParticlesPanel.cpp` | The effects of `ParticleEffectAssets`: edit the spawning, each particle and the forces, preview at the middle of the view, Copy as Luau |
 | Stats | `panels/StatsPanel.cpp` | `io.Framerate`, the plot of the last frame times, `getFrameStats()` |
 | Export | `panels/ExportPanel.cpp` | File > Export...: the output folder, the name, one pack or the folder (`shipping::ExportPanelState`, in the session), then `shipping::runExport()` with the session's `exporter`, and its result (the libraries kept and why, the size, the warnings, or the error). `aylo-editor` sets the exporter to `engine::exporting::exportGame()` on its game folder and the runtime next to it (the zip's `runtime/`, else its own folder); the editor library knows no engine. It runs on the frame, which waits for it |
-| Plugins | `panels/PluginsPanel.cpp` | The plugins added to the App (`App::getPlugins()`), in the order recorded: kind (engine for an `rtype.` name, else game), requires, required by, a name filter, and the registered plugins not added. The data is gathered by `collectPlugins()` (`panels/PluginInfo.cpp`), without ImGui |
+| Plugins | `panels/PluginsPanel.cpp` | The plugins added to the App (`App::getPlugins()`), in the order recorded: kind (engine for an `aylo.` name, else game), requires, required by, a name filter, and the registered plugins not added. The data is gathered by `collectPlugins()` (`panels/PluginInfo.cpp`), without ImGui |
 
 `FieldEditor::editFields()` shows a reflected value field by field (`TypeInfo::fields`). It works on a byte copy of the
 value, which shares what the value owns (a list's elements): only plain fields are changed in it, and the caller writes
@@ -269,7 +269,7 @@ particles run in PostUpdate and Render, they play while editing.
    content scale. `GuiContext::setScale()` rebuilds the style from its defaults at that scale (`ScaleAllSizes()`) and
    sets `FontScaleDpi`, so ImGui renders its glyphs again at that size and the text stays sharp.
 3. `ImGui::NewFrame()`, the toolbar, the dockspace over the window (the panels are docked as by default on the first
-   frame if no layout was kept; the layout file is `<cache>/rtype/editor/layout-<version>.ini`, its version raised when
+   frame if no layout was kept; the layout file is `<cache>/aylo/editor/layout-<version>.ini`, its version raised when
    the panels change), then the panels.
 4. `ImGui::Render()`, `gui::updateTextures()` (ImGui's font atlas, sent whole when it grows) and `gui::buildMesh()`, one
    `Mesh` with 32-bit indices, handed to `drawMesh()`.

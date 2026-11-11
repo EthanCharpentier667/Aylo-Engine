@@ -1,15 +1,15 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ConstantsTests
 */
 
 #include <gtest/gtest.h>
 
-#include "rtype/network/protocol/Constants.hpp"
+#include "aylo/network/protocol/Constants.hpp"
 
-namespace protocol = rtype::network::protocol;
+namespace protocol = aylo::network::protocol;
 
 TEST(Constants, ProtocolValues) {
     EXPECT_EQ(protocol::kProtocolId, 0x52545950U);

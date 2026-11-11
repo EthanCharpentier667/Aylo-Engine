@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** FontAssetsTests
 */
@@ -13,16 +13,16 @@
 #include <string_view>
 #include <vector>
 
+#include "aylo/contract/renderer/drawing/Texture.hpp"
+#include "aylo/ecs/resource/ResourceTraits.hpp"
 #include "core/asset/AssetId.hpp"
 #include "core/asset/exceptions/AssetExceptions.hpp"
 #include "plugins/text/Font.hpp"
 #include "plugins/text/FontAssets.hpp"
-#include "rtype/contract/renderer/drawing/Texture.hpp"
-#include "rtype/ecs/resource/ResourceTraits.hpp"
 
-using rtype::core::asset::AssetId;
-using rtype::plugins::text::Font;
-using rtype::plugins::text::FontAssets;
+using aylo::core::asset::AssetId;
+using aylo::plugins::text::Font;
+using aylo::plugins::text::FontAssets;
 
 namespace {
 /// @brief A text file in the temporary directory, removed when the test ends.
@@ -56,10 +56,10 @@ constexpr std::string_view kFontJson = R"({
 Font makeFont(const std::string& image) { return Font{image, {}, 4.0F, Font::Metrics{}}; }
 }  // namespace
 
-static_assert(rtype::ecs::Resource<FontAssets>);
+static_assert(aylo::ecs::Resource<FontAssets>);
 
 TEST(FontAssets, ReadsAFontFileAtOnce) {
-    const TemporaryFile json{"rtype-font-tests.json", kFontJson};
+    const TemporaryFile json{"aylo-font-tests.json", kFontJson};
     FontAssets fonts;
     const AssetId id = fonts.load(json.getPath());
     EXPECT_EQ(id, AssetId::fromPath(json.getPath().lexically_normal().generic_string()));
@@ -71,15 +71,15 @@ TEST(FontAssets, ReadsAFontFileAtOnce) {
 }
 
 TEST(FontAssets, AsksForTheAtlasOfEachFontOnce) {
-    const TemporaryFile json{"rtype-font-tests.json", kFontJson};
+    const TemporaryFile json{"aylo-font-tests.json", kFontJson};
     FontAssets fonts;
     static_cast<void>(fonts.load(json.getPath()));
     static_cast<void>(fonts.load(json.getPath()));
     const std::vector<FontAssets::TextureRequest> requests = fonts.takeTextureRequests();
     ASSERT_EQ(requests.size(), 1U);
-    EXPECT_EQ(std::filesystem::path{requests.at(0).path}.filename(), "rtype-font-tests.png");
-    EXPECT_EQ(requests.at(0).desc.encoding, rtype::contract::renderer::TextureEncoding::kLinear);
-    EXPECT_EQ(requests.at(0).desc.filter, rtype::contract::renderer::TextureFilter::kLinear);
+    EXPECT_EQ(std::filesystem::path{requests.at(0).path}.filename(), "aylo-font-tests.png");
+    EXPECT_EQ(requests.at(0).desc.encoding, aylo::contract::renderer::TextureEncoding::kLinear);
+    EXPECT_EQ(requests.at(0).desc.filter, aylo::contract::renderer::TextureFilter::kLinear);
     EXPECT_TRUE(fonts.takeTextureRequests().empty());
 }
 

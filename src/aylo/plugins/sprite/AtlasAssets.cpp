@@ -1,0 +1,103 @@
+/*
+** EPITECH PROJECT, 2026
+** aylo
+** File description:
+** AtlasAssets
+*/
+
+#include "plugins/sprite/AtlasAssets.hpp"
+
+#include <cstddef>
+#include <cstdint>
+#include <exception>
+#include <filesystem>
+#include <format>
+#include <memory>
+#include <optional>
+#include <span>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
+
+#include "aylo/contract/renderer/drawing/Texture.hpp"
+#include "core/asset/AssetFiles.hpp"
+#include "core/asset/AssetId.hpp"
+#include "core/asset/AssetStore.hpp"
+#include "core/vfs/FileSource.hpp"
+#include "plugins/sprite/SpriteAtlas.hpp"
+#include "plugins/sprite/detail/AtlasJson.hpp"
+#include "plugins/sprite/detail/AtlasPacker.hpp"
+
+namespace aylo::plugins::sprite {
+
+void AtlasAssets::setDirectory(std::filesystem::path directory) { _atlases.setDirectory(std::move(directory)); }
+
+void AtlasAssets::setSource(std::shared_ptr<const core::vfs::FileSource> source) {
+    _atlases.setSource(std::move(source));
+}
+
+std::size_t AtlasAssets::getCount() const noexcept { return _atlases.getCount(); }
+
+core::asset::AssetId AtlasAssets::load(const std::filesystem::path& path, const contract::renderer::TextureDesc& desc) {
+    const auto stored = _atlases.load(path, [&desc](std::string_view text, const std::filesystem::path& file) {
+        return detail::parseAtlasJson(text, file, desc);
+    });
+    if (stored.added != nullptr) {
+        requestTexture(*stored.added);
+    }
+    return stored.id;
+}
+
+core::asset::AssetId AtlasAssets::add(const std::string& name, SpriteAtlas atlas) {
+    const auto stored = _atlases.add(name, std::move(atlas));
+    if (stored.added != nullptr) {
+        requestTexture(*stored.added);
+    }
+    return stored.id;
+}
+
+core::asset::AssetId AtlasAssets::pack(const std::string& name, std::span<const std::filesystem::path> images,
+                                       std::uint32_t padding, const contract::renderer::TextureDesc& desc) {
+    std::string path = core::asset::normalizePath(name);
+    const std::optional<core::asset::AssetId> id = _atlases.reserve(path);
+    if (!id) {
+        return core::asset::AssetId::fromPath(path);
+    }
+    try {
+        const core::vfs::FileSource& source = _atlases.getSource();
+        detail::PackedImages packed =
+            detail::packImages(images, padding, [&source](const std::filesystem::path& image) {
+                return core::vfs::readBytes(source, image.generic_string());
+            });
+        contract::renderer::TextureDesc packedDesc = desc;
+        packedDesc.size = packed.size;
+        SpriteAtlas atlas{path, packedDesc};
+        for (const detail::PackedImages::Placement& placement : packed.placements) {
+            atlas.addFrame(placement.name, placement.source);
+        }
+        requestTexture(_atlases.store(*id, std::move(path), std::move(atlas)), std::move(packed.pixels));
+    } catch (const std::exception& error) {
+        _atlases.fail(*id, std::move(path), std::format("Atlas '{}': {}", name, error.what()));
+    }
+    return *id;
+}
+
+const SpriteAtlas* AtlasAssets::get(core::asset::AssetId id) const { return _atlases.get(id); }
+
+SpriteAtlas* AtlasAssets::edit(core::asset::AssetId id) { return _atlases.get(id); }
+
+const AtlasAssets::Entry* AtlasAssets::getEntry(core::asset::AssetId id) const { return _atlases.getEntry(id); }
+
+bool AtlasAssets::unload(core::asset::AssetId id) { return _atlases.unload(id); }
+
+std::vector<AtlasAssets::TextureRequest> AtlasAssets::takeTextureRequests() {
+    return std::exchange(_textureRequests, {});
+}
+
+void AtlasAssets::requestTexture(const SpriteAtlas& atlas, std::vector<std::byte> pixels) {
+    _textureRequests.push_back(
+        TextureRequest{.path = atlas.getTexturePath(), .desc = atlas.getTextureDesc(), .pixels = std::move(pixels)});
+}
+
+}  // namespace aylo::plugins::sprite

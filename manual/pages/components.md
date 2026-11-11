@@ -22,7 +22,7 @@ engine.ecs.component("game.MisfireTimer", { fields = { remaining = "f32" }, pres
 | `replication` | `"none"` (default), `"everyChange"` (sent whenever it changes) or `"spawnOnly"` (sent once, when the entity appears). A replicated component needs at least one field: a tag cannot be sent, and the server stops at start naming it. |
 | `presence` | `"both"` (default), `"serverOnly"` or `"clientOnly"`: which side the component exists on. |
 
-Any other option is an error. Names are conventionally `game.Name`; the `rtype.` and `net.` prefixes belong to the
+Any other option is an error. Names are conventionally `game.Name`; the `aylo.` and `net.` prefixes belong to the
 engine.
 
 ## Field types

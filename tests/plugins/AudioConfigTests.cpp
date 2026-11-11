@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** AudioConfigTests
 */
@@ -12,8 +12,8 @@
 #include "plugins/audio/AudioConfig.hpp"
 
 TEST(AudioConfig, KeepsTheDefaultsOfAnEmptySection) {
-    const rtype::plugins::audio::AudioConfig config =
-        rtype::plugins::audio::AudioConfig::fromSettings(rtype::core::config::Settings{});
+    const aylo::plugins::audio::AudioConfig config =
+        aylo::plugins::audio::AudioConfig::fromSettings(aylo::core::config::Settings{});
     EXPECT_TRUE(config.backend.empty());
     EXPECT_FALSE(config.required);
     EXPECT_EQ(config.maxVoices, 64U);
@@ -24,7 +24,7 @@ TEST(AudioConfig, KeepsTheDefaultsOfAnEmptySection) {
 }
 
 TEST(AudioConfig, ReadsEveryKey) {
-    rtype::core::config::Settings settings;
+    aylo::core::config::Settings settings;
     settings.set("backend", "miniaudio");
     settings.set("required", true);
     settings.set("maxVoices", 32.0);
@@ -32,7 +32,7 @@ TEST(AudioConfig, ReadsEveryKey) {
     settings.set("volume.music", 0.7);
     settings.set("volume.effects", 0.9);
     settings.set("panDistance", 250.0);
-    const rtype::plugins::audio::AudioConfig config = rtype::plugins::audio::AudioConfig::fromSettings(settings);
+    const aylo::plugins::audio::AudioConfig config = aylo::plugins::audio::AudioConfig::fromSettings(settings);
     EXPECT_EQ(config.backend, "miniaudio");
     EXPECT_TRUE(config.required);
     EXPECT_EQ(config.maxVoices, 32U);
@@ -43,46 +43,46 @@ TEST(AudioConfig, ReadsEveryKey) {
 }
 
 TEST(AudioConfig, RejectsAnUnknownKey) {
-    rtype::core::config::Settings settings;
+    aylo::core::config::Settings settings;
     settings.set("maxVoice", 32.0);
-    EXPECT_THROW(static_cast<void>(rtype::plugins::audio::AudioConfig::fromSettings(settings)),
-                 rtype::core::config::exceptions::SettingsException);
+    EXPECT_THROW(static_cast<void>(aylo::plugins::audio::AudioConfig::fromSettings(settings)),
+                 aylo::core::config::exceptions::SettingsException);
 }
 
 TEST(AudioConfig, RejectsAnUnknownVolume) {
-    rtype::core::config::Settings settings;
+    aylo::core::config::Settings settings;
     settings.set("volume.voice", 1.0);
-    EXPECT_THROW(static_cast<void>(rtype::plugins::audio::AudioConfig::fromSettings(settings)),
-                 rtype::core::config::exceptions::SettingsException);
+    EXPECT_THROW(static_cast<void>(aylo::plugins::audio::AudioConfig::fromSettings(settings)),
+                 aylo::core::config::exceptions::SettingsException);
 }
 
 TEST(AudioConfig, RejectsAWrongType) {
-    rtype::core::config::Settings settings;
+    aylo::core::config::Settings settings;
     settings.set("backend", 3.0);
-    EXPECT_THROW(static_cast<void>(rtype::plugins::audio::AudioConfig::fromSettings(settings)),
-                 rtype::core::config::exceptions::SettingsException);
+    EXPECT_THROW(static_cast<void>(aylo::plugins::audio::AudioConfig::fromSettings(settings)),
+                 aylo::core::config::exceptions::SettingsException);
 }
 
 TEST(AudioConfig, RejectsANegativeVolume) {
-    rtype::core::config::Settings settings;
+    aylo::core::config::Settings settings;
     settings.set("volume.music", -0.1);
-    EXPECT_THROW(static_cast<void>(rtype::plugins::audio::AudioConfig::fromSettings(settings)),
-                 rtype::core::config::exceptions::SettingsException);
+    EXPECT_THROW(static_cast<void>(aylo::plugins::audio::AudioConfig::fromSettings(settings)),
+                 aylo::core::config::exceptions::SettingsException);
 }
 
 TEST(AudioConfig, RejectsAnInvalidVoiceCount) {
     for (const double maxVoices : {0.0, -4.0, 2.5}) {
-        rtype::core::config::Settings settings;
+        aylo::core::config::Settings settings;
         settings.set("maxVoices", maxVoices);
-        EXPECT_THROW(static_cast<void>(rtype::plugins::audio::AudioConfig::fromSettings(settings)),
-                     rtype::core::config::exceptions::SettingsException)
+        EXPECT_THROW(static_cast<void>(aylo::plugins::audio::AudioConfig::fromSettings(settings)),
+                     aylo::core::config::exceptions::SettingsException)
             << maxVoices;
     }
 }
 
 TEST(AudioConfig, RejectsANonPositivePanDistance) {
-    rtype::core::config::Settings settings;
+    aylo::core::config::Settings settings;
     settings.set("panDistance", 0.0);
-    EXPECT_THROW(static_cast<void>(rtype::plugins::audio::AudioConfig::fromSettings(settings)),
-                 rtype::core::config::exceptions::SettingsException);
+    EXPECT_THROW(static_cast<void>(aylo::plugins::audio::AudioConfig::fromSettings(settings)),
+                 aylo::core::config::exceptions::SettingsException);
 }

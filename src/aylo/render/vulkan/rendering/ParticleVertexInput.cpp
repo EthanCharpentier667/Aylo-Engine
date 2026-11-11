@@ -1,0 +1,41 @@
+/*
+** EPITECH PROJECT, 2026
+** aylo
+** File description:
+** ParticleVertexInput
+*/
+
+#include "ParticleVertexInput.hpp"
+
+#include <array>
+#include <cstddef>
+#include <cstdint>
+#include <vulkan/vulkan_raii.hpp>
+
+#include "aylo/contract/renderer/particle/Particle.hpp"
+
+namespace aylo::render::vulkan::rendering {
+
+namespace {
+using contract::renderer::ParticleInstance;
+}  // namespace
+
+std::array<vk::VertexInputBindingDescription, 1> getParticleBindings(std::uint32_t binding) noexcept {
+    return {vk::VertexInputBindingDescription{binding, sizeof(ParticleInstance), vk::VertexInputRate::eInstance}};
+}
+
+std::array<vk::VertexInputAttributeDescription, 6> getParticleAttributes(std::uint32_t binding) noexcept {
+    return {
+        vk::VertexInputAttributeDescription{0, binding, vk::Format::eR32G32B32A32Sfloat,
+                                            offsetof(ParticleInstance, color)},
+        vk::VertexInputAttributeDescription{1, binding, vk::Format::eR32G32Sfloat,
+                                            offsetof(ParticleInstance, position)},
+        vk::VertexInputAttributeDescription{2, binding, vk::Format::eR32G32Sfloat, offsetof(ParticleInstance, size)},
+        vk::VertexInputAttributeDescription{3, binding, vk::Format::eR32Sfloat, offsetof(ParticleInstance, rotation)},
+        vk::VertexInputAttributeDescription{4, binding, vk::Format::eR32G32Sfloat,
+                                            offsetof(ParticleInstance, velocity)},
+        vk::VertexInputAttributeDescription{5, binding, vk::Format::eR32Sfloat, offsetof(ParticleInstance, life)},
+    };
+}
+
+}  // namespace aylo::render::vulkan::rendering

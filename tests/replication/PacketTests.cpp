@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** PacketTests
 */
@@ -15,19 +15,19 @@
 #include <string>
 #include <variant>
 
-#include "rtype/network/Types.hpp"
-#include "rtype/replication/exceptions/ReplicationExceptions.hpp"
-#include "rtype/replication/packet/PacketCodec.hpp"
-#include "rtype/replication/packet/PacketSchema.hpp"
+#include "aylo/network/Types.hpp"
+#include "aylo/replication/exceptions/ReplicationExceptions.hpp"
+#include "aylo/replication/packet/PacketCodec.hpp"
+#include "aylo/replication/packet/PacketSchema.hpp"
 
 namespace {
-using rtype::replication::exceptions::PacketException;
-using namespace rtype::replication::packet;  // NOLINT(google-build-using-namespace): the module under test
+using aylo::replication::exceptions::PacketException;
+using namespace aylo::replication::packet;  // NOLINT(google-build-using-namespace): the module under test
 
 PacketSchema buy() {
     return {.name = "game.Buy",
             .direction = PacketDirection::kToServer,
-            .channel = rtype::network::Channel::kReliable,
+            .channel = aylo::network::Channel::kReliable,
             .fields = {{.name = "item", .type = PacketType::kString, .maxLength = 8},
                        {.name = "qty", .type = PacketType::kU8},
                        {.name = "gold", .type = PacketType::kI32},
@@ -90,7 +90,7 @@ TEST(Packet, TextWithABadValueIsRefused) {
 TEST(Packet, TheWireRefusesWhatBreaksTheSchema) {
     const PacketRegistry registry = registryWith(buy());
     const PacketSchema& schema = *registry.find("game.Buy");
-    const rtype::network::Bytes good = encodePacket(schema, buyValues());
+    const aylo::network::Bytes good = encodePacket(schema, buyValues());
 
     EXPECT_FALSE(decodePacket(registry, PacketDirection::kToClients, good));  // wrong direction
     auto truncated = good;
@@ -105,8 +105,8 @@ TEST(Packet, TheWireRefusesWhatBreaksTheSchema) {
     auto otherHash = good;
     otherHash[2 + schema.name.size()] ^= std::byte{0xFF};
     EXPECT_FALSE(decodePacket(registry, PacketDirection::kToServer, otherHash));
-    EXPECT_FALSE(decodePacket(registry, PacketDirection::kToServer, rtype::network::Bytes{}));
-    EXPECT_FALSE(decodePacket(registry, PacketDirection::kToServer, rtype::network::Bytes(300, std::byte{0x32})));
+    EXPECT_FALSE(decodePacket(registry, PacketDirection::kToServer, aylo::network::Bytes{}));
+    EXPECT_FALSE(decodePacket(registry, PacketDirection::kToServer, aylo::network::Bytes(300, std::byte{0x32})));
 }
 
 TEST(Packet, ADifferentDeclarationHasADifferentHash) {
@@ -196,7 +196,7 @@ TEST(Packet, ARegistryRefusesBadDeclarations) {
     EXPECT_THROW(registry.declare(direction), PacketException);
     PacketSchema channel = buy();
     channel.name = "game.Channel";
-    channel.channel = static_cast<rtype::network::Channel>(9);
+    channel.channel = static_cast<aylo::network::Channel>(9);
     EXPECT_THROW(registry.declare(channel), PacketException);
     PacketSchema twice = buy();
     twice.name = "game.Twice";
@@ -241,7 +241,7 @@ TEST(Packet, AMessageIsAcceptedOnItsDeclaredChannelOnly) {
     const auto message = encodePacket(schema, buyValues());
 
     EXPECT_TRUE(isAcceptedPacket(registry, PacketDirection::kToServer, schema.channel, message));
-    const auto other = schema.channel == rtype::network::Channel::kReliable ? rtype::network::Channel::kUnreliable
-                                                                            : rtype::network::Channel::kReliable;
+    const auto other = schema.channel == aylo::network::Channel::kReliable ? aylo::network::Channel::kUnreliable
+                                                                           : aylo::network::Channel::kReliable;
     EXPECT_FALSE(isAcceptedPacket(registry, PacketDirection::kToServer, other, message));
 }

@@ -1,25 +1,25 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** main
 */
 
 #include <algorithm>
+#include <aylo/luau/Exceptions.hpp>
+#include <aylo/luau/Runtime.hpp>
+#include <aylo/luau/Userdata.hpp>
+#include <aylo/luau/Usertype.hpp>
+#include <aylo/luau/Value.hpp>
+#include <aylo/luau/ValuePack.hpp>
 #include <format>
 #include <iostream>
 #include <map>
-#include <rtype/luau/Exceptions.hpp>
-#include <rtype/luau/Runtime.hpp>
-#include <rtype/luau/Userdata.hpp>
-#include <rtype/luau/Usertype.hpp>
-#include <rtype/luau/Value.hpp>
-#include <rtype/luau/ValuePack.hpp>
 #include <string>
 #include <string_view>
 #include <utility>
 
-using namespace rtype::luau;
+using namespace aylo::luau;
 
 // The C++ types Luau uses. A usertype wraps any type that can be destroyed: Luau stores the object by value, and
 // destroys it when the script no longer uses it or the runtime is closed.

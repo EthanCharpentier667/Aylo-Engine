@@ -38,14 +38,14 @@ per-component **replication mode** suited to R-Type's bullets.
 flowchart TB
     game["Game (Luau)<br/>replication modes on components,<br/>spawn a ship on ClientConnected, read PlayerInput"]
     plugins["ECS plugins (C++)<br/>ServerPlugin / ClientPlugin<br/>+ shared ReplicationPlugin"]
-    net["rtype-network (no ECS)<br/>UDP sockets, packets, acks,<br/>reliable channel, connections"]
+    net["aylo-network (no ECS)<br/>UDP sockets, packets, acks,<br/>reliable channel, connections"]
     thread["Network thread"]
     game --> plugins
     plugins -- "two thread-safe queues" --> net
     net --- thread
 ```
 
-`rtype-network` knows nothing about the ECS. Socket I/O runs on a **network thread** and exchanges
+`aylo-network` knows nothing about the ECS. Socket I/O runs on a **network thread** and exchanges
 messages with the ECS through two thread-safe queues; only the plugins' systems touch the queues, so the
 ECS stays single-threaded.
 
@@ -218,7 +218,7 @@ and replicate to the clients like any other change. Nothing from a client reache
 
 ### Build order
 
-1. `rtype-network`: UDP socket on a thread, packet header, acks; test with two processes.
+1. `aylo-network`: UDP socket on a thread, packet header, acks; test with two processes.
 2. Connection + manifest + full snapshot: the client sees the server world.
 3. Inputs up: the ship moves on the server and appears on the client.
 4. Deltas from the last ack + `kSpawnOnly`: scales to many bullets.

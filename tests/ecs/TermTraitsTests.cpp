@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** TermTraitsTests
 */
@@ -11,53 +11,53 @@
 #include <optional>
 #include <type_traits>
 
-#include "rtype/ecs/change/Mut.hpp"
-#include "rtype/ecs/component/ComponentTraits.hpp"
-#include "rtype/ecs/component/Components.hpp"
-#include "rtype/ecs/entity/Entity.hpp"
-#include "rtype/ecs/query/DynamicQuery.hpp"
-#include "rtype/ecs/query/QueryTerm.hpp"
-#include "rtype/ecs/query/QueryTerms.hpp"
-#include "rtype/ecs/query/TermTraits.hpp"
-#include "rtype/ecs/storage/SparseSetStorage.hpp"
-#include "rtype/ecs/world/World.hpp"
+#include "aylo/ecs/change/Mut.hpp"
+#include "aylo/ecs/component/ComponentTraits.hpp"
+#include "aylo/ecs/component/Components.hpp"
+#include "aylo/ecs/entity/Entity.hpp"
+#include "aylo/ecs/query/DynamicQuery.hpp"
+#include "aylo/ecs/query/QueryTerm.hpp"
+#include "aylo/ecs/query/QueryTerms.hpp"
+#include "aylo/ecs/query/TermTraits.hpp"
+#include "aylo/ecs/storage/SparseSetStorage.hpp"
+#include "aylo/ecs/world/World.hpp"
 
-namespace rtype::test::term_traits {
+namespace aylo::test::term_traits {
 struct Position {
     float x;
     float y;
 };
-RTYPE_ECS_COMPONENT(Position, "test.term_traits.Position", x, y);
+AYLO_ECS_COMPONENT(Position, "test.term_traits.Position", x, y);
 
 struct Velocity {
     float x;
     float y;
 };
-RTYPE_ECS_COMPONENT(Velocity, "test.term_traits.Velocity", x, y);
+AYLO_ECS_COMPONENT(Velocity, "test.term_traits.Velocity", x, y);
 
 struct Dead {};
-RTYPE_ECS_COMPONENT(Dead, "test.term_traits.Dead");
+AYLO_ECS_COMPONENT(Dead, "test.term_traits.Dead");
 
-/// @brief Not a component: no RTYPE_ECS_COMPONENT.
+/// @brief Not a component: no AYLO_ECS_COMPONENT.
 struct Plain {
     int value;
 };
-}  // namespace rtype::test::term_traits
+}  // namespace aylo::test::term_traits
 
 namespace {
-using rtype::ecs::Added;
-using rtype::ecs::Changed;
-using rtype::ecs::Mut;
-using rtype::ecs::Optional;
-using rtype::ecs::TermKind;
-using rtype::ecs::TermTraits;
-using rtype::ecs::ValidQuery;
-using rtype::ecs::With;
-using rtype::ecs::Without;
-using rtype::test::term_traits::Dead;
-using rtype::test::term_traits::Plain;
-using rtype::test::term_traits::Position;
-using rtype::test::term_traits::Velocity;
+using aylo::ecs::Added;
+using aylo::ecs::Changed;
+using aylo::ecs::Mut;
+using aylo::ecs::Optional;
+using aylo::ecs::TermKind;
+using aylo::ecs::TermTraits;
+using aylo::ecs::ValidQuery;
+using aylo::ecs::With;
+using aylo::ecs::Without;
+using aylo::test::term_traits::Dead;
+using aylo::test::term_traits::Plain;
+using aylo::test::term_traits::Position;
+using aylo::test::term_traits::Velocity;
 
 // Each C++ term maps to its dynamic kind and yields the documented item.
 static_assert(TermTraits<Position>::kKind == TermKind::kWrite);
@@ -75,12 +75,12 @@ static_assert(TermTraits<Changed<Position>>::kKind == TermKind::kChanged);
 static_assert(std::is_same_v<TermTraits<const Velocity>::Type, Velocity>);
 
 // Only components, in the documented wrappers, are terms.
-static_assert(rtype::ecs::TypedTerm<Position>);
-static_assert(rtype::ecs::TypedTerm<Optional<const Position>>);
-static_assert(!rtype::ecs::TypedTerm<Plain>);
-static_assert(!rtype::ecs::TypedTerm<With<Plain>>);
-static_assert(!rtype::ecs::TypedTerm<Position*>);
-static_assert(!rtype::ecs::TypedTerm<Position&>);
+static_assert(aylo::ecs::TypedTerm<Position>);
+static_assert(aylo::ecs::TypedTerm<Optional<const Position>>);
+static_assert(!aylo::ecs::TypedTerm<Plain>);
+static_assert(!aylo::ecs::TypedTerm<With<Plain>>);
+static_assert(!aylo::ecs::TypedTerm<Position*>);
+static_assert(!aylo::ecs::TypedTerm<Position&>);
 
 // Valid queries.
 static_assert(ValidQuery<Position, const Velocity>);
@@ -107,8 +107,8 @@ static_assert(!ValidQuery<Position, Plain>);
 }  // namespace
 
 TEST(QueryTerm, FindsConflictsBetweenTwoTermsOnOneComponent) {
-    using rtype::ecs::findConflict;
-    using rtype::ecs::TermConflict;
+    using aylo::ecs::findConflict;
+    using aylo::ecs::TermConflict;
     EXPECT_EQ(findConflict(TermKind::kWrite, TermKind::kWrite), TermConflict::kSameTerm);
     EXPECT_EQ(findConflict(TermKind::kRead, TermKind::kOptionalWrite), TermConflict::kTwoDataTerms);
     EXPECT_EQ(findConflict(TermKind::kWith, TermKind::kWithout), TermConflict::kExcluded);
@@ -119,10 +119,10 @@ TEST(QueryTerm, FindsConflictsBetweenTwoTermsOnOneComponent) {
 }
 
 TEST(TermTraits, FetchesAWritableValueThatStampsOnlyOnWrite) {
-    rtype::ecs::World world;
-    const rtype::ecs::Entity ship = world.spawn(Position{.x = 1.F, .y = 2.F});
-    rtype::ecs::Components& components = world.getComponents();
-    rtype::ecs::storage::SparseSetStorage& pool = *components.findPool(components.registerType<Position>());
+    aylo::ecs::World world;
+    const aylo::ecs::Entity ship = world.spawn(Position{.x = 1.F, .y = 2.F});
+    aylo::ecs::Components& components = world.getComponents();
+    aylo::ecs::storage::SparseSetStorage& pool = *components.findPool(components.registerType<Position>());
 
     Mut<Position> position = TermTraits<Position>::fetch(pool, 0, 9);
     EXPECT_EQ(position.get().x, 1.F);
@@ -133,21 +133,21 @@ TEST(TermTraits, FetchesAWritableValueThatStampsOnlyOnWrite) {
 }
 
 TEST(TermTraits, FetchesAReadOnlyValue) {
-    rtype::ecs::World world;
+    aylo::ecs::World world;
     world.spawn(Velocity{.x = 3.F, .y = 4.F});
-    rtype::ecs::Components& components = world.getComponents();
-    rtype::ecs::storage::SparseSetStorage& pool = *components.findPool(components.registerType<Velocity>());
+    aylo::ecs::Components& components = world.getComponents();
+    aylo::ecs::storage::SparseSetStorage& pool = *components.findPool(components.registerType<Velocity>());
 
     const Velocity& velocity = TermTraits<const Velocity>::fetch(pool, 0, 9);
     EXPECT_EQ(velocity.y, 4.F);
 }
 
 TEST(TermTraits, FetchesAnEmptyOptionalForAnAbsentComponent) {
-    rtype::ecs::World world;
+    aylo::ecs::World world;
     world.spawn(Position{.x = 1.F, .y = 2.F});
-    rtype::ecs::Components& components = world.getComponents();
-    rtype::ecs::storage::SparseSetStorage& pool = *components.findPool(components.registerType<Position>());
-    constexpr std::uint32_t kAbsent = rtype::ecs::DynamicQuery::kNoPosition;
+    aylo::ecs::Components& components = world.getComponents();
+    aylo::ecs::storage::SparseSetStorage& pool = *components.findPool(components.registerType<Position>());
+    constexpr std::uint32_t kAbsent = aylo::ecs::DynamicQuery::kNoPosition;
 
     EXPECT_FALSE(TermTraits<Optional<Position>>::fetch(pool, kAbsent, 9));
     EXPECT_EQ(TermTraits<Optional<const Position>>::fetch(pool, kAbsent, 9), nullptr);

@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** SnapshotTests
 */
@@ -15,14 +15,14 @@
 #include <span>
 #include <vector>
 
-#include "rtype/network/Types.hpp"
-#include "rtype/network/bytes/ByteWriter.hpp"
-#include "rtype/replication/MessageType.hpp"
-#include "rtype/replication/snapshot/Snapshot.hpp"
+#include "aylo/network/Types.hpp"
+#include "aylo/network/bytes/ByteWriter.hpp"
+#include "aylo/replication/MessageType.hpp"
+#include "aylo/replication/snapshot/Snapshot.hpp"
 
 namespace {
-namespace snapshot = rtype::replication::snapshot;
-using rtype::network::Bytes;
+namespace snapshot = aylo::replication::snapshot;
+using aylo::network::Bytes;
 using snapshot::ComponentValue;
 using snapshot::RemovalRecord;
 using snapshot::Snapshot;
@@ -91,7 +91,7 @@ TEST(Snapshot, EncodesTheDocumentedLayout) {
 }
 
 TEST(Snapshot, StartsWithTheSnapshotMessageType) {
-    EXPECT_EQ(static_cast<std::uint8_t>(rtype::replication::MessageType::kSnapshot), 0x30);
+    EXPECT_EQ(static_cast<std::uint8_t>(aylo::replication::MessageType::kSnapshot), 0x30);
     EXPECT_EQ(encodeSample().front(), std::byte{0x30});
 }
 

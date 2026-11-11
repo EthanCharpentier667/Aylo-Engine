@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ControlNamesTests
 */
@@ -10,17 +10,17 @@
 #include <optional>
 #include <string_view>
 
+#include "aylo/contract/platform/input/Key.hpp"
+#include "aylo/contract/platform/input/KeyNames.hpp"
 #include "plugins/input/Control.hpp"
 #include "plugins/input/ControlNames.hpp"
-#include "rtype/contract/platform/input/Key.hpp"
-#include "rtype/contract/platform/input/KeyNames.hpp"
 
-using rtype::contract::platform::input::GamepadAxis;
-using rtype::contract::platform::input::GamepadButton;
-using rtype::contract::platform::input::Key;
-using rtype::contract::platform::input::MouseButton;
-using rtype::plugins::input::Control;
-using rtype::plugins::input::controlFromName;
+using aylo::contract::platform::input::GamepadAxis;
+using aylo::contract::platform::input::GamepadButton;
+using aylo::contract::platform::input::Key;
+using aylo::contract::platform::input::MouseButton;
+using aylo::plugins::input::Control;
+using aylo::plugins::input::controlFromName;
 
 namespace {
 /// @return Whether @p name names exactly @p expected.
@@ -32,30 +32,30 @@ namespace {
 }  // namespace
 
 TEST(KeyNames, FindsKeysByTheirEnumeratorName) {
-    EXPECT_EQ(rtype::contract::platform::input::keyFromName("W"), Key::kW);
-    EXPECT_EQ(rtype::contract::platform::input::keyFromName("Space"), Key::kSpace);
-    EXPECT_EQ(rtype::contract::platform::input::keyFromName("Num1"), Key::kNum1);
-    EXPECT_EQ(rtype::contract::platform::input::keyFromName("Up"), Key::kUp);
-    EXPECT_EQ(rtype::contract::platform::input::keyFromName("F12"), Key::kF12);
-    EXPECT_EQ(rtype::contract::platform::input::keyFromName("KeypadEnter"), Key::kKeypadEnter);
-    EXPECT_EQ(rtype::contract::platform::input::keyFromName("Menu"), Key::kMenu);
+    EXPECT_EQ(aylo::contract::platform::input::keyFromName("W"), Key::kW);
+    EXPECT_EQ(aylo::contract::platform::input::keyFromName("Space"), Key::kSpace);
+    EXPECT_EQ(aylo::contract::platform::input::keyFromName("Num1"), Key::kNum1);
+    EXPECT_EQ(aylo::contract::platform::input::keyFromName("Up"), Key::kUp);
+    EXPECT_EQ(aylo::contract::platform::input::keyFromName("F12"), Key::kF12);
+    EXPECT_EQ(aylo::contract::platform::input::keyFromName("KeypadEnter"), Key::kKeypadEnter);
+    EXPECT_EQ(aylo::contract::platform::input::keyFromName("Menu"), Key::kMenu);
 }
 
 TEST(KeyNames, RefusesUnknownAndMiscasedNames) {
-    EXPECT_FALSE(rtype::contract::platform::input::keyFromName("w"));
-    EXPECT_FALSE(rtype::contract::platform::input::keyFromName("Unknown"));
-    EXPECT_FALSE(rtype::contract::platform::input::keyFromName(""));
-    EXPECT_FALSE(rtype::contract::platform::input::mouseButtonFromName("Unknown"));
-    EXPECT_FALSE(rtype::contract::platform::input::gamepadAxisFromName("Count"));
+    EXPECT_FALSE(aylo::contract::platform::input::keyFromName("w"));
+    EXPECT_FALSE(aylo::contract::platform::input::keyFromName("Unknown"));
+    EXPECT_FALSE(aylo::contract::platform::input::keyFromName(""));
+    EXPECT_FALSE(aylo::contract::platform::input::mouseButtonFromName("Unknown"));
+    EXPECT_FALSE(aylo::contract::platform::input::gamepadAxisFromName("Count"));
 }
 
 TEST(KeyNames, FindsMouseAndGamepadControls) {
-    EXPECT_EQ(rtype::contract::platform::input::mouseButtonFromName("Left"), MouseButton::kLeft);
-    EXPECT_EQ(rtype::contract::platform::input::mouseButtonFromName("X2"), MouseButton::kX2);
-    EXPECT_EQ(rtype::contract::platform::input::gamepadButtonFromName("South"), GamepadButton::kSouth);
-    EXPECT_EQ(rtype::contract::platform::input::gamepadButtonFromName("DpadLeft"), GamepadButton::kDpadLeft);
-    EXPECT_EQ(rtype::contract::platform::input::gamepadAxisFromName("LeftX"), GamepadAxis::kLeftX);
-    EXPECT_EQ(rtype::contract::platform::input::gamepadAxisFromName("RightTrigger"), GamepadAxis::kRightTrigger);
+    EXPECT_EQ(aylo::contract::platform::input::mouseButtonFromName("Left"), MouseButton::kLeft);
+    EXPECT_EQ(aylo::contract::platform::input::mouseButtonFromName("X2"), MouseButton::kX2);
+    EXPECT_EQ(aylo::contract::platform::input::gamepadButtonFromName("South"), GamepadButton::kSouth);
+    EXPECT_EQ(aylo::contract::platform::input::gamepadButtonFromName("DpadLeft"), GamepadButton::kDpadLeft);
+    EXPECT_EQ(aylo::contract::platform::input::gamepadAxisFromName("LeftX"), GamepadAxis::kLeftX);
+    EXPECT_EQ(aylo::contract::platform::input::gamepadAxisFromName("RightTrigger"), GamepadAxis::kRightTrigger);
 }
 
 TEST(ControlNames, NamesEveryKindOfControl) {

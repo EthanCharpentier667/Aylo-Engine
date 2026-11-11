@@ -1,6 +1,6 @@
 # HTTP
 
-The `rtype.Http` plugin (`src/rtype/plugins/http/`, library `plugin-http`) lets a game's scripts send HTTPS requests
+The `rtype.Http` plugin (`src/aylo/plugins/http/`, library `plugin-http`) lets a game's scripts send HTTPS requests
 and read the responses: to call a web API, such as an AI model's, from gameplay. It requires no other plugin.
 
 ## Why it looks like this

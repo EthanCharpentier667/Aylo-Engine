@@ -1,6 +1,6 @@
 # Luau module error handling
 
-How the `rtype::luau` module reports failures. The goal is one rule, so a caller can tell from a
+How the `aylo::luau` module reports failures. The goal is one rule, so a caller can tell from a
 signature whether a call can fail at run time and how.
 
 ## The rule

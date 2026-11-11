@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** EditorChildProcessTests
 */
@@ -18,7 +18,7 @@
 #ifndef _WIN32
 
 namespace {
-namespace process = rtype::editor::process;
+namespace process = aylo::editor::process;
 using std::chrono::milliseconds;
 
 /// @return A spec running @p script in `sh`.

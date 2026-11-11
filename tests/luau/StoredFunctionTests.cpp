@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** StoredFunctionTests
 */
@@ -17,24 +17,24 @@
 #include <utility>
 #include <vector>
 
-#include "rtype/luau/ErrorKind.hpp"
-#include "rtype/luau/Exceptions.hpp"
-#include "rtype/luau/Function.hpp"
-#include "rtype/luau/Runtime.hpp"
-#include "rtype/luau/RuntimeConfig.hpp"
-#include "rtype/luau/Table.hpp"
-#include "rtype/luau/Userdata.hpp"
-#include "rtype/luau/Usertype.hpp"
-#include "rtype/luau/Value.hpp"
-#include "rtype/luau/ValuePack.hpp"
-#include "rtype/luau/detail/RawState.hpp"
-#include "rtype/luau/detail/Stack.hpp"
+#include "aylo/luau/ErrorKind.hpp"
+#include "aylo/luau/Exceptions.hpp"
+#include "aylo/luau/Function.hpp"
+#include "aylo/luau/Runtime.hpp"
+#include "aylo/luau/RuntimeConfig.hpp"
+#include "aylo/luau/Table.hpp"
+#include "aylo/luau/Userdata.hpp"
+#include "aylo/luau/Usertype.hpp"
+#include "aylo/luau/Value.hpp"
+#include "aylo/luau/ValuePack.hpp"
+#include "aylo/luau/detail/RawState.hpp"
+#include "aylo/luau/detail/Stack.hpp"
 
 namespace {
-using Function = rtype::luau::Function;
-using Userdata = rtype::luau::Userdata;
-using Value = rtype::luau::Value;
-using ValuePack = rtype::luau::ValuePack;
+using Function = aylo::luau::Function;
+using Userdata = aylo::luau::Userdata;
+using Value = aylo::luau::Value;
+using ValuePack = aylo::luau::ValuePack;
 
 /// @brief A C++ type a stored function receives, as a system receives a component view.
 struct Counter {
@@ -42,17 +42,17 @@ struct Counter {
 };
 
 /// @brief Creates a runtime with the standard libraries, failing the test if it cannot be created.
-rtype::luau::Runtime makeRuntime() {
-    auto runtime = rtype::luau::Runtime::create({
-        .libs = rtype::luau::RuntimeConfig::Libs::kStandard,
-        .optimizationLevel = rtype::luau::RuntimeConfig::OptimizationLevel::kStandard,
+aylo::luau::Runtime makeRuntime() {
+    auto runtime = aylo::luau::Runtime::create({
+        .libs = aylo::luau::RuntimeConfig::Libs::kStandard,
+        .optimizationLevel = aylo::luau::RuntimeConfig::OptimizationLevel::kStandard,
     });
     EXPECT_TRUE(runtime);
     return std::move(*runtime);
 }
 
 /// @brief Registers `Counter` with a read-write `value`.
-rtype::luau::Usertype<Counter> registerCounter(rtype::luau::Runtime& runtime) {
+aylo::luau::Usertype<Counter> registerCounter(aylo::luau::Runtime& runtime) {
     auto registered = runtime.usertype<Counter>("Counter");
     EXPECT_TRUE(registered);
     return registered->getter("value", [](const Counter& counter) { return counter.value; })
@@ -60,7 +60,7 @@ rtype::luau::Usertype<Counter> registerCounter(rtype::luau::Runtime& runtime) {
 }
 
 /// @brief Runs @p source as the script @p name, failing the test if it raises an error.
-void run(const rtype::luau::Runtime& runtime, const std::string& name, const std::string& source) {
+void run(const aylo::luau::Runtime& runtime, const std::string& name, const std::string& source) {
     const auto script = runtime.load(name, source);
     ASSERT_TRUE(script);
     const auto result = runtime.run(*script);
@@ -68,10 +68,10 @@ void run(const rtype::luau::Runtime& runtime, const std::string& name, const std
 }
 
 /// @brief Gets the function `run` of the global table `system`, as a system declaration holds it.
-Function storedRun(const rtype::luau::Runtime& runtime) {
+Function storedRun(const aylo::luau::Runtime& runtime) {
     const auto system = runtime.globals().get("system");
     EXPECT_TRUE(system);
-    auto function = system->as<rtype::luau::Table>().function("run");
+    auto function = system->as<aylo::luau::Table>().function("run");
     EXPECT_TRUE(function);
     return std::move(*function);
 }
@@ -107,7 +107,7 @@ TEST(StoredFunction, KeepsWorkingAcrossFramesAndCollections) {
     ASSERT_TRUE(userdata);
 
     for (int frame = 1; frame <= 100; ++frame) {
-        lua_gc(rtype::luau::detail::rawState(runtime), LUA_GCCOLLECT, 0);
+        lua_gc(aylo::luau::detail::rawState(runtime), LUA_GCCOLLECT, 0);
         ValuePack args{};
         args.add({*userdata});
         args.add({0.0});
@@ -130,7 +130,7 @@ TEST(StoredFunction, ReportsTheScriptNameAndTheLineOfAnError) {
     const auto result = stored.call(args);
 
     ASSERT_FALSE(result);
-    EXPECT_EQ(result.error().kind(), rtype::luau::ErrorKind::kRuntime);
+    EXPECT_EQ(result.error().kind(), aylo::luau::ErrorKind::kRuntime);
     EXPECT_EQ(result.error().message(), "Shield.luau:3: boom");
 }
 
@@ -155,7 +155,7 @@ TEST(StoredFunction, IteratesOverANativeIterator) {
     auto runtime = makeRuntime();
     auto entities = std::make_shared<std::vector<double>>(std::vector<double>{10, 20, 30});
     auto next = Function::create(runtime, "query");
-    next.setHandler([entities, index = std::size_t{0}](const rtype::luau::CallContext&) mutable -> ValuePack {
+    next.setHandler([entities, index = std::size_t{0}](const aylo::luau::CallContext&) mutable -> ValuePack {
         ValuePack results{};
         if (index < entities->size()) {
             results.add({(*entities)[index++]});
@@ -177,12 +177,12 @@ TEST(StoredFunction, IteratesOverANativeIterator) {
 }
 
 TEST(StoredFunction, OutlivesItsRuntimeWithoutTouchingTheClosedState) {
-    std::optional<rtype::luau::Runtime> runtime{makeRuntime()};
+    std::optional<aylo::luau::Runtime> runtime{makeRuntime()};
     run(*runtime, "systems.luau", "system = { run = function() end }");
     const Function stored = storedRun(*runtime);
     const auto table = runtime->globals().get("system");
     ASSERT_TRUE(table);
-    const auto ref = table->as<rtype::luau::Table>().functionRef("run");
+    const auto ref = table->as<aylo::luau::Table>().functionRef("run");
     ASSERT_TRUE(ref);
     EXPECT_TRUE(stored.ref().isValid());
 
@@ -193,33 +193,33 @@ TEST(StoredFunction, OutlivesItsRuntimeWithoutTouchingTheClosedState) {
     EXPECT_FALSE(ref->isValid());
     const auto result = stored.call({});
     ASSERT_FALSE(result);
-    EXPECT_EQ(result.error().kind(), rtype::luau::ErrorKind::kRuntime);
+    EXPECT_EQ(result.error().kind(), aylo::luau::ErrorKind::kRuntime);
     EXPECT_NE(result.error().message().find("runtime was destroyed"), std::string_view::npos);
 }
 
 TEST(StoredFunction, PushingItAfterItsRuntimeIsDestroyedFails) {
-    auto first = std::optional<rtype::luau::Runtime>{makeRuntime()};
+    auto first = std::optional<aylo::luau::Runtime>{makeRuntime()};
     run(*first, "systems.luau", "system = { run = function() end }");
     const auto system = first->globals().get("system");
-    const auto ref = system->as<rtype::luau::Table>().functionRef("run");
+    const auto ref = system->as<aylo::luau::Table>().functionRef("run");
     ASSERT_TRUE(ref);
     auto second = makeRuntime();
 
     first.reset();
 
-    const auto pushed = rtype::luau::detail::pushFunctionRef(rtype::luau::detail::rawState(second), *ref);
+    const auto pushed = aylo::luau::detail::pushFunctionRef(aylo::luau::detail::rawState(second), *ref);
     ASSERT_FALSE(pushed);
-    EXPECT_EQ(pushed.error().kind(), rtype::luau::ErrorKind::kRuntime);
+    EXPECT_EQ(pushed.error().kind(), aylo::luau::ErrorKind::kRuntime);
 }
 
 TEST(StoredFunction, ATableOfAClosedRuntimeIsRefused) {
-    std::optional<rtype::luau::Runtime> runtime{makeRuntime()};
+    std::optional<aylo::luau::Runtime> runtime{makeRuntime()};
     run(*runtime, "systems.luau", "system = { run = function() end }");
     const auto system = runtime->globals().get("system");
     ASSERT_TRUE(system);
-    const auto table = system->as<rtype::luau::Table>();
+    const auto table = system->as<aylo::luau::Table>();
 
     runtime.reset();
 
-    EXPECT_THROW(static_cast<void>(table.get("run")), rtype::luau::exceptions::InvalidRef);
+    EXPECT_THROW(static_cast<void>(table.get("run")), aylo::luau::exceptions::InvalidRef);
 }

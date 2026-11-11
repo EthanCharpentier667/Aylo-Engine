@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ScriptParticlesTests
 */
@@ -14,35 +14,35 @@
 
 #include "FakeBackend.hpp"
 #include "ScriptProbe.hpp"
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/app/PluginRegistry.hpp"
+#include "aylo/ecs/schedule/RunMode.hpp"
+#include "aylo/ecs/time/TimePlugin.hpp"
+#include "aylo/scripting/ScriptHost.hpp"
 #include "plugins/graphics/GraphicsPlugin.hpp"
 #include "plugins/input/InputPlugin.hpp"
 #include "plugins/particle/ParticlePlugin.hpp"
 #include "plugins/particle/ParticleSystems.hpp"
 #include "plugins/shader/ShaderPlugin.hpp"
 #include "plugins/transform/TransformPlugin.hpp"
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/app/PluginRegistry.hpp"
-#include "rtype/ecs/schedule/RunMode.hpp"
-#include "rtype/ecs/time/TimePlugin.hpp"
-#include "rtype/scripting/ScriptHost.hpp"
 
 namespace {
 /// @brief A client App with the ParticlePlugin over the fake backend, 0.1 second per frame, and a script host on it.
 struct ClientScripts {
-    rtype::ecs::App app{rtype::ecs::RunMode::kClient};
-    std::unique_ptr<rtype::scripting::ScriptHost> host;
+    aylo::ecs::App app{aylo::ecs::RunMode::kClient};
+    std::unique_ptr<aylo::scripting::ScriptHost> host;
 
     ClientScripts() {
-        app.addPlugin(rtype::ecs::TimePlugin::manual(std::chrono::milliseconds{100}));
-        app.addPlugin(rtype::plugins::transform::TransformPlugin{});
-        app.addPlugin(rtype::plugins::input::InputPlugin{});
-        app.addPlugin(rtype::plugins::graphics::GraphicsPlugin{
-            rtype::test::plugins::makeFakeRegistry(std::make_shared<rtype::test::plugins::FakeBackendState>()),
-            rtype::test::plugins::makeFakeSettings()});
-        app.addPlugin(rtype::plugins::shader::ShaderPlugin{});
-        app.addPlugin(rtype::plugins::particle::ParticlePlugin{});
-        app.getPluginRegistry().addScriptForms("test.Probe", rtype::tests::kProbeForms);
-        auto created = rtype::scripting::ScriptHost::create(app, {.isClient = true});
+        app.addPlugin(aylo::ecs::TimePlugin::manual(std::chrono::milliseconds{100}));
+        app.addPlugin(aylo::plugins::transform::TransformPlugin{});
+        app.addPlugin(aylo::plugins::input::InputPlugin{});
+        app.addPlugin(aylo::plugins::graphics::GraphicsPlugin{
+            aylo::test::plugins::makeFakeRegistry(std::make_shared<aylo::test::plugins::FakeBackendState>()),
+            aylo::test::plugins::makeFakeSettings()});
+        app.addPlugin(aylo::plugins::shader::ShaderPlugin{});
+        app.addPlugin(aylo::plugins::particle::ParticlePlugin{});
+        app.getPluginRegistry().addScriptForms("test.Probe", aylo::tests::kProbeForms);
+        auto created = aylo::scripting::ScriptHost::create(app, {.isClient = true});
         EXPECT_TRUE(created) << (created ? "" : std::string{created.error().message()});
         host = std::move(*created);
     }
@@ -55,7 +55,7 @@ struct ClientScripts {
 
     /// @return The emitters playing.
     [[nodiscard]] std::size_t playing() const {
-        return app.getWorld().getResources().require<rtype::plugins::particle::ParticleSystems>().getCount();
+        return app.getWorld().getResources().require<aylo::plugins::particle::ParticleSystems>().getCount();
     }
 };
 }  // namespace

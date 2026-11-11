@@ -1,7 +1,7 @@
 # AYLO Engine: developer documentation
 
 For people who work **on the engine**, in C++. To make a game with it, in Luau, read the
-[game developer manual](https://charles-mahoudeau.github.io/rtype/) instead.
+[game developer manual](https://charles-mahoudeau.github.io/aylo/) instead.
 
 ## The architecture in one picture
 
@@ -67,13 +67,13 @@ flowchart TB
 | Understand the network | [Overview](network/overview.md), then [design](network/design.md); the wire format is the [protocol](network/protocol.md) |
 | See how a game is run | [Engine design](engine/design.md), [scripting plan](scripting/plan.md) |
 | Know why we chose a library | [Technical and comparative study](study/index.md) |
-| Contribute | [Contributing](https://github.com/Charles-Mahoudeau/rtype/blob/main/CONTRIBUTING.md), [Code style](CodeStyle.md) |
+| Contribute | [Contributing](https://github.com/Charles-Mahoudeau/aylo/blob/main/CONTRIBUTING.md), [Code style](CodeStyle.md) |
 
 ## How to
 
 | Task | Page |
 |---|---|
-| Build, run, test | [README](https://github.com/Charles-Mahoudeau/rtype#build-and-run) |
+| Build, run, test | [README](https://github.com/Charles-Mahoudeau/aylo#build-and-run) |
 | Add a plugin, a component, an engine call | [Plugins](Plugins.md), and the skills in `.agents/skills/` (`add-plugin`, `add-component`, `add-engine-call`) |
 | Write a game's native plugin | [Plugins: writing a game's plugin](Plugins.md#writing-a-games-plugin) |
 | Debug the GPU | [GPU debugging](gpu-debugging.md) |

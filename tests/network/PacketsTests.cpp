@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** PacketsTests
 */
@@ -14,13 +14,13 @@
 #include <variant>
 #include <vector>
 
-#include "rtype/network/Types.hpp"
-#include "rtype/network/bytes/Overloaded.hpp"
-#include "rtype/network/protocol/Constants.hpp"
-#include "rtype/network/protocol/Packets.hpp"
+#include "aylo/network/Types.hpp"
+#include "aylo/network/bytes/Overloaded.hpp"
+#include "aylo/network/protocol/Constants.hpp"
+#include "aylo/network/protocol/Packets.hpp"
 
-namespace network = rtype::network;
-namespace protocol = rtype::network::protocol;
+namespace network = aylo::network;
+namespace protocol = aylo::network::protocol;
 
 namespace {
 std::vector<std::byte> toBytes(const std::vector<int>& values) {

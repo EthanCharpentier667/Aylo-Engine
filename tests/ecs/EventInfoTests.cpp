@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** EventInfoTests
 */
@@ -10,46 +10,46 @@
 #include <cstdint>
 #include <memory>
 
-#include "rtype/ecs/error/Error.hpp"
-#include "rtype/ecs/error/Result.hpp"
-#include "rtype/ecs/event/EventInfo.hpp"
-#include "rtype/ecs/event/EventTraits.hpp"
-#include "rtype/ecs/type/Field.hpp"
-#include "rtype/ecs/type/TypeInfo.hpp"
+#include "aylo/ecs/error/Error.hpp"
+#include "aylo/ecs/error/Result.hpp"
+#include "aylo/ecs/event/EventInfo.hpp"
+#include "aylo/ecs/event/EventTraits.hpp"
+#include "aylo/ecs/type/Field.hpp"
+#include "aylo/ecs/type/TypeInfo.hpp"
 
-namespace rtype::test::event_info {
+namespace aylo::test::event_info {
 struct Hit {
     std::int32_t damage;
 };
-RTYPE_ECS_EVENT(Hit, "test.info.Hit", damage);
+AYLO_ECS_EVENT(Hit, "test.info.Hit", damage);
 
 struct Packet {
     std::unique_ptr<std::int32_t> payload;
 };
-RTYPE_ECS_EVENT(Packet, "test.info.Packet");
-}  // namespace rtype::test::event_info
+AYLO_ECS_EVENT(Packet, "test.info.Packet");
+}  // namespace aylo::test::event_info
 
-namespace evi = rtype::test::event_info;
+namespace evi = aylo::test::event_info;
 
 TEST(EventInfo, AcceptsAValidDescription) {
-    EXPECT_TRUE(rtype::ecs::validate(rtype::ecs::EventTraits<evi::Hit>::makeInfo()));
+    EXPECT_TRUE(aylo::ecs::validate(aylo::ecs::EventTraits<evi::Hit>::makeInfo()));
 }
 
 TEST(EventInfo, AcceptsAMoveOnlyEvent) {
-    EXPECT_TRUE(rtype::ecs::validate(rtype::ecs::EventTraits<evi::Packet>::makeInfo()));
+    EXPECT_TRUE(aylo::ecs::validate(aylo::ecs::EventTraits<evi::Packet>::makeInfo()));
 }
 
 TEST(EventInfo, RefusesAReplicatedEvent) {
-    rtype::ecs::EventInfo info = rtype::ecs::EventTraits<evi::Hit>::makeInfo();
-    info.type.replication = rtype::ecs::ReplicationMode::kEveryChange;
-    const rtype::ecs::Result<void> valid = rtype::ecs::validate(info);
+    aylo::ecs::EventInfo info = aylo::ecs::EventTraits<evi::Hit>::makeInfo();
+    info.type.replication = aylo::ecs::ReplicationMode::kEveryChange;
+    const aylo::ecs::Result<void> valid = aylo::ecs::validate(info);
     ASSERT_FALSE(valid);
-    EXPECT_EQ(valid.error().getKind(), rtype::ecs::ErrorKind::kInvalidType);
+    EXPECT_EQ(valid.error().getKind(), aylo::ecs::ErrorKind::kInvalidType);
 }
 
 TEST(EventInfo, AppliesTheRulesOfEveryType) {
-    const rtype::ecs::Result<void> valid =
-        rtype::ecs::validate(rtype::ecs::EventInfo{.type = {.name = "", .size = 4, .alignment = 4}});
+    const aylo::ecs::Result<void> valid =
+        aylo::ecs::validate(aylo::ecs::EventInfo{.type = {.name = "", .size = 4, .alignment = 4}});
     ASSERT_FALSE(valid);
-    EXPECT_EQ(valid.error().getKind(), rtype::ecs::ErrorKind::kInvalidType);
+    EXPECT_EQ(valid.error().getKind(), aylo::ecs::ErrorKind::kInvalidType);
 }

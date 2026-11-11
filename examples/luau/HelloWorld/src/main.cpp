@@ -1,21 +1,21 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** main
 */
 
+#include <aylo/luau/Runtime.hpp>
 #include <fstream>
 #include <iostream>
-#include <rtype/luau/Runtime.hpp>
 
 int main() {
     // ReSharper disable once CppTooWideScopeInitStatement
-    constexpr rtype::luau::RuntimeConfig config{
-        .libs = rtype::luau::RuntimeConfig::Libs::kStandard,
-        .optimizationLevel = rtype::luau::RuntimeConfig::OptimizationLevel::kDisabled,
+    constexpr aylo::luau::RuntimeConfig config{
+        .libs = aylo::luau::RuntimeConfig::Libs::kStandard,
+        .optimizationLevel = aylo::luau::RuntimeConfig::OptimizationLevel::kDisabled,
     };
-    const auto runtime = rtype::luau::Runtime::create(config);
+    const auto runtime = aylo::luau::Runtime::create(config);
 
     if (!runtime) {
         std::cerr << "failed to create Luau runtime: " << runtime.error().message() << std::endl;

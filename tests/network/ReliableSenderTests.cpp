@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ReliableSenderTests
 */
@@ -12,14 +12,14 @@
 #include <cstdint>
 
 #include "FakeClock.hpp"
-#include "rtype/network/Types.hpp"
-#include "rtype/network/connection/ReliableSender.hpp"
-#include "rtype/network/protocol/Constants.hpp"
+#include "aylo/network/Types.hpp"
+#include "aylo/network/connection/ReliableSender.hpp"
+#include "aylo/network/protocol/Constants.hpp"
 
-namespace network = rtype::network;
-namespace protocol = rtype::network::protocol;
-namespace tests = rtype::network::tests;
-using rtype::network::connection::ReliableSender;
+namespace network = aylo::network;
+namespace protocol = aylo::network::protocol;
+namespace tests = aylo::network::tests;
+using aylo::network::connection::ReliableSender;
 
 namespace {
 constexpr std::chrono::milliseconds kInterval{50};

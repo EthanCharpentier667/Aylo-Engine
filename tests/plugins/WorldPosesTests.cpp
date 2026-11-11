@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** WorldPosesTests
 */
@@ -9,23 +9,23 @@
 
 #include <glm/ext/vector_float2.hpp>
 
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/entity/Entity.hpp"
+#include "aylo/ecs/hierarchy/Parent.hpp"
+#include "aylo/ecs/schedule/RunMode.hpp"
+#include "aylo/ecs/world/World.hpp"
 #include "plugins/transform/Transform.hpp"
 #include "plugins/transform/TransformPlugin.hpp"
 #include "plugins/transform/WorldPoses.hpp"
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/entity/Entity.hpp"
-#include "rtype/ecs/hierarchy/Parent.hpp"
-#include "rtype/ecs/schedule/RunMode.hpp"
-#include "rtype/ecs/world/World.hpp"
 
-using rtype::ecs::Entity;
-using rtype::ecs::Parent;
-using rtype::plugins::transform::GlobalTransform;
-using rtype::plugins::transform::Transform;
-using rtype::plugins::transform::WorldPoses;
+using aylo::ecs::Entity;
+using aylo::ecs::Parent;
+using aylo::plugins::transform::GlobalTransform;
+using aylo::plugins::transform::Transform;
+using aylo::plugins::transform::WorldPoses;
 
 TEST(WorldPoses, GivesARootItsTransform) {
-    rtype::ecs::World world;
+    aylo::ecs::World world;
     const Entity root = world.spawn();
     const Transform local{.position = {3.0F, 4.0F}, .rotation = 0.5F, .scale = {2.0F, 2.0F}};
     WorldPoses poses;
@@ -37,7 +37,7 @@ TEST(WorldPoses, GivesARootItsTransform) {
 }
 
 TEST(WorldPoses, CombinesAWholeChainWhateverTheOrderOfAdd) {
-    rtype::ecs::World world;
+    aylo::ecs::World world;
     const Entity root = world.spawn();
     const Entity middle = world.spawn();
     const Entity leaf = world.spawn();
@@ -55,7 +55,7 @@ TEST(WorldPoses, CombinesAWholeChainWhateverTheOrderOfAdd) {
 }
 
 TEST(WorldPoses, CountsTheParentsOfAnEntity) {
-    rtype::ecs::World world;
+    aylo::ecs::World world;
     const Entity root = world.spawn();
     const Entity child = world.spawn();
     const Entity orphan = world.spawn();
@@ -72,7 +72,7 @@ TEST(WorldPoses, CountsTheParentsOfAnEntity) {
 }
 
 TEST(WorldPoses, GivesTheDefaultToAnEntityNotAdded) {
-    rtype::ecs::World world;
+    aylo::ecs::World world;
     const Entity unknown = world.spawn();
     const WorldPoses poses;
     EXPECT_EQ(poses.of(unknown).position, (glm::vec2{0.0F, 0.0F}));
@@ -80,7 +80,7 @@ TEST(WorldPoses, GivesTheDefaultToAnEntityNotAdded) {
 }
 
 TEST(WorldPoses, TreatsAChildOfAParentNotAddedAsARoot) {
-    rtype::ecs::World world;
+    aylo::ecs::World world;
     const Entity unknown = world.spawn();
     const Entity child = world.spawn();
     const Transform local{.position = {10.0F, 0.0F}};
@@ -91,9 +91,9 @@ TEST(WorldPoses, TreatsAChildOfAParentNotAddedAsARoot) {
 }
 
 TEST(WorldPoses, AgreesWithTheTransformPlugin) {
-    rtype::ecs::App app{rtype::ecs::RunMode::kClient};
-    app.addPlugin(rtype::plugins::transform::TransformPlugin{});
-    rtype::ecs::World& world = app.getWorld();
+    aylo::ecs::App app{aylo::ecs::RunMode::kClient};
+    app.addPlugin(aylo::plugins::transform::TransformPlugin{});
+    aylo::ecs::World& world = app.getWorld();
     const Entity root = world.spawn();
     const Entity middle = world.spawn();
     const Entity leaf = world.spawn();

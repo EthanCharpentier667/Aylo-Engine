@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** UdpSocketTests
 */
@@ -13,14 +13,14 @@
 #include <thread>
 #include <vector>
 
-#include "rtype/network/Types.hpp"
-#include "rtype/network/exceptions/NetworkExceptions.hpp"
-#include "rtype/network/io/Address.hpp"
-#include "rtype/network/io/UdpSocket.hpp"
-#include "rtype/network/protocol/Constants.hpp"
+#include "aylo/network/Types.hpp"
+#include "aylo/network/exceptions/NetworkExceptions.hpp"
+#include "aylo/network/io/Address.hpp"
+#include "aylo/network/io/UdpSocket.hpp"
+#include "aylo/network/protocol/Constants.hpp"
 
-namespace io = rtype::network::io;
-using rtype::network::Bytes;
+namespace io = aylo::network::io;
+using aylo::network::Bytes;
 
 namespace {
 Bytes makeBytes(const std::size_t size, const std::byte value = std::byte{0x2A}) { return Bytes(size, value); }
@@ -86,16 +86,16 @@ TEST(UdpSocket, TakeReceivedEmptiesTheList) {
 TEST(UdpSocket, MaxSizeDatagramIsKept) {
     io::UdpSocket first{0};
     io::UdpSocket second{0};
-    first.sendTo(loopback(second), makeBytes(rtype::network::protocol::kMaxPacketSize));
+    first.sendTo(loopback(second), makeBytes(aylo::network::protocol::kMaxPacketSize));
     const auto received = receive(second, 1);
     ASSERT_EQ(received.size(), 1U);
-    EXPECT_EQ(received[0].bytes.size(), rtype::network::protocol::kMaxPacketSize);
+    EXPECT_EQ(received[0].bytes.size(), aylo::network::protocol::kMaxPacketSize);
 }
 
 TEST(UdpSocket, OversizedDatagramIsDroppedAndCounted) {
     io::UdpSocket first{0};
     io::UdpSocket second{0};
-    first.sendTo(loopback(second), makeBytes(rtype::network::protocol::kMaxPacketSize + 1));
+    first.sendTo(loopback(second), makeBytes(aylo::network::protocol::kMaxPacketSize + 1));
     settle(second);
     EXPECT_TRUE(second.takeReceived().empty());
     EXPECT_EQ(second.stats().oversized, 1U);
@@ -122,7 +122,7 @@ TEST(UdpSocket, KeepsReceivingAfterSendingToAClosedPort) {
 
 TEST(UdpSocket, BindingAPortInUseThrows) {
     const io::UdpSocket first{0};
-    EXPECT_THROW(io::UdpSocket{first.localPort()}, rtype::network::exceptions::SocketException);
+    EXPECT_THROW(io::UdpSocket{first.localPort()}, aylo::network::exceptions::SocketException);
 }
 
 TEST(UdpSocket, SendingToAnIpv6AddressIsCountedNotThrown) {

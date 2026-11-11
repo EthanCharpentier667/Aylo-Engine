@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** SchedulesFrameTests
 */
@@ -13,59 +13,59 @@
 #include <utility>
 #include <vector>
 
-#include "rtype/ecs/event/EventTraits.hpp"
-#include "rtype/ecs/exceptions/ScheduleException.hpp"
-#include "rtype/ecs/resource/ResourceTraits.hpp"
-#include "rtype/ecs/schedule/FrameClock.hpp"
-#include "rtype/ecs/schedule/Phase.hpp"
-#include "rtype/ecs/schedule/RunMode.hpp"
-#include "rtype/ecs/schedule/Schedules.hpp"
-#include "rtype/ecs/system/EventReader.hpp"
-#include "rtype/ecs/system/EventWriter.hpp"
-#include "rtype/ecs/system/ResourceParam.hpp"
-#include "rtype/ecs/system/Side.hpp"
-#include "rtype/ecs/world/World.hpp"
+#include "aylo/ecs/event/EventTraits.hpp"
+#include "aylo/ecs/exceptions/ScheduleException.hpp"
+#include "aylo/ecs/resource/ResourceTraits.hpp"
+#include "aylo/ecs/schedule/FrameClock.hpp"
+#include "aylo/ecs/schedule/Phase.hpp"
+#include "aylo/ecs/schedule/RunMode.hpp"
+#include "aylo/ecs/schedule/Schedules.hpp"
+#include "aylo/ecs/system/EventReader.hpp"
+#include "aylo/ecs/system/EventWriter.hpp"
+#include "aylo/ecs/system/ResourceParam.hpp"
+#include "aylo/ecs/system/Side.hpp"
+#include "aylo/ecs/world/World.hpp"
 
-namespace rtype::test::schedules_frame {
+namespace aylo::test::schedules_frame {
 /// @brief What ran, in order: 1 to 6 for the phases (Startup ... Render), 7 to 9 for the clock's calls.
 struct Trace {
     std::vector<int> steps;
 };
-RTYPE_ECS_RESOURCE(Trace, "test.schedulesFrame.Trace");
+AYLO_ECS_RESOURCE(Trace, "test.schedulesFrame.Trace");
 
 struct Hit {
     int damage;
 };
-RTYPE_ECS_EVENT(Hit, "test.schedulesFrame.Hit", damage);
+AYLO_ECS_EVENT(Hit, "test.schedulesFrame.Hit", damage);
 
 /// @brief How many Hit events the sender still has to send, one per run.
 struct Pending {
     int count;
 };
-RTYPE_ECS_RESOURCE(Pending, "test.schedulesFrame.Pending", count);
+AYLO_ECS_RESOURCE(Pending, "test.schedulesFrame.Pending", count);
 
 /// @brief How many Hit events the reader read.
 struct Received {
     int count;
 };
-RTYPE_ECS_RESOURCE(Received, "test.schedulesFrame.Received", count);
-}  // namespace rtype::test::schedules_frame
+AYLO_ECS_RESOURCE(Received, "test.schedulesFrame.Received", count);
+}  // namespace aylo::test::schedules_frame
 
 namespace {
-using rtype::ecs::EventReader;
-using rtype::ecs::EventWriter;
-using rtype::ecs::FrameClock;
-using rtype::ecs::Phase;
-using rtype::ecs::ResMut;
-using rtype::ecs::RunMode;
-using rtype::ecs::Schedules;
-using rtype::ecs::Side;
-using rtype::ecs::World;
-using rtype::ecs::exceptions::ScheduleException;
-using rtype::test::schedules_frame::Hit;
-using rtype::test::schedules_frame::Pending;
-using rtype::test::schedules_frame::Received;
-using rtype::test::schedules_frame::Trace;
+using aylo::ecs::EventReader;
+using aylo::ecs::EventWriter;
+using aylo::ecs::FrameClock;
+using aylo::ecs::Phase;
+using aylo::ecs::ResMut;
+using aylo::ecs::RunMode;
+using aylo::ecs::Schedules;
+using aylo::ecs::Side;
+using aylo::ecs::World;
+using aylo::ecs::exceptions::ScheduleException;
+using aylo::test::schedules_frame::Hit;
+using aylo::test::schedules_frame::Pending;
+using aylo::test::schedules_frame::Received;
+using aylo::test::schedules_frame::Trace;
 
 constexpr int kStartFrame = 7;       ///< The clock's startFrame() in a trace.
 constexpr int kFinishFixedTick = 8;  ///< The clock's finishFixedTick() in a trace.

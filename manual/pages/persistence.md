@@ -10,7 +10,7 @@ Add the plugin in `project.luau`. Optional `persistence` section:
 | Key         | Default   | Meaning                                                                          |
 | ----------- | --------- | -------------------------------------------------------------------------------- |
 | `directory` | none      | Absolute folder for the saves. Without it: `<user data directory>/<folder>`.      |
-| `folder`    | `"rtype"` | The game's folder in the user data directory (`%APPDATA%`, `~/Library/Application Support`, `$XDG_DATA_HOME` or `~/.local/share`). |
+| `folder`    | `"aylo"` | The game's folder in the user data directory (`%APPDATA%`, `~/Library/Application Support`, `$XDG_DATA_HOME` or `~/.local/share`). |
 
 ## From scripts
 

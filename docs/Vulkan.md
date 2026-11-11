@@ -1,6 +1,6 @@
 # Vulkan
 
-The `render-vulkan` target (`src/rtype/render/vulkan/`, namespace `rtype::render::vulkan`) is the Vulkan renderer:
+The `render-vulkan` target (`src/aylo/render/vulkan/`, namespace `aylo::render::vulkan`) is the Vulkan renderer:
 
 - **`VulkanRenderer`**: implements `IRenderer`. Skeleton for now: `init()` creates the instance, the debug messenger
   and the window surface; drawing throws `UnsupportedFeatureException` until it is implemented. Registered as
@@ -48,17 +48,17 @@ The engine does not create `VulkanRenderer` itself: the `render-vulkan` target r
 the configuration picks it (see [`Backend.md`](Backend.md)):
 
 ```cpp
-rtype::plugins::graphics::BackendRegistry registry;
-rtype::platform::glfw::registerPlatform(registry.platforms);   // "glfw"
-rtype::render::vulkan::registerRenderer(registry.renderers);  // "vulkan"
+aylo::plugins::graphics::BackendRegistry registry;
+aylo::platform::glfw::registerPlatform(registry.platforms);   // "glfw"
+aylo::render::vulkan::registerRenderer(registry.renderers);  // "vulkan"
 
-rtype::core::config::Settings config;
+aylo::core::config::Settings config;
 config.set("platform", "glfw");
 config.set("renderer", "vulkan");
 config.set("vulkan.layers", std::vector<std::string>{"VK_LAYER_KHRONOS_validation"});  // debug builds
 config.set("vulkan.debugging", true);
 
-const rtype::plugins::graphics::Backend backend = registry.createBackend(config);
+const aylo::plugins::graphics::Backend backend = registry.createBackend(config);
 ```
 
 The `vulkan` settings fill a `VulkanRenderer::Config`: `engineName`, `layers`, `extraExtensions`, `debugging` (the
@@ -76,7 +76,7 @@ When `layers` contains `VK_LAYER_KHRONOS_validation`, `synchronizationValidation
 hazards between commands, and is slow. The engine only loads the layer in debug builds (`NDEBUG` not defined).
 
 `VulkanRenderer` needs a platform that implements
-[`IVulkanSurfaceSource`](../src/rtype/interop/vulkan/IVulkanSurfaceSource.hpp) (`GlfwPlatform` does):
+[`IVulkanSurfaceSource`](../src/aylo/interop/vulkan/IVulkanSurfaceSource.hpp) (`GlfwPlatform` does):
 
 1. `setup()`, before the window exists: `initLoader()`, so GLFW uses the renderer's Vulkan loader (one loader per
    process). A platform without `IVulkanSurfaceSource` throws `UnsupportedFeatureException` here.
@@ -87,7 +87,7 @@ On macOS, `Instance` also enables `VK_KHR_portability_enumeration`, which Molten
 
 ## Textures
 
-`createTexture()` takes RGBA8 pixels (decoded by the [`TextureAssets`](../src/rtype/plugins/graphics/TextureAssets.hpp) resource) and
+`createTexture()` takes RGBA8 pixels (decoded by the [`TextureAssets`](../src/aylo/plugins/graphics/TextureAssets.hpp) resource) and
 returns a `TextureId`:
 
 1. A `memory::Image`: a `VkImage` from VMA (device local, one mip level), `R8G8B8A8_SRGB`, usage
@@ -162,7 +162,7 @@ batch to `rendering::SpritePass`, which copies the instances into the frame's in
 flight, doubled when too small) and records, for each batch, the texture's set and one instanced draw of a 6-vertex
 quad (`shaders/sprite.vert` builds it from `gl_VertexIndex`; `sprite.frag` multiplies the texture by the colour).
 Both are the default shader: they include the shaders ABI of the renderer contract
-(`src/rtype/contract/renderer/shaders/`) with no game code, so built-in and game sprites are drawn by the same
+(`src/aylo/contract/renderer/shaders/`) with no game code, so built-in and game sprites are drawn by the same
 code, and the renderer depends on no plugin for it.
 Only consecutive sprites merge, so the draw order is kept: sort by layer, then by texture within a layer, for fewer
 draw calls. A debug build with the validation layer draws 10,000 sprites in about 8 ms a frame on an Apple M-series
@@ -215,16 +215,16 @@ Shaders are written in GLSL and compiled to SPIR-V, then turned into `vk::raii::
 
 ### Built-in shaders (engine)
 
-Shaders the engine itself uses (rectangles, sprites, post-processing) live in `src/rtype/render/vulkan/shaders/` and
+Shaders the engine itself uses (rectangles, sprites, post-processing) live in `src/aylo/render/vulkan/shaders/` and
 are **embedded in the renderer** at build time: nothing to find on disk at runtime, and they cannot get out of sync
-with the code. The `glsl.spirv` rule of [`render/vulkan/xmake.lua`](../src/rtype/render/vulkan/xmake.lua) compiles
+with the code. The `glsl.spirv` rule of [`render/vulkan/xmake.lua`](../src/aylo/render/vulkan/xmake.lua) compiles
 `shaders/<name>.<stage>` (`vert`, `frag`, `comp`, `geom`, `tesc`, `tese`) with `glslangValidator` from the `glslang`
 package (a system one, such as Homebrew's, is used when found) and generates `<name>.<stage>.h`, which defines
-`const uint32_t rtype_shader_<name>_<stage>[]`:
+`const uint32_t aylo_shader_<name>_<stage>[]`:
 
 ```cpp
 #include "sprite.vert.h"
-const vk::raii::ShaderModule& vertex = shaders.get("sprite.vert", rtype_shader_sprite_vert);
+const vk::raii::ShaderModule& vertex = shaders.get("sprite.vert", aylo_shader_sprite_vert);
 ```
 
 - Target environment `vulkan1.3`; debug info (`-g`) in debug builds, for validation messages and RenderDoc;
@@ -256,9 +256,9 @@ the pipeline is created.
 
 Every pipeline is created through one `VkPipelineCache`, saved to disk when the renderer is destroyed and read back by
 `init()` at the next launch, so the driver does not compile the same pipelines again. The file is the
-`vulkan.pipelineCache` setting (`"pipeline_cache.bin"` by default), relative to the user's cache directory's `rtype`
-folder: `~/Library/Caches/rtype` on macOS, `$XDG_CACHE_HOME/rtype` or `~/.cache/rtype` on Linux,
-`%LOCALAPPDATA%\rtype` on Windows. It stays writable even when the game is installed in a read-only directory. An
+`vulkan.pipelineCache` setting (`"pipeline_cache.bin"` by default), relative to the user's cache directory's `aylo`
+folder: `~/Library/Caches/aylo` on macOS, `$XDG_CACHE_HOME/aylo` or `~/.cache/aylo` on Linux,
+`%LOCALAPPDATA%\aylo` on Windows. It stays writable even when the game is installed in a read-only directory. An
 absolute path is used as is, and an empty one keeps nothing.
 
 The file is written to a temporary file then renamed over the old one, so a crash while saving never leaves a

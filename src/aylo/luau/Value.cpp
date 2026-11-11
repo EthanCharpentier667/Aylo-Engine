@@ -1,0 +1,176 @@
+/*
+** EPITECH PROJECT, 2026
+** aylo
+** File description:
+** Value
+*/
+
+#include "Value.hpp"
+
+#include <lua.h>
+#include <luaconf.h>
+
+#include <cstddef>
+#include <cstdint>
+#include <exception>
+#include <format>
+#include <limits>
+#include <optional>
+#include <string>
+#include <utility>
+#include <variant>
+
+#include "ErrorKind.hpp"
+#include "Exceptions.hpp"
+#include "Failure.hpp"
+#include "FunctionRef.hpp"
+#include "Ref.hpp"
+#include "Result.hpp"
+#include "Table.hpp"
+#include "Userdata.hpp"
+#include "VariantHelper.hpp"
+#include "detail/Stack.hpp"
+
+static_assert(LUA_VECTOR_SIZE == 3, "aylo::luau::Value::Vector assumes 3-component Luau vectors");
+
+namespace {
+template <typename T, typename U>
+[[nodiscard]] bool checkLimits(T value, std::numeric_limits<U> limits) {
+    if constexpr (std::numeric_limits<U>::is_bounded) {
+        return value >= limits.min() && value <= limits.max();
+    }
+    return true;
+}
+
+template <typename T>
+[[nodiscard]] std::optional<T> convertSafe(const aylo::luau::Value::Variant& variant) {
+    static constexpr std::numeric_limits<T> kLimits;
+    using Ret = std::optional<T>;
+
+    // over-engineered, for now, awaiting the int64 update
+    return std::visit(Overload{
+                          [](const double v) -> Ret {
+                              if (!checkLimits(v, kLimits)) {
+                                  return std::nullopt;
+                              }
+                              return static_cast<T>(v);
+                          },
+                          [](const auto&) -> Ret { return std::nullopt; },
+                      },
+                      variant);
+}
+}  // namespace
+
+namespace aylo::luau::detail {
+Result<Value> readValue(lua_State* state, const int stackIndex) {
+    switch (const int type = lua_type(state, stackIndex)) {
+        case LUA_TNIL:
+            return Value{Value::Nil{}};
+        case LUA_TBOOLEAN:
+            return Value{lua_toboolean(state, stackIndex) != 0};
+        case LUA_TNUMBER:
+            return Value{lua_tonumber(state, stackIndex)};
+        case LUA_TVECTOR: {
+            const float* v{lua_tovector(state, stackIndex)};
+            // NOLINTNEXTLINE(*-pro-bounds-pointer-arithmetic)
+            return Value{Value::Vector{v[0], v[1], v[2]}};
+        }
+        case LUA_TSTRING: {
+            std::size_t length{};
+            const char* str{lua_tolstring(state, stackIndex, &length)};
+            return Value{std::string{str, length}};
+        }
+        case LUA_TTABLE: {
+            auto table = readTable(state, stackIndex);
+            if (!table) {
+                return forwardError<Value>(std::move(table));
+            }
+            return Value{std::move(*table)};
+        }
+        case LUA_TFUNCTION: {
+            auto function = readFunctionRef(state, stackIndex);
+            if (!function) {
+                return forwardError<Value>(std::move(function));
+            }
+            return Value{std::move(*function)};
+        }
+        case LUA_TUSERDATA: {
+            auto userdata = readUserdata(state, stackIndex);
+            if (!userdata) {
+                return forwardError<Value>(std::move(userdata));
+            }
+            return Value{std::move(*userdata)};
+        }
+        default:
+            return Failure{ErrorKind::kTypeMismatch,
+                           std::format("cannot read a value of type '{}' yet", lua_typename(state, type))};
+    }
+}
+
+Result<Value> popValue(lua_State* state) {
+    auto value = readValue(state, Ref::kLuaStackTop);
+
+    if (!value) {
+        return forwardError<Value>(std::move(value));
+    }
+    lua_pop(state, 1);
+    return value;
+}
+}  // namespace aylo::luau::detail
+
+namespace aylo::luau {
+Value::Value(Variant v) noexcept : _variant{std::move(v)} {}
+Value::~Value() noexcept = default;
+Value::Value(const Value&) noexcept = default;
+Value& Value::operator=(const Value&) noexcept = default;
+Value::Value(Value&&) noexcept = default;
+Value& Value::operator=(Value&&) noexcept = default;
+
+const Value::Variant& Value::variant() const noexcept { return _variant; }
+
+Result<void> detail::pushValue(lua_State* state, const Value& value) {
+    if (state == nullptr) {
+        throw exceptions::InvalidState{};
+    }
+    return std::visit(Overload{
+                          [state](const Value::Nil) -> Result<void> {
+                              lua_pushnil(state);
+                              return {};
+                          },
+                          [state](const bool v) -> Result<void> {
+                              lua_pushboolean(state, v);
+                              return {};
+                          },
+                          [state](const double v) -> Result<void> {
+                              lua_pushnumber(state, v);
+                              return {};
+                          },
+                          [state](const Value::Vector v) -> Result<void> {
+                              lua_pushvector(state, v.x, v.y, v.z);
+                              return {};
+                          },
+                          [state](const std::string& v) -> Result<void> {
+                              try {
+                                  lua_pushlstring(state, v.data(), v.size());
+                              } catch (const std::exception&) {
+                                  // Luau raises its allocation failures as C++ exceptions.
+                                  return Failure{ErrorKind::kOutOfMemory, "Lua out of memory"};
+                              }
+                              return {};
+                          },
+                          [state](const Table& v) -> Result<void> { return pushTable(state, v); },
+                          [state](const FunctionRef& v) -> Result<void> { return pushFunctionRef(state, v); },
+                          [state](const Userdata& v) -> Result<void> { return pushUserdata(state, v); },
+                      },
+                      value.variant());
+}
+
+bool Value::isNumeric() const noexcept {
+    // for now, we only have double type, but after upgrading Luau version, we'll have int64
+    return std::holds_alternative<double>(_variant);
+}
+
+std::optional<std::int32_t> Value::toInt32() const { return convertSafe<std::int32_t>(_variant); }
+
+std::optional<std::uint32_t> Value::toUInt32() const { return convertSafe<std::uint32_t>(_variant); }
+}  // namespace aylo::luau

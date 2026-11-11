@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** PipelineBuildersTests
 */
@@ -18,9 +18,9 @@
 
 namespace {
 
-using rtype::render::vulkan::descriptor::DescriptorSetLayout;
-using rtype::render::vulkan::descriptor::DescriptorWriter;
-using rtype::render::vulkan::pipeline::GraphicsPipeline;
+using aylo::render::vulkan::descriptor::DescriptorSetLayout;
+using aylo::render::vulkan::descriptor::DescriptorWriter;
+using aylo::render::vulkan::pipeline::GraphicsPipeline;
 
 }  // namespace
 
@@ -79,7 +79,7 @@ TEST(DescriptorWriter, ClearForgetsEverything) {
 }
 
 TEST(Vertex2D, DescribesATightlyPackedVertex) {
-    using rtype::render::vulkan::pipeline::Vertex2D;
+    using aylo::render::vulkan::pipeline::Vertex2D;
     const auto bindings = Vertex2D::getBindings(1);
     EXPECT_EQ(bindings[0].binding, 1U);
     EXPECT_EQ(bindings[0].stride, 20U);

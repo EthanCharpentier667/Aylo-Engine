@@ -1,6 +1,6 @@
 # Text
 
-The text plugin (`src/rtype/plugins/text/`, `rtype::plugins::text`) draws text from **MSDF font atlases**, so it stays
+The text plugin (`src/aylo/plugins/text/`, `aylo::plugins::text`) draws text from **MSDF font atlases**, so it stays
 sharp from 12 to 200 pixels and beyond, rotated or scaled, from one small image per font. It lays the text out itself
 and hands the renderer the glyphs already placed (`IRenderer::draw(Text)`), which Vulkan batches with the sprites. The
 The game adds it, after `GraphicsPlugin` and `ShaderPlugin`, which it requires.

@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** RuntimeConfigTests
 */
@@ -9,9 +9,9 @@
 
 #include <utility>
 
-#include "rtype/luau/RuntimeConfig.hpp"
+#include "aylo/luau/RuntimeConfig.hpp"
 
-using Libs = rtype::luau::RuntimeConfig::Libs;
+using Libs = aylo::luau::RuntimeConfig::Libs;
 
 TEST(RuntimeConfig, OrCombinesFlags) {
     const Libs combined = Libs::kBase | Libs::kMath;

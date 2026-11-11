@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ServerStateTests
 */
@@ -16,55 +16,55 @@
 #include <vector>
 
 #include "ServerFixtures.hpp"
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/component/ComponentInfo.hpp"
-#include "rtype/ecs/component/Components.hpp"
-#include "rtype/ecs/entity/Entity.hpp"
-#include "rtype/ecs/query/DynamicQuery.hpp"
-#include "rtype/ecs/query/QueryBuilder.hpp"
-#include "rtype/ecs/system/DynamicQueries.hpp"
-#include "rtype/network/NetworkSettings.hpp"
-#include "rtype/network/Types.hpp"
-#include "rtype/network/bytes/ByteWriter.hpp"
-#include "rtype/network/protocol/Constants.hpp"
-#include "rtype/network/server/RoomMessages.hpp"
-#include "rtype/replication/MessageType.hpp"
-#include "rtype/replication/ReplicationPlugin.hpp"
-#include "rtype/replication/ReplicationSettings.hpp"
-#include "rtype/replication/component/PlayerInput.hpp"
-#include "rtype/replication/event/ClientConnected.hpp"
-#include "rtype/replication/event/ClientDisconnected.hpp"
-#include "rtype/replication/exceptions/ReplicationExceptions.hpp"
-#include "rtype/replication/input/InputKind.hpp"
-#include "rtype/replication/input/InputLayout.hpp"
-#include "rtype/replication/input/InputMessage.hpp"
-#include "rtype/replication/query/ReplicatedQueries.hpp"
-#include "rtype/replication/server/ServerState.hpp"
-#include "rtype/replication/snapshot/Snapshot.hpp"
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/component/ComponentInfo.hpp"
+#include "aylo/ecs/component/Components.hpp"
+#include "aylo/ecs/entity/Entity.hpp"
+#include "aylo/ecs/query/DynamicQuery.hpp"
+#include "aylo/ecs/query/QueryBuilder.hpp"
+#include "aylo/ecs/system/DynamicQueries.hpp"
+#include "aylo/network/NetworkSettings.hpp"
+#include "aylo/network/Types.hpp"
+#include "aylo/network/bytes/ByteWriter.hpp"
+#include "aylo/network/protocol/Constants.hpp"
+#include "aylo/network/server/RoomMessages.hpp"
+#include "aylo/replication/MessageType.hpp"
+#include "aylo/replication/ReplicationPlugin.hpp"
+#include "aylo/replication/ReplicationSettings.hpp"
+#include "aylo/replication/component/PlayerInput.hpp"
+#include "aylo/replication/event/ClientConnected.hpp"
+#include "aylo/replication/event/ClientDisconnected.hpp"
+#include "aylo/replication/exceptions/ReplicationExceptions.hpp"
+#include "aylo/replication/input/InputKind.hpp"
+#include "aylo/replication/input/InputLayout.hpp"
+#include "aylo/replication/input/InputMessage.hpp"
+#include "aylo/replication/query/ReplicatedQueries.hpp"
+#include "aylo/replication/server/ServerState.hpp"
+#include "aylo/replication/snapshot/Snapshot.hpp"
 
 namespace {
-namespace snapshot = rtype::replication::snapshot;
-namespace network = rtype::network;
-using rtype::ecs::App;
-using rtype::ecs::DynamicQuery;
-using rtype::ecs::Entity;
-using rtype::ecs::Presence;
-using rtype::ecs::ReplicationMode;
-using rtype::replication::ReplicationPlugin;
-using rtype::replication::ReplicationSettings;
-using rtype::replication::component::PlayerInput;
-using rtype::replication::event::ClientConnected;
-using rtype::replication::event::ClientDisconnected;
-using rtype::replication::exceptions::ReplicationException;
-using rtype::replication::input::InputKind;
-using rtype::replication::input::InputLayout;
-using rtype::replication::input::InputMessage;
-using rtype::replication::input::InputSample;
-using rtype::replication::server::ServerNotification;
-using rtype::replication::server::ServerState;
-using rtype::test::server::Follow;
-using rtype::test::server::Position;
-using rtype::test::server::Secret;
+namespace snapshot = aylo::replication::snapshot;
+namespace network = aylo::network;
+using aylo::ecs::App;
+using aylo::ecs::DynamicQuery;
+using aylo::ecs::Entity;
+using aylo::ecs::Presence;
+using aylo::ecs::ReplicationMode;
+using aylo::replication::ReplicationPlugin;
+using aylo::replication::ReplicationSettings;
+using aylo::replication::component::PlayerInput;
+using aylo::replication::event::ClientConnected;
+using aylo::replication::event::ClientDisconnected;
+using aylo::replication::exceptions::ReplicationException;
+using aylo::replication::input::InputKind;
+using aylo::replication::input::InputLayout;
+using aylo::replication::input::InputMessage;
+using aylo::replication::input::InputSample;
+using aylo::replication::server::ServerNotification;
+using aylo::replication::server::ServerState;
+using aylo::test::server::Follow;
+using aylo::test::server::Position;
+using aylo::test::server::Secret;
 
 constexpr network::ClientId kFirst = 1;
 constexpr network::ClientId kSecond = 2;
@@ -91,7 +91,7 @@ class ServerStateTest : public ::testing::Test {
         _state->prepare(_layout);
     }
 
-    [[nodiscard]] rtype::ecs::World& world() { return _app.getWorld(); }
+    [[nodiscard]] aylo::ecs::World& world() { return _app.getWorld(); }
 
     /// @brief Makes the connection of a client known.
     void join(const network::ClientId client) {
@@ -103,7 +103,7 @@ class ServerStateTest : public ::testing::Test {
     /// @brief Gives the state an input message from a client.
     void sendInput(const network::ClientId client, const std::vector<InputSample>& inputs,
                    const std::uint32_t lastAppliedSnapshot = 0) {
-        const network::Bytes payload = rtype::replication::input::encodeInput(
+        const network::Bytes payload = aylo::replication::input::encodeInput(
             {.lastAppliedSnapshot = lastAppliedSnapshot, .inputs = inputs}, _layout);
         static_cast<void>(_state->handle(
             network::server::ClientMessage{
@@ -121,11 +121,10 @@ class ServerStateTest : public ::testing::Test {
     /// @brief Builds the snapshots of the tick with the queries of the replicated components.
     std::vector<network::server::SendMessage> build(const std::uint32_t tick) {
         _queries.clear();
-        for (const rtype::ecs::QueryBuilder& builder :
-             rtype::replication::query::makeReplicatedReads(world()).queries) {
+        for (const aylo::ecs::QueryBuilder& builder : aylo::replication::query::makeReplicatedReads(world()).queries) {
             _queries.push_back(builder.build(world().getComponents()).value());
         }
-        return _state->buildSnapshots(tick, rtype::ecs::DynamicQueries{_queries, world().getChangeTick()});
+        return _state->buildSnapshots(tick, aylo::ecs::DynamicQueries{_queries, world().getChangeTick()});
     }
 
     /// @brief Decodes the payload of a snapshot command.
@@ -211,13 +210,13 @@ TEST_F(ServerStateTest, PrepareNamesAReplicatedComponentRegisteredAfterTheState)
         float value{0.F};
     };
     (void)sizeof(Late);
-    rtype::ecs::ComponentInfo info;
+    aylo::ecs::ComponentInfo info;
     info.type.name = "test.server.Late";
     info.type.size = sizeof(float);
     info.type.alignment = alignof(float);
     info.type.presence = Presence::kBoth;
     info.type.replication = ReplicationMode::kEveryChange;
-    info.type.fields.push_back({.name = "value", .type = rtype::ecs::FieldType::kF32, .offset = 0, .count = 1});
+    info.type.fields.push_back({.name = "value", .type = aylo::ecs::FieldType::kF32, .offset = 0, .count = 1});
     ASSERT_TRUE(world().getComponents().registerType(info));
 
     try {
@@ -442,7 +441,7 @@ TEST_F(ServerStateTest, CountsThePacketsTheSchemasRefused) {
 TEST_F(ServerStateTest, AnInputFromAnUnknownClientIsIgnoredAndCounted) {
     makeState();
     const network::Bytes payload =
-        rtype::replication::input::encodeInput({.lastAppliedSnapshot = 0, .inputs = {makeSample(1, 1)}}, _layout);
+        aylo::replication::input::encodeInput({.lastAppliedSnapshot = 0, .inputs = {makeSample(1, 1)}}, _layout);
     EXPECT_FALSE(_state->handle(
         network::server::ClientMessage{.client = 7, .channel = network::Channel::kUnreliable, .payload = payload},
         _layout));
@@ -539,7 +538,7 @@ TEST_F(ServerStateTest, BuildsOneUnreliableSnapshotPerClient) {
     EXPECT_EQ(commands[0].client, kFirst);
     EXPECT_EQ(commands[1].client, kSecond);
     EXPECT_EQ(commands[0].channel, network::Channel::kUnreliable);
-    EXPECT_EQ(commands[0].payload.front(), static_cast<std::byte>(rtype::replication::MessageType::kSnapshot));
+    EXPECT_EQ(commands[0].payload.front(), static_cast<std::byte>(aylo::replication::MessageType::kSnapshot));
 }
 
 TEST_F(ServerStateTest, TheSnapshotListsEveryTrackedEntityInIdOrder) {
@@ -734,7 +733,7 @@ TEST_F(ServerStateTest, EveryClientGetsEveryPart) {
 }
 
 TEST_F(ServerStateTest, ARecordTooBigForAMessageIsLeftOutAndTheSnapshotIsNotComplete) {
-    using rtype::test::server::Cargo;
+    using aylo::test::server::Cargo;
     static_cast<void>(world().getComponents().registerType<Cargo>(
         {.presence = Presence::kBoth, .replication = ReplicationMode::kEveryChange}));
     makeState();
@@ -754,7 +753,7 @@ TEST_F(ServerStateTest, ARecordTooBigForAMessageIsLeftOutAndTheSnapshotIsNotComp
 }
 
 TEST_F(ServerStateTest, SendsAComponentWithListsThatComesBackWhole) {
-    using rtype::test::server::Cargo;
+    using aylo::test::server::Cargo;
     static_cast<void>(world().getComponents().registerType<Cargo>(
         {.presence = Presence::kBoth, .replication = ReplicationMode::kEveryChange}));
     makeState();
@@ -778,7 +777,7 @@ TEST_F(ServerStateTest, SendsAComponentWithListsThatComesBackWhole) {
 }
 
 TEST_F(ServerStateTest, LeavesOutAValueTooBigForItsLength) {
-    using rtype::test::server::Cargo;
+    using aylo::test::server::Cargo;
     static_cast<void>(world().getComponents().registerType<Cargo>(
         {.presence = Presence::kBoth, .replication = ReplicationMode::kEveryChange}));
     makeState();

@@ -125,7 +125,7 @@ raylib, curl or OpenSSL). The smoke test checks that the program and every plugi
 ### EXP-03: `aylo-export`, the trimmed folder
 
 `exporting::exportGame()` in `engine` (`engine/exporting/GameExport`, so the editor can call it, EXP-09) and the
-program `aylo-export` (`src/rtype/tools/export/`, linking `engine`: it is an executable) that runs it. It makes the
+program `aylo-export` (`src/aylo/tools/export/`, linking `engine`: it is an executable) that runs it. It makes the
 layout of [section 3](#3-what-an-export-makes) with `game/` copied as a folder instead of `game.pak`: the program
 renamed, `lib/` and `vulkan/` whole, the libraries of selectLibraries(), the game without its hidden files and without
 the sources of its plugins (only their libraries and `.sig` files), the notices merged from `licenses/by-library/`

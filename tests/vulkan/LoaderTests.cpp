@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** LoaderTests
 */
@@ -14,7 +14,7 @@
 
 namespace {
 
-using rtype::render::vulkan::core::Loader;
+using aylo::render::vulkan::core::Loader;
 
 // The machine running the tests may or may not have a Vulkan loader (a CI container usually has none): both outcomes
 // are right, as long as each is the documented one.

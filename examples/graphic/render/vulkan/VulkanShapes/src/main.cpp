@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** main
 */
@@ -26,6 +26,17 @@
 #include <utility>
 #include <vector>
 
+#include "aylo/contract/renderer/IRenderer.hpp"
+#include "aylo/contract/renderer/drawing/Color.hpp"
+#include "aylo/contract/renderer/drawing/Shape.hpp"
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/app/AppExit.hpp"
+#include "aylo/ecs/app/MinimalPlugins.hpp"
+#include "aylo/ecs/resource/ResourceTraits.hpp"
+#include "aylo/ecs/schedule/Phase.hpp"
+#include "aylo/ecs/system/EventWriter.hpp"
+#include "aylo/ecs/system/ResourceParam.hpp"
+#include "aylo/ecs/time/Time.hpp"
 #include "core/config/Settings.hpp"
 #include "platform/glfw/Registration.hpp"
 #include "plugins/graphics/BackendRegistry.hpp"
@@ -34,20 +45,9 @@
 #include "plugins/input/InputPlugin.hpp"
 #include "plugins/transform/TransformPlugin.hpp"
 #include "render/vulkan/Registration.hpp"
-#include "rtype/contract/renderer/IRenderer.hpp"
-#include "rtype/contract/renderer/drawing/Color.hpp"
-#include "rtype/contract/renderer/drawing/Shape.hpp"
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/app/AppExit.hpp"
-#include "rtype/ecs/app/MinimalPlugins.hpp"
-#include "rtype/ecs/resource/ResourceTraits.hpp"
-#include "rtype/ecs/schedule/Phase.hpp"
-#include "rtype/ecs/system/EventWriter.hpp"
-#include "rtype/ecs/system/ResourceParam.hpp"
-#include "rtype/ecs/time/Time.hpp"
 
-using namespace rtype;
-using namespace rtype::contract::renderer;
+using namespace aylo;
+using namespace aylo::contract::renderer;
 
 namespace {
 constexpr double kWidth = 800.0;
@@ -66,7 +66,7 @@ struct Lifetime {
     std::optional<float> seconds;
     float elapsed = 0.0F;
 };
-RTYPE_ECS_RESOURCE(Lifetime, "example.Lifetime");
+AYLO_ECS_RESOURCE(Lifetime, "example.Lifetime");
 
 // Render, after the sprites: draws the demo's shapes, turning with time.
 void drawShapes(ecs::NonSendMut<plugins::graphics::Backend> backend, ecs::Res<ecs::Time> time,
@@ -188,8 +188,8 @@ int main(int argc, char** argv) {
 
         ecs::App app;
         app.addPlugins(ecs::MinimalPlugins{})
-            .addPlugin(rtype::plugins::transform::TransformPlugin{})
-            .addPlugin(rtype::plugins::input::InputPlugin{})
+            .addPlugin(aylo::plugins::transform::TransformPlugin{})
+            .addPlugin(aylo::plugins::input::InputPlugin{})
             .addPlugin(plugins::graphics::GraphicsPlugin{std::move(registry), makeSettings(validate)});
         app.insertResource(plugins::graphics::ClearColor{.value = kClear});
         app.insertResource(lifetime);

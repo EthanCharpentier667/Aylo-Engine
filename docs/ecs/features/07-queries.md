@@ -36,15 +36,15 @@ Queries are the main way systems read and write the world.
 ### Typed
 
 ```c++
-void movement(rtype::ecs::Query<Position, const Velocity> query, rtype::ecs::Res<Time> time) {
+void movement(aylo::ecs::Query<Position, const Velocity> query, aylo::ecs::Res<Time> time) {
     for (auto [entity, position, velocity] : query) {
         position->x += velocity.x * time->fixedDelta;  // Mut<Position>: writing marks it changed
         position->y += velocity.y * time->fixedDelta;
     }
 }
 
-void cleanup(rtype::ecs::Query<const Transform, rtype::ecs::With<Enemy>, rtype::ecs::Without<Dead>> query,
-             rtype::ecs::Commands& commands);
+void cleanup(aylo::ecs::Query<const Transform, aylo::ecs::With<Enemy>, aylo::ecs::Without<Dead>> query,
+             aylo::ecs::Commands& commands);
 ```
 
 | Term | Meaning | Yields |
@@ -61,13 +61,13 @@ receives is a light view of it, made for each run with the system's `lastRun` an
 a system, iterate the state with an explicit `lastRun`:
 
 ```c++
-const rtype::ecs::QueryState<Position, const Velocity, rtype::ecs::Without<Dead>> movement{world.getComponents()};
+const aylo::ecs::QueryState<Position, const Velocity, aylo::ecs::Without<Dead>> movement{world.getComponents()};
 
 for (auto [entity, position, velocity] : movement.iter(lastRun)) {  // Mut<Position>, const Velocity&
     position->x += velocity.x;
 }
 
-rtype::ecs::Query<Position, const Velocity, rtype::ecs::Without<Dead>> view{movement, lastRun};
+aylo::ecs::Query<Position, const Velocity, aylo::ecs::Without<Dead>> view{movement, lastRun};
 for (auto [entity, position, velocity] : view) { /* what a system's body does */ }
 ```
 
@@ -81,14 +81,14 @@ for (auto [entity, position, velocity] : view) { /* what a system's body does */
 ### Dynamic
 
 ```c++
-rtype::ecs::Result<rtype::ecs::DynamicQuery> query = rtype::ecs::QueryBuilder{}
+aylo::ecs::Result<aylo::ecs::DynamicQuery> query = aylo::ecs::QueryBuilder{}
     .write(shieldId)
     .read(positionId)
     .without(deadId)
     .build(world.getComponents());          // an Error (kInvalidQuery) instead of an exception
 
-for (rtype::ecs::QueryMatch& match : query->iter(lastRun)) {
-    rtype::ecs::Entity entity = match.getEntity();
+for (aylo::ecs::QueryMatch& match : query->iter(lastRun)) {
+    aylo::ecs::Entity entity = match.getEntity();
     std::span<std::byte> shield = match.getMut(0);         // data term 0: game.Shield, marked changed
     std::span<const std::byte> position = match.get(1);    // data term 1: rtype.Position, read only
 }

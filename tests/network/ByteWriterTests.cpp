@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ByteWriterTests
 */
@@ -14,9 +14,9 @@
 #include <limits>
 #include <string>
 
-#include "rtype/network/bytes/ByteWriter.hpp"
+#include "aylo/network/bytes/ByteWriter.hpp"
 
-namespace bytes = rtype::network::bytes;
+namespace bytes = aylo::network::bytes;
 
 namespace {
 

@@ -1,6 +1,6 @@
 ---
 name: add-engine-call
-description: Add an engine call, a named function a plugin gives to Luau scripts (rtype.<plugin>.<verb>), and make the feature reachable from scripts with a manual page and a script test. Use when asked to "expose X to Luau", "add an engine call", "let scripts do X", "add a setup form", or when a plugin feature needs to be usable by a game.
+description: Add an engine call, a named function a plugin gives to Luau scripts (aylo.<plugin>.<verb>), and make the feature reachable from scripts with a manual page and a script test. Use when asked to "expose X to Luau", "add an engine call", "let scripts do X", "add a setup form", or when a plugin feature needs to be usable by a game.
 ---
 
 # Add an engine call
@@ -16,9 +16,9 @@ game reaches what plain data cannot do: load an asset, bind an input, play a sou
 
 ## Checklist
 
-1. **Name it** `rtype.<plugin>.<verb>` (camelCase verb: `rtype.audio.loadSound`). One call does one thing.
+1. **Name it** `aylo.<plugin>.<verb>` (camelCase verb: `rtype.audio.loadSound`). One call does one thing.
 2. **Define the data.** An argument struct and, if the call returns something, a result struct, each declared with the
-   call-data macro and a stable `rtype.<plugin>.<Name>` name, in the plugin's calls header (`<Name>Calls.hpp`). Missing
+   call-data macro and a stable `aylo.<plugin>.<Name>` name, in the plugin's calls header (`<Name>Calls.hpp`). Missing
    argument fields keep their defaults, so give every field a sensible default. Use asset-id fields for assets (a script
    passes a path), strings of the ECS (`ecs::String`, 255 bytes at most) for short text, `std::string` for a text that
    may be longer (a prompt, a request body, a reply) and `std::vector` for a list, and glm vectors for positions. An optional value is a documented
@@ -29,7 +29,7 @@ game reaches what plain data cannot do: load an asset, bind an input, play a sou
    call; never crash. A call on a side that does not have the plugin is absent there and the scripts and setup forms
    skip it (a server has no textures).
 4. **Setup forms.** If it is part of declaring a game's setup (assets, input), add or extend a form of `engine.assets`
-   or `engine.input` in the plugin's own `<Name>Forms.luau` (listed in `src/rtype/plugins/xmake.lua`, registered from
+   or `engine.input` in the plugin's own `<Name>Forms.luau` (listed in `src/aylo/plugins/xmake.lua`, registered from
    its library and build step, written with the `engine.forms` helpers of `scripting/setup/FormsPrelude.luau`) so the
    script writes one readable table; keep forms thin over the call. The form tests `engine.hasCall()`, so a side without
    the plugin skips it.

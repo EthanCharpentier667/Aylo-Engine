@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ScriptHostTests
 */
@@ -14,23 +14,23 @@
 #include <memory>
 #include <string>
 
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/app/PluginRegistry.hpp"
+#include "aylo/ecs/type/TypeInfo.hpp"
+#include "aylo/luau/Value.hpp"
+#include "aylo/scripting/ScriptHost.hpp"
 #include "core/asset/AssetId.hpp"
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/app/PluginRegistry.hpp"
-#include "rtype/ecs/type/TypeInfo.hpp"
-#include "rtype/luau/Value.hpp"
-#include "rtype/scripting/ScriptHost.hpp"
 
 namespace {
-using rtype::ecs::FieldType;
+using aylo::ecs::FieldType;
 
 /// @brief A bare App and a host on it.
 struct Fixture {
-    rtype::ecs::App app;
-    std::unique_ptr<rtype::scripting::ScriptHost> host;
+    aylo::ecs::App app;
+    std::unique_ptr<aylo::scripting::ScriptHost> host;
 
-    explicit Fixture(const rtype::scripting::ScriptHost::Options options = {}) {
-        auto created = rtype::scripting::ScriptHost::create(app, options);
+    explicit Fixture(const aylo::scripting::ScriptHost::Options options = {}) {
+        auto created = aylo::scripting::ScriptHost::create(app, options);
         EXPECT_TRUE(created) << (created ? "" : std::string{created.error().message()});
         host = std::move(*created);
     }
@@ -125,7 +125,7 @@ TEST(ScriptHost, VectorAndAssetIdDefaultsAreWrittenAtTheFieldOffsets) {
         } else {
             std::uint64_t value = 0;
             std::memcpy(&value, at, sizeof value);
-            EXPECT_EQ(value, rtype::core::asset::AssetId::fromPath("assets/ship.png").value);
+            EXPECT_EQ(value, aylo::core::asset::AssetId::fromPath("assets/ship.png").value);
         }
     }
 }
@@ -159,10 +159,10 @@ TEST(ScriptHost, PresenceIsReadAndDefaultsToBoth) {
               "");
 
     const auto& registry = fixture.app.getWorld().getComponents().getRegistry();
-    EXPECT_EQ(registry.findByName("game.Plain")->type.presence, rtype::ecs::Presence::kBoth);
-    EXPECT_EQ(registry.findByName("game.Both")->type.presence, rtype::ecs::Presence::kBoth);
-    EXPECT_EQ(registry.findByName("game.Server")->type.presence, rtype::ecs::Presence::kServerOnly);
-    EXPECT_EQ(registry.findByName("game.Client")->type.presence, rtype::ecs::Presence::kClientOnly);
+    EXPECT_EQ(registry.findByName("game.Plain")->type.presence, aylo::ecs::Presence::kBoth);
+    EXPECT_EQ(registry.findByName("game.Both")->type.presence, aylo::ecs::Presence::kBoth);
+    EXPECT_EQ(registry.findByName("game.Server")->type.presence, aylo::ecs::Presence::kServerOnly);
+    EXPECT_EQ(registry.findByName("game.Client")->type.presence, aylo::ecs::Presence::kClientOnly);
 }
 
 TEST(ScriptHost, UnknownPresenceIsRefused) {

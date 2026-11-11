@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** PhysicsDebugTests
 */
@@ -15,6 +15,17 @@
 #include <vector>
 
 #include "FakeBackend.hpp"
+#include "aylo/contract/platform/event/Event.hpp"
+#include "aylo/contract/platform/input/Key.hpp"
+#include "aylo/contract/renderer/drawing/Color.hpp"
+#include "aylo/contract/renderer/drawing/Shape.hpp"
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/change/Mut.hpp"
+#include "aylo/ecs/component/Components.hpp"
+#include "aylo/ecs/entity/Entity.hpp"
+#include "aylo/ecs/schedule/Phase.hpp"
+#include "aylo/ecs/schedule/RunMode.hpp"
+#include "aylo/ecs/time/Time.hpp"
 #include "plugins/graphics/GraphicsPlugin.hpp"
 #include "plugins/physics/Collider.hpp"
 #include "plugins/physics/PhysicsHandle.hpp"
@@ -28,30 +39,19 @@
 #include "plugins/physics/debug/PhysicsDebugShapes.hpp"
 #include "plugins/transform/Transform.hpp"
 #include "plugins/transform/TransformPlugin.hpp"
-#include "rtype/contract/platform/event/Event.hpp"
-#include "rtype/contract/platform/input/Key.hpp"
-#include "rtype/contract/renderer/drawing/Color.hpp"
-#include "rtype/contract/renderer/drawing/Shape.hpp"
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/change/Mut.hpp"
-#include "rtype/ecs/component/Components.hpp"
-#include "rtype/ecs/entity/Entity.hpp"
-#include "rtype/ecs/schedule/Phase.hpp"
-#include "rtype/ecs/schedule/RunMode.hpp"
-#include "rtype/ecs/time/Time.hpp"
 
-using rtype::contract::renderer::Color;
-using rtype::contract::renderer::Shape;
-using rtype::contract::renderer::ShapeKind;
-using rtype::ecs::Entity;
-using rtype::plugins::physics::Collider;
-using rtype::plugins::physics::ShapeType;
-using rtype::plugins::physics::Velocity;
-using rtype::plugins::physics::debug::PhysicsDebug;
-using rtype::plugins::physics::debug::PhysicsDebugPlugin;
-using rtype::plugins::physics::debug::PhysicsDebugSettings;
-using rtype::plugins::transform::GlobalTransform;
-using rtype::plugins::transform::Transform;
+using aylo::contract::renderer::Color;
+using aylo::contract::renderer::Shape;
+using aylo::contract::renderer::ShapeKind;
+using aylo::ecs::Entity;
+using aylo::plugins::physics::Collider;
+using aylo::plugins::physics::ShapeType;
+using aylo::plugins::physics::Velocity;
+using aylo::plugins::physics::debug::PhysicsDebug;
+using aylo::plugins::physics::debug::PhysicsDebugPlugin;
+using aylo::plugins::physics::debug::PhysicsDebugSettings;
+using aylo::plugins::transform::GlobalTransform;
+using aylo::plugins::transform::Transform;
 
 namespace {
 constexpr float kTolerance = 1e-4F;
@@ -59,18 +59,18 @@ constexpr Color kRed{1.0F, 0.0F, 0.0F, 1.0F};
 
 /// @brief A client App with the GraphicsPlugin over the fake renderer and the PhysicsDebugPlugin.
 struct DebugApp {
-    std::shared_ptr<rtype::test::plugins::FakeBackendState> state =
-        std::make_shared<rtype::test::plugins::FakeBackendState>();  ///< Drives the fakes, records the shapes.
-    rtype::ecs::App app{rtype::ecs::RunMode::kClient};               ///< The App under test.
+    std::shared_ptr<aylo::test::plugins::FakeBackendState> state =
+        std::make_shared<aylo::test::plugins::FakeBackendState>();  ///< Drives the fakes, records the shapes.
+    aylo::ecs::App app{aylo::ecs::RunMode::kClient};                ///< The App under test.
 
     DebugApp() {
-        rtype::test::plugins::addDrawingPlugins(app, rtype::test::plugins::makeFakeRegistry(state),
-                                                rtype::test::plugins::makeFakeSettings());
+        aylo::test::plugins::addDrawingPlugins(app, aylo::test::plugins::makeFakeRegistry(state),
+                                               aylo::test::plugins::makeFakeSettings());
         app.addPlugin(PhysicsDebugPlugin{});
     }
 
-    [[nodiscard]] rtype::ecs::Components& components() { return app.getWorld().getComponents(); }
-    [[nodiscard]] rtype::ecs::Mut<PhysicsDebugSettings> settings() {
+    [[nodiscard]] aylo::ecs::Components& components() { return app.getWorld().getComponents(); }
+    [[nodiscard]] aylo::ecs::Mut<PhysicsDebugSettings> settings() {
         return app.getWorld().getResources().requireMut<PhysicsDebugSettings>();
     }
 
@@ -96,7 +96,7 @@ struct DebugApp {
 
 TEST(PhysicsDebugShapes, ABoxOutlineTurnsAndMovesWithItsEntity) {
     const float quarterTurn = std::acos(-1.0F) / 2.0F;
-    const Shape shape = rtype::plugins::physics::debug::debugColliderShape(
+    const Shape shape = aylo::plugins::physics::debug::debugColliderShape(
         Collider{.shape = ShapeType::kBox, .size = {40.0F, 20.0F}, .offset = {10.0F, 0.0F}},
         GlobalTransform{.position = {100.0F, 50.0F}, .rotation = quarterTurn}, kRed, 2.0F);
     EXPECT_EQ(shape.kind, ShapeKind::kRect);
@@ -111,12 +111,12 @@ TEST(PhysicsDebugShapes, ABoxOutlineTurnsAndMovesWithItsEntity) {
 }
 
 TEST(PhysicsDebugShapes, CirclesAndCapsulesKeepTheirSizes) {
-    const Shape circle = rtype::plugins::physics::debug::debugColliderShape(
+    const Shape circle = aylo::plugins::physics::debug::debugColliderShape(
         Collider{.shape = ShapeType::kCircle, .radius = 8.0F}, GlobalTransform{}, kRed, 1.0F);
     EXPECT_EQ(circle.kind, ShapeKind::kCircle);
     EXPECT_FLOAT_EQ(circle.radius, 8.0F);
 
-    const Shape capsule = rtype::plugins::physics::debug::debugColliderShape(
+    const Shape capsule = aylo::plugins::physics::debug::debugColliderShape(
         Collider{.shape = ShapeType::kCapsule, .radius = 6.0F, .halfHeight = 12.0F}, GlobalTransform{}, kRed, 1.0F);
     EXPECT_EQ(capsule.kind, ShapeKind::kCapsule);
     EXPECT_FLOAT_EQ(capsule.radius, 6.0F);
@@ -125,13 +125,13 @@ TEST(PhysicsDebugShapes, CirclesAndCapsulesKeepTheirSizes) {
 
 TEST(PhysicsDebugShapes, ASensorIsDrawnFainter) {
     const Shape shape =
-        rtype::plugins::physics::debug::debugColliderShape(Collider{.sensor = true}, GlobalTransform{}, kRed, 1.0F);
+        aylo::plugins::physics::debug::debugColliderShape(Collider{.sensor = true}, GlobalTransform{}, kRed, 1.0F);
     EXPECT_FLOAT_EQ(shape.outlineColor.w, 0.5F);
 }
 
 TEST(PhysicsDebugShapes, AVelocityArrowIsAShaftAndTwoHeadStrokes) {
     const std::vector<Shape> arrow =
-        rtype::plugins::physics::debug::debugVelocityArrow({0.0F, 0.0F}, {300.0F, 0.0F}, 0.1F, kRed, 2.0F);
+        aylo::plugins::physics::debug::debugVelocityArrow({0.0F, 0.0F}, {300.0F, 0.0F}, 0.1F, kRed, 2.0F);
     ASSERT_EQ(arrow.size(), 3U);
     for (const Shape& stroke : arrow) {
         EXPECT_EQ(stroke.kind, ShapeKind::kLine);
@@ -148,7 +148,7 @@ TEST(PhysicsDebugShapes, AVelocityArrowIsAShaftAndTwoHeadStrokes) {
 
 TEST(PhysicsDebugShapes, AStillBodyHasNoArrow) {
     EXPECT_TRUE(
-        rtype::plugins::physics::debug::debugVelocityArrow({5.0F, 5.0F}, {0.0F, 0.0F}, 0.1F, kRed, 1.0F).empty());
+        aylo::plugins::physics::debug::debugVelocityArrow({5.0F, 5.0F}, {0.0F, 0.0F}, 0.1F, kRed, 1.0F).empty());
 }
 
 TEST(PhysicsDebugPlugin, RegistersItsComponentAndSettings) {
@@ -201,37 +201,37 @@ TEST(PhysicsDebugPlugin, TheToggleKeyFlipsTheDrawing) {
     ASSERT_EQ(fixture.frame().size(), 1U);
 
     fixture.state->frames.push_back(
-        {rtype::contract::platform::event::KeyPressed{.key = rtype::contract::platform::input::Key::kF3}});
+        {aylo::contract::platform::event::KeyPressed{.key = aylo::contract::platform::input::Key::kF3}});
     EXPECT_TRUE(fixture.frame().empty());  // F3: off.
 
-    fixture.state->frames.push_back({rtype::contract::platform::event::KeyPressed{
-        .key = rtype::contract::platform::input::Key::kF3, .repeat = true}});
+    fixture.state->frames.push_back({aylo::contract::platform::event::KeyPressed{
+        .key = aylo::contract::platform::input::Key::kF3, .repeat = true}});
     EXPECT_TRUE(fixture.frame().empty());  // An auto-repeat does not flip it back.
 
     fixture.state->frames.push_back(
-        {rtype::contract::platform::event::KeyPressed{.key = rtype::contract::platform::input::Key::kF3}});
+        {aylo::contract::platform::event::KeyPressed{.key = aylo::contract::platform::input::Key::kF3}});
     EXPECT_EQ(fixture.frame().size(), 1U);  // F3 again: on.
 }
 
 TEST(PhysicsDebugPlugin, AddingPhysicsDebugNeverRebuildsTheBody) {
-    rtype::ecs::App app;
-    rtype::test::plugins::addDrawingPlugins(
-        app, rtype::test::plugins::makeFakeRegistry(std::make_shared<rtype::test::plugins::FakeBackendState>()),
-        rtype::test::plugins::makeFakeSettings());
-    app.addPlugin(rtype::plugins::transform::TransformPlugin{});
-    app.addPlugin(rtype::plugins::physics::PhysicsPlugin{rtype::plugins::physics::PhysicsSettings{
+    aylo::ecs::App app;
+    aylo::test::plugins::addDrawingPlugins(
+        app, aylo::test::plugins::makeFakeRegistry(std::make_shared<aylo::test::plugins::FakeBackendState>()),
+        aylo::test::plugins::makeFakeSettings());
+    app.addPlugin(aylo::plugins::transform::TransformPlugin{});
+    app.addPlugin(aylo::plugins::physics::PhysicsPlugin{aylo::plugins::physics::PhysicsSettings{
         .maxBodies = 8, .maxBodyPairs = 8, .maxContactConstraints = 8, .tempAllocatorBytes = 1024 * 1024}});
     app.addPlugin(PhysicsDebugPlugin{});
-    app.getWorld().getResources().insert(rtype::ecs::Time{.fixedDelta = 1.0F / 60.0F});
+    app.getWorld().getResources().insert(aylo::ecs::Time{.fixedDelta = 1.0F / 60.0F});
     const Entity ship = app.getWorld().spawn();
     app.getWorld().getComponents().add(ship, Transform{});
     app.getWorld().getComponents().add(ship, Collider{});
-    app.getWorld().getComponents().add(ship, rtype::plugins::physics::RigidBody{});
-    app.getSchedules().run(rtype::ecs::Phase::kFixedUpdate);
-    const rtype::plugins::physics::PhysicsHandle before =
-        *app.getWorld().getComponents().get<rtype::plugins::physics::PhysicsHandle>(ship);
+    app.getWorld().getComponents().add(ship, aylo::plugins::physics::RigidBody{});
+    app.getSchedules().run(aylo::ecs::Phase::kFixedUpdate);
+    const aylo::plugins::physics::PhysicsHandle before =
+        *app.getWorld().getComponents().get<aylo::plugins::physics::PhysicsHandle>(ship);
 
     app.getWorld().getComponents().add(ship, PhysicsDebug{});
-    app.getSchedules().run(rtype::ecs::Phase::kFixedUpdate);
-    EXPECT_EQ(*app.getWorld().getComponents().get<rtype::plugins::physics::PhysicsHandle>(ship), before);
+    app.getSchedules().run(aylo::ecs::Phase::kFixedUpdate);
+    EXPECT_EQ(*app.getWorld().getComponents().get<aylo::plugins::physics::PhysicsHandle>(ship), before);
 }

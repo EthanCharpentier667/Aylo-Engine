@@ -1,12 +1,12 @@
 # Engine
 
-`rtype::engine::Engine` (`src/rtype/engine/`) runs a game. It reads the game's project settings, builds an `ecs::App`
+`aylo::engine::Engine` (`src/aylo/engine/`) runs a game. It reads the game's project settings, builds an `ecs::App`
 with the plugins they name, runs it, and can build it again when the project changes. The `Engine` names no backend, and
 an executable links none: it loads what `project.luau` names from their libraries ([`../Plugins.md`](../Plugins.md#loading)).
 
 ```cpp
-rtype::engine::Engine engine{{
-    .mode = rtype::ecs::RunMode::kClient,
+aylo::engine::Engine engine{{
+    .mode = aylo::ecs::RunMode::kClient,
     .args = {args.begin() + 1, args.end()},
 }};
 return engine.run();
@@ -69,22 +69,22 @@ the token protects against other users' programs reaching the port, not against 
 
 | Executable | Mode | Registers | Game code |
 |------------|------|-----------|-----------|
-| `aylo-runtime --server` (`src/rtype/runtime/`) | `kServer` | nothing (headless) | `game/` only |
-| `aylo-runtime` (`src/rtype/runtime/`) | `kClient` | the backends `project.luau` names (`platform`, `renderer`, `audio.backend`) | `game/` only |
-| `aylo-editor` (`src/rtype/editor/app/`) | `kStandalone`, `EngineConfig::debug` true | as the client, plus `rtype.Editor` (`EngineConfig::addPlugins`) | `game/` only, both sides in one world, with a local client 1 (`docs/Editor.md`) |
-| `aylo-export` (`src/rtype/tools/export/`) | none: it runs no game | nothing: it loads the libraries to read what they bring (`exporting::selectLibraries()`) | copies `game/` into an export (`exporting::exportGame()`, `../release/export.md`) |
-| `rtype_duel` (example) | `server` or `client`, the first argument | as the client, on the client side | its `game/` only (Luau) |
+| `aylo-runtime --server` (`src/aylo/runtime/`) | `kServer` | nothing (headless) | `game/` only |
+| `aylo-runtime` (`src/aylo/runtime/`) | `kClient` | the backends `project.luau` names (`platform`, `renderer`, `audio.backend`) | `game/` only |
+| `aylo-editor` (`src/aylo/editor/app/`) | `kStandalone`, `EngineConfig::debug` true | as the client, plus `rtype.Editor` (`EngineConfig::addPlugins`) | `game/` only, both sides in one world, with a local client 1 (`docs/Editor.md`) |
+| `aylo-export` (`src/aylo/tools/export/`) | none: it runs no game | nothing: it loads the libraries to read what they bring (`exporting::selectLibraries()`) | copies `game/` into an export (`exporting::exportGame()`, `../release/export.md`) |
+| `aylo_duel` (example) | `server` or `client`, the first argument | as the client, on the client side | its `game/` only (Luau) |
 | `ethan_game(bestoftheworld)` (example) | `kStandalone` | as the client | `setup` |
 
 A game written entirely in Luau (SCR-10 in `../scripting/plan.md`) needs no `main` of its own: the generic
-runtime runs it (`./aylo-runtime --server examples/games/rtype_duel/game`). `rtype_duel` is one: its `main` only picks
+runtime runs it (`./aylo-runtime --server examples/games/aylo_duel/game`). `aylo_duel` is one: its `main` only picks
 the side from its first argument, to show that one binary can run both sides, and registers the client's backends.
 `ethan_game` shows the step before: its gameplay is still C++, given to the `Engine` as `EngineConfig::setup`.
 
 The runtime takes `--server` for itself (it is not in `engine.args`); every other flag goes to the game. The build copies
 `aylo-runtime` to the repository root (rule `rtype.copy_to_root` in the root `xmake.lua`). The repository root also holds
-two committed `sh` wrappers, `r-type_server` (`aylo-runtime --server "$@"`) and `r-type_client`, the names the subject
-asks for, and their Windows twins `r-type_server.bat` and `r-type_client.bat` (`.gitattributes` keeps them CRLF). The copy finds the project's shared libraries in the build folder through a relative rpath on Linux and
+two committed `sh` wrappers, `aylo-server` (`aylo-runtime --server "$@"`) and `aylo-client`, the names the subject
+asks for, and their Windows twins `aylo-server.bat` and `aylo-client.bat` (`.gitattributes` keeps them CRLF). The copy finds the project's shared libraries in the build folder through a relative rpath on Linux and
 macOS. On Windows, the rule copies the build folder's DLLs next to them.
 
 ## What a build adds, in order
@@ -150,7 +150,7 @@ libraries of each side as `registerLibraries()` does. It registers them one at a
 - then what those link, from their `.links` files ([`../Plugins.md`](../Plugins.md#what-a-library-links)).
 
 Each library comes with its reasons (`named in plugins (client)`, `required by rtype.Shader`, `backend 'glfw'
-(platform)`, `linked by librtype-plugin-sprite.dylib`). A name no library brings is an error naming it and those that
+(platform)`, `linked by libaylo-plugin-sprite.dylib`). A name no library brings is an error naming it and those that
 exist.
 
 ## Assets
@@ -240,9 +240,9 @@ run between two frames, on the main thread, which is the renderer's.
 
 ## Dependencies
 
-`engine` is a static library (`rtype-engine`), linked into the executable: no plugin links it, so its state, and that
-of `luau`, `scripting`, `replication` and `network` below it, lives in the executable once (`RTYPE_ENGINE_STATIC`
-makes `RTYPE_ENGINE_API` expand to nothing; the build refuses a shared library that links one of them). It links
+`engine` is a static library (`aylo-engine`), linked into the executable: no plugin links it, so its state, and that
+of `luau`, `scripting`, `replication` and `network` below it, lives in the executable once (`AYLO_ENGINE_STATIC`
+makes `AYLO_ENGINE_API` expand to nothing; the build refuses a shared library that links one of them). It links
 `core`, `ecs` and `plugins` publicly, because `Engine.hpp` and `EngineConfig.hpp` expose the `App`, the `Settings` and
 the registries. It links `luau`, `scripting` and `replication` privately. It names no backend: the executables register them, so `engine` never depends
 on a `platform-*`, `render-*` or `audio-*` target.

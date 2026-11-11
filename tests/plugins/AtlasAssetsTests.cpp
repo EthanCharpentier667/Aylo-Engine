@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** AtlasAssetsTests
 */
@@ -18,16 +18,16 @@
 #include <vector>
 
 #include "TestImages.hpp"
+#include "aylo/contract/renderer/drawing/Texture.hpp"
+#include "aylo/ecs/resource/ResourceTraits.hpp"
 #include "core/asset/AssetId.hpp"
 #include "core/asset/exceptions/AssetExceptions.hpp"
 #include "plugins/sprite/AtlasAssets.hpp"
 #include "plugins/sprite/SpriteAtlas.hpp"
-#include "rtype/contract/renderer/drawing/Texture.hpp"
-#include "rtype/ecs/resource/ResourceTraits.hpp"
 
-using rtype::core::asset::AssetId;
-using rtype::plugins::sprite::AtlasAssets;
-using rtype::plugins::sprite::SpriteAtlas;
+using aylo::core::asset::AssetId;
+using aylo::plugins::sprite::AtlasAssets;
+using aylo::plugins::sprite::SpriteAtlas;
 
 namespace {
 /// @brief A file in the temporary directory, removed when the test ends.
@@ -59,38 +59,38 @@ constexpr std::string_view kAtlasJson = R"({
     "a": { "frame": { "x": 0, "y": 0, "w": 1, "h": 1 } },
     "b": { "frame": { "x": 1, "y": 0, "w": 1, "h": 1 } }
   },
-  "meta": { "image": "rtype-atlas-tests.png", "frameTags": [ { "name": "blink", "from": 0, "to": 1 } ] }
+  "meta": { "image": "aylo-atlas-tests.png", "frameTags": [ { "name": "blink", "from": 0, "to": 1 } ] }
 })";
 }  // namespace
 
-static_assert(rtype::ecs::Resource<AtlasAssets>);
+static_assert(aylo::ecs::Resource<AtlasAssets>);
 
 TEST(AtlasAssets, ReadsAnAtlasFileAtOnce) {
-    const TemporaryFile json{"rtype-atlas-tests.json", kAtlasJson};
+    const TemporaryFile json{"aylo-atlas-tests.json", kAtlasJson};
     AtlasAssets atlases;
     const AssetId id = atlases.load(json.getPath());
     EXPECT_EQ(id, AssetId::fromPath(json.getPath()));
     const SpriteAtlas* atlas = atlases.get(id);
     ASSERT_NE(atlas, nullptr);
     EXPECT_EQ(atlas->getFrames().size(), 2U);
-    EXPECT_NE(atlas->findAnimation(rtype::plugins::sprite::animationId("blink")), nullptr);
+    EXPECT_NE(atlas->findAnimation(aylo::plugins::sprite::animationId("blink")), nullptr);
 }
 
 TEST(AtlasAssets, AsksForTheTextureOfEachAtlasOnce) {
-    const TemporaryFile json{"rtype-atlas-tests.json", kAtlasJson};
+    const TemporaryFile json{"aylo-atlas-tests.json", kAtlasJson};
     AtlasAssets atlases;
     static_cast<void>(atlases.load(json.getPath()));
     static_cast<void>(atlases.load(json.getPath()));  // Already known: nothing new.
     const std::vector<AtlasAssets::TextureRequest> requests = atlases.takeTextureRequests();
     ASSERT_EQ(requests.size(), 1U);
-    EXPECT_EQ(std::filesystem::path{requests.at(0).path}.filename(), "rtype-atlas-tests.png");
+    EXPECT_EQ(std::filesystem::path{requests.at(0).path}.filename(), "aylo-atlas-tests.png");
     EXPECT_TRUE(requests.at(0).pixels.empty());
     EXPECT_TRUE(atlases.takeTextureRequests().empty());
 }
 
 TEST(AtlasAssets, RecordsAnAtlasThatCannotBeRead) {
     AtlasAssets atlases;
-    const AssetId id = atlases.load(std::filesystem::temp_directory_path() / "rtype-no-such-atlas.json");
+    const AssetId id = atlases.load(std::filesystem::temp_directory_path() / "aylo-no-such-atlas.json");
     EXPECT_EQ(atlases.get(id), nullptr);
     const AtlasAssets::Entry* entry = atlases.getEntry(id);
     ASSERT_NE(entry, nullptr);
@@ -110,16 +110,16 @@ TEST(AtlasAssets, AddsAnAtlasBuiltInCode) {
 }
 
 TEST(AtlasAssets, PacksImagesIntoOneTexture) {
-    const TemporaryFile left{"rtype-pack-left.png", rtype::test::plugins::twoPixelPng()};
-    const TemporaryFile right{"rtype-pack-right.png", rtype::test::plugins::twoPixelPng()};
+    const TemporaryFile left{"aylo-pack-left.png", aylo::test::plugins::twoPixelPng()};
+    const TemporaryFile right{"aylo-pack-right.png", aylo::test::plugins::twoPixelPng()};
     AtlasAssets atlases;
     const std::array images{left.getPath(), right.getPath()};
     const AssetId id = atlases.pack("fx", images);
     const SpriteAtlas* atlas = atlases.get(id);
     ASSERT_NE(atlas, nullptr);
     ASSERT_EQ(atlas->getFrames().size(), 2U);
-    EXPECT_TRUE(atlas->findFrame("rtype-pack-left"));
-    EXPECT_TRUE(atlas->findFrame("rtype-pack-right"));
+    EXPECT_TRUE(atlas->findFrame("aylo-pack-left"));
+    EXPECT_TRUE(atlas->findFrame("aylo-pack-right"));
     EXPECT_FLOAT_EQ(atlas->getFrames().at(0).source.getWidth(), 2.0F);
 
     const std::vector<AtlasAssets::TextureRequest> requests = atlases.takeTextureRequests();
@@ -131,7 +131,7 @@ TEST(AtlasAssets, PacksImagesIntoOneTexture) {
 
 TEST(AtlasAssets, RecordsAPackOfAMissingImage) {
     AtlasAssets atlases;
-    const std::array images{std::filesystem::temp_directory_path() / "rtype-no-such-image.png"};
+    const std::array images{std::filesystem::temp_directory_path() / "aylo-no-such-image.png"};
     const AssetId id = atlases.pack("broken", images);
     EXPECT_EQ(atlases.get(id), nullptr);
     EXPECT_FALSE(atlases.getEntry(id)->error.empty());

@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** main
 */
@@ -44,6 +44,15 @@
 #include <thread>
 #include <vector>
 
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/component/Components.hpp"
+#include "aylo/ecs/entity/Entity.hpp"
+#include "aylo/ecs/query/Query.hpp"
+#include "aylo/ecs/resource/ResourceTraits.hpp"
+#include "aylo/ecs/schedule/Phase.hpp"
+#include "aylo/ecs/schedule/RunMode.hpp"
+#include "aylo/ecs/system/ResourceParam.hpp"
+#include "aylo/ecs/time/Time.hpp"
 #include "plugins/physics/Collider.hpp"
 #include "plugins/physics/PhysicsPlugin.hpp"
 #include "plugins/physics/PhysicsSettings.hpp"
@@ -52,19 +61,10 @@
 #include "plugins/physics/Velocity.hpp"
 #include "plugins/transform/Transform.hpp"
 #include "plugins/transform/TransformPlugin.hpp"
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/component/Components.hpp"
-#include "rtype/ecs/entity/Entity.hpp"
-#include "rtype/ecs/query/Query.hpp"
-#include "rtype/ecs/resource/ResourceTraits.hpp"
-#include "rtype/ecs/schedule/Phase.hpp"
-#include "rtype/ecs/schedule/RunMode.hpp"
-#include "rtype/ecs/system/ResourceParam.hpp"
-#include "rtype/ecs/time/Time.hpp"
 
-using namespace rtype::ecs;
-using namespace rtype::plugins::physics;
-using rtype::plugins::transform::Transform;
+using namespace aylo::ecs;
+using namespace aylo::plugins::physics;
+using aylo::plugins::transform::Transform;
 using Clock = std::chrono::steady_clock;
 
 namespace {
@@ -106,7 +106,7 @@ struct StepClock {
     Clock::time_point start;
     std::vector<double> stepsMs;
 };
-RTYPE_ECS_RESOURCE(StepClock, "bench.StepClock");
+AYLO_ECS_RESOURCE(StepClock, "bench.StepClock");
 
 // FixedUpdate, right before the step.
 void startStepClock(ResMut<StepClock> clock) { clock->start = Clock::now(); }
@@ -161,7 +161,7 @@ void spawn(App& app, glm::vec2 position, const Collider& collider, const RigidBo
 // generator so every run builds the same room.
 std::unique_ptr<App> makeRoom(std::uint32_t bodies, std::uint32_t seed) {
     auto app = std::make_unique<App>(RunMode::kServer);
-    app->addPlugin(rtype::plugins::transform::TransformPlugin{});
+    app->addPlugin(aylo::plugins::transform::TransformPlugin{});
     app->addPlugin(PhysicsPlugin{settingsFor(bodies)});
     app->insertResource(Time{.fixedDelta = kFixedDelta});
     app->insertResource(StepClock{});

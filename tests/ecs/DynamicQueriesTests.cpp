@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** DynamicQueriesTests
 */
@@ -14,50 +14,50 @@
 #include <string_view>
 #include <vector>
 
-#include "rtype/ecs/component/ComponentInfo.hpp"
-#include "rtype/ecs/component/ComponentTraits.hpp"
-#include "rtype/ecs/exceptions/QueryException.hpp"
-#include "rtype/ecs/exceptions/ScheduleException.hpp"
-#include "rtype/ecs/query/Query.hpp"
-#include "rtype/ecs/query/QueryBuilder.hpp"
-#include "rtype/ecs/query/QueryMatch.hpp"
-#include "rtype/ecs/resource/ResourceTraits.hpp"
-#include "rtype/ecs/schedule/Phase.hpp"
-#include "rtype/ecs/schedule/RunMode.hpp"
-#include "rtype/ecs/schedule/Schedules.hpp"
-#include "rtype/ecs/system/DynamicQueries.hpp"
-#include "rtype/ecs/system/QueryList.hpp"
-#include "rtype/ecs/system/ResourceParam.hpp"
-#include "rtype/ecs/system/System.hpp"
-#include "rtype/ecs/system/SystemAccess.hpp"
-#include "rtype/ecs/type/Field.hpp"
-#include "rtype/ecs/world/World.hpp"
+#include "aylo/ecs/component/ComponentInfo.hpp"
+#include "aylo/ecs/component/ComponentTraits.hpp"
+#include "aylo/ecs/exceptions/QueryException.hpp"
+#include "aylo/ecs/exceptions/ScheduleException.hpp"
+#include "aylo/ecs/query/Query.hpp"
+#include "aylo/ecs/query/QueryBuilder.hpp"
+#include "aylo/ecs/query/QueryMatch.hpp"
+#include "aylo/ecs/resource/ResourceTraits.hpp"
+#include "aylo/ecs/schedule/Phase.hpp"
+#include "aylo/ecs/schedule/RunMode.hpp"
+#include "aylo/ecs/schedule/Schedules.hpp"
+#include "aylo/ecs/system/DynamicQueries.hpp"
+#include "aylo/ecs/system/QueryList.hpp"
+#include "aylo/ecs/system/ResourceParam.hpp"
+#include "aylo/ecs/system/System.hpp"
+#include "aylo/ecs/system/SystemAccess.hpp"
+#include "aylo/ecs/type/Field.hpp"
+#include "aylo/ecs/world/World.hpp"
 
-namespace rtype::test::dynamic_queries {
+namespace aylo::test::dynamic_queries {
 struct Health {
     int value;
 };
-RTYPE_ECS_COMPONENT(Health, "test.dynamicQueries.Health", value);
+AYLO_ECS_COMPONENT(Health, "test.dynamicQueries.Health", value);
 
 /// @brief What the systems under test saw.
 struct Seen {
     int sum;      ///< Sum of the values read.
     int matches;  ///< Number of matches visited.
 };
-RTYPE_ECS_RESOURCE(Seen, "test.dynamicQueries.Seen", sum, matches);
-}  // namespace rtype::test::dynamic_queries
+AYLO_ECS_RESOURCE(Seen, "test.dynamicQueries.Seen", sum, matches);
+}  // namespace aylo::test::dynamic_queries
 
 namespace {
-using rtype::ecs::ComponentId;
-using rtype::ecs::DynamicQueries;
-using rtype::ecs::QueryBuilder;
-using rtype::ecs::QueryList;
-using rtype::ecs::QueryMatch;
-using rtype::ecs::ResMut;
-using rtype::ecs::System;
-using rtype::ecs::World;
-using rtype::test::dynamic_queries::Health;
-using rtype::test::dynamic_queries::Seen;
+using aylo::ecs::ComponentId;
+using aylo::ecs::DynamicQueries;
+using aylo::ecs::QueryBuilder;
+using aylo::ecs::QueryList;
+using aylo::ecs::QueryMatch;
+using aylo::ecs::ResMut;
+using aylo::ecs::System;
+using aylo::ecs::World;
+using aylo::test::dynamic_queries::Health;
+using aylo::test::dynamic_queries::Seen;
 
 /// @return The int at the start of `bytes`.
 int intOf(std::span<const std::byte> bytes) {
@@ -95,7 +95,7 @@ void countSinceThree(DynamicQueries queries, ResMut<Seen> seen) {
     }
 }
 
-void writeHealth(rtype::ecs::Query<Health> healths) {
+void writeHealth(aylo::ecs::Query<Health> healths) {
     for (auto [entity, health] : healths) {
         static_cast<void>(entity);
         static_cast<void>(health);
@@ -128,11 +128,11 @@ TEST_F(DynamicQueriesTest, RunsTheConfiguredQueries) {
 
 TEST_F(DynamicQueriesTest, KeepsTheQueriesInTheirOrder) {
     world.spawn(Health{.value = 10});
-    const ComponentId shield = *world.getComponents().registerType(rtype::ecs::ComponentInfo{
+    const ComponentId shield = *world.getComponents().registerType(aylo::ecs::ComponentInfo{
         .type = {.name = "test.dynamicQueries.Shield",
                  .size = sizeof(int),
                  .alignment = alignof(int),
-                 .fields = {{.name = "strength", .type = rtype::ecs::FieldType::kI32, .offset = 0}}}});
+                 .fields = {{.name = "strength", .type = aylo::ecs::FieldType::kI32, .offset = 0}}}});
     const int strength = 100;
     ASSERT_TRUE(world.getComponents().add(world.spawn(), shield, std::as_bytes(std::span<const int>{&strength, 1})));
     System system{world, "test.sumAll", &sumAll, QueryList{{QueryBuilder{}.read(health), QueryBuilder{}.read(shield)}}};
@@ -151,24 +151,24 @@ TEST_F(DynamicQueriesTest, DeclaresTheAccessOfEveryQuery) {
 }
 
 TEST_F(DynamicQueriesTest, IsOrderedAgainstTypedQueries) {
-    rtype::ecs::Schedules schedules{world, rtype::ecs::RunMode::kStandalone};
-    schedules.addSystem(rtype::ecs::Phase::kUpdate, "test.dynamicReader", &sumAll,
+    aylo::ecs::Schedules schedules{world, aylo::ecs::RunMode::kStandalone};
+    schedules.addSystem(aylo::ecs::Phase::kUpdate, "test.dynamicReader", &sumAll,
                         QueryList{{QueryBuilder{}.read(health)}});
-    schedules.addSystem(rtype::ecs::Phase::kUpdate, "test.typedWriter", &writeHealth);
+    schedules.addSystem(aylo::ecs::Phase::kUpdate, "test.typedWriter", &writeHealth);
     try {
         schedules.build();
         FAIL() << "the ambiguity was not reported";
-    } catch (const rtype::ecs::exceptions::ScheduleException& error) {
+    } catch (const aylo::ecs::exceptions::ScheduleException& error) {
         EXPECT_NE(std::string_view{error.what()}.find("'test.dynamicReader' and 'test.typedWriter' both use component"),
                   std::string_view::npos)
             << error.what();
     }
 
-    rtype::ecs::Schedules ordered{world, rtype::ecs::RunMode::kStandalone};
+    aylo::ecs::Schedules ordered{world, aylo::ecs::RunMode::kStandalone};
     ordered
-        .addSystem(rtype::ecs::Phase::kUpdate, "test.dynamicReader", &sumAll, QueryList{{QueryBuilder{}.read(health)}})
+        .addSystem(aylo::ecs::Phase::kUpdate, "test.dynamicReader", &sumAll, QueryList{{QueryBuilder{}.read(health)}})
         .after("test.typedWriter");
-    ordered.addSystem(rtype::ecs::Phase::kUpdate, "test.typedWriter", &writeHealth);
+    ordered.addSystem(aylo::ecs::Phase::kUpdate, "test.typedWriter", &writeHealth);
     EXPECT_NO_THROW(ordered.build());
 }
 
@@ -211,7 +211,7 @@ TEST_F(DynamicQueriesTest, ThrowsWhenAQueryCannotBeBuilt) {
         const System system{world, "test.sumAll", &sumAll,
                             QueryList{{QueryBuilder{}.read(health), QueryBuilder{}.read(ComponentId{42})}}};
         FAIL() << "no QueryException";
-    } catch (const rtype::ecs::exceptions::QueryException& error) {
+    } catch (const aylo::ecs::exceptions::QueryException& error) {
         const std::string_view message{error.what()};
         EXPECT_NE(message.find("Query 1 of the system cannot be built"), std::string_view::npos) << message;
         EXPECT_NE(message.find("42"), std::string_view::npos) << message;
@@ -219,7 +219,7 @@ TEST_F(DynamicQueriesTest, ThrowsWhenAQueryCannotBeBuilt) {
 }
 
 TEST_F(DynamicQueriesTest, ShowsItsQueries) {
-    const std::vector<rtype::ecs::DynamicQuery> queries{*QueryBuilder{}.read(health).build(world.getComponents())};
+    const std::vector<aylo::ecs::DynamicQuery> queries{*QueryBuilder{}.read(health).build(world.getComponents())};
     const DynamicQueries view{queries, 7};
     EXPECT_EQ(view.getCount(), 1U);
     EXPECT_EQ(&view.getQuery(0), &queries.front());

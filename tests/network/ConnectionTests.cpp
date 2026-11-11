@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ConnectionTests
 */
@@ -16,16 +16,16 @@
 
 #include "FakeClock.hpp"
 #include "SimulatedLink.hpp"
-#include "rtype/network/NetworkSettings.hpp"
-#include "rtype/network/Types.hpp"
-#include "rtype/network/connection/Connection.hpp"
-#include "rtype/network/protocol/Constants.hpp"
-#include "rtype/network/protocol/Packets.hpp"
+#include "aylo/network/NetworkSettings.hpp"
+#include "aylo/network/Types.hpp"
+#include "aylo/network/connection/Connection.hpp"
+#include "aylo/network/protocol/Constants.hpp"
+#include "aylo/network/protocol/Packets.hpp"
 
-namespace network = rtype::network;
-namespace protocol = rtype::network::protocol;
-namespace tests = rtype::network::tests;
-using rtype::network::connection::Connection;
+namespace network = aylo::network;
+namespace protocol = aylo::network::protocol;
+namespace tests = aylo::network::tests;
+using aylo::network::connection::Connection;
 
 namespace {
 constexpr std::uint32_t kToken = 0xCAFEBABE;

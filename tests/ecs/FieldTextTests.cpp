@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** FieldTextTests
 */
@@ -12,24 +12,24 @@
 #include <string>
 #include <string_view>
 
-#include "rtype/ecs/component/ComponentRegistry.hpp"
-#include "rtype/ecs/component/ComponentTraits.hpp"
-#include "rtype/ecs/entity/Entity.hpp"
-#include "rtype/ecs/type/Field.hpp"
-#include "rtype/ecs/type/TypeInfo.hpp"
-#include "rtype/ecs/type/TypeTraits.hpp"
-#include "rtype/ecs/world/World.hpp"
+#include "aylo/ecs/component/ComponentRegistry.hpp"
+#include "aylo/ecs/component/ComponentTraits.hpp"
+#include "aylo/ecs/entity/Entity.hpp"
+#include "aylo/ecs/type/Field.hpp"
+#include "aylo/ecs/type/TypeInfo.hpp"
+#include "aylo/ecs/type/TypeTraits.hpp"
+#include "aylo/ecs/world/World.hpp"
 
-using rtype::ecs::FieldInfo;
-using rtype::ecs::FieldType;
-using rtype::ecs::TypeTraits;
+using aylo::ecs::FieldInfo;
+using aylo::ecs::FieldType;
+using aylo::ecs::TypeTraits;
 
 namespace {
 /// @brief A component with a text of any length.
 struct Note {
     std::string text;
 };
-RTYPE_ECS_COMPONENT(Note, "test.text.Note", text);
+AYLO_ECS_COMPONENT(Note, "test.text.Note", text);
 }  // namespace
 
 TEST(FieldText, ReflectsAStdStringAsAText) {
@@ -58,8 +58,8 @@ TEST(FieldText, ReplacesTheTextWhateverItsLength) {
 }
 
 TEST(FieldText, IsAValidField) {
-    rtype::ecs::World world;
-    const rtype::ecs::Entity entity = world.spawn();
+    aylo::ecs::World world;
+    const aylo::ecs::Entity entity = world.spawn();
     world.getComponents().add(entity, Note{.text = std::string(5000, 'y')});
     EXPECT_EQ(world.getComponents().get<Note>(entity)->text.size(), 5000U);
 }

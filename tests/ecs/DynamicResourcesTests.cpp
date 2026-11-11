@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** DynamicResourcesTests
 */
@@ -12,34 +12,34 @@
 #include <span>
 #include <string_view>
 
-#include "rtype/ecs/exceptions/ResourceExceptions.hpp"
-#include "rtype/ecs/resource/ResourceInfo.hpp"
-#include "rtype/ecs/resource/ResourceTraits.hpp"
-#include "rtype/ecs/system/DynamicResources.hpp"
-#include "rtype/ecs/system/System.hpp"
-#include "rtype/ecs/system/SystemAccess.hpp"
-#include "rtype/ecs/world/World.hpp"
+#include "aylo/ecs/exceptions/ResourceExceptions.hpp"
+#include "aylo/ecs/resource/ResourceInfo.hpp"
+#include "aylo/ecs/resource/ResourceTraits.hpp"
+#include "aylo/ecs/system/DynamicResources.hpp"
+#include "aylo/ecs/system/System.hpp"
+#include "aylo/ecs/system/SystemAccess.hpp"
+#include "aylo/ecs/world/World.hpp"
 
-namespace rtype::test::dynamic_resources {
+namespace aylo::test::dynamic_resources {
 struct Score {
     int value;
 };
-RTYPE_ECS_RESOURCE(Score, "test.dynamicResources.Score", value);
+AYLO_ECS_RESOURCE(Score, "test.dynamicResources.Score", value);
 
 struct Window {
     int width;
 };
-RTYPE_ECS_RESOURCE(Window, "test.dynamicResources.Window", width);
-}  // namespace rtype::test::dynamic_resources
+AYLO_ECS_RESOURCE(Window, "test.dynamicResources.Window", width);
+}  // namespace aylo::test::dynamic_resources
 
 namespace {
-using rtype::ecs::DynamicResources;
-using rtype::ecs::ResourceId;
-using rtype::ecs::ResourceList;
-using rtype::ecs::System;
-using rtype::ecs::World;
-using rtype::test::dynamic_resources::Score;
-using rtype::test::dynamic_resources::Window;
+using aylo::ecs::DynamicResources;
+using aylo::ecs::ResourceId;
+using aylo::ecs::ResourceList;
+using aylo::ecs::System;
+using aylo::ecs::World;
+using aylo::test::dynamic_resources::Score;
+using aylo::test::dynamic_resources::Window;
 
 /// @return The int at the start of `bytes`.
 int intOf(std::span<const std::byte> bytes) {
@@ -96,11 +96,11 @@ TEST_F(DynamicResourcesTest, ReportsAResourceWithoutValue) {
 
 TEST_F(DynamicResourcesTest, RefusesAnUnknownResource) {
     EXPECT_THROW((System{world, "test.bump", &bump, ResourceList{{{.id = 999, .write = false}}}}),
-                 rtype::ecs::exceptions::ResourceRegistrationException);
+                 aylo::ecs::exceptions::ResourceRegistrationException);
 }
 
 TEST_F(DynamicResourcesTest, RefusesAMainThreadResource) {
-    const ResourceId window = world.getResources().registerType<Window>(rtype::ecs::ResourceOptions{.nonSend = true});
+    const ResourceId window = world.getResources().registerType<Window>(aylo::ecs::ResourceOptions{.nonSend = true});
     EXPECT_THROW((System{world, "test.bump", &bump, ResourceList{{{.id = window, .write = false}}}}),
-                 rtype::ecs::exceptions::ResourceRegistrationException);
+                 aylo::ecs::exceptions::ResourceRegistrationException);
 }

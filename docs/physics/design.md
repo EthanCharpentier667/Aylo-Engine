@@ -7,7 +7,7 @@ weighed, are in [`../benchmarks/physics.md`](../benchmarks/physics.md); this doc
 that plan and where it differs.
 
 > Snippets omit the Epitech header and most `[[nodiscard]]`/`noexcept` for brevity. Names are relative to
-> `rtype::plugins::physics` unless qualified.
+> `aylo::plugins::physics` unless qualified.
 
 ## Contents
 
@@ -39,7 +39,7 @@ that plan and where it differs.
 ## 2. Where it lives
 
 ```
-src/rtype/plugins/physics/          namespace rtype::plugins::physics
+src/aylo/plugins/physics/          namespace aylo::plugins::physics
 ├── PhysicsPlugin.hpp/.cpp          the plugin: registers, inserts the world, adds the systems
 ├── PhysicsWorld.hpp/.cpp           the resource: one Jolt world (pImpl, no Jolt in the header)
 ├── PhysicsSettings.hpp             how the world is built
@@ -56,7 +56,7 @@ src/rtype/plugins/physics/          namespace rtype::plugins::physics
 ```
 
 - **Jolt is a private package of the `plugins` target** (`joltphysics 5.6.x`, `object_layer_bits = "32"`, declared
-  in `src/rtype/plugins/xmake.lua`). Only `.cpp` files and `detail/` include it; no public header does, so
+  in `src/aylo/plugins/xmake.lua`). Only `.cpp` files and `detail/` include it; no public header does, so
   `plugins` still exposes nothing but the ECS and glm to its users. The benchmark's open question (a separate
   `physics` target or an exception in `plugins`) was settled this way: Jolt is linked once, in the static
   `plugins` library, which matters because Jolt keeps process-wide globals (allocator, factory, registered types).
@@ -81,7 +81,7 @@ is one meter.
 
 ## 4. Components
 
-All are plain data, reflected with `RTYPE_ECS_COMPONENT`, so they can be replicated and written from Luau.
+All are plain data, reflected with `AYLO_ECS_COMPONENT`, so they can be replicated and written from Luau.
 
 | Component | Written by | Replicated | Role |
 |---|---|---|---|
@@ -99,7 +99,7 @@ All are plain data, reflected with `RTYPE_ECS_COMPONENT`, so they can be replica
 ## 5. The plugin and its systems
 
 ```c++
-app.addPlugins(rtype::ecs::MinimalPlugins{})  // Time: the fixed tick the physics steps with
+app.addPlugins(aylo::ecs::MinimalPlugins{})  // Time: the fixed tick the physics steps with
     .addPlugin(PhysicsPlugin{PhysicsSettings{.gravity = {0.0F, 0.0F}}});
 ```
 
@@ -283,7 +283,7 @@ replicated: Collider, RigidBody (+ the game's own components)     queries, moveA
   server.
 - **Standalone** runs everything as the server does.
 
-The duel game (`src/rtype/engine/main.cpp`) shows the whole loop: the server moves the ships with `moveAndSlide`
+The duel game (`src/aylo/engine/main.cpp`) shows the whole loop: the server moves the ships with `moveAndSlide`
 along the obstacles, the lasers are dynamic bodies whose `CollisionStarted` ends the game, and the clients add the
 physics plugin too (so both sides register the same replicated components) plus the debug view on F3.
 
@@ -354,10 +354,10 @@ commands.spawn()
     .add(Velocity{.linear = {300.0F, 0.0F}});
 
 // A kick, before the step.
-void kick(rtype::ecs::ResMut<PhysicsWorld> world, ...) { world->applyImpulse(crate, {2000.0F, -4000.0F}); }
+void kick(aylo::ecs::ResMut<PhysicsWorld> world, ...) { world->applyImpulse(crate, {2000.0F, -4000.0F}); }
 
 // Hits, after the events.
-void onHit(rtype::ecs::EventReader<CollisionStarted> hits) { for (const CollisionStarted& hit : hits) { ... } }
+void onHit(aylo::ecs::EventReader<CollisionStarted> hits) { for (const CollisionStarted& hit : hits) { ... } }
 
 // A laser: the first enemy or wall ahead of the ship, never the ship itself.
 const auto hit = world->raycast(muzzle, {1.0F, 0.0F}, 1000.0F, QueryFilter{.mask = kEnemy | kWall, .ignore = ship});
@@ -367,7 +367,7 @@ Errors (invalid shapes, layers or settings, a full world) throw `exceptions::Phy
 
 Examples: `examples/plugins/physics` (headless scene: every body type, layers, events, a raycast, `moveAndSlide`),
 `examples/plugins/PhysicsDebug` (the debug view in a window), `examples/plugins/PhysicsBenchmark`, and the duel game in
-`src/rtype/engine/`. Tests: `tests/plugins/Physics*Tests.cpp` and `Jolt*Tests.cpp`.
+`src/aylo/engine/`. Tests: `tests/plugins/Physics*Tests.cpp` and `Jolt*Tests.cpp`.
 
 ## 14. Differences with the benchmark's plan
 

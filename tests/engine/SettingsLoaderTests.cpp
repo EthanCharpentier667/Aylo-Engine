@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** SettingsLoaderTests
 */
@@ -13,22 +13,22 @@
 #include <string>
 #include <vector>
 
-#include "rtype/core/config/Settings.hpp"
-#include "rtype/engine/CommandLine.hpp"
-#include "rtype/engine/Exceptions.hpp"
-#include "rtype/engine/scripting/SettingsLoader.hpp"
-#include "rtype/luau/Exceptions.hpp"
+#include "aylo/core/config/Settings.hpp"
+#include "aylo/engine/CommandLine.hpp"
+#include "aylo/engine/Exceptions.hpp"
+#include "aylo/engine/scripting/SettingsLoader.hpp"
+#include "aylo/luau/Exceptions.hpp"
 
 namespace {
 
-using rtype::engine::exceptions::RuntimeError;
-using rtype::engine::scripting::SettingsLoader;
+using aylo::engine::exceptions::RuntimeError;
+using aylo::engine::scripting::SettingsLoader;
 
 /// @brief Writes a temporary Luau script removed on destruction.
 class TempScript {
   public:
     explicit TempScript(const std::string& content)
-        : _path{std::filesystem::temp_directory_path() / std::format("rtype_settings_loader_{}.luau", ++_counter)} {
+        : _path{std::filesystem::temp_directory_path() / std::format("aylo_settings_loader_{}.luau", ++_counter)} {
         std::ofstream{_path, std::ios::binary} << content;
     }
 
@@ -46,7 +46,7 @@ class TempScript {
 };
 
 /// Runs `source` and returns what it set.
-rtype::core::config::Settings run(const std::string& source) {
+aylo::core::config::Settings run(const std::string& source) {
     SettingsLoader loader;
     const TempScript script{source};
 
@@ -151,7 +151,7 @@ TEST(SettingsLoader, SetFlagReplacesThePreviousValue) {
 }
 
 TEST(SettingsLoader, ArgsAreEmptyByDefault) {
-    const rtype::core::config::Settings settings = run(R"(engine.settings.port = engine.args.port or 4242)");
+    const aylo::core::config::Settings settings = run(R"(engine.settings.port = engine.args.port or 4242)");
 
     EXPECT_EQ(settings.getNumber("port", 0.0), 4242.0);
 }
@@ -166,10 +166,10 @@ TEST(SettingsLoader, ArgsAreVisibleToScriptsWithTheirTypes) {
     )"};
     const std::vector<std::string> args{"--port", "4243", "--host", "10.0.0.2", "--verbose", "--fullscreen=false"};
 
-    loader.setArgs(rtype::engine::CommandLine::parse(args));
+    loader.setArgs(aylo::engine::CommandLine::parse(args));
     loader.load(script.path());
 
-    const rtype::core::config::Settings settings = loader.build();
+    const aylo::core::config::Settings settings = loader.build();
     EXPECT_EQ(settings.getNumber("port", 0.0), 4243.0);
     EXPECT_EQ(settings.getString("host", ""), "10.0.0.2");
     EXPECT_TRUE(settings.getBool("verbose", false));
@@ -185,11 +185,11 @@ TEST(SettingsLoader, SetArgsReplacesThePreviousArgs) {
     const std::vector<std::string> first{"--port", "1"};
     const std::vector<std::string> second{"--host", "localhost"};
 
-    loader.setArgs(rtype::engine::CommandLine::parse(first));
-    loader.setArgs(rtype::engine::CommandLine::parse(second));
+    loader.setArgs(aylo::engine::CommandLine::parse(first));
+    loader.setArgs(aylo::engine::CommandLine::parse(second));
     loader.load(script.path());
 
-    const rtype::core::config::Settings settings = loader.build();
+    const aylo::core::config::Settings settings = loader.build();
     EXPECT_EQ(settings.getNumber("port", -1.0), 0.0);
     EXPECT_EQ(settings.getString("host", ""), "localhost");
 }
@@ -226,7 +226,7 @@ TEST(SettingsLoader, RejectsAnArrayMixedWithNamedKeys) {
 TEST(SettingsLoader, RejectsANonStringKey) { EXPECT_THROW(run("engine.settings.group = { [10] = 1 }"), RuntimeError); }
 
 TEST(SettingsLoader, RejectsReadingAGroupByANonStringKey) {
-    EXPECT_THROW(run("local _ = engine.settings[1]"), rtype::luau::exceptions::RuntimeError);
+    EXPECT_THROW(run("local _ = engine.settings[1]"), aylo::luau::exceptions::RuntimeError);
 }
 
 TEST(SettingsLoader, NamesTheOffendingSettingInTheError) {
@@ -241,19 +241,19 @@ TEST(SettingsLoader, NamesTheOffendingSettingInTheError) {
 TEST(SettingsLoader, LoadThrowsOnAMissingFile) {
     SettingsLoader loader;
 
-    EXPECT_THROW(loader.load("does/not/exist.luau"), rtype::luau::exceptions::RuntimeError);
+    EXPECT_THROW(loader.load("does/not/exist.luau"), aylo::luau::exceptions::RuntimeError);
 }
 
 TEST(SettingsLoader, LoadThrowsOnAScriptError) {
     SettingsLoader loader;
     const TempScript script{R"(error("boom"))"};
 
-    EXPECT_THROW(loader.load(script.path()), rtype::luau::exceptions::RuntimeError);
+    EXPECT_THROW(loader.load(script.path()), aylo::luau::exceptions::RuntimeError);
 }
 
 TEST(SettingsLoader, ScriptsHaveNoOsLibrary) {
     SettingsLoader loader;
     const TempScript script{R"(engine.settings.x = os.time())"};
 
-    EXPECT_THROW(loader.load(script.path()), rtype::luau::exceptions::RuntimeError);
+    EXPECT_THROW(loader.load(script.path()), aylo::luau::exceptions::RuntimeError);
 }

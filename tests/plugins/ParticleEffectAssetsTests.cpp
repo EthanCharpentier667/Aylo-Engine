@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ParticleEffectAssetsTests
 */
@@ -19,20 +19,20 @@
 #include <utility>
 #include <vector>
 
+#include "aylo/contract/renderer/drawing/BlendMode.hpp"
+#include "aylo/contract/renderer/exceptions/ParticleExceptions.hpp"
+#include "aylo/ecs/resource/ResourceTraits.hpp"
 #include "core/asset/AssetId.hpp"
 #include "plugins/particle/IParticleEffectLoader.hpp"
 #include "plugins/particle/ParticleEffect.hpp"
 #include "plugins/particle/ParticleEffectAssets.hpp"
-#include "rtype/contract/renderer/drawing/BlendMode.hpp"
-#include "rtype/contract/renderer/exceptions/ParticleExceptions.hpp"
-#include "rtype/ecs/resource/ResourceTraits.hpp"
 
-using rtype::contract::renderer::BlendMode;
-using rtype::contract::renderer::exceptions::ParticleException;
-using rtype::core::asset::AssetId;
-using rtype::plugins::particle::IParticleEffectLoader;
-using rtype::plugins::particle::ParticleEffect;
-using rtype::plugins::particle::ParticleEffectAssets;
+using aylo::contract::renderer::BlendMode;
+using aylo::contract::renderer::exceptions::ParticleException;
+using aylo::core::asset::AssetId;
+using aylo::plugins::particle::IParticleEffectLoader;
+using aylo::plugins::particle::ParticleEffect;
+using aylo::plugins::particle::ParticleEffectAssets;
 
 namespace {
 /// @brief A text file in the temporary directory, removed when the test ends.
@@ -87,7 +87,7 @@ ParticleEffectAssets makeAssets(int& calls) {
 }
 }  // namespace
 
-static_assert(rtype::ecs::Resource<ParticleEffectAssets>);
+static_assert(aylo::ecs::Resource<ParticleEffectAssets>);
 
 TEST(ParticleEffectAssetsTests, DefaultEffectLooksAdditiveAndIsValid) {
     ParticleEffectAssets assets;
@@ -214,7 +214,7 @@ TEST(ParticleEffectAssetsTests, AddLoaderRejectsAnExtensionWithoutDotOrANullLoad
 TEST(ParticleEffectAssetsTests, LoadReadsAFileWithTheLoaderOfItsExtension) {
     int calls = 0;
     ParticleEffectAssets assets = makeAssets(calls);
-    const TemporaryFile file{"rtype_particle_effect_load.fx", "256"};
+    const TemporaryFile file{"aylo_particle_effect_load.fx", "256"};
     const AssetId id = assets.load(file.getPath());
 
     EXPECT_EQ(id, AssetId::fromPath(file.getPath()));
@@ -226,7 +226,7 @@ TEST(ParticleEffectAssetsTests, LoadReadsAFileWithTheLoaderOfItsExtension) {
 TEST(ParticleEffectAssetsTests, LoadingAFileTwiceReadsItOnce) {
     int calls = 0;
     ParticleEffectAssets assets = makeAssets(calls);
-    const TemporaryFile file{"rtype_particle_effect_twice.fx", "32"};
+    const TemporaryFile file{"aylo_particle_effect_twice.fx", "32"};
     const AssetId id = assets.load(file.getPath());
 
     EXPECT_EQ(assets.load(file.getPath()), id);
@@ -237,7 +237,7 @@ TEST(ParticleEffectAssetsTests, LoadingAFileTwiceReadsItOnce) {
 TEST(ParticleEffectAssetsTests, LoadRecordsAFileWithoutLoaderAsFailed) {
     int calls = 0;
     ParticleEffectAssets assets = makeAssets(calls);
-    const TemporaryFile file{"rtype_particle_effect_unknown.txt", "32"};
+    const TemporaryFile file{"aylo_particle_effect_unknown.txt", "32"};
     const AssetId id = assets.load(file.getPath());
 
     EXPECT_EQ(calls, 0);
@@ -249,7 +249,7 @@ TEST(ParticleEffectAssetsTests, LoadRecordsAFileWithoutLoaderAsFailed) {
 TEST(ParticleEffectAssetsTests, LoadRecordsAMissingFileAsFailed) {
     int calls = 0;
     ParticleEffectAssets assets = makeAssets(calls);
-    const AssetId id = assets.load(std::filesystem::temp_directory_path() / "rtype_particle_effect_missing.fx");
+    const AssetId id = assets.load(std::filesystem::temp_directory_path() / "aylo_particle_effect_missing.fx");
 
     EXPECT_EQ(calls, 0);
     EXPECT_EQ(assets.get(id), nullptr);
@@ -260,7 +260,7 @@ TEST(ParticleEffectAssetsTests, LoadRecordsAMissingFileAsFailed) {
 TEST(ParticleEffectAssetsTests, LoadRecordsALoaderErrorAsFailed) {
     int calls = 0;
     ParticleEffectAssets assets = makeAssets(calls);
-    const TemporaryFile file{"rtype_particle_effect_broken.fx", "broken"};
+    const TemporaryFile file{"aylo_particle_effect_broken.fx", "broken"};
     const AssetId id = assets.load(file.getPath());
 
     EXPECT_EQ(assets.get(id), nullptr);
@@ -271,13 +271,13 @@ TEST(ParticleEffectAssetsTests, LoadRecordsALoaderErrorAsFailed) {
 TEST(ParticleEffectAssetsTests, LoadRecordsAnInvalidEffectAsFailed) {
     int calls = 0;
     ParticleEffectAssets assets = makeAssets(calls);
-    const TemporaryFile file{"rtype_particle_effect_invalid.fx", "0"};
+    const TemporaryFile file{"aylo_particle_effect_invalid.fx", "0"};
     const AssetId id = assets.load(file.getPath());
 
     EXPECT_EQ(calls, 1);
     EXPECT_EQ(assets.get(id), nullptr);
     ASSERT_NE(assets.getEntry(id), nullptr);
-    EXPECT_NE(assets.getEntry(id)->error.find("rtype_particle_effect_invalid.fx"), std::string::npos);
+    EXPECT_NE(assets.getEntry(id)->error.find("aylo_particle_effect_invalid.fx"), std::string::npos);
     EXPECT_NE(assets.getEntry(id)->error.find("capacity"), std::string::npos);
 }
 
@@ -286,7 +286,7 @@ TEST(ParticleEffectAssetsTests, AddLoaderReplacesThePreviousLoaderOfAnExtension)
     int secondCalls = 0;
     ParticleEffectAssets assets = makeAssets(firstCalls);
     assets.addLoader(".fx", std::make_unique<CapacityLoader>(secondCalls));
-    const TemporaryFile file{"rtype_particle_effect_replaced.fx", "16"};
+    const TemporaryFile file{"aylo_particle_effect_replaced.fx", "16"};
     static_cast<void>(assets.load(file.getPath()));
 
     EXPECT_EQ(firstCalls, 0);

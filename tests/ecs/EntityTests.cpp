@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** EntityTests
 */
@@ -12,14 +12,14 @@
 #include <limits>
 #include <type_traits>
 
-#include "rtype/ecs/detail/Generation.hpp"
-#include "rtype/ecs/entity/Entity.hpp"
+#include "aylo/ecs/detail/Generation.hpp"
+#include "aylo/ecs/entity/Entity.hpp"
 
-static_assert(sizeof(rtype::ecs::Entity) == 8);
-static_assert(std::is_trivially_copyable_v<rtype::ecs::Entity>);
+static_assert(sizeof(aylo::ecs::Entity) == 8);
+static_assert(std::is_trivially_copyable_v<aylo::ecs::Entity>);
 
 TEST(Entity, DefaultIsNull) {
-    const rtype::ecs::Entity entity{};
+    const aylo::ecs::Entity entity{};
     EXPECT_TRUE(entity.isNull());
     EXPECT_EQ(entity.getIndex(), 0U);
     EXPECT_EQ(entity.getGeneration(), 0U);
@@ -27,7 +27,7 @@ TEST(Entity, DefaultIsNull) {
 }
 
 TEST(Entity, KeepsIndexAndGeneration) {
-    const rtype::ecs::Entity entity{42, 7};
+    const aylo::ecs::Entity entity{42, 7};
     EXPECT_FALSE(entity.isNull());
     EXPECT_EQ(entity.getIndex(), 42U);
     EXPECT_EQ(entity.getGeneration(), 7U);
@@ -35,29 +35,29 @@ TEST(Entity, KeepsIndexAndGeneration) {
 
 TEST(Entity, KeepsMaximumValues) {
     constexpr std::uint32_t kMax = std::numeric_limits<std::uint32_t>::max();
-    const rtype::ecs::Entity entity{kMax, kMax};
+    const aylo::ecs::Entity entity{kMax, kMax};
     EXPECT_EQ(entity.getIndex(), kMax);
     EXPECT_EQ(entity.getGeneration(), kMax);
 }
 
 TEST(Entity, ComparesIndexAndGeneration) {
-    EXPECT_EQ((rtype::ecs::Entity{3, 1}), (rtype::ecs::Entity{3, 1}));
-    EXPECT_NE((rtype::ecs::Entity{3, 1}), (rtype::ecs::Entity{3, 2}));
-    EXPECT_NE((rtype::ecs::Entity{3, 1}), (rtype::ecs::Entity{4, 1}));
+    EXPECT_EQ((aylo::ecs::Entity{3, 1}), (aylo::ecs::Entity{3, 1}));
+    EXPECT_NE((aylo::ecs::Entity{3, 1}), (aylo::ecs::Entity{3, 2}));
+    EXPECT_NE((aylo::ecs::Entity{3, 1}), (aylo::ecs::Entity{4, 1}));
 }
 
 TEST(Entity, HashDiffersAcrossGenerations) {
-    const std::hash<rtype::ecs::Entity> hash{};
-    EXPECT_EQ(hash(rtype::ecs::Entity{3, 1}), hash(rtype::ecs::Entity{3, 1}));
-    EXPECT_NE(hash(rtype::ecs::Entity{3, 1}), hash(rtype::ecs::Entity{3, 2}));
+    const std::hash<aylo::ecs::Entity> hash{};
+    EXPECT_EQ(hash(aylo::ecs::Entity{3, 1}), hash(aylo::ecs::Entity{3, 1}));
+    EXPECT_NE(hash(aylo::ecs::Entity{3, 1}), hash(aylo::ecs::Entity{3, 2}));
 }
 
 TEST(Generation, IncrementsBelowMaximum) {
-    EXPECT_EQ(rtype::ecs::detail::nextGeneration(1), 2U);
-    EXPECT_EQ(rtype::ecs::detail::nextGeneration(std::numeric_limits<std::uint32_t>::max() - 1),
+    EXPECT_EQ(aylo::ecs::detail::nextGeneration(1), 2U);
+    EXPECT_EQ(aylo::ecs::detail::nextGeneration(std::numeric_limits<std::uint32_t>::max() - 1),
               std::numeric_limits<std::uint32_t>::max());
 }
 
 TEST(Generation, IsEmptyAtMaximum) {
-    EXPECT_FALSE(rtype::ecs::detail::nextGeneration(std::numeric_limits<std::uint32_t>::max()));
+    EXPECT_FALSE(aylo::ecs::detail::nextGeneration(std::numeric_limits<std::uint32_t>::max()));
 }

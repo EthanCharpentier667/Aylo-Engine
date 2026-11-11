@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ShaderAssemblerTests
 */
@@ -12,16 +12,16 @@
 #include <string>
 #include <string_view>
 
+#include "aylo/contract/renderer/shaders/CompiledShader.hpp"
 #include "plugins/shader/detail/ShaderAssembler.hpp"
 #include "plugins/shader/detail/ShaderParser.hpp"
-#include "rtype/contract/renderer/shaders/CompiledShader.hpp"
 
-using rtype::contract::renderer::ShaderTarget;
-using rtype::plugins::shader::detail::assembleShader;
-using rtype::plugins::shader::detail::blankFunction;
-using rtype::plugins::shader::detail::ParsedShader;
-using rtype::plugins::shader::detail::parseShader;
-using rtype::plugins::shader::detail::ShaderStage;
+using aylo::contract::renderer::ShaderTarget;
+using aylo::plugins::shader::detail::assembleShader;
+using aylo::plugins::shader::detail::blankFunction;
+using aylo::plugins::shader::detail::ParsedShader;
+using aylo::plugins::shader::detail::parseShader;
+using aylo::plugins::shader::detail::ShaderStage;
 
 namespace {
 /// @brief A shader with material values, instance values, a texture, a helper and both functions.
@@ -58,7 +58,7 @@ TEST(ShaderAssembler, StartsWithThePreludeThenTheGameLinesFromOne) {
     // #version comes before any code (only comments may precede it).
     ASSERT_NE(glsl.find("#version 450\n"), std::string::npos);
     EXPECT_LT(glsl.find("#version 450\n"), glsl.find("layout("));
-    EXPECT_FALSE(glsl.contains("#pragma rtype_"));  // every marker was replaced
+    EXPECT_FALSE(glsl.contains("#pragma aylo_"));  // every marker was replaced
     const std::size_t line = glsl.find("\n#line 1\n");
     ASSERT_NE(line, std::string::npos);
     EXPECT_LT(glsl.find("uniform sampler2D TEXTURE"), line);
@@ -78,12 +78,12 @@ TEST(ShaderAssembler, FillsTheInstanceValuesFromTheirSourceBeforeTheShader) {
     const std::string sprite = assemble(ShaderTarget::kSprite, ShaderStage::kFragment);
     EXPECT_TRUE(has(sprite, "float flash;\n"));
     EXPECT_TRUE(has(sprite,
-                    "    flash = rtypeInstance[0].x;\n    seed = floatBitsToInt(rtypeInstance[0].y);\n"
+                    "    flash = ayloInstance[0].x;\n    seed = floatBitsToInt(ayloInstance[0].y);\n"
                     "    fragment();\n"));
     const std::string particle = assemble(ShaderTarget::kParticle, ShaderStage::kVertex);
-    EXPECT_TRUE(has(particle, "    flash = rtypeParticles.instance[0].x;\n"));
+    EXPECT_TRUE(has(particle, "    flash = ayloParticles.instance[0].x;\n"));
     EXPECT_TRUE(has(particle, "vec4 instance[4];"));
-    EXPECT_TRUE(has(assemble(ShaderTarget::kShape, ShaderStage::kFragment), "    flash = rtypeInstance[0].x;\n"));
+    EXPECT_TRUE(has(assemble(ShaderTarget::kShape, ShaderStage::kFragment), "    flash = ayloInstance[0].x;\n"));
 }
 
 TEST(ShaderAssembler, EachStageKeepsOnlyItsOwnFunction) {
@@ -103,32 +103,32 @@ TEST(ShaderAssembler, CallsOnlyTheFunctionsTheShaderDefines) {
 
 TEST(ShaderAssembler, StartsEachTargetFromItsDefaultColour) {
     EXPECT_TRUE(
-        has(assemble(ShaderTarget::kSprite, ShaderStage::kFragment), "COLOR = texture(TEXTURE, UV) * rtypeColorIn;"));
+        has(assemble(ShaderTarget::kSprite, ShaderStage::kFragment), "COLOR = texture(TEXTURE, UV) * ayloColorIn;"));
     EXPECT_TRUE(has(assemble(ShaderTarget::kGlyph, ShaderStage::kFragment),
-                    "COLOR = rtypeColorIn * rtypeCoverage(rtypeUvWidth);"));
+                    "COLOR = ayloColorIn * ayloCoverage(ayloUvWidth);"));
     EXPECT_TRUE(
-        has(assemble(ShaderTarget::kParticle, ShaderStage::kFragment), "COLOR = texture(TEXTURE, UV) * rtypeColorIn;"));
+        has(assemble(ShaderTarget::kParticle, ShaderStage::kFragment), "COLOR = texture(TEXTURE, UV) * ayloColorIn;"));
     EXPECT_TRUE(has(assemble(ShaderTarget::kShape, ShaderStage::kFragment),
-                    "COLOR = (rtypeColorIn * rtypeFill) + (rtypeOutlineColorIn * (rtypeShape - rtypeFill));"));
+                    "COLOR = (ayloColorIn * ayloFill) + (ayloOutlineColorIn * (ayloShape - ayloFill));"));
 }
 
 TEST(ShaderAssembler, ReadsEachTargetsOwnVertexInputs) {
     EXPECT_TRUE(
-        has(assemble(ShaderTarget::kSprite, ShaderStage::kVertex), "layout(location = 7) in vec4 rtypeInstance[4];"));
+        has(assemble(ShaderTarget::kSprite, ShaderStage::kVertex), "layout(location = 7) in vec4 ayloInstance[4];"));
     const std::string particle = assemble(ShaderTarget::kParticle, ShaderStage::kVertex);
-    EXPECT_TRUE(has(particle, "layout(location = 5) in float rtypeLife;"));
-    EXPECT_FALSE(has(particle, "rtypeInstance"));
+    EXPECT_TRUE(has(particle, "layout(location = 5) in float ayloLife;"));
+    EXPECT_FALSE(has(particle, "ayloInstance"));
     const std::string shape = assemble(ShaderTarget::kShape, ShaderStage::kVertex);
-    EXPECT_TRUE(has(shape, "layout(location = 7) in vec4 rtypeOutlineColor;"));
-    EXPECT_TRUE(has(shape, "layout(location = 8) in vec4 rtypeInstance[4];"));
+    EXPECT_TRUE(has(shape, "layout(location = 7) in vec4 ayloOutlineColor;"));
+    EXPECT_TRUE(has(shape, "layout(location = 8) in vec4 ayloInstance[4];"));
 }
 
 TEST(ShaderAssembler, CarriesTheInstanceValuesOnlyWhenTheShaderHasSome) {
     EXPECT_TRUE(assemble(ShaderTarget::kSprite, ShaderStage::kVertex)
-                    .starts_with("#version 450\n#define RTYPE_INSTANCE_VALUES\n"));
+                    .starts_with("#version 450\n#define AYLO_INSTANCE_VALUES\n"));
     const std::string vertex = assemble(ShaderTarget::kSprite, ShaderStage::kVertex, "void fragment() {}\n");
     EXPECT_TRUE(vertex.starts_with("#version 450\n"));
-    EXPECT_FALSE(has(vertex, "#define RTYPE_INSTANCE_VALUES"));
+    EXPECT_FALSE(has(vertex, "#define AYLO_INSTANCE_VALUES"));
 }
 
 TEST(ShaderAssembler, LeavesThePreludeAsItIsForTheDefaultShader) {
@@ -138,10 +138,10 @@ TEST(ShaderAssembler, LeavesThePreludeAsItIsForTheDefaultShader) {
             const std::string glsl = assembleShader(ParsedShader{}, target, stage);
             EXPECT_TRUE(glsl.starts_with("#version 450\n"));
             // The markers stay, as in the built-in shaders that #include the prelude: GLSL ignores them.
-            EXPECT_TRUE(has(glsl, "#pragma rtype_shader"));
-            EXPECT_TRUE(has(glsl, "#pragma rtype_main"));
+            EXPECT_TRUE(has(glsl, "#pragma aylo_shader"));
+            EXPECT_TRUE(has(glsl, "#pragma aylo_main"));
             EXPECT_FALSE(has(glsl, "#line"));
-            EXPECT_FALSE(has(glsl, "#define RTYPE_INSTANCE_VALUES"));
+            EXPECT_FALSE(has(glsl, "#define AYLO_INSTANCE_VALUES"));
             EXPECT_FALSE(has(glsl, "vertex();"));
             EXPECT_FALSE(has(glsl, "fragment();"));
         }

@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** PhysicsLayersTests
 */
@@ -13,11 +13,11 @@
 
 #include "plugins/physics/detail/Layers.hpp"
 
-namespace layers = rtype::plugins::physics::detail::layers;
-namespace broadPhaseLayers = rtype::plugins::physics::detail::broadPhaseLayers;
-using rtype::plugins::physics::detail::BroadPhaseLayers;
-using rtype::plugins::physics::detail::ObjectLayerPairFilter;
-using rtype::plugins::physics::detail::ObjectVsBroadPhaseFilter;
+namespace layers = aylo::plugins::physics::detail::layers;
+namespace broadPhaseLayers = aylo::plugins::physics::detail::broadPhaseLayers;
+using aylo::plugins::physics::detail::BroadPhaseLayers;
+using aylo::plugins::physics::detail::ObjectLayerPairFilter;
+using aylo::plugins::physics::detail::ObjectVsBroadPhaseFilter;
 
 namespace {
 constexpr std::uint32_t kPlayer = 1U << 0;

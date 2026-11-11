@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** TestPlugin
 */
@@ -10,14 +10,14 @@
 #include <memory>
 #include <string_view>
 
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/app/Plugin.hpp"
+#include "aylo/ecs/app/PluginEntry.hpp"
 #include "core/config/Settings.hpp"
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/app/Plugin.hpp"
-#include "rtype/ecs/app/PluginEntry.hpp"
 
 namespace {
 /// @brief Records in a resource-free way that it was built: the App's plugin list.
-class LoadedPlugin final : public rtype::ecs::Plugin {
+class LoadedPlugin final : public aylo::ecs::Plugin {
   public:
     LoadedPlugin() = default;
     ~LoadedPlugin() override = default;
@@ -27,10 +27,10 @@ class LoadedPlugin final : public rtype::ecs::Plugin {
     LoadedPlugin& operator=(LoadedPlugin&& other) noexcept = default;
 
     [[nodiscard]] std::string_view getName() const noexcept override { return "test.Loaded"; }
-    void build(rtype::ecs::App& /*app*/) override {}
+    void build(aylo::ecs::App& /*app*/) override {}
 };
 }  // namespace
 
-RTYPE_PLUGIN_LIBRARY(registrar) {
+AYLO_PLUGIN_LIBRARY(registrar) {
     registrar.getPlugins().add("test.Loaded", [] { return std::make_unique<LoadedPlugin>(); });
 }

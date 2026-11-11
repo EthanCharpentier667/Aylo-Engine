@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** AssetStoreTests
 */
@@ -26,8 +26,8 @@
 #include "core/asset/exceptions/AssetExceptions.hpp"
 #include "core/vfs/FileSource.hpp"
 
-using rtype::core::asset::AssetId;
-using rtype::core::asset::AssetStore;
+using aylo::core::asset::AssetId;
+using aylo::core::asset::AssetStore;
 
 namespace {
 /// @brief A text file in the temporary directory, removed when the test ends.
@@ -65,19 +65,19 @@ struct Parse {
 }  // namespace
 
 TEST(AssetFiles, NormalizesAPathAsAssetIdsSeeIt) {
-    EXPECT_EQ(rtype::core::asset::normalizePath("assets/./fonts/../fonts/a.json"), "assets/fonts/a.json");
+    EXPECT_EQ(aylo::core::asset::normalizePath("assets/./fonts/../fonts/a.json"), "assets/fonts/a.json");
     EXPECT_EQ(AssetId::fromPath("assets/./a.png"), AssetId::fromPath("assets/a.png"));
 }
 
 TEST(AssetFiles, ReadsAWholeFileOrThrows) {
-    const TemporaryFile file{"rtype-asset-store-tests.txt", "line 1\nline 2"};
-    EXPECT_EQ(rtype::core::asset::readTextFile(file.getPath()), "line 1\nline 2");
-    EXPECT_THROW(static_cast<void>(rtype::core::asset::readTextFile("no/such/file.txt")),
-                 rtype::core::asset::exceptions::AssetLoadException);
+    const TemporaryFile file{"aylo-asset-store-tests.txt", "line 1\nline 2"};
+    EXPECT_EQ(aylo::core::asset::readTextFile(file.getPath()), "line 1\nline 2");
+    EXPECT_THROW(static_cast<void>(aylo::core::asset::readTextFile("no/such/file.txt")),
+                 aylo::core::asset::exceptions::AssetLoadException);
 }
 
 TEST(AssetStore, ReadsAFileOnce) {
-    const TemporaryFile file{"rtype-asset-store-tests.txt", "hello"};
+    const TemporaryFile file{"aylo-asset-store-tests.txt", "hello"};
     AssetStore<std::string> store{"Text"};
     int calls = 0;
     const auto first = store.load(file.getPath(), Parse{&calls});
@@ -94,7 +94,7 @@ TEST(AssetStore, ReadsAFileOnce) {
 }
 
 TEST(AssetStore, RecordsWhyAnAssetFailed) {
-    const TemporaryFile file{"rtype-asset-store-tests.txt", "bad"};
+    const TemporaryFile file{"aylo-asset-store-tests.txt", "bad"};
     AssetStore<std::string> store{"Text"};
     int calls = 0;
     const auto parsed = store.load(file.getPath(), Parse{&calls});
@@ -141,25 +141,25 @@ class AssetDirectoryTest : public ::testing::Test {
         std::filesystem::remove_all(_root, error);
     }
 
-    std::filesystem::path _root{std::filesystem::temp_directory_path() / "rtype_asset_directory_tests"};
+    std::filesystem::path _root{std::filesystem::temp_directory_path() / "aylo_asset_directory_tests"};
     std::filesystem::path _assets{_root / "assets"};
 };
 }  // namespace
 
 TEST_F(AssetDirectoryTest, FindsAFileInTheDirectory) {
-    EXPECT_EQ(rtype::core::asset::resolveAssetPath(_assets, "a.txt"), _assets / "a.txt");
-    EXPECT_EQ(rtype::core::asset::resolveAssetPath(_assets, "levels/../a.txt"), _assets / "a.txt");
-    EXPECT_EQ(rtype::core::asset::resolveAssetPath(_assets, "levels/missing.txt"), _assets / "levels/missing.txt");
+    EXPECT_EQ(aylo::core::asset::resolveAssetPath(_assets, "a.txt"), _assets / "a.txt");
+    EXPECT_EQ(aylo::core::asset::resolveAssetPath(_assets, "levels/../a.txt"), _assets / "a.txt");
+    EXPECT_EQ(aylo::core::asset::resolveAssetPath(_assets, "levels/missing.txt"), _assets / "levels/missing.txt");
 }
 
 TEST_F(AssetDirectoryTest, RefusesWhatLeavesTheDirectory) {
     for (const std::string_view path : {"../secret.txt", "..", "levels/../../secret.txt", "../assets/a.txt"}) {
-        EXPECT_THROW(static_cast<void>(rtype::core::asset::resolveAssetPath(_assets, path)),
-                     rtype::core::asset::exceptions::AssetLoadException)
+        EXPECT_THROW(static_cast<void>(aylo::core::asset::resolveAssetPath(_assets, path)),
+                     aylo::core::asset::exceptions::AssetLoadException)
             << path;
     }
-    EXPECT_THROW(static_cast<void>(rtype::core::asset::resolveAssetPath(_assets, _root / "secret.txt")),
-                 rtype::core::asset::exceptions::AssetLoadException);
+    EXPECT_THROW(static_cast<void>(aylo::core::asset::resolveAssetPath(_assets, _root / "secret.txt")),
+                 aylo::core::asset::exceptions::AssetLoadException);
 }
 
 TEST_F(AssetDirectoryTest, RefusesALinkThatLeavesTheDirectory) {
@@ -168,12 +168,12 @@ TEST_F(AssetDirectoryTest, RefusesALinkThatLeavesTheDirectory) {
     if (error) {
         GTEST_SKIP() << "Cannot create links here: " << error.message();
     }
-    EXPECT_THROW(static_cast<void>(rtype::core::asset::resolveAssetPath(_assets, "out/secret.txt")),
-                 rtype::core::asset::exceptions::AssetLoadException);
+    EXPECT_THROW(static_cast<void>(aylo::core::asset::resolveAssetPath(_assets, "out/secret.txt")),
+                 aylo::core::asset::exceptions::AssetLoadException);
 }
 
 TEST_F(AssetDirectoryTest, ChecksNothingWithoutADirectory) {
-    EXPECT_EQ(rtype::core::asset::resolveAssetPath({}, "../a.txt"), std::filesystem::path{"../a.txt"});
+    EXPECT_EQ(aylo::core::asset::resolveAssetPath({}, "../a.txt"), std::filesystem::path{"../a.txt"});
 }
 
 TEST_F(AssetDirectoryTest, AStoreRecordsAPathThatLeavesItsDirectoryAsFailed) {
@@ -189,14 +189,14 @@ TEST_F(AssetDirectoryTest, AStoreRecordsAPathThatLeavesItsDirectoryAsFailed) {
 
 namespace {
 /// @brief Files held in memory, as a pack holds them: what proves a store reads through its source.
-class MemorySource final : public rtype::core::vfs::FileSource {
+class MemorySource final : public aylo::core::vfs::FileSource {
   public:
     explicit MemorySource(std::map<std::string, std::string> files) : _files{std::move(files)} {}
 
     [[nodiscard]] std::string read(const std::string_view path) const override {
         const auto found = _files.find(std::string{path});
         if (found == _files.end()) {
-            throw rtype::core::asset::exceptions::AssetLoadException{std::format("no '{}' in memory", path)};
+            throw aylo::core::asset::exceptions::AssetLoadException{std::format("no '{}' in memory", path)};
         }
         return found->second;
     }

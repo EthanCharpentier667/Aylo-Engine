@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** SimulatedLinkTests
 */
@@ -14,14 +14,14 @@
 
 #include "FakeClock.hpp"
 #include "SimulatedLink.hpp"
-#include "rtype/network/Types.hpp"
+#include "aylo/network/Types.hpp"
 
 namespace {
 using namespace std::chrono_literals;
-using rtype::network::Bytes;
-using rtype::network::tests::FakeClock;
-using rtype::network::tests::LinkConditions;
-using rtype::network::tests::SimulatedLink;
+using aylo::network::Bytes;
+using aylo::network::tests::FakeClock;
+using aylo::network::tests::LinkConditions;
+using aylo::network::tests::SimulatedLink;
 
 Bytes makeDatagram(const std::uint32_t id) {
     return Bytes{static_cast<std::byte>(id & 0xFFU), static_cast<std::byte>((id >> 8U) & 0xFFU)};

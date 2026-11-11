@@ -52,7 +52,7 @@ A game names it in its `project.luau`, and the `Engine` loads it from its librar
 engine.settings.plugins = { "rtype.Capsule" }
 ```
 
-A program on a bare `App` (tests, examples) adds `rtype::plugins::capsule::CapsulePlugin{}`. It inserts the `Capsules`
+A program on a bare `App` (tests, examples) adds `aylo::plugins::capsule::CapsulePlugin{}`. It inserts the `Capsules`
 resource (`"rtype.Capsules"`), the `LoadedCapsule` resource (`"rtype.LoadedCapsule"`), registers the `CapsuleInstance`
 component and the engine calls. It requires no plugin and reads no settings.
 
@@ -73,7 +73,7 @@ A `Capsule` is built node by node, then given to the `Capsules` resource with `d
 files, which the plugin reads the same way; building one in C++ is for tests and tools:
 
 ```c++
-namespace capsule = rtype::plugins::capsule;
+namespace capsule = aylo::plugins::capsule;
 capsule::Capsule boss{"actors/boss.actor"};                    // a root only; the path is normalized, the id derived
 boss.editNode(0).values.set(components, Health{.value = 50});
 const std::uint32_t left = boss.addNode("LeftTurret", 0);
@@ -133,8 +133,8 @@ the reload is reported as failed with the file, line and column; a removed file 
 
 ```c++
 // in a system: reserved at once, alive when the system's commands are applied
-void spawnWave(rtype::ecs::Commands& commands, rtype::ecs::Res<rtype::plugins::capsule::Capsules> capsules) {
-    rtype::plugins::capsule::spawnCapsule(commands, *capsules, bydoId)
+void spawnWave(aylo::ecs::Commands& commands, aylo::ecs::Res<aylo::plugins::capsule::Capsules> capsules) {
+    aylo::plugins::capsule::spawnCapsule(commands, *capsules, bydoId)
         .add(Transform{.position = {820.F, 140.F}});   // replaces the capsule's Transform for this entity
 }
 ```
@@ -221,7 +221,7 @@ engine.ecs.system("game.Waves", {
   [Hooks](16-hooks-and-observers.md) (`copy`), [Hierarchy](17-hierarchy.md), [Reflection](15-reflection-and-serialization.md)
   (the file format).
 - Used by: [Luau bridge](19-luau-bridge.md) (the calls), [Replication](20-replication.md) (spawn by capsule id, later).
-- Code: `src/rtype/plugins/capsule/`; example `examples/plugins/capsule/`; manual page `manual/pages/capsules.md`.
+- Code: `src/aylo/plugins/capsule/`; example `examples/plugins/capsule/`; manual page `manual/pages/capsules.md`.
 
 ## Pitfalls
 

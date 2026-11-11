@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** VersionTests
 */
@@ -13,8 +13,8 @@
 
 namespace {
 
-using rtype::core::version::describe;
-using rtype::core::version::VersionInfo;
+using aylo::core::version::describe;
+using aylo::core::version::VersionInfo;
 
 }  // namespace
 

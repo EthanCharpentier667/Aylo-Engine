@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ScriptConsoleTests
 */
@@ -17,31 +17,31 @@
 #include <vector>
 
 #include "ScriptsDirectory.hpp"
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/time/FixedTimestep.hpp"
-#include "rtype/ecs/time/TimePlugin.hpp"
-#include "rtype/scripting/ScriptHost.hpp"
-#include "rtype/scripting/plugin/ScriptingPlugin.hpp"
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/time/FixedTimestep.hpp"
+#include "aylo/ecs/time/TimePlugin.hpp"
+#include "aylo/scripting/ScriptHost.hpp"
+#include "aylo/scripting/plugin/ScriptingPlugin.hpp"
 
 namespace {
-using rtype::tests::ScriptsDirectory;
+using aylo::tests::ScriptsDirectory;
 
 /// @brief A game over a scripts directory, and the host of its scripts, as the editor's console sees them.
 struct Game {
-    rtype::ecs::App app;
-    rtype::scripting::ScriptHost* host{nullptr};
+    aylo::ecs::App app;
+    aylo::scripting::ScriptHost* host{nullptr};
 
     explicit Game(const std::filesystem::path& directory) {
-        app.addPlugin(rtype::ecs::TimePlugin::manual(std::chrono::seconds{1}, rtype::ecs::FixedTimestep{1, 5}));
-        app.addPlugin(rtype::scripting::ScriptingPlugin{
-            {.directory = directory, .onBuilt = [this](rtype::scripting::ScriptHost& built) { host = &built; }}});
+        app.addPlugin(aylo::ecs::TimePlugin::manual(std::chrono::seconds{1}, aylo::ecs::FixedTimestep{1, 5}));
+        app.addPlugin(aylo::scripting::ScriptingPlugin{
+            {.directory = directory, .onBuilt = [this](aylo::scripting::ScriptHost& built) { host = &built; }}});
     }
 
     /// @brief Gives a new entity the component @p name, with its defaults.
-    rtype::ecs::Entity spawn(const std::string_view name) {
+    aylo::ecs::Entity spawn(const std::string_view name) {
         const auto* layout = host->findComponent(name);
         EXPECT_NE(layout, nullptr);
-        const rtype::ecs::Entity entity = app.getWorld().spawn();
+        const aylo::ecs::Entity entity = app.getWorld().spawn();
         EXPECT_TRUE(app.getWorld().getComponents().add(entity, layout->id, layout->defaults));
         return entity;
     }
@@ -53,7 +53,7 @@ struct Game {
     }
 
     /// @return What the console gives for @p line with `self` standing for @p self.
-    [[nodiscard]] std::string eval(const std::string_view line, const rtype::ecs::Entity self,
+    [[nodiscard]] std::string eval(const std::string_view line, const aylo::ecs::Entity self,
                                    const bool writable = true) const {
         const auto evaluation = host->evaluate(line, {.self = self, .writable = writable});
         return evaluation.ok ? evaluation.text : "error: " + evaluation.text;
@@ -81,7 +81,7 @@ void writeGame(const ScriptsDirectory& scripts) {
 }  // namespace
 
 TEST(ScriptConsole, WritesTheValueOfAnExpression) {
-    const ScriptsDirectory scripts{"rtype-console-expression"};
+    const ScriptsDirectory scripts{"aylo-console-expression"};
     writeGame(scripts);
     const Game game{scripts.path()};
 
@@ -93,7 +93,7 @@ TEST(ScriptConsole, WritesTheValueOfAnExpression) {
 }
 
 TEST(ScriptConsole, RunsAStatementAndGivesNothing) {
-    const ScriptsDirectory scripts{"rtype-console-statement"};
+    const ScriptsDirectory scripts{"aylo-console-statement"};
     writeGame(scripts);
     const Game game{scripts.path()};
 
@@ -102,7 +102,7 @@ TEST(ScriptConsole, RunsAStatementAndGivesNothing) {
 }
 
 TEST(ScriptConsole, EditsTheTopLevelOfAModuleThenFreezesItAgain) {
-    const ScriptsDirectory scripts{"rtype-console-freeze"};
+    const ScriptsDirectory scripts{"aylo-console-freeze"};
     writeGame(scripts);
     Game game{scripts.path()};
 
@@ -116,7 +116,7 @@ TEST(ScriptConsole, EditsTheTopLevelOfAModuleThenFreezesItAgain) {
 }
 
 TEST(ScriptConsole, TheGameReadsWhatTheConsoleWroteInANestedTable) {
-    const ScriptsDirectory scripts{"rtype-console-nested"};
+    const ScriptsDirectory scripts{"aylo-console-nested"};
     writeGame(scripts);
     Game game{scripts.path()};
 
@@ -127,7 +127,7 @@ TEST(ScriptConsole, TheGameReadsWhatTheConsoleWroteInANestedTable) {
 }
 
 TEST(ScriptConsole, ReachesModulesByKeyAndByWholeName) {
-    const ScriptsDirectory scripts{"rtype-console-names"};
+    const ScriptsDirectory scripts{"aylo-console-names"};
     writeGame(scripts);
     scripts.write("other/config.luau", "return { speed = 1 }");
     scripts.write("main.luau", R"(
@@ -145,7 +145,7 @@ TEST(ScriptConsole, ReachesModulesByKeyAndByWholeName) {
 }
 
 TEST(ScriptConsole, ReportsACompilationErrorAndARuntimeError) {
-    const ScriptsDirectory scripts{"rtype-console-errors"};
+    const ScriptsDirectory scripts{"aylo-console-errors"};
     writeGame(scripts);
     const Game game{scripts.path()};
 
@@ -156,7 +156,7 @@ TEST(ScriptConsole, ReportsACompilationErrorAndARuntimeError) {
 }
 
 TEST(ScriptConsole, CannotDeclareOnTheScheduleButCanCallTheEngine) {
-    const ScriptsDirectory scripts{"rtype-console-engine"};
+    const ScriptsDirectory scripts{"aylo-console-engine"};
     writeGame(scripts);
     const Game game{scripts.path()};
 
@@ -166,7 +166,7 @@ TEST(ScriptConsole, CannotDeclareOnTheScheduleButCanCallTheEngine) {
 }
 
 TEST(ScriptConsole, CompletesNamesAmongModulesFieldsAndGlobals) {
-    const ScriptsDirectory scripts{"rtype-console-complete"};
+    const ScriptsDirectory scripts{"aylo-console-complete"};
     writeGame(scripts);
     const Game game{scripts.path()};
 
@@ -182,7 +182,7 @@ TEST(ScriptConsole, CompletesNamesAmongModulesFieldsAndGlobals) {
 }
 
 TEST(ScriptConsole, DoesNotCompleteAnEcsDeclarationOfEngine) {
-    const ScriptsDirectory scripts{"rtype-console-engine-complete"};
+    const ScriptsDirectory scripts{"aylo-console-engine-complete"};
     writeGame(scripts);
     const Game game{scripts.path()};
 
@@ -193,8 +193,8 @@ TEST(ScriptConsole, DoesNotCompleteAnEcsDeclarationOfEngine) {
 }
 
 TEST(ScriptConsole, FailsBeforeAnyScriptRan) {
-    rtype::ecs::App app;
-    auto host = rtype::scripting::ScriptHost::create(app, {});
+    aylo::ecs::App app;
+    auto host = aylo::scripting::ScriptHost::create(app, {});
     ASSERT_TRUE(host);
 
     const auto evaluation = (*host)->evaluate("1 + 1");
@@ -217,7 +217,7 @@ void writeShipGame(const ScriptsDirectory& scripts) {
 }  // namespace
 
 TEST(ScriptConsoleEntities, ReadsAndWritesTheFieldsOfTheSelectedEntityInPlace) {
-    const ScriptsDirectory scripts{"rtype-console-entity"};
+    const ScriptsDirectory scripts{"aylo-console-entity"};
     writeShipGame(scripts);
     Game game{scripts.path()};
     const auto ship = game.spawn("game.Ship");
@@ -228,14 +228,14 @@ TEST(ScriptConsoleEntities, ReadsAndWritesTheFieldsOfTheSelectedEntityInPlace) {
     const auto* layout = game.host->findComponent("game.Ship");
     const auto bytes = game.app.getWorld().getComponents().get(ship, layout->id);
     float speed = 0.F;
-    const auto field = std::ranges::find(layout->fields, "speed", &rtype::ecs::FieldInfo::name);
+    const auto field = std::ranges::find(layout->fields, "speed", &aylo::ecs::FieldInfo::name);
     ASSERT_NE(field, layout->fields.end());
     std::memcpy(&speed, bytes.data() + field->offset, sizeof(float));
     EXPECT_FLOAT_EQ(speed, 3.5F);
 }
 
 TEST(ScriptConsoleEntities, MarksTheComponentChanged) {
-    const ScriptsDirectory scripts{"rtype-console-changed"};
+    const ScriptsDirectory scripts{"aylo-console-changed"};
     writeShipGame(scripts);
     Game game{scripts.path()};
     const auto ship = game.spawn("game.Ship");
@@ -248,7 +248,7 @@ TEST(ScriptConsoleEntities, MarksTheComponentChanged) {
 }
 
 TEST(ScriptConsoleEntities, SelfIsNilWithoutAnEntityOrWithADeadOne) {
-    const ScriptsDirectory scripts{"rtype-console-self-nil"};
+    const ScriptsDirectory scripts{"aylo-console-self-nil"};
     writeShipGame(scripts);
     Game game{scripts.path()};
     const auto ship = game.spawn("game.Ship");
@@ -259,7 +259,7 @@ TEST(ScriptConsoleEntities, SelfIsNilWithoutAnEntityOrWithADeadOne) {
 }
 
 TEST(ScriptConsoleEntities, ReadsButDoesNotWriteWhenTheConsoleOnlyReads) {
-    const ScriptsDirectory scripts{"rtype-console-readonly"};
+    const ScriptsDirectory scripts{"aylo-console-readonly"};
     writeShipGame(scripts);
     Game game{scripts.path()};
     const auto ship = game.spawn("game.Ship");
@@ -270,7 +270,7 @@ TEST(ScriptConsoleEntities, ReadsButDoesNotWriteWhenTheConsoleOnlyReads) {
 }
 
 TEST(ScriptConsoleEntities, FindsAComponentByItsLastPartAndSaysWhenItIsAmbiguous) {
-    const ScriptsDirectory scripts{"rtype-console-names-ecs"};
+    const ScriptsDirectory scripts{"aylo-console-names-ecs"};
     writeShipGame(scripts);
     Game game{scripts.path()};
     const auto ship = game.spawn("game.Ship");  // has game.Ship only
@@ -288,7 +288,7 @@ TEST(ScriptConsoleEntities, FindsAComponentByItsLastPartAndSaysWhenItIsAmbiguous
 }
 
 TEST(ScriptConsoleEntities, GivesNilForAMissingComponentAndAnErrorForAnUnknownOne) {
-    const ScriptsDirectory scripts{"rtype-console-missing"};
+    const ScriptsDirectory scripts{"aylo-console-missing"};
     writeShipGame(scripts);
     Game game{scripts.path()};
     const auto tagged = game.spawn("game.Tag");
@@ -300,7 +300,7 @@ TEST(ScriptConsoleEntities, GivesNilForAMissingComponentAndAnErrorForAnUnknownOn
 }
 
 TEST(ScriptConsoleEntities, RefusesAValueOfTheWrongType) {
-    const ScriptsDirectory scripts{"rtype-console-wrong-type"};
+    const ScriptsDirectory scripts{"aylo-console-wrong-type"};
     writeShipGame(scripts);
     Game game{scripts.path()};
     const auto ship = game.spawn("game.Ship");
@@ -310,7 +310,7 @@ TEST(ScriptConsoleEntities, RefusesAValueOfTheWrongType) {
 }
 
 TEST(ScriptConsoleEntities, ReachesAnotherEntityByIndexAndGeneration) {
-    const ScriptsDirectory scripts{"rtype-console-entity-fn"};
+    const ScriptsDirectory scripts{"aylo-console-entity-fn"};
     writeShipGame(scripts);
     Game game{scripts.path()};
     const auto ship = game.spawn("game.Ship");
@@ -324,7 +324,7 @@ TEST(ScriptConsoleEntities, ReachesAnotherEntityByIndexAndGeneration) {
 }
 
 TEST(ScriptConsoleEntities, AHandleDoesNotOutliveItsLine) {
-    const ScriptsDirectory scripts{"rtype-console-stale"};
+    const ScriptsDirectory scripts{"aylo-console-stale"};
     writeShipGame(scripts);
     Game game{scripts.path()};
     const auto ship = game.spawn("game.Ship");
@@ -337,7 +337,7 @@ TEST(ScriptConsoleEntities, AHandleDoesNotOutliveItsLine) {
 }
 
 TEST(ScriptConsoleEntities, CompletesTheComponentsOfSelfAndTheirFields) {
-    const ScriptsDirectory scripts{"rtype-console-complete-entity"};
+    const ScriptsDirectory scripts{"aylo-console-complete-entity"};
     writeShipGame(scripts);
     Game game{scripts.path()};
     const auto ship = game.spawn("game.Tag");
@@ -356,7 +356,7 @@ TEST(ScriptConsoleEntities, CompletesTheComponentsOfSelfAndTheirFields) {
 }
 
 TEST(ScriptConsoleEntities, WritesOnePartOfAVectorFieldInPlace) {
-    const ScriptsDirectory scripts{"rtype-console-vector-part"};
+    const ScriptsDirectory scripts{"aylo-console-vector-part"};
     writeShipGame(scripts);
     Game game{scripts.path()};
     const auto ship = game.spawn("game.Ship");

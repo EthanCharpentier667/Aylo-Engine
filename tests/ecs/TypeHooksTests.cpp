@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** TypeHooksTests
 */
@@ -14,7 +14,7 @@
 #include <utility>
 #include <vector>
 
-#include "rtype/ecs/type/TypeHooks.hpp"
+#include "aylo/ecs/type/TypeHooks.hpp"
 
 namespace {
 /// @brief Move-only, like the platform or the renderer as a resource.
@@ -49,14 +49,14 @@ struct Storage {
 }  // namespace
 
 TEST(TypeHooks, AMoveOnlyTypeHasNoCopyHook) {
-    constexpr rtype::ecs::TypeHooks kHooks = rtype::ecs::detail::makeHooks<MoveOnly>();
+    constexpr aylo::ecs::TypeHooks kHooks = aylo::ecs::detail::makeHooks<MoveOnly>();
     EXPECT_EQ(kHooks.copy, nullptr);
     EXPECT_NE(kHooks.move, nullptr);
     EXPECT_NE(kHooks.destruct, nullptr);
 }
 
 TEST(TypeHooks, MovesAndDestroysAMoveOnlyValue) {
-    constexpr rtype::ecs::TypeHooks kHooks = rtype::ecs::detail::makeHooks<MoveOnly>();
+    constexpr aylo::ecs::TypeHooks kHooks = aylo::ecs::detail::makeHooks<MoveOnly>();
     MoveOnly source{.value = std::make_unique<int>(7)};
     Storage<MoveOnly> destination{};
     kHooks.move(destination.raw(), &source);
@@ -66,7 +66,7 @@ TEST(TypeHooks, MovesAndDestroysAMoveOnlyValue) {
 }
 
 TEST(TypeHooks, ATypeWithoutDefaultConstructorHasNoConstructHook) {
-    constexpr rtype::ecs::TypeHooks kHooks = rtype::ecs::detail::makeHooks<NoDefault>();
+    constexpr aylo::ecs::TypeHooks kHooks = aylo::ecs::detail::makeHooks<NoDefault>();
     EXPECT_EQ(kHooks.construct, nullptr);
     EXPECT_NE(kHooks.copy, nullptr);
     EXPECT_NE(kHooks.move, nullptr);
@@ -74,7 +74,7 @@ TEST(TypeHooks, ATypeWithoutDefaultConstructorHasNoConstructHook) {
 }
 
 TEST(TypeHooks, CopiesATypeWithoutDefaultConstructor) {
-    constexpr rtype::ecs::TypeHooks kHooks = rtype::ecs::detail::makeHooks<NoDefault>();
+    constexpr aylo::ecs::TypeHooks kHooks = aylo::ecs::detail::makeHooks<NoDefault>();
     const NoDefault source{4};
     Storage<NoDefault> destination{};
     kHooks.copy(destination.raw(), &source);

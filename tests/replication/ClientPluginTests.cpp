@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ClientPluginTests
 */
@@ -20,66 +20,66 @@
 #include <thread>
 
 #include "ServerFixtures.hpp"
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/call/CallInfo.hpp"
-#include "rtype/ecs/call/Calls.hpp"
-#include "rtype/ecs/command/Commands.hpp"
-#include "rtype/ecs/component/Components.hpp"
-#include "rtype/ecs/query/Query.hpp"
-#include "rtype/ecs/resource/ResourceTraits.hpp"
-#include "rtype/ecs/schedule/Phase.hpp"
-#include "rtype/ecs/schedule/RunMode.hpp"
-#include "rtype/ecs/system/EventReader.hpp"
-#include "rtype/ecs/system/ResourceParam.hpp"
-#include "rtype/ecs/time/FixedTimestep.hpp"
-#include "rtype/ecs/time/TimePlugin.hpp"
-#include "rtype/network/NetworkSettings.hpp"
-#include "rtype/network/client/NetClient.hpp"
-#include "rtype/network/io/Address.hpp"
-#include "rtype/replication/ReplicationPlugin.hpp"
-#include "rtype/replication/ReplicationSettings.hpp"
-#include "rtype/replication/client/ClientCalls.hpp"
-#include "rtype/replication/client/ClientPlugin.hpp"
-#include "rtype/replication/client/ClientState.hpp"
-#include "rtype/replication/component/NetworkId.hpp"
-#include "rtype/replication/component/Owner.hpp"
-#include "rtype/replication/component/PlayerInput.hpp"
-#include "rtype/replication/event/ClientConnected.hpp"
-#include "rtype/replication/input/InputKind.hpp"
-#include "rtype/replication/input/InputLayout.hpp"
-#include "rtype/replication/server/ServerPlugin.hpp"
-#include "rtype/replication/server/ServerState.hpp"
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/call/CallInfo.hpp"
+#include "aylo/ecs/call/Calls.hpp"
+#include "aylo/ecs/command/Commands.hpp"
+#include "aylo/ecs/component/Components.hpp"
+#include "aylo/ecs/query/Query.hpp"
+#include "aylo/ecs/resource/ResourceTraits.hpp"
+#include "aylo/ecs/schedule/Phase.hpp"
+#include "aylo/ecs/schedule/RunMode.hpp"
+#include "aylo/ecs/system/EventReader.hpp"
+#include "aylo/ecs/system/ResourceParam.hpp"
+#include "aylo/ecs/time/FixedTimestep.hpp"
+#include "aylo/ecs/time/TimePlugin.hpp"
+#include "aylo/network/NetworkSettings.hpp"
+#include "aylo/network/client/NetClient.hpp"
+#include "aylo/network/io/Address.hpp"
+#include "aylo/replication/ReplicationPlugin.hpp"
+#include "aylo/replication/ReplicationSettings.hpp"
+#include "aylo/replication/client/ClientCalls.hpp"
+#include "aylo/replication/client/ClientPlugin.hpp"
+#include "aylo/replication/client/ClientState.hpp"
+#include "aylo/replication/component/NetworkId.hpp"
+#include "aylo/replication/component/Owner.hpp"
+#include "aylo/replication/component/PlayerInput.hpp"
+#include "aylo/replication/event/ClientConnected.hpp"
+#include "aylo/replication/input/InputKind.hpp"
+#include "aylo/replication/input/InputLayout.hpp"
+#include "aylo/replication/server/ServerPlugin.hpp"
+#include "aylo/replication/server/ServerState.hpp"
 
 namespace {
-namespace network = rtype::network;
+namespace network = aylo::network;
 using namespace std::chrono_literals;  // NOLINT(google-build-using-namespace): only the literals
-using rtype::ecs::App;
-using rtype::ecs::Commands;
-using rtype::ecs::EventReader;
-using rtype::ecs::FixedTimestep;
-using rtype::ecs::Phase;
-using rtype::ecs::Presence;
-using rtype::ecs::Query;
-using rtype::ecs::ReplicationMode;
-using rtype::ecs::ResMut;
-using rtype::ecs::RunMode;
-using rtype::ecs::TimePlugin;
-using rtype::replication::ReplicationPlugin;
-using rtype::replication::ReplicationSettings;
-using rtype::replication::client::ClientPlugin;
-using rtype::replication::client::ClientState;
-using rtype::replication::client::ConnectionStatus;
-using rtype::replication::client::ManifestStatus;
-using rtype::replication::component::NetworkId;
-using rtype::replication::component::Owner;
-using rtype::replication::component::PlayerInput;
-using rtype::replication::event::ClientConnected;
-using rtype::replication::input::InputKind;
-using rtype::replication::input::InputLayout;
-using rtype::replication::server::ServerPlugin;
-using rtype::replication::server::ServerState;
-using rtype::test::server::Position;
-using rtype::test::server::Secret;
+using aylo::ecs::App;
+using aylo::ecs::Commands;
+using aylo::ecs::EventReader;
+using aylo::ecs::FixedTimestep;
+using aylo::ecs::Phase;
+using aylo::ecs::Presence;
+using aylo::ecs::Query;
+using aylo::ecs::ReplicationMode;
+using aylo::ecs::ResMut;
+using aylo::ecs::RunMode;
+using aylo::ecs::TimePlugin;
+using aylo::replication::ReplicationPlugin;
+using aylo::replication::ReplicationSettings;
+using aylo::replication::client::ClientPlugin;
+using aylo::replication::client::ClientState;
+using aylo::replication::client::ConnectionStatus;
+using aylo::replication::client::ManifestStatus;
+using aylo::replication::component::NetworkId;
+using aylo::replication::component::Owner;
+using aylo::replication::component::PlayerInput;
+using aylo::replication::event::ClientConnected;
+using aylo::replication::input::InputKind;
+using aylo::replication::input::InputLayout;
+using aylo::replication::server::ServerPlugin;
+using aylo::replication::server::ServerState;
+using aylo::test::server::Position;
+using aylo::test::server::Secret;
 
 constexpr std::uint8_t kTickRate = 50;
 constexpr std::chrono::milliseconds kFrame{20};
@@ -108,16 +108,16 @@ void moveShips(Query<Position> positions) {
 }
 
 /// @brief Makes the `rtype.replication.localClient` call of @p app, as a script does.
-rtype::replication::client::LocalClient localClientOf(App& app) {
-    rtype::ecs::Calls& calls = app.getWorld().getCalls();
-    const rtype::ecs::CallInfo* info = calls.findByName(rtype::replication::client::kLocalClientCall);
+aylo::replication::client::LocalClient localClientOf(App& app) {
+    aylo::ecs::Calls& calls = app.getWorld().getCalls();
+    const aylo::ecs::CallInfo* info = calls.findByName(aylo::replication::client::kLocalClientCall);
     EXPECT_NE(info, nullptr);
     if (info == nullptr) {
         return {};
     }
-    std::array<std::byte, sizeof(rtype::replication::client::LocalClient)> result{};
+    std::array<std::byte, sizeof(aylo::replication::client::LocalClient)> result{};
     calls.invoke(app.getWorld(), info->id, std::span<const std::byte>{}, result);
-    rtype::replication::client::LocalClient local{};
+    aylo::replication::client::LocalClient local{};
     std::memcpy(&local, result.data(), sizeof(local));
     return local;
 }
@@ -261,7 +261,7 @@ TEST(ClientPlugin, GivesScriptsTheClientsIdOnceConnected) {
     Client client{server.address()};
     EXPECT_FALSE(localClientOf(client.app()).connected);
     ASSERT_TRUE(runUntil(server, client, [&] { return client.state().clientId().has_value(); }));
-    const rtype::replication::client::LocalClient local = localClientOf(client.app());
+    const aylo::replication::client::LocalClient local = localClientOf(client.app());
     EXPECT_TRUE(local.connected);
     EXPECT_EQ(local.client, client.state().clientId().value());
 }
@@ -271,7 +271,7 @@ TEST(ClientPlugin, SendsOneInputPerFrame) {
     Client client{server.address()};
     client.app()
         .addSystem(Phase::kPostUpdate, "game.pressFire", &pressFire)
-        .setSide(rtype::ecs::Side::kClient)
+        .setSide(aylo::ecs::Side::kClient)
         .before(std::string{ClientPlugin::kSendInputSystem});
     ASSERT_TRUE(runUntil(server, client, [&] { return server.state().clientCount() == 1; }));
     const network::ClientId id = client.state().clientId().value();

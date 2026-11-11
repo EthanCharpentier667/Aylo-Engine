@@ -1,15 +1,15 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** main
 */
 
 // Two animated sprites, from the two ways to describe an atlas:
-// - on the left, a sheet with no description (examples/assets/r-typesheet24.gif), cut in code by SpriteAtlas::grid(),
+// - on the left, a sheet with no description (examples/assets/spritesheet24.gif), cut in code by SpriteAtlas::grid(),
 // its
 //   animation added with addAnimation();
-// - on the right, a sheet described by a JSON file in Aseprite's format (examples/assets/r-typesheet26.json), which
+// - on the right, a sheet described by a JSON file in Aseprite's format (examples/assets/spritesheet26.json), which
 // names its
 //   frames and its animations (the "left" and "right" frame tags), loaded with AtlasAssets::load().
 // Each gets a SpriteAnimator; the sprite plugin, added by the program, plays it into its SpriteRenderer.
@@ -22,6 +22,12 @@
 #include <utility>
 #include <vector>
 
+#include "aylo/contract/renderer/drawing/Color.hpp"
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/app/MinimalPlugins.hpp"
+#include "aylo/ecs/command/Commands.hpp"
+#include "aylo/ecs/schedule/Phase.hpp"
+#include "aylo/ecs/system/ResourceParam.hpp"
 #include "core/asset/AssetId.hpp"
 #include "core/config/Settings.hpp"
 #include "platform/glfw/Registration.hpp"
@@ -39,37 +45,31 @@
 #include "plugins/transform/Transform.hpp"
 #include "plugins/transform/TransformPlugin.hpp"
 #include "render/vulkan/Registration.hpp"
-#include "rtype/contract/renderer/drawing/Color.hpp"
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/app/MinimalPlugins.hpp"
-#include "rtype/ecs/command/Commands.hpp"
-#include "rtype/ecs/schedule/Phase.hpp"
-#include "rtype/ecs/system/ResourceParam.hpp"
 
-using namespace rtype;
-using namespace rtype::contract::renderer;
-using namespace rtype::plugins::graphics;
-using namespace rtype::plugins::sprite;
-using rtype::core::asset::AssetId;
-using namespace rtype::plugins::sprite;
-using rtype::plugins::transform::Transform;
+using namespace aylo;
+using namespace aylo::contract::renderer;
+using namespace aylo::plugins::graphics;
+using namespace aylo::plugins::sprite;
+using aylo::core::asset::AssetId;
+using namespace aylo::plugins::sprite;
+using aylo::plugins::transform::Transform;
 
 namespace {
 constexpr float kWidth = 960.0F;
 constexpr float kHeight = 540.0F;
-constexpr rtype::contract::renderer::Color kClear{0.05F, 0.05F, 0.08F, 1.0F};
+constexpr aylo::contract::renderer::Color kClear{0.05F, 0.05F, 0.08F, 1.0F};
 constexpr glm::vec2 kScale{4.0F};  // The sheets are small: nearest filtering keeps their pixels sharp.
 
 // Startup: builds the two atlases and spawns a sprite playing each.
 void spawnSprites(ecs::ResMut<AtlasAssets> atlases, ecs::Commands& commands) {
     // A sheet with no description: 5 frames of 48x48, 17 pixels apart, the first at (9, 9).
     SpriteAtlas grid =
-        SpriteAtlas::grid("examples/assets/r-typesheet24.gif", {48.0F, 48.0F}, 5, {17.0F, 0.0F}, 0, {9.0F, 9.0F});
+        SpriteAtlas::grid("examples/assets/spritesheet24.gif", {48.0F, 48.0F}, 5, {17.0F, 0.0F}, 0, {9.0F, 9.0F});
     grid.addAnimation("fly", {0, 1, 2, 3, 4}, 0.1F);
     const AssetId fromGrid = atlases->add("example.grid", std::move(grid));
 
     // A sheet described by its JSON file: the frames, their durations and the "left" and "right" tags come from it.
-    const AssetId fromJson = atlases->load("examples/assets/r-typesheet26.json");
+    const AssetId fromJson = atlases->load("examples/assets/spritesheet26.json");
 
     commands.spawn()
         .add(Transform{.position = {kWidth * 0.3F, kHeight / 2.0F}, .scale = kScale})
@@ -96,17 +96,17 @@ core::config::Settings makeSettings() {
 int main() {
     try {
         auto registry = std::make_unique<BackendRegistry>();
-        rtype::platform::glfw::registerPlatform(registry->platforms);
+        aylo::platform::glfw::registerPlatform(registry->platforms);
         render::vulkan::registerRenderer(registry->renderers);
 
         ecs::App app;
         app.addPlugins(ecs::MinimalPlugins{})
-            .addPlugin(rtype::plugins::transform::TransformPlugin{})
-            .addPlugin(rtype::plugins::input::InputPlugin{})
+            .addPlugin(aylo::plugins::transform::TransformPlugin{})
+            .addPlugin(aylo::plugins::input::InputPlugin{})
             .addPlugin(GraphicsPlugin{std::move(registry), makeSettings()})
-            .addPlugin(rtype::plugins::shader::ShaderPlugin{})
-            .addPlugin(rtype::plugins::sprite::SpritePlugin{})
-            .addPlugin(rtype::plugins::sprite::SpriteDrawPlugin{});
+            .addPlugin(aylo::plugins::shader::ShaderPlugin{})
+            .addPlugin(aylo::plugins::sprite::SpritePlugin{})
+            .addPlugin(aylo::plugins::sprite::SpriteDrawPlugin{});
         app.insertResource(ClearColor{.value = kClear});
         app.addSystem(ecs::Phase::kStartup, "example.spawnSprites", &spawnSprites);
         return app.run();

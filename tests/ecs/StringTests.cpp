@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** StringTests
 */
@@ -11,12 +11,12 @@
 #include <string_view>
 #include <type_traits>
 
-#include "rtype/ecs/type/Field.hpp"
-#include "rtype/ecs/type/FieldTypeOf.hpp"
-#include "rtype/ecs/type/String.hpp"
+#include "aylo/ecs/type/Field.hpp"
+#include "aylo/ecs/type/FieldTypeOf.hpp"
+#include "aylo/ecs/type/String.hpp"
 
 namespace {
-using rtype::ecs::String;
+using aylo::ecs::String;
 }  // namespace
 
 TEST(String, StartsEmpty) {
@@ -84,7 +84,7 @@ TEST(String, ComparesByText) {
 
 TEST(String, IsPlainDataOfTheSizeOfItsField) {
     EXPECT_TRUE(std::is_trivially_copyable_v<String>);
-    EXPECT_EQ(sizeof(String), rtype::ecs::getFieldLayout(rtype::ecs::FieldType::kString).size);
-    EXPECT_EQ(alignof(String), rtype::ecs::getFieldLayout(rtype::ecs::FieldType::kString).alignment);
-    EXPECT_EQ(rtype::ecs::FieldTypeOf<String>::value, rtype::ecs::FieldType::kString);
+    EXPECT_EQ(sizeof(String), aylo::ecs::getFieldLayout(aylo::ecs::FieldType::kString).size);
+    EXPECT_EQ(alignof(String), aylo::ecs::getFieldLayout(aylo::ecs::FieldType::kString).alignment);
+    EXPECT_EQ(aylo::ecs::FieldTypeOf<String>::value, aylo::ecs::FieldType::kString);
 }

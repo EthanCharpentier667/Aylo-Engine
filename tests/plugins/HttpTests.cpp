@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** HttpTests
 */
@@ -15,6 +15,8 @@
 #include <vector>
 
 #include "LocalHttpServer.hpp"
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/event/EventCursor.hpp"
 #include "core/config/Settings.hpp"
 #include "core/config/exceptions/ConfigExceptions.hpp"
 #include "plugins/http/HttpCalls.hpp"
@@ -23,19 +25,17 @@
 #include "plugins/http/HttpPlugin.hpp"
 #include "plugins/http/HttpSettings.hpp"
 #include "plugins/http/exceptions/HttpException.hpp"
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/event/EventCursor.hpp"
 
 namespace {
-using rtype::core::config::Settings;
-using rtype::core::config::exceptions::SettingsException;
-using rtype::plugins::http::HttpClient;
-using rtype::plugins::http::HttpRequest;
-using rtype::plugins::http::HttpResult;
-using rtype::plugins::http::HttpSettings;
-using rtype::plugins::http::RequestId;
-using rtype::plugins::http::exceptions::HttpException;
-using rtype::test::plugins::LocalHttpServer;
+using aylo::core::config::Settings;
+using aylo::core::config::exceptions::SettingsException;
+using aylo::plugins::http::HttpClient;
+using aylo::plugins::http::HttpRequest;
+using aylo::plugins::http::HttpResult;
+using aylo::plugins::http::HttpSettings;
+using aylo::plugins::http::RequestId;
+using aylo::plugins::http::exceptions::HttpException;
+using aylo::test::plugins::LocalHttpServer;
 using namespace std::chrono_literals;
 
 /// @return Settings reaching the local server over plain HTTP.
@@ -352,19 +352,19 @@ TEST(HttpSettings, ReadsMaxQueued) {
 
 TEST(HttpPlugin, SendsAnHttpResponseForARequestOfItsCall) {
     const LocalHttpServer server{routes()};
-    rtype::ecs::App app;
-    app.addPlugin(rtype::plugins::http::HttpPlugin{localSettings()});
-    rtype::ecs::World& world = app.getWorld();
-    ASSERT_NE(world.getCalls().findByName(rtype::plugins::http::kRequestCall), nullptr);
-    ASSERT_NE(world.getCalls().findByName(rtype::plugins::http::kCancelCall), nullptr);
+    aylo::ecs::App app;
+    app.addPlugin(aylo::plugins::http::HttpPlugin{localSettings()});
+    aylo::ecs::World& world = app.getWorld();
+    ASSERT_NE(world.getCalls().findByName(aylo::plugins::http::kRequestCall), nullptr);
+    ASSERT_NE(world.getCalls().findByName(aylo::plugins::http::kCancelCall), nullptr);
 
     const RequestId id = world.getResources().getMut<HttpClient>()->send(HttpRequest{.url = server.url("/status/201")});
-    rtype::ecs::EventCursor cursor;
-    std::vector<rtype::plugins::http::HttpResponse> responses;
+    aylo::ecs::EventCursor cursor;
+    std::vector<aylo::plugins::http::HttpResponse> responses;
     const auto deadline = std::chrono::steady_clock::now() + 8s;
     while (responses.empty() && std::chrono::steady_clock::now() < deadline) {
         app.runFrame();
-        for (const auto& response : world.getEvents().read<rtype::plugins::http::HttpResponse>(cursor)) {
+        for (const auto& response : world.getEvents().read<aylo::plugins::http::HttpResponse>(cursor)) {
             responses.push_back(response);
         }
         std::this_thread::sleep_for(2ms);

@@ -48,7 +48,7 @@ component instead (see [Replication](20-replication.md)).
 | Field | generation | index |
 
 ```c++
-namespace rtype::ecs {
+namespace aylo::ecs {
 /// @brief Generational handle to an entity. Trivially copyable, 8 bytes.
 class Entity {
   public:
@@ -62,7 +62,7 @@ class Entity {
   private:
     std::uint64_t _bits;  ///< generation << 32 | index.
 };
-}  // namespace rtype::ecs
+}  // namespace aylo::ecs
 ```
 
 ### The allocator
@@ -104,7 +104,7 @@ scheduler, `reserve()` becomes atomic so several systems can reserve at once.
 
 | Type | Identifies | Scope | Safe over the network? |
 |---|---|---|---|
-| `rtype::ecs::Entity` | An entity | One world | No |
+| `aylo::ecs::Entity` | An entity | One world | No |
 | `NetworkId` (component) | A replicated entity | One game session | Yes |
 | Backend ids (`TextureId`) | A backend object | One renderer | No |
 | `AssetId` | An asset file | Everywhere (derived from its path) | Yes |

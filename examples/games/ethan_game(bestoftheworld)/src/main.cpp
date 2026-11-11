@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** main
 */
@@ -21,6 +21,19 @@
 #include <utility>
 
 #include "audio/miniaudio/Registration.hpp"
+#include "aylo/contract/audiodevice/AudioTypes.hpp"
+#include "aylo/contract/renderer/drawing/Color.hpp"
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/app/AppExit.hpp"
+#include "aylo/ecs/command/Commands.hpp"
+#include "aylo/ecs/component/ComponentTraits.hpp"
+#include "aylo/ecs/query/Query.hpp"
+#include "aylo/ecs/resource/ResourceTraits.hpp"
+#include "aylo/ecs/schedule/Phase.hpp"
+#include "aylo/ecs/system/EventWriter.hpp"
+#include "aylo/ecs/system/ResourceParam.hpp"
+#include "aylo/ecs/system/Side.hpp"
+#include "aylo/engine/Engine.hpp"
 #include "core/asset/AssetId.hpp"
 #include "core/config/Settings.hpp"
 #include "platform/glfw/Registration.hpp"
@@ -42,21 +55,8 @@
 #include "plugins/tilemap/TilemapPlugin.hpp"
 #include "plugins/transform/Transform.hpp"
 #include "render/vulkan/Registration.hpp"
-#include "rtype/contract/audiodevice/AudioTypes.hpp"
-#include "rtype/contract/renderer/drawing/Color.hpp"
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/app/AppExit.hpp"
-#include "rtype/ecs/command/Commands.hpp"
-#include "rtype/ecs/component/ComponentTraits.hpp"
-#include "rtype/ecs/query/Query.hpp"
-#include "rtype/ecs/resource/ResourceTraits.hpp"
-#include "rtype/ecs/schedule/Phase.hpp"
-#include "rtype/ecs/system/EventWriter.hpp"
-#include "rtype/ecs/system/ResourceParam.hpp"
-#include "rtype/ecs/system/Side.hpp"
-#include "rtype/engine/Engine.hpp"
 
-using namespace rtype;
+using namespace aylo;
 
 namespace {
 constexpr std::string_view kGame = "examples/games/ethan_game(bestoftheworld)/game";
@@ -77,7 +77,7 @@ struct Splash {
     float zoom{0.0F};      // Share of the full size, 0 to 1.
     bool finished{false};  // The zoom is over.
 };
-RTYPE_ECS_COMPONENT(Splash, "game.Splash", pace, elapsed, zoom, finished);
+AYLO_ECS_COMPONENT(Splash, "game.Splash", pace, elapsed, zoom, finished);
 
 // The sound the splash screen ends with.
 struct Jingle {
@@ -85,7 +85,7 @@ struct Jingle {
     contract::audiodevice::VoiceId voice;
     bool started{false};
 };
-RTYPE_ECS_RESOURCE(Jingle, "game.Jingle");
+AYLO_ECS_RESOURCE(Jingle, "game.Jingle");
 
 namespace {
 // Reports the worst news and leaves at once: no shutdown, so the window goes with the process, the instant it is said.

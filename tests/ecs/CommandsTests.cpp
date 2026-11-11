@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** CommandsTests
 */
@@ -13,18 +13,18 @@
 #include <string>
 #include <utility>
 
-#include "rtype/ecs/command/Commands.hpp"
-#include "rtype/ecs/component/ComponentInfo.hpp"
-#include "rtype/ecs/component/ComponentTraits.hpp"
-#include "rtype/ecs/entity/Entity.hpp"
-#include "rtype/ecs/world/World.hpp"
+#include "aylo/ecs/command/Commands.hpp"
+#include "aylo/ecs/component/ComponentInfo.hpp"
+#include "aylo/ecs/component/ComponentTraits.hpp"
+#include "aylo/ecs/entity/Entity.hpp"
+#include "aylo/ecs/world/World.hpp"
 
 namespace {
 /// @brief Number of Tracked values alive, to check that every value is destroyed exactly once.
 int liveTracked = 0;
 }  // namespace
 
-namespace rtype::test::commands {
+namespace aylo::test::commands {
 /// @brief Counts its own instances in liveTracked.
 struct Counter {
     Counter() noexcept { ++liveTracked; }
@@ -39,33 +39,33 @@ struct Position {
     float x;
     float y;
 };
-RTYPE_ECS_COMPONENT(Position, "test.commands.Position", x, y);
+AYLO_ECS_COMPONENT(Position, "test.commands.Position", x, y);
 
 struct Health {
     std::int32_t value;
 };
-RTYPE_ECS_COMPONENT(Health, "test.commands.Health", value);
+AYLO_ECS_COMPONENT(Health, "test.commands.Health", value);
 
 struct Dead {};
-RTYPE_ECS_COMPONENT(Dead, "test.commands.Dead");
+AYLO_ECS_COMPONENT(Dead, "test.commands.Dead");
 
 /// @brief Owns memory, and counts its instances through its Counter.
 struct Tracked {
     std::string name;
     Counter counter;
 };
-RTYPE_ECS_COMPONENT(Tracked, "test.commands.Tracked");
-}  // namespace rtype::test::commands
+AYLO_ECS_COMPONENT(Tracked, "test.commands.Tracked");
+}  // namespace aylo::test::commands
 
 namespace {
-using rtype::ecs::Commands;
-using rtype::ecs::ComponentId;
-using rtype::ecs::Entity;
-using rtype::ecs::World;
-using rtype::test::commands::Dead;
-using rtype::test::commands::Health;
-using rtype::test::commands::Position;
-using rtype::test::commands::Tracked;
+using aylo::ecs::Commands;
+using aylo::ecs::ComponentId;
+using aylo::ecs::Entity;
+using aylo::ecs::World;
+using aylo::test::commands::Dead;
+using aylo::test::commands::Health;
+using aylo::test::commands::Position;
+using aylo::test::commands::Tracked;
 
 /// @return The bytes of a value, as the Luau bridge passes them.
 template <typename T>
@@ -169,7 +169,7 @@ TEST(Commands, RegistersComponentsAtTheFlushOnly) {
 TEST(Commands, KeepsTheOptionsOfAnAlreadyRegisteredComponent) {
     World world;
     world.getComponents().registerType<Position>(
-        rtype::ecs::ComponentOptions{.replication = rtype::ecs::ReplicationMode::kEveryChange});
+        aylo::ecs::ComponentOptions{.replication = aylo::ecs::ReplicationMode::kEveryChange});
     const Entity entity = world.spawn();
     Commands commands{world};
     commands.add(entity, Position{});

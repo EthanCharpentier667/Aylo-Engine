@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** SimulationTests
 */
@@ -15,12 +15,12 @@
 #include <utility>
 #include <vector>
 
-#include "rtype/network/RandomSource.hpp"
-#include "rtype/network/Types.hpp"
-#include "rtype/network/simulation/LinkSimulator.hpp"
+#include "aylo/network/RandomSource.hpp"
+#include "aylo/network/Types.hpp"
+#include "aylo/network/simulation/LinkSimulator.hpp"
 
-namespace network = rtype::network;
-namespace simulation = rtype::network::simulation;
+namespace network = aylo::network;
+namespace simulation = aylo::network::simulation;
 using std::chrono::milliseconds;
 
 namespace {

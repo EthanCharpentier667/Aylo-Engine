@@ -3,8 +3,8 @@
 Instructions for AI agents (Claude Code, Codex) working in this repository. `CLAUDE.md` is a symlink to this file, and
 each folder with its own instructions has the same pair.
 
-**Before working in a folder, read the `AGENTS.md` files on the path from the root to it** (for `src/rtype/ecs/`: this
-file, `src/AGENTS.md`, `src/rtype/ecs/AGENTS.md`). Codex loads only the files above its working directory, not those of
+**Before working in a folder, read the `AGENTS.md` files on the path from the root to it** (for `src/aylo/ecs/`: this
+file, `src/AGENTS.md`, `src/aylo/ecs/AGENTS.md`). Codex loads only the files above its working directory, not those of
 the files it opens, so do it by hand.
 
 ## What this is
@@ -26,20 +26,20 @@ One line per module; the detail of each (classes, files) is in `docs/Modules.md`
 
 | Folder | Target | Responsibility |
 |---|---|---|
-| `src/rtype/core/` | `core` (static) | What several modules share and none owns: asset ids, hashes, settings, system paths |
-| `src/rtype/ecs/` | `ecs` | Entity Component System, the app and its plugin mechanism (`docs/ecs/design.md`) |
-| `src/rtype/network/` | `network` | The transport: bytes between machines. Knows no ECS (`docs/network/design.md`) |
-| `src/rtype/replication/` | `replication` | World to messages and back: the only code knowing both ECS and network |
-| `src/rtype/luau/` | `luau` | Luau runtime wrapper, free of the engine (`docs/luau/`) |
-| `src/rtype/scripting/` | `scripting` | The bridge turning what scripts declare into ECS data (`docs/scripting/plan.md`) |
-| `src/rtype/engine/` | `engine` | Runs a game folder: settings, loads the plugin and backend libraries, scripting, replication, reloads (`docs/engine/design.md`) |
-| `src/rtype/contract/` | `contract-*` | One interface per kind of backend, with its vocabulary (`docs/Backend.md`) |
-| `src/rtype/platform/`, `render/`, `audio/` | `platform-*`, `render-*`, `audio-*` | Backends fulfilling a contract; each wraps one third-party library |
-| `src/rtype/interop/` | `interop-*` | What a renderer needs from a platform, per graphics API |
-| `src/rtype/plugins/` | `plugin-*` | The engine features as ECS plugins, one shared library each, loaded by the engine: transform, input, graphics, sprite, physics... (`docs/Plugins.md`) |
-| `src/rtype/editor/` | `editor` | The editor: a static library (and the `aylo-editor` program, always a debug run) that edits a game's scenes (capsules) in docked ImGui panels and plays the game inside them. ImGui is private to it (`docs/Editor.md`) |
-| `src/rtype/tools/` | `aylo-sign` | Command line tools; `aylo-sign` makes the keys and signatures of the game plugins (`docs/Plugins.md#signatures`) |
-| `src/rtype/runtime/` | `aylo-runtime` | The generic executable that ships a game, a client, or with `--server` the server: it links no plugin and no backend, the engine loads them |
+| `src/aylo/core/` | `core` (static) | What several modules share and none owns: asset ids, hashes, settings, system paths |
+| `src/aylo/ecs/` | `ecs` | Entity Component System, the app and its plugin mechanism (`docs/ecs/design.md`) |
+| `src/aylo/network/` | `network` | The transport: bytes between machines. Knows no ECS (`docs/network/design.md`) |
+| `src/aylo/replication/` | `replication` | World to messages and back: the only code knowing both ECS and network |
+| `src/aylo/luau/` | `luau` | Luau runtime wrapper, free of the engine (`docs/luau/`) |
+| `src/aylo/scripting/` | `scripting` | The bridge turning what scripts declare into ECS data (`docs/scripting/plan.md`) |
+| `src/aylo/engine/` | `engine` | Runs a game folder: settings, loads the plugin and backend libraries, scripting, replication, reloads (`docs/engine/design.md`) |
+| `src/aylo/contract/` | `contract-*` | One interface per kind of backend, with its vocabulary (`docs/Backend.md`) |
+| `src/aylo/platform/`, `render/`, `audio/` | `platform-*`, `render-*`, `audio-*` | Backends fulfilling a contract; each wraps one third-party library |
+| `src/aylo/interop/` | `interop-*` | What a renderer needs from a platform, per graphics API |
+| `src/aylo/plugins/` | `plugin-*` | The engine features as ECS plugins, one shared library each, loaded by the engine: transform, input, graphics, sprite, physics... (`docs/Plugins.md`) |
+| `src/aylo/editor/` | `editor` | The editor: a static library (and the `aylo-editor` program, always a debug run) that edits a game's scenes (capsules) in docked ImGui panels and plays the game inside them. ImGui is private to it (`docs/Editor.md`) |
+| `src/aylo/tools/` | `aylo-sign` | Command line tools; `aylo-sign` makes the keys and signatures of the game plugins (`docs/Plugins.md#signatures`) |
+| `src/aylo/runtime/` | `aylo-runtime` | The generic executable that ships a game, a client, or with `--server` the server: it links no plugin and no backend, the engine loads them |
 | `examples/` | per example | Standalone examples; `examples/games/` holds the games |
 | `tests/<module>/` | `<module>-tests` | GoogleTest, one folder per module |
 | `docs/` | | Design docs for engine developers |
@@ -99,7 +99,7 @@ scripting, replication  <-  engine  <-  executables, examples
   executable, `<game>/plugins/`; `lib/` holds the rest), as `project.luau` names them. A program can
   still add plugins in code through `EngineConfig::addPlugins`.
 - The executables link no plugin and no backend; the build only makes them first (`plugin-libraries`,
-  `backend-libraries`). A library exports one entry point (`RTYPE_PLUGIN_LIBRARY`, or `RTYPE_LIBRARY` for a backend,
+  `backend-libraries`). A library exports one entry point (`AYLO_PLUGIN_LIBRARY`, or `AYLO_LIBRARY` for a backend,
   which knows no ECS): see `docs/Plugins.md#loading`.
 
 ## Commands
@@ -108,14 +108,14 @@ scripting, replication  <-  engine  <-  executables, examples
 
 - Configure: `xmake f -y` (`-m release` for release). Build all: `xmake build -y`. One target: `xmake build engine`.
 - Run (the build copies `aylo-runtime` to the repository root): `./aylo-runtime` (client) and `./aylo-runtime --server`,
-  on `game/` or the folder given as first argument (`<dir>`); other `--name value` flags reach `project.luau` as `engine.args`. `./r-type_server` and
-  `./r-type_client` at the root are `sh` wrappers (`.bat` ones on Windows) that start it with the right side (the names
+  on `game/` or the folder given as first argument (`<dir>`); other `--name value` flags reach `project.luau` as `engine.args`. `./aylo-server` and
+  `./aylo-client` at the root are `sh` wrappers (`.bat` ones on Windows) that start it with the right side (the names
   the subject asks for).
 - The editor: `./aylo-editor <dir>` (both sides in one world, the scenes edited in panels:
   `docs/Editor.md`).
-- Duel example: `xmake f -y --rtype_duel=y`, then `xmake run rtype_duel server [--port <port>]` and
-  `xmake run rtype_duel client [--host <host>] [--port <port>]` (or the generic executables with
-  `examples/games/rtype_duel/game`).
+- Duel example: `xmake f -y --aylo_duel=y`, then `xmake run aylo_duel server [--port <port>]` and
+  `xmake run aylo_duel client [--host <host>] [--port <port>]` (or the generic executables with
+  `examples/games/aylo_duel/game`).
 - Examples are opt-in: `xmake f --AllExamples=y`, or one by folder name (`--BasicGLFWWindow=y`, `--EcsTypedQueries=y`).
   `--AllVulkanExamples=y`, `--AllLuauExamples=y`, `--AllEcsExamples=y` currently enable every example too.
 - Tests (GoogleTest, opt-in): `xmake f -y --Tests=y`, `xmake build -y`, `xmake test -v` (`-v` shows which test failed).

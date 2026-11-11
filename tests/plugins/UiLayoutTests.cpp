@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** UiLayoutTests
 */
@@ -12,25 +12,25 @@
 #include <string>
 #include <vector>
 
+#include "aylo/ecs/component/ComponentTraits.hpp"
 #include "plugins/ui/UiNode.hpp"
 #include "plugins/ui/detail/UiLayout.hpp"
 #include "plugins/ui/detail/UiNavigation.hpp"
 #include "plugins/ui/detail/UiText.hpp"
-#include "rtype/ecs/component/ComponentTraits.hpp"
 
-using rtype::plugins::ui::UiAlign;
-using rtype::plugins::ui::UiDirection;
-using rtype::plugins::ui::UiDisplay;
-using rtype::plugins::ui::UiJustify;
-using rtype::plugins::ui::UiLength;
-using rtype::plugins::ui::UiNode;
-using rtype::plugins::ui::UiOverflow;
-using rtype::plugins::ui::UiPosition;
-using rtype::plugins::ui::detail::layoutNodes;
-using rtype::plugins::ui::detail::UiLaidOutNode;
-using rtype::plugins::ui::detail::UiLayoutNode;
+using aylo::plugins::ui::UiAlign;
+using aylo::plugins::ui::UiDirection;
+using aylo::plugins::ui::UiDisplay;
+using aylo::plugins::ui::UiJustify;
+using aylo::plugins::ui::UiLength;
+using aylo::plugins::ui::UiNode;
+using aylo::plugins::ui::UiOverflow;
+using aylo::plugins::ui::UiPosition;
+using aylo::plugins::ui::detail::layoutNodes;
+using aylo::plugins::ui::detail::UiLaidOutNode;
+using aylo::plugins::ui::detail::UiLayoutNode;
 
-static_assert(rtype::ecs::Component<UiNode>);
+static_assert(aylo::ecs::Component<UiNode>);
 
 namespace {
 constexpr glm::vec2 kView{800.0F, 600.0F};
@@ -166,24 +166,24 @@ TEST(UiLayout, ScrollMovesTheChildren) {
 
 TEST(UiNavigation, PrefersTheNextItemOfTheColumn) {
     const std::vector<glm::vec2> centers{{0.0F, 0.0F}, {0.0F, 100.0F}, {60.0F, 50.0F}};
-    EXPECT_EQ(rtype::plugins::ui::detail::findNext(centers, {0.0F, 0.0F}, {0.0F, 1.0F}), 1U);
+    EXPECT_EQ(aylo::plugins::ui::detail::findNext(centers, {0.0F, 0.0F}, {0.0F, 1.0F}), 1U);
 }
 
 TEST(UiNavigation, FindsNothingPastTheEdge) {
     const std::vector<glm::vec2> centers{{0.0F, 0.0F}, {0.0F, 100.0F}};
-    EXPECT_FALSE(rtype::plugins::ui::detail::findNext(centers, {0.0F, 100.0F}, {0.0F, 1.0F}));
+    EXPECT_FALSE(aylo::plugins::ui::detail::findNext(centers, {0.0F, 100.0F}, {0.0F, 1.0F}));
 }
 
 TEST(UiText, EncodesUtf8) {
-    EXPECT_EQ(rtype::plugins::ui::detail::encodeUtf8(U'a'), "a");
-    EXPECT_EQ(rtype::plugins::ui::detail::encodeUtf8(U'\u00e9'), "\xC3\xA9");
-    EXPECT_EQ(rtype::plugins::ui::detail::encodeUtf8(U'\U0001F600'), "\xF0\x9F\x98\x80");
+    EXPECT_EQ(aylo::plugins::ui::detail::encodeUtf8(U'a'), "a");
+    EXPECT_EQ(aylo::plugins::ui::detail::encodeUtf8(U'\u00e9'), "\xC3\xA9");
+    EXPECT_EQ(aylo::plugins::ui::detail::encodeUtf8(U'\U0001F600'), "\xF0\x9F\x98\x80");
 }
 
 TEST(UiText, MovesByWholeCharacters) {
     const std::string text = "a\xC3\xA9";
-    EXPECT_EQ(rtype::plugins::ui::detail::previousCharacter(text, 3), 1U);
-    EXPECT_EQ(rtype::plugins::ui::detail::nextCharacter(text, 1), 3U);
-    EXPECT_EQ(rtype::plugins::ui::detail::previousCharacter(text, 0), 0U);
-    EXPECT_EQ(rtype::plugins::ui::detail::nextCharacter(text, 3), 3U);
+    EXPECT_EQ(aylo::plugins::ui::detail::previousCharacter(text, 3), 1U);
+    EXPECT_EQ(aylo::plugins::ui::detail::nextCharacter(text, 1), 3U);
+    EXPECT_EQ(aylo::plugins::ui::detail::previousCharacter(text, 0), 0U);
+    EXPECT_EQ(aylo::plugins::ui::detail::nextCharacter(text, 3), 3U);
 }

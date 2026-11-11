@@ -6,7 +6,7 @@ A pool stores **every instance of one component type**, packed together. It is t
 of the ECS: a [sparse array](03-sparse-array.md) to find an entity, and dense arrays holding the
 entities, their component bytes and their change ticks, all in the same order.
 
-In code it is `rtype::ecs::storage::SparseSetStorage`, built on a `ByteColumn` (a growable, aligned
+In code it is `aylo::ecs::storage::SparseSetStorage`, built on a `ByteColumn` (a growable, aligned
 array of raw bytes).
 
 ## Why we need it
@@ -64,9 +64,9 @@ flowchart LR
 ```
 
 ```c++
-namespace rtype::ecs::storage {
+namespace aylo::ecs::storage {
 /// @brief Type-erased sparse-set pool for one component.
-class RTYPE_ECS_API SparseSetStorage {
+class AYLO_ECS_API SparseSetStorage {
   public:
     explicit SparseSetStorage(const ComponentInfo& info);
 
@@ -85,7 +85,7 @@ class RTYPE_ECS_API SparseSetStorage {
     std::vector<Tick> _added;    ///< When each component was added.
     std::vector<Tick> _changed;  ///< When each component was last written.
 };
-}  // namespace rtype::ecs::storage
+}  // namespace aylo::ecs::storage
 ```
 
 ### The byte column

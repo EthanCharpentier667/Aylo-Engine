@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** TimePluginTests
 */
@@ -9,31 +9,31 @@
 
 #include <chrono>
 
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/resource/ResourceTraits.hpp"
-#include "rtype/ecs/schedule/Phase.hpp"
-#include "rtype/ecs/system/ResourceParam.hpp"
-#include "rtype/ecs/time/FixedTimestep.hpp"
-#include "rtype/ecs/time/Time.hpp"
-#include "rtype/ecs/time/TimeClock.hpp"
-#include "rtype/ecs/time/TimePlugin.hpp"
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/resource/ResourceTraits.hpp"
+#include "aylo/ecs/schedule/Phase.hpp"
+#include "aylo/ecs/system/ResourceParam.hpp"
+#include "aylo/ecs/time/FixedTimestep.hpp"
+#include "aylo/ecs/time/Time.hpp"
+#include "aylo/ecs/time/TimeClock.hpp"
+#include "aylo/ecs/time/TimePlugin.hpp"
 
-namespace rtype::test::time_plugin {
+namespace aylo::test::time_plugin {
 struct FixedRuns {
     int count;
 };
-RTYPE_ECS_RESOURCE(FixedRuns, "test.timePlugin.FixedRuns", count);
-}  // namespace rtype::test::time_plugin
+AYLO_ECS_RESOURCE(FixedRuns, "test.timePlugin.FixedRuns", count);
+}  // namespace aylo::test::time_plugin
 
 namespace {
-using rtype::ecs::App;
-using rtype::ecs::FixedTimestep;
-using rtype::ecs::Phase;
-using rtype::ecs::ResMut;
-using rtype::ecs::Time;
-using rtype::ecs::TimeClock;
-using rtype::ecs::TimePlugin;
-using rtype::test::time_plugin::FixedRuns;
+using aylo::ecs::App;
+using aylo::ecs::FixedTimestep;
+using aylo::ecs::Phase;
+using aylo::ecs::ResMut;
+using aylo::ecs::Time;
+using aylo::ecs::TimeClock;
+using aylo::ecs::TimePlugin;
+using aylo::test::time_plugin::FixedRuns;
 using std::chrono::milliseconds;
 
 void countFixed(ResMut<FixedRuns> runs) { ++runs->count; }

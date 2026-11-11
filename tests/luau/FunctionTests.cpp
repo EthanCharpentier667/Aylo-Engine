@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** FunctionTests
 */
@@ -16,47 +16,47 @@
 #include <utility>
 #include <vector>
 
-#include "rtype/luau/CallContext.hpp"
-#include "rtype/luau/ErrorKind.hpp"
-#include "rtype/luau/Exceptions.hpp"
-#include "rtype/luau/Function.hpp"
-#include "rtype/luau/Ref.hpp"
-#include "rtype/luau/Runtime.hpp"
-#include "rtype/luau/RuntimeConfig.hpp"
-#include "rtype/luau/Table.hpp"
-#include "rtype/luau/Value.hpp"
-#include "rtype/luau/ValuePack.hpp"
-#include "rtype/luau/detail/RawState.hpp"
+#include "aylo/luau/CallContext.hpp"
+#include "aylo/luau/ErrorKind.hpp"
+#include "aylo/luau/Exceptions.hpp"
+#include "aylo/luau/Function.hpp"
+#include "aylo/luau/Ref.hpp"
+#include "aylo/luau/Runtime.hpp"
+#include "aylo/luau/RuntimeConfig.hpp"
+#include "aylo/luau/Table.hpp"
+#include "aylo/luau/Value.hpp"
+#include "aylo/luau/ValuePack.hpp"
+#include "aylo/luau/detail/RawState.hpp"
 
 namespace {
-using CallContext = rtype::luau::CallContext;
-using Function = rtype::luau::Function;
-using Value = rtype::luau::Value;
-using ValuePack = rtype::luau::ValuePack;
+using CallContext = aylo::luau::CallContext;
+using Function = aylo::luau::Function;
+using Value = aylo::luau::Value;
+using ValuePack = aylo::luau::ValuePack;
 
 /// @brief More arguments than a Lua stack can hold (Luau caps it at 8000 slots).
 constexpr std::size_t kTooManyArgs = 10000;
 
 /// @brief Creates a runtime with the standard libraries, failing the test if it cannot be created.
-rtype::luau::Runtime makeRuntime() {
-    auto runtime = rtype::luau::Runtime::create({
-        .libs = rtype::luau::RuntimeConfig::Libs::kStandard,
-        .optimizationLevel = rtype::luau::RuntimeConfig::OptimizationLevel::kStandard,
+aylo::luau::Runtime makeRuntime() {
+    auto runtime = aylo::luau::Runtime::create({
+        .libs = aylo::luau::RuntimeConfig::Libs::kStandard,
+        .optimizationLevel = aylo::luau::RuntimeConfig::OptimizationLevel::kStandard,
     });
     EXPECT_TRUE(runtime);
     return std::move(*runtime);
 }
 
 /// @brief Wraps the chunk of a Luau source in a Function. The chunk receives the call arguments as `...`.
-Function makeFunction(const rtype::luau::Runtime& runtime, const std::string& source) {
+Function makeFunction(const aylo::luau::Runtime& runtime, const std::string& source) {
     const auto script = runtime.load("function", source);
     EXPECT_TRUE(script);
-    script->closure().push(rtype::luau::detail::rawState(runtime));
-    return Function::fromRef(rtype::luau::Ref::pop(rtype::luau::detail::rawState(runtime)), "function");
+    script->closure().push(aylo::luau::detail::rawState(runtime));
+    return Function::fromRef(aylo::luau::Ref::pop(aylo::luau::detail::rawState(runtime)), "function");
 }
 
 /// @brief Creates a native Function and stores its closure in the global `native`.
-Function makeNative(const rtype::luau::Runtime& runtime) {
+Function makeNative(const aylo::luau::Runtime& runtime) {
     Function native = Function::create(runtime, "native");
     const auto result = runtime.globals().set("native", Value{native.ref()});
     EXPECT_TRUE(result);
@@ -66,12 +66,12 @@ Function makeNative(const rtype::luau::Runtime& runtime) {
 /// @brief Builds arguments whose last one cannot be pushed, after @p validArgs pushable ones.
 ///
 /// The last one is a table of @p foreign, which no other runtime can push; @p foreign must outlive the arguments.
-ValuePack makeUnpushableArgs(const rtype::luau::Runtime& foreign, const std::size_t validArgs) {
+ValuePack makeUnpushableArgs(const aylo::luau::Runtime& foreign, const std::size_t validArgs) {
     ValuePack args{};
     for (std::size_t i = 0; i < validArgs; ++i) {
         args.add({0.0});
     }
-    args.add({rtype::luau::Table::create(foreign).value()});
+    args.add({aylo::luau::Table::create(foreign).value()});
     return args;
 }
 
@@ -145,7 +145,7 @@ TEST(Function, CallFailsWhenFunctionFails) {
     const auto result = function.call(args);
 
     ASSERT_FALSE(result);
-    EXPECT_EQ(result.error().kind(), rtype::luau::ErrorKind::kRuntime);
+    EXPECT_EQ(result.error().kind(), aylo::luau::ErrorKind::kRuntime);
 }
 
 TEST(Function, CallFailsWithTooManyArguments) {
@@ -159,7 +159,7 @@ TEST(Function, CallFailsWithTooManyArguments) {
     const auto result = function.call(args);
 
     ASSERT_FALSE(result);
-    EXPECT_EQ(result.error().kind(), rtype::luau::ErrorKind::kStackOverflow);
+    EXPECT_EQ(result.error().kind(), aylo::luau::ErrorKind::kStackOverflow);
     EXPECT_EQ(result.error().message(), "Lua stack overflow");
 }
 
@@ -171,7 +171,7 @@ TEST(Function, CallFailsForTableArgument) {
     const auto result = function.call(makeUnpushableArgs(foreign, 0));
 
     ASSERT_FALSE(result);
-    EXPECT_EQ(result.error().kind(), rtype::luau::ErrorKind::kRuntime);
+    EXPECT_EQ(result.error().kind(), aylo::luau::ErrorKind::kRuntime);
     EXPECT_EQ(result.error().message(), kForeignTableMessage);
 }
 
@@ -234,7 +234,7 @@ TEST(Function, CallFailsForUnreadableReturnValue) {
     const auto result = function.call();
 
     ASSERT_FALSE(result);
-    EXPECT_EQ(result.error().kind(), rtype::luau::ErrorKind::kTypeMismatch);
+    EXPECT_EQ(result.error().kind(), aylo::luau::ErrorKind::kTypeMismatch);
 }
 
 TEST(Function, UnreadableReturnValueDoesNotLeaveValuesOnStack) {
@@ -251,7 +251,7 @@ TEST(Function, UnreadableReturnValueDoesNotLeaveValuesOnStack) {
     for (int i = 0; i < kCalls; ++i) {
         const auto result = function.call();
         ASSERT_FALSE(result) << "call " << i;
-        ASSERT_EQ(result.error().kind(), rtype::luau::ErrorKind::kTypeMismatch) << "call " << i;
+        ASSERT_EQ(result.error().kind(), aylo::luau::ErrorKind::kTypeMismatch) << "call " << i;
     }
 }
 
@@ -371,7 +371,7 @@ TEST(Function, NativeRaisesErrorForUnpushableValue) {
     Function native = makeNative(runtime);
     native.setHandler([&foreign](const CallContext&) -> ValuePack {
         ValuePack result{};
-        result.add({rtype::luau::Table::create(foreign).value()});
+        result.add({aylo::luau::Table::create(foreign).value()});
         return result;
     });
     const Function function = makeFunction(runtime, R"(
@@ -388,7 +388,7 @@ TEST(Function, NativeRaisesErrorForUnpushableValue) {
 TEST(Function, NativeRaisesErrorWhenHandlerThrowsModuleException) {
     const auto runtime = makeRuntime();
     Function native = makeNative(runtime);
-    native.setHandler([](const CallContext&) -> ValuePack { throw rtype::luau::exceptions::InvalidOperation{"boom"}; });
+    native.setHandler([](const CallContext&) -> ValuePack { throw aylo::luau::exceptions::InvalidOperation{"boom"}; });
     const Function function = makeFunction(runtime, R"(
         local ok, err = pcall(native)
         assert(not ok)
@@ -409,7 +409,7 @@ TEST(Function, NativeRaisesErrorWhenHandlerThrowsStdException) {
     const auto result = function.call();
 
     ASSERT_FALSE(result);
-    EXPECT_EQ(result.error().kind(), rtype::luau::ErrorKind::kRuntime);
+    EXPECT_EQ(result.error().kind(), aylo::luau::ErrorKind::kRuntime);
     EXPECT_EQ(result.error().message(), "oops");
 }
 
@@ -422,7 +422,7 @@ TEST(Function, NativeRaisesErrorWhenHandlerThrowsNonStdException) {
     const auto result = function.call();
 
     ASSERT_FALSE(result);
-    EXPECT_EQ(result.error().kind(), rtype::luau::ErrorKind::kRuntime);
+    EXPECT_EQ(result.error().kind(), aylo::luau::ErrorKind::kRuntime);
     EXPECT_NE(result.error().message().find("unknown exception"), std::string::npos);
 }
 
@@ -472,7 +472,7 @@ TEST(Function, NativeCallsDoNotLeaveValuesOnStack) {
 }
 
 /// @brief Runs a chunk in which the global `native` was bound with `bind`, failing the test if the chunk fails.
-void expectChunkSucceeds(const rtype::luau::Runtime& runtime, const std::string& source) {
+void expectChunkSucceeds(const aylo::luau::Runtime& runtime, const std::string& source) {
     const auto result = makeFunction(runtime, source).call();
     EXPECT_TRUE(result) << result.error().message();
 }
@@ -503,7 +503,7 @@ TEST(FunctionBind, ReadsVectorTableAndNilArguments) {
     Value::Vector vector{};
     bool tableRead = false;
     bool nilRead = false;
-    native.bind([&](const Value::Vector& v, const rtype::luau::Table& t, const Value::Nil&) {
+    native.bind([&](const Value::Vector& v, const aylo::luau::Table& t, const Value::Nil&) {
         vector = v;
         tableRead = t.size().value_or(1) == 0;
         nilRead = true;

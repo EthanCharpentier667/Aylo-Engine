@@ -69,19 +69,19 @@ the world: a world is pure data plus the operations on it, which keeps it easy t
 ### Typed and type-erased
 
 ```c++
-rtype::ecs::World world;
+aylo::ecs::World world;
 
-rtype::ecs::Components& components = world.getComponents();
+aylo::ecs::Components& components = world.getComponents();
 
 // Typed
-const rtype::ecs::Entity ship = world.spawn();
+const aylo::ecs::Entity ship = world.spawn();
 components.add(ship, Position{.x = 10.F, .y = 20.F});
 if (const Position* position = components.get<Position>(ship); position != nullptr) {
     // ...
 }
 
 // Type-erased (what the Luau bridge and the replication plugin use)
-const std::optional<rtype::ecs::ComponentId> id = components.find("rtype.Position");
+const std::optional<aylo::ecs::ComponentId> id = components.find("rtype.Position");
 const bool added = components.add(ship, *id, bytes);          // false if the entity is dead, the id unknown or the size wrong
 std::span<const std::byte> raw = components.get(ship, *id);  // empty if absent
 ```

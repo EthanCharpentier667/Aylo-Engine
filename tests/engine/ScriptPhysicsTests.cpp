@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ScriptPhysicsTests
 */
@@ -13,24 +13,24 @@
 #include <utility>
 
 #include "ScriptProbe.hpp"
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/app/PluginEntry.hpp"
+#include "aylo/ecs/app/PluginRegistry.hpp"
+#include "aylo/ecs/schedule/RunMode.hpp"
+#include "aylo/ecs/time/FixedTimestep.hpp"
+#include "aylo/ecs/time/TimePlugin.hpp"
+#include "aylo/engine/Engine.hpp"
+#include "aylo/engine/plugin/PluginLoader.hpp"
+#include "aylo/replication/ReplicationPlugin.hpp"
+#include "aylo/replication/event/ClientConnected.hpp"
+#include "aylo/replication/input/InputKind.hpp"
+#include "aylo/replication/input/InputLayout.hpp"
+#include "aylo/scripting/ScriptHost.hpp"
 #include "core/library/LibraryEntry.hpp"
 #include "core/system/ExecutablePath.hpp"
 #include "plugins/physics/PhysicsPlugin.hpp"
 #include "plugins/physics/PhysicsSettings.hpp"
 #include "plugins/transform/TransformPlugin.hpp"
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/app/PluginEntry.hpp"
-#include "rtype/ecs/app/PluginRegistry.hpp"
-#include "rtype/ecs/schedule/RunMode.hpp"
-#include "rtype/ecs/time/FixedTimestep.hpp"
-#include "rtype/ecs/time/TimePlugin.hpp"
-#include "rtype/engine/Engine.hpp"
-#include "rtype/engine/plugin/PluginLoader.hpp"
-#include "rtype/replication/ReplicationPlugin.hpp"
-#include "rtype/replication/event/ClientConnected.hpp"
-#include "rtype/replication/input/InputKind.hpp"
-#include "rtype/replication/input/InputLayout.hpp"
-#include "rtype/scripting/ScriptHost.hpp"
 
 namespace {
 constexpr int kFrames = 12;
@@ -38,27 +38,27 @@ constexpr int kFrames = 12;
 /// @brief A server App with the physics, without gravity, and the replication plugin, one fixed tick per frame, and a
 /// script host on it.
 struct ServerScripts {
-    rtype::engine::plugin::PluginLoader loader;  ///< The plugin libraries, which bring the setup forms on every side.
-    rtype::ecs::App app{rtype::ecs::RunMode::kServer};
-    std::unique_ptr<rtype::scripting::ScriptHost> host;
+    aylo::engine::plugin::PluginLoader loader;  ///< The plugin libraries, which bring the setup forms on every side.
+    aylo::ecs::App app{aylo::ecs::RunMode::kServer};
+    std::unique_ptr<aylo::scripting::ScriptHost> host;
 
     ServerScripts() {
-        app.addPlugin(rtype::ecs::TimePlugin::manual(std::chrono::milliseconds{20}, rtype::ecs::FixedTimestep{50, 1}));
-        app.addPlugin(rtype::plugins::transform::TransformPlugin{});
-        app.addPlugin(rtype::plugins::physics::PhysicsPlugin{rtype::plugins::physics::PhysicsSettings{
+        app.addPlugin(aylo::ecs::TimePlugin::manual(std::chrono::milliseconds{20}, aylo::ecs::FixedTimestep{50, 1}));
+        app.addPlugin(aylo::plugins::transform::TransformPlugin{});
+        app.addPlugin(aylo::plugins::physics::PhysicsPlugin{aylo::plugins::physics::PhysicsSettings{
             .gravity = {0.0F, 0.0F},
             .maxBodies = 16,
             .maxBodyPairs = 16,
             .maxContactConstraints = 16,
             .tempAllocatorBytes = 1024 * 1024,
         }});
-        app.addPlugin(rtype::replication::ReplicationPlugin{});
-        loader.load(rtype::core::system::getExecutableDirectory() / rtype::engine::Engine::kPluginsDirectory);
-        rtype::core::library::LibraryRegistrar registrar;
-        registrar.provide(rtype::ecs::kPluginRegistryService, app.getPluginRegistry());
+        app.addPlugin(aylo::replication::ReplicationPlugin{});
+        loader.load(aylo::core::system::getExecutableDirectory() / aylo::engine::Engine::kPluginsDirectory);
+        aylo::core::library::LibraryRegistrar registrar;
+        registrar.provide(aylo::ecs::kPluginRegistryService, app.getPluginRegistry());
         loader.registerInto(registrar);
-        app.getPluginRegistry().addScriptForms("test.Probe", rtype::tests::kProbeForms);
-        auto created = rtype::scripting::ScriptHost::create(app, {.isServer = true});
+        app.getPluginRegistry().addScriptForms("test.Probe", aylo::tests::kProbeForms);
+        auto created = aylo::scripting::ScriptHost::create(app, {.isServer = true});
         EXPECT_TRUE(created) << (created ? "" : std::string{created.error().message()});
         host = std::move(*created);
     }
@@ -199,11 +199,11 @@ TEST(ScriptPhysics, AServerScriptSpawnsAShipForEachClientAndReadsItsInput) {
         })
     )"),
               "");
-    const auto& layout = server.app.getWorld().getResources().require<rtype::replication::input::InputLayout>();
-    EXPECT_EQ(layout.find("shoot").kind, rtype::replication::input::InputKind::kButton);  // declared by the form
-    EXPECT_EQ(layout.find("move").kind, rtype::replication::input::InputKind::kVector2);
+    const auto& layout = server.app.getWorld().getResources().require<aylo::replication::input::InputLayout>();
+    EXPECT_EQ(layout.find("shoot").kind, aylo::replication::input::InputKind::kButton);  // declared by the form
+    EXPECT_EQ(layout.find("move").kind, aylo::replication::input::InputKind::kVector2);
 
-    server.app.getWorld().getEvents().send(rtype::replication::event::ClientConnected{.client = 7});
+    server.app.getWorld().getEvents().send(aylo::replication::event::ClientConnected{.client = 7});
     server.app.runFrame();
 
     EXPECT_EQ(server.run("assert(probe.seenOwner == 7 and probe.seenShoot == false and probe.seenMove.x == 0, "

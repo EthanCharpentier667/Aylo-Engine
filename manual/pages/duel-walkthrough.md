@@ -1,6 +1,6 @@
 # Walkthrough: R-Type Duel
 
-R-Type Duel is a complete two-player game written only in Luau, in `examples/games/rtype_duel/game/`. Two players sit
+R-Type Duel is a complete two-player game written only in Luau, in `examples/games/aylo_duel/game/`. Two players sit
 on either side of an arena. Each moves up and down, clicks to fire lasers, and the first to hit the other wins. This
 page reads it file by file.
 
@@ -34,7 +34,7 @@ game/
 ```
 
 The arena and what the server spawns in it are [capsules](capsules.md): files you can open and change in the
-[editor](editor.md) (`./aylo-editor examples/games/rtype_duel/game` opens the arena).
+[editor](editor.md) (`./aylo-editor examples/games/aylo_duel/game` opens the arena).
 
 Nothing runs by itself: `project.luau` names three entries, and every other file runs because one requires it.
 
@@ -50,11 +50,11 @@ only through `require`: each has its own globals.
 ## Run it
 
 ```sh
-./aylo-runtime --server examples/games/rtype_duel/game
-./aylo-runtime examples/games/rtype_duel/game      # twice
+./aylo-runtime --server examples/games/aylo_duel/game
+./aylo-runtime examples/games/aylo_duel/game      # twice
 ```
 
-Or `xmake f -y --rtype_duel=y` then `xmake run rtype_duel server` and `xmake run rtype_duel client`.
+Or `xmake f -y --aylo_duel=y` then `xmake run aylo_duel server` and `xmake run aylo_duel client`.
 
 ## `project.luau`: the data that picks the engine
 

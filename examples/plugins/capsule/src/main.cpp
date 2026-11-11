@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** main
 */
@@ -20,6 +20,17 @@
 #include <utility>
 #include <vector>
 
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/change/Mut.hpp"
+#include "aylo/ecs/command/Commands.hpp"
+#include "aylo/ecs/component/ComponentTraits.hpp"
+#include "aylo/ecs/component/Components.hpp"
+#include "aylo/ecs/entity/Entity.hpp"
+#include "aylo/ecs/hierarchy/Children.hpp"
+#include "aylo/ecs/schedule/RunMode.hpp"
+#include "aylo/ecs/system/Side.hpp"
+#include "aylo/ecs/type/TypeInfo.hpp"
+#include "aylo/ecs/world/World.hpp"
 #include "plugins/capsule/Capsule.hpp"
 #include "plugins/capsule/CapsuleInstance.hpp"
 #include "plugins/capsule/CapsulePlugin.hpp"
@@ -27,43 +38,32 @@
 #include "plugins/capsule/Capsules.hpp"
 #include "plugins/capsule/LoadedCapsule.hpp"
 #include "plugins/capsule/format/CapsuleText.hpp"
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/change/Mut.hpp"
-#include "rtype/ecs/command/Commands.hpp"
-#include "rtype/ecs/component/ComponentTraits.hpp"
-#include "rtype/ecs/component/Components.hpp"
-#include "rtype/ecs/entity/Entity.hpp"
-#include "rtype/ecs/hierarchy/Children.hpp"
-#include "rtype/ecs/schedule/RunMode.hpp"
-#include "rtype/ecs/system/Side.hpp"
-#include "rtype/ecs/type/TypeInfo.hpp"
-#include "rtype/ecs/world/World.hpp"
 
-using namespace rtype::ecs;
-using namespace rtype::plugins::capsule;
+using namespace aylo::ecs;
+using namespace aylo::plugins::capsule;
 
 namespace {
 struct Position {
     float x;
 };
-RTYPE_ECS_COMPONENT(Position, "example.Position", x);
+AYLO_ECS_COMPONENT(Position, "example.Position", x);
 
 struct Health {
     int value;
 };
-RTYPE_ECS_COMPONENT(Health, "example.Health", value);
+AYLO_ECS_COMPONENT(Health, "example.Health", value);
 
 /// @brief Server-only: the AI state never reaches a client.
 struct Brain {
     int state;
 };
-RTYPE_ECS_COMPONENT(Brain, "example.Brain", state);
+AYLO_ECS_COMPONENT(Brain, "example.Brain", state);
 
 /// @brief What a client draws behind the level.
 struct Background {
     int layer;
 };
-RTYPE_ECS_COMPONENT(Background, "example.Background", layer);
+AYLO_ECS_COMPONENT(Background, "example.Background", layer);
 
 /// @brief Prints an entity and its descendants, indented, with the example's components.
 // NOLINTNEXTLINE(misc-no-recursion): the depth is the depth of the tree.

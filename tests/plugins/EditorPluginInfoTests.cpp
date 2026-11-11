@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** EditorPluginInfoTests
 */
@@ -12,19 +12,19 @@
 #include <string_view>
 #include <vector>
 
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/app/Plugin.hpp"
 #include "editor/panels/PluginInfo.hpp"
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/app/Plugin.hpp"
 
 namespace {
 /// @brief A plugin with a name and the dependencies it is given.
-class NamedPlugin : public rtype::ecs::Plugin {
+class NamedPlugin : public aylo::ecs::Plugin {
   public:
     NamedPlugin(std::string_view name, std::vector<std::string_view> dependencies)
         : _name{name}, _dependencies{std::move(dependencies)} {}
     [[nodiscard]] std::string_view getName() const noexcept override { return _name; }
     [[nodiscard]] std::span<const std::string_view> getDependencies() const noexcept override { return _dependencies; }
-    void build(rtype::ecs::App& /*app*/) override {}
+    void build(aylo::ecs::App& /*app*/) override {}
 
   private:
     std::string_view _name;
@@ -33,10 +33,10 @@ class NamedPlugin : public rtype::ecs::Plugin {
 }  // namespace
 
 TEST(EditorPluginInfo, ListsLoadedPluginsWithRequiresAndRequiredBy) {
-    rtype::ecs::App app;
+    aylo::ecs::App app;
     app.addPlugin(NamedPlugin{"rtype.Base", {}});
     app.addPlugin(NamedPlugin{"game.Boss", {"rtype.Base"}});
-    const auto list = rtype::editor::panels::collectPlugins(app, "");
+    const auto list = aylo::editor::panels::collectPlugins(app, "");
     ASSERT_EQ(list.loaded.size(), 2U);
     EXPECT_EQ(list.loaded[0].name, "rtype.Base");
     EXPECT_TRUE(list.loaded[0].isEngine);
@@ -46,20 +46,20 @@ TEST(EditorPluginInfo, ListsLoadedPluginsWithRequiresAndRequiredBy) {
 }
 
 TEST(EditorPluginInfo, FiltersByNameIgnoringCaseButKeepsRequiredBy) {
-    rtype::ecs::App app;
+    aylo::ecs::App app;
     app.addPlugin(NamedPlugin{"rtype.Base", {}});
     app.addPlugin(NamedPlugin{"game.Boss", {"rtype.Base"}});
-    const auto list = rtype::editor::panels::collectPlugins(app, "BASE");
+    const auto list = aylo::editor::panels::collectPlugins(app, "BASE");
     ASSERT_EQ(list.loaded.size(), 1U);
     EXPECT_EQ(list.loaded[0].requiredBy, (std::vector<std::string>{"game.Boss"}));
 }
 
 TEST(EditorPluginInfo, ListsRegisteredPluginsThatWereNotAdded) {
-    rtype::ecs::App app;
+    aylo::ecs::App app;
     app.getPluginRegistry().add(
         "game.Spare", [] { return std::make_unique<NamedPlugin>("game.Spare", std::vector<std::string_view>{}); });
     app.addPlugin(NamedPlugin{"game.Boss", {}});
-    EXPECT_EQ(rtype::editor::panels::collectPlugins(app, "").notLoaded, (std::vector<std::string>{"game.Spare"}));
+    EXPECT_EQ(aylo::editor::panels::collectPlugins(app, "").notLoaded, (std::vector<std::string>{"game.Spare"}));
     app.addPlugin(NamedPlugin{"game.Spare", {}});
-    EXPECT_TRUE(rtype::editor::panels::collectPlugins(app, "").notLoaded.empty());
+    EXPECT_TRUE(aylo::editor::panels::collectPlugins(app, "").notLoaded.empty());
 }

@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** EditorAssetKindTests
 */
@@ -9,8 +9,8 @@
 
 #include "editor/panels/AssetKind.hpp"
 
-using rtype::editor::panels::AssetKind;
-using rtype::editor::panels::kindOf;
+using aylo::editor::panels::AssetKind;
+using aylo::editor::panels::kindOf;
 
 TEST(EditorAssetKind, TellsFilesApartByExtension) {
     EXPECT_EQ(kindOf("level.scene", false), AssetKind::kScene);
@@ -36,16 +36,15 @@ TEST(EditorAssetKind, AFolderIsAFolderWhateverItsName) { EXPECT_EQ(kindOf("sprit
 TEST(EditorAssetKind, EveryKindHasAnIconAndALabel) {
     for (int i = 0; i <= static_cast<int>(AssetKind::kOther); ++i) {
         const auto kind = static_cast<AssetKind>(i);
-        EXPECT_NE(rtype::editor::panels::iconOf(kind), U'\0');
-        EXPECT_FALSE(rtype::editor::panels::labelOf(kind).empty());
+        EXPECT_NE(aylo::editor::panels::iconOf(kind), U'\0');
+        EXPECT_FALSE(aylo::editor::panels::labelOf(kind).empty());
     }
-    EXPECT_NE(rtype::editor::panels::iconOf(AssetKind::kFolder, true),
-              rtype::editor::panels::iconOf(AssetKind::kFolder));
+    EXPECT_NE(aylo::editor::panels::iconOf(AssetKind::kFolder, true), aylo::editor::panels::iconOf(AssetKind::kFolder));
 }
 
 TEST(EditorAssetKind, EncodesCodePointsAsUtf8) {
-    EXPECT_EQ(rtype::editor::panels::toUtf8(U'A'), "A");
-    EXPECT_EQ(rtype::editor::panels::toUtf8(U'\u00e9'), "\xC3\xA9");
-    EXPECT_EQ(rtype::editor::panels::toUtf8(U'\uf07b'), "\xEF\x81\xBB");
-    EXPECT_EQ(rtype::editor::panels::toUtf8(U'\U0001F600'), "\xF0\x9F\x98\x80");
+    EXPECT_EQ(aylo::editor::panels::toUtf8(U'A'), "A");
+    EXPECT_EQ(aylo::editor::panels::toUtf8(U'\u00e9'), "\xC3\xA9");
+    EXPECT_EQ(aylo::editor::panels::toUtf8(U'\uf07b'), "\xEF\x81\xBB");
+    EXPECT_EQ(aylo::editor::panels::toUtf8(U'\U0001F600'), "\xF0\x9F\x98\x80");
 }

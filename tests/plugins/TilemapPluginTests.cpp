@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** TilemapPluginTests
 */
@@ -18,6 +18,17 @@
 
 #include "FakeBackend.hpp"
 #include "TestImages.hpp"
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/command/Commands.hpp"
+#include "aylo/ecs/entity/Entity.hpp"
+#include "aylo/ecs/query/Query.hpp"
+#include "aylo/ecs/query/QueryState.hpp"
+#include "aylo/ecs/schedule/Phase.hpp"
+#include "aylo/ecs/schedule/RunMode.hpp"
+#include "aylo/ecs/system/ResourceParam.hpp"
+#include "aylo/ecs/system/Side.hpp"
+#include "aylo/ecs/time/TimePlugin.hpp"
+#include "aylo/ecs/world/World.hpp"
 #include "core/asset/AssetId.hpp"
 #include "plugins/graphics/Camera.hpp"
 #include "plugins/graphics/GraphicsPlugin.hpp"
@@ -32,37 +43,26 @@
 #include "plugins/tilemap/TilemapLayer.hpp"
 #include "plugins/tilemap/TilemapPlugin.hpp"
 #include "plugins/transform/Transform.hpp"
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/command/Commands.hpp"
-#include "rtype/ecs/entity/Entity.hpp"
-#include "rtype/ecs/query/Query.hpp"
-#include "rtype/ecs/query/QueryState.hpp"
-#include "rtype/ecs/schedule/Phase.hpp"
-#include "rtype/ecs/schedule/RunMode.hpp"
-#include "rtype/ecs/system/ResourceParam.hpp"
-#include "rtype/ecs/system/Side.hpp"
-#include "rtype/ecs/time/TimePlugin.hpp"
-#include "rtype/ecs/world/World.hpp"
 
-using rtype::core::asset::AssetId;
-using rtype::plugins::tilemap::LayerKind;
-using rtype::plugins::tilemap::MapLayer;
-using rtype::plugins::tilemap::Parallax;
-using rtype::plugins::tilemap::Tilemap;
-using rtype::plugins::tilemap::TilemapAssets;
-using rtype::plugins::tilemap::TilemapLayer;
-using rtype::plugins::tilemap::Tileset;
-using rtype::plugins::transform::GlobalTransform;
-using rtype::plugins::transform::Transform;
+using aylo::core::asset::AssetId;
+using aylo::plugins::tilemap::LayerKind;
+using aylo::plugins::tilemap::MapLayer;
+using aylo::plugins::tilemap::Parallax;
+using aylo::plugins::tilemap::Tilemap;
+using aylo::plugins::tilemap::TilemapAssets;
+using aylo::plugins::tilemap::TilemapLayer;
+using aylo::plugins::tilemap::Tileset;
+using aylo::plugins::transform::GlobalTransform;
+using aylo::plugins::transform::Transform;
 
 namespace {
 /// @brief The name the test map is added under.
 constexpr const char* kLevel = "level";
 
 /// @brief Startup: spawns the layers of the map "level", their draw layers from 5.
-void spawnLevel(rtype::ecs::ResMut<TilemapAssets> maps, rtype::ecs::Commands& commands) {
-    static_cast<void>(rtype::plugins::tilemap::spawnTilemap(
-        commands, *maps, AssetId::fromPath(kLevel), rtype::plugins::tilemap::TilemapPlacement{.firstDrawLayer = 5}));
+void spawnLevel(aylo::ecs::ResMut<TilemapAssets> maps, aylo::ecs::Commands& commands) {
+    static_cast<void>(aylo::plugins::tilemap::spawnTilemap(
+        commands, *maps, AssetId::fromPath(kLevel), aylo::plugins::tilemap::TilemapPlacement{.firstDrawLayer = 5}));
 }
 
 /// @brief An App with the GraphicsPlugin over the fake backend (an 800x600 window), frames of one second, and the
@@ -70,12 +70,12 @@ void spawnLevel(rtype::ecs::ResMut<TilemapAssets> maps, rtype::ecs::Commands& co
 class TilemapApp {
   public:
     TilemapApp()
-        : _state{std::make_shared<rtype::test::plugins::FakeBackendState>()}, _app{rtype::ecs::RunMode::kClient} {
-        rtype::test::plugins::addDrawingPlugins(_app, rtype::test::plugins::makeFakeRegistry(_state),
-                                                rtype::test::plugins::makeFakeSettings());
-        _app.addPlugin(rtype::ecs::TimePlugin::manual(std::chrono::seconds{1}));
-        static_cast<void>(world().getResources().getMut<rtype::plugins::graphics::TextureAssets>()->load(
-            "tiles.png", rtype::test::plugins::twoPixelPng()));
+        : _state{std::make_shared<aylo::test::plugins::FakeBackendState>()}, _app{aylo::ecs::RunMode::kClient} {
+        aylo::test::plugins::addDrawingPlugins(_app, aylo::test::plugins::makeFakeRegistry(_state),
+                                               aylo::test::plugins::makeFakeSettings());
+        _app.addPlugin(aylo::ecs::TimePlugin::manual(std::chrono::seconds{1}));
+        static_cast<void>(world().getResources().getMut<aylo::plugins::graphics::TextureAssets>()->load(
+            "tiles.png", aylo::test::plugins::twoPixelPng()));
     }
     ~TilemapApp() = default;
     TilemapApp(const TilemapApp& other) = delete;
@@ -83,9 +83,9 @@ class TilemapApp {
     TilemapApp(TilemapApp&& other) = delete;
     TilemapApp& operator=(TilemapApp&& other) = delete;
 
-    [[nodiscard]] rtype::ecs::App& app() noexcept { return _app; }
-    [[nodiscard]] rtype::ecs::World& world() noexcept { return _app.getWorld(); }
-    [[nodiscard]] rtype::test::plugins::FakeBackendState& state() noexcept { return *_state; }
+    [[nodiscard]] aylo::ecs::App& app() noexcept { return _app; }
+    [[nodiscard]] aylo::ecs::World& world() noexcept { return _app.getWorld(); }
+    [[nodiscard]] aylo::test::plugins::FakeBackendState& state() noexcept { return *_state; }
 
     /// @brief Adds @p layers as the map "level", over a 16x16 grid with the tileset tiles.png, and spawns it.
     void spawnMap(std::vector<MapLayer> layers) {
@@ -97,19 +97,19 @@ class TilemapApp {
                             .columns = 2};
         static_cast<void>(
             world().getResources().getMut<TilemapAssets>()->add(kLevel, Tilemap{{16, 16}, {tiles}, std::move(layers)}));
-        _app.addSystem(rtype::ecs::Phase::kStartup, "test.spawnLevel", &spawnLevel).setSide(rtype::ecs::Side::kBoth);
+        _app.addSystem(aylo::ecs::Phase::kStartup, "test.spawnLevel", &spawnLevel).setSide(aylo::ecs::Side::kBoth);
     }
 
     /// @return The sprites drawn by one more frame.
-    std::vector<rtype::contract::renderer::Sprite> drawFrame() {
+    std::vector<aylo::contract::renderer::Sprite> drawFrame() {
         _state->sprites.clear();
         _app.runFrame();
         return _state->sprites;
     }
 
   private:
-    std::shared_ptr<rtype::test::plugins::FakeBackendState> _state;  ///< Drives the fakes.
-    rtype::ecs::App _app;                                            ///< The App under test.
+    std::shared_ptr<aylo::test::plugins::FakeBackendState> _state;  ///< Drives the fakes.
+    aylo::ecs::App _app;                                            ///< The App under test.
 };
 
 /// @return A tile layer with the tile id 1 in each of @p cells.
@@ -117,16 +117,16 @@ MapLayer tilesAt(const std::vector<glm::ivec2>& cells) {
     MapLayer layer{.name = "ground"};
     const std::array<std::uint32_t, 1> tile{1};
     for (const glm::ivec2 cell : cells) {
-        rtype::plugins::tilemap::setTiles(layer, cell, 1, tile);
+        aylo::plugins::tilemap::setTiles(layer, cell, 1, tile);
     }
     return layer;
 }
 
 /// @return The entities that have a TilemapLayer, with it.
-std::vector<std::pair<rtype::ecs::Entity, TilemapLayer>> layersOf(rtype::ecs::World& world) {
-    std::vector<std::pair<rtype::ecs::Entity, TilemapLayer>> layers;
-    const rtype::ecs::QueryState<const TilemapLayer> state{world.getComponents()};
-    rtype::ecs::Query<const TilemapLayer> query{state, 0};
+std::vector<std::pair<aylo::ecs::Entity, TilemapLayer>> layersOf(aylo::ecs::World& world) {
+    std::vector<std::pair<aylo::ecs::Entity, TilemapLayer>> layers;
+    const aylo::ecs::QueryState<const TilemapLayer> state{world.getComponents()};
+    aylo::ecs::Query<const TilemapLayer> query{state, 0};
     for (auto [entity, layer] : query) {
         layers.emplace_back(entity, layer);
     }
@@ -136,10 +136,10 @@ std::vector<std::pair<rtype::ecs::Entity, TilemapLayer>> layersOf(rtype::ecs::Wo
 
 TEST(TilemapPlugin, ComesWithTheGraphicsPlugin) {
     TilemapApp app;
-    EXPECT_TRUE(app.app().hasPlugin(rtype::plugins::tilemap::TilemapPlugin::kName));
+    EXPECT_TRUE(app.app().hasPlugin(aylo::plugins::tilemap::TilemapPlugin::kName));
     EXPECT_TRUE(app.world().getResources().has<TilemapAssets>());
-    EXPECT_TRUE(app.world().getResources().has<rtype::plugins::graphics::SpriteQueue>());
-    EXPECT_TRUE(app.world().getResources().has<rtype::plugins::graphics::VisibleArea>());
+    EXPECT_TRUE(app.world().getResources().has<aylo::plugins::graphics::SpriteQueue>());
+    EXPECT_TRUE(app.world().getResources().has<aylo::plugins::graphics::VisibleArea>());
     EXPECT_TRUE(app.world().getComponents().find("rtype.TilemapLayer"));
     EXPECT_TRUE(app.world().getComponents().find("rtype.Parallax"));
 }
@@ -193,10 +193,10 @@ TEST(TilemapPlugin, RepeatsAnImageLayerAcrossTheView) {
 TEST(TilemapPlugin, SortsTheTilesWithTheSpritesByLayer) {
     TilemapApp app;
     app.spawnMap({tilesAt({{0, 0}})});  // Draw layer 5.
-    const rtype::ecs::Entity ship = app.world().spawn();
+    const aylo::ecs::Entity ship = app.world().spawn();
     app.world().getComponents().add(ship, Transform{.position = {300.0F, 300.0F}});
     app.world().getComponents().add(
-        ship, rtype::plugins::sprite::SpriteRenderer{.texture = AssetId::fromPath("tiles.png"), .layer = 10});
+        ship, aylo::plugins::sprite::SpriteRenderer{.texture = AssetId::fromPath("tiles.png"), .layer = 10});
     const auto sprites = app.drawFrame();
     ASSERT_EQ(sprites.size(), 2U);
     EXPECT_EQ(sprites.at(1).position, (glm::vec2{300.0F, 300.0F}));  // Layer 10, on top of the tiles.
@@ -204,10 +204,10 @@ TEST(TilemapPlugin, SortsTheTilesWithTheSpritesByLayer) {
 
 TEST(TilemapPlugin, MovesAParallaxEntityByTheCamera) {
     TilemapApp app;
-    const rtype::ecs::Entity camera = app.world().spawn();
+    const aylo::ecs::Entity camera = app.world().spawn();
     app.world().getComponents().add(camera, Transform{.position = {400.0F, 300.0F}});
-    app.world().getComponents().add(camera, rtype::plugins::graphics::Camera{});
-    const rtype::ecs::Entity far = app.world().spawn();
+    app.world().getComponents().add(camera, aylo::plugins::graphics::Camera{});
+    const aylo::ecs::Entity far = app.world().spawn();
     app.world().getComponents().add(far, Transform{.position = {10.0F, 0.0F}});
     app.world().getComponents().add(far, Parallax{.factor = {0.5F, 0.0F}, .origin = {0.0F, 100.0F}});
     app.app().runFrame();
@@ -217,12 +217,12 @@ TEST(TilemapPlugin, MovesAParallaxEntityByTheCamera) {
 
 TEST(TilemapPlugin, MovesAParallaxChildFromWhereItsParentPutsIt) {
     TilemapApp app;
-    const rtype::ecs::Entity camera = app.world().spawn();
+    const aylo::ecs::Entity camera = app.world().spawn();
     app.world().getComponents().add(camera, Transform{.position = {400.0F, 300.0F}});
-    app.world().getComponents().add(camera, rtype::plugins::graphics::Camera{});
-    const rtype::ecs::Entity parent = app.world().spawn();
+    app.world().getComponents().add(camera, aylo::plugins::graphics::Camera{});
+    const aylo::ecs::Entity parent = app.world().spawn();
     app.world().getComponents().add(parent, Transform{.position = {100.0F, 0.0F}});
-    const rtype::ecs::Entity far = app.world().spawn();
+    const aylo::ecs::Entity far = app.world().spawn();
     app.world().getComponents().add(far, Transform{.position = {10.0F, 0.0F}});
     app.world().getComponents().add(far, Parallax{.factor = {0.5F, 0.0F}, .origin = {0.0F, 100.0F}});
     EXPECT_TRUE(app.world().setParent(far, parent));
@@ -237,7 +237,7 @@ TEST(TilemapPlugin, MovesAParallaxChildFromWhereItsParentPutsIt) {
 
 TEST(TilemapPlugin, ScrollsAParallaxEntityOnItsOwn) {
     TilemapApp app;
-    const rtype::ecs::Entity cloud = app.world().spawn();
+    const aylo::ecs::Entity cloud = app.world().spawn();
     app.world().getComponents().add(cloud, Transform{});
     app.world().getComponents().add(cloud, Parallax{.scroll = {-3.0F, 0.0F}});
     app.app().runFrame();

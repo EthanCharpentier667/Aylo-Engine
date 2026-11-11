@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** QueryBuilderTests
 */
@@ -10,52 +10,52 @@
 #include <string_view>
 #include <vector>
 
-#include "rtype/ecs/component/ComponentInfo.hpp"
-#include "rtype/ecs/component/ComponentTraits.hpp"
-#include "rtype/ecs/component/Components.hpp"
-#include "rtype/ecs/error/Error.hpp"
-#include "rtype/ecs/error/Result.hpp"
-#include "rtype/ecs/query/DynamicQuery.hpp"
-#include "rtype/ecs/query/QueryBuilder.hpp"
-#include "rtype/ecs/query/QueryTerm.hpp"
-#include "rtype/ecs/world/World.hpp"
+#include "aylo/ecs/component/ComponentInfo.hpp"
+#include "aylo/ecs/component/ComponentTraits.hpp"
+#include "aylo/ecs/component/Components.hpp"
+#include "aylo/ecs/error/Error.hpp"
+#include "aylo/ecs/error/Result.hpp"
+#include "aylo/ecs/query/DynamicQuery.hpp"
+#include "aylo/ecs/query/QueryBuilder.hpp"
+#include "aylo/ecs/query/QueryTerm.hpp"
+#include "aylo/ecs/world/World.hpp"
 
-namespace rtype::test::query_builder {
+namespace aylo::test::query_builder {
 struct Position {
     float x;
     float y;
 };
-RTYPE_ECS_COMPONENT(Position, "test.query_builder.Position", x, y);
+AYLO_ECS_COMPONENT(Position, "test.query_builder.Position", x, y);
 
 struct Velocity {
     float x;
     float y;
 };
-RTYPE_ECS_COMPONENT(Velocity, "test.query_builder.Velocity", x, y);
+AYLO_ECS_COMPONENT(Velocity, "test.query_builder.Velocity", x, y);
 
 struct Dead {};
-RTYPE_ECS_COMPONENT(Dead, "test.query_builder.Dead");
-}  // namespace rtype::test::query_builder
+AYLO_ECS_COMPONENT(Dead, "test.query_builder.Dead");
+}  // namespace aylo::test::query_builder
 
 namespace {
-using rtype::ecs::ComponentAccess;
-using rtype::ecs::ComponentId;
-using rtype::ecs::DynamicQuery;
-using rtype::ecs::ErrorKind;
-using rtype::ecs::QueryBuilder;
-using rtype::ecs::QueryTerm;
-using rtype::ecs::Result;
-using rtype::ecs::TermKind;
-using rtype::ecs::World;
+using aylo::ecs::ComponentAccess;
+using aylo::ecs::ComponentId;
+using aylo::ecs::DynamicQuery;
+using aylo::ecs::ErrorKind;
+using aylo::ecs::QueryBuilder;
+using aylo::ecs::QueryTerm;
+using aylo::ecs::Result;
+using aylo::ecs::TermKind;
+using aylo::ecs::World;
 
 /// @brief A world with three registered components, and their ids.
 class QueryBuilderTest : public ::testing::Test {
   protected:
     World world;
-    rtype::ecs::Components& components{world.getComponents()};
-    ComponentId position{components.registerType<rtype::test::query_builder::Position>()};
-    ComponentId velocity{components.registerType<rtype::test::query_builder::Velocity>()};
-    ComponentId dead{components.registerType<rtype::test::query_builder::Dead>()};
+    aylo::ecs::Components& components{world.getComponents()};
+    ComponentId position{components.registerType<aylo::test::query_builder::Position>()};
+    ComponentId velocity{components.registerType<aylo::test::query_builder::Velocity>()};
+    ComponentId dead{components.registerType<aylo::test::query_builder::Dead>()};
 };
 
 /// @brief Expects `query` to be refused as an invalid query whose message contains `text`.
@@ -67,20 +67,20 @@ void expectInvalid(const Result<DynamicQuery>& query, std::string_view text) {
 }  // namespace
 
 TEST(QueryTerm, ClassifiesKinds) {
-    EXPECT_TRUE(rtype::ecs::isDataTerm(TermKind::kRead));
-    EXPECT_TRUE(rtype::ecs::isDataTerm(TermKind::kOptionalWrite));
-    EXPECT_FALSE(rtype::ecs::isDataTerm(TermKind::kWith));
-    EXPECT_FALSE(rtype::ecs::isDataTerm(TermKind::kChanged));
+    EXPECT_TRUE(aylo::ecs::isDataTerm(TermKind::kRead));
+    EXPECT_TRUE(aylo::ecs::isDataTerm(TermKind::kOptionalWrite));
+    EXPECT_FALSE(aylo::ecs::isDataTerm(TermKind::kWith));
+    EXPECT_FALSE(aylo::ecs::isDataTerm(TermKind::kChanged));
 
-    EXPECT_TRUE(rtype::ecs::isRequiredTerm(TermKind::kWrite));
-    EXPECT_TRUE(rtype::ecs::isRequiredTerm(TermKind::kWith));
-    EXPECT_TRUE(rtype::ecs::isRequiredTerm(TermKind::kAdded));
-    EXPECT_FALSE(rtype::ecs::isRequiredTerm(TermKind::kOptionalRead));
-    EXPECT_FALSE(rtype::ecs::isRequiredTerm(TermKind::kWithout));
+    EXPECT_TRUE(aylo::ecs::isRequiredTerm(TermKind::kWrite));
+    EXPECT_TRUE(aylo::ecs::isRequiredTerm(TermKind::kWith));
+    EXPECT_TRUE(aylo::ecs::isRequiredTerm(TermKind::kAdded));
+    EXPECT_FALSE(aylo::ecs::isRequiredTerm(TermKind::kOptionalRead));
+    EXPECT_FALSE(aylo::ecs::isRequiredTerm(TermKind::kWithout));
 
-    EXPECT_TRUE(rtype::ecs::isWriteTerm(TermKind::kWrite));
-    EXPECT_TRUE(rtype::ecs::isWriteTerm(TermKind::kOptionalWrite));
-    EXPECT_FALSE(rtype::ecs::isWriteTerm(TermKind::kRead));
+    EXPECT_TRUE(aylo::ecs::isWriteTerm(TermKind::kWrite));
+    EXPECT_TRUE(aylo::ecs::isWriteTerm(TermKind::kOptionalWrite));
+    EXPECT_FALSE(aylo::ecs::isWriteTerm(TermKind::kRead));
 }
 
 TEST_F(QueryBuilderTest, KeepsTermsInOrder) {

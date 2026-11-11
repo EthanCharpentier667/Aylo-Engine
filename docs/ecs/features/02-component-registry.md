@@ -45,7 +45,7 @@ Luau, is described by one `ComponentInfo`. The core only ever looks at `Componen
 ### The description
 
 ```c++
-namespace rtype::ecs {
+namespace aylo::ecs {
 using ComponentId = std::uint32_t;
 
 enum class StorageKind : std::uint8_t { kSparseSet, kTable };
@@ -81,7 +81,7 @@ struct ComponentInfo {
     TypeInfo type;                  ///< Everything a resource has too.
     StorageKind storage;            ///< Only components have a storage.
 };
-}  // namespace rtype::ecs
+}  // namespace aylo::ecs
 ```
 
 | Part | Used by |
@@ -116,7 +116,7 @@ ids** kept by the registry, so it never tests these enums per entity.
 
 ```mermaid
 flowchart LR
-    cpp["C++ struct<br/>+ RTYPE_ECS_COMPONENT"] --> traits["ComponentTraits of T<br/>name, hash, fields, hooks"]
+    cpp["C++ struct<br/>+ AYLO_ECS_COMPONENT"] --> traits["ComponentTraits of T<br/>name, hash, fields, hooks"]
     traits --> register["registry.register(info)"]
     luau["Luau export type"] --> desc["ComponentDescriptor<br/>name + fields (no offsets)"]
     desc --> layout["Deterministic layout<br/>offsets, size, alignment"]
@@ -134,10 +134,10 @@ struct Health {
     [[nodiscard]] bool isDead() const noexcept { return value <= 0; }  // pure helper: allowed
 };
 
-RTYPE_ECS_COMPONENT(Health, "rtype.Health", value, max);
+AYLO_ECS_COMPONENT(Health, "rtype.Health", value, max);
 ```
 
-The macro specializes `rtype::ecs::ComponentTraits<Health>`: the name, a compile-time hash of it, the
+The macro specializes `aylo::ecs::ComponentTraits<Health>`: the name, a compile-time hash of it, the
 field list (names via `#field`, types and offsets via `&Health::field`) and hooks (null for trivially
 copyable types).
 
@@ -188,7 +188,7 @@ do a hash-map lookup, which can be cached per world later if it ever shows in a 
 ## Pitfalls
 
 - **Type ids across shared libraries.** The classic `static` counter per template gives *different*
-  ids in each `.so` / `.dll` (and `rtype-ecs`, the renderer and the engine are separate binaries).
+  ids in each `.so` / `.dll` (and `aylo-ecs`, the renderer and the engine are separate binaries).
   Ids come from the world's registry, keyed by name hash, never from statics.
 - **`typeid(T).name()`.** It differs between Clang and MSVC, so a Windows client and a Linux server
   would disagree. Names are always explicit.

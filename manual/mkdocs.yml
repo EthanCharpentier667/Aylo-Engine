@@ -1,6 +1,6 @@
 site_name: AYLO Engine Manual
 site_description: How to make a game with the AYLO Engine, in Luau.
-repo_url: https://github.com/Charles-Mahoudeau/rtype
+repo_url: https://github.com/Charles-Mahoudeau/aylo
 docs_dir: pages
 site_dir: site
 

@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** AudioRegistryTests
 */
@@ -13,49 +13,49 @@
 #include <vector>
 
 #include "FakeAudioDevice.hpp"
+#include "aylo/contract/audiodevice/IAudioDevice.hpp"
+#include "aylo/contract/audiodevice/exceptions/AudioExceptions.hpp"
 #include "core/config/Settings.hpp"
 #include "core/config/exceptions/ConfigExceptions.hpp"
 #include "plugins/audio/AudioRegistry.hpp"
 #include "plugins/audio/NullAudioDevice.hpp"
-#include "rtype/contract/audiodevice/IAudioDevice.hpp"
-#include "rtype/contract/audiodevice/exceptions/AudioExceptions.hpp"
 
 TEST(AudioRegistry, AlwaysHasTheNullBackend) {
-    const rtype::plugins::audio::AudioRegistry registry;
+    const aylo::plugins::audio::AudioRegistry registry;
     EXPECT_EQ(registry.devices.getNames(), std::vector<std::string>{"null"});
-    rtype::core::config::Settings settings;
+    aylo::core::config::Settings settings;
     settings.set("audio.backend", "null");
-    const std::unique_ptr<rtype::contract::audiodevice::IAudioDevice> device = registry.createDevice(settings);
-    EXPECT_NE(dynamic_cast<rtype::plugins::audio::NullAudioDevice*>(device.get()), nullptr);
+    const std::unique_ptr<aylo::contract::audiodevice::IAudioDevice> device = registry.createDevice(settings);
+    EXPECT_NE(dynamic_cast<aylo::plugins::audio::NullAudioDevice*>(device.get()), nullptr);
 }
 
 TEST(AudioRegistry, ListsTheNamesSorted) {
-    rtype::plugins::audio::AudioRegistry registry;
+    aylo::plugins::audio::AudioRegistry registry;
     registry.devices.add("zeta", nullptr);
     registry.devices.add("alpha", nullptr);
     EXPECT_EQ(registry.devices.getNames(), (std::vector<std::string>{"alpha", "null", "zeta"}));
 }
 
 TEST(AudioRegistry, CreatesTheBackendTheConfigNames) {
-    const auto state = std::make_shared<rtype::test::plugins::FakeAudioState>();
-    const auto registry = rtype::test::plugins::makeFakeAudioRegistry(state);
-    const std::unique_ptr<rtype::contract::audiodevice::IAudioDevice> device =
-        registry->createDevice(rtype::test::plugins::makeFakeAudioSettings());
-    EXPECT_NE(dynamic_cast<rtype::test::plugins::FakeAudioDevice*>(device.get()), nullptr);
+    const auto state = std::make_shared<aylo::test::plugins::FakeAudioState>();
+    const auto registry = aylo::test::plugins::makeFakeAudioRegistry(state);
+    const std::unique_ptr<aylo::contract::audiodevice::IAudioDevice> device =
+        registry->createDevice(aylo::test::plugins::makeFakeAudioSettings());
+    EXPECT_NE(dynamic_cast<aylo::test::plugins::FakeAudioDevice*>(device.get()), nullptr);
 }
 
 TEST(AudioRegistry, HandsTheFactoryItsSectionAndTheVoices) {
-    rtype::plugins::audio::AudioRegistry registry;
+    aylo::plugins::audio::AudioRegistry registry;
     double seenRate = 0.0;
     unsigned seenVoices = 0;
     registry.devices.add("custom",
-                         [&seenRate, &seenVoices](const rtype::core::config::Settings& section, std::uint32_t maxVoices)
-                             -> std::unique_ptr<rtype::contract::audiodevice::IAudioDevice> {
+                         [&seenRate, &seenVoices](const aylo::core::config::Settings& section, std::uint32_t maxVoices)
+                             -> std::unique_ptr<aylo::contract::audiodevice::IAudioDevice> {
                              seenRate = section.getNumber("sampleRate", 0.0);
                              seenVoices = maxVoices;
-                             return std::make_unique<rtype::plugins::audio::NullAudioDevice>();
+                             return std::make_unique<aylo::plugins::audio::NullAudioDevice>();
                          });
-    rtype::core::config::Settings settings;
+    aylo::core::config::Settings settings;
     settings.set("audio.backend", "custom");
     settings.set("audio.maxVoices", 16.0);
     settings.set("custom.sampleRate", 48000.0);
@@ -65,53 +65,53 @@ TEST(AudioRegistry, HandsTheFactoryItsSectionAndTheVoices) {
 }
 
 TEST(AudioRegistry, ThrowsWhenTheConfigChoosesNoBackend) {
-    const rtype::plugins::audio::AudioRegistry registry;
-    EXPECT_THROW(static_cast<void>(registry.createDevice(rtype::core::config::Settings{})),
-                 rtype::contract::audiodevice::exceptions::AudioBackendException);
+    const aylo::plugins::audio::AudioRegistry registry;
+    EXPECT_THROW(static_cast<void>(registry.createDevice(aylo::core::config::Settings{})),
+                 aylo::contract::audiodevice::exceptions::AudioBackendException);
 }
 
 TEST(AudioRegistry, ThrowsForAnUnknownBackend) {
-    const rtype::plugins::audio::AudioRegistry registry;
-    rtype::core::config::Settings settings;
+    const aylo::plugins::audio::AudioRegistry registry;
+    aylo::core::config::Settings settings;
     settings.set("audio.backend", "fmod");
     EXPECT_THROW(static_cast<void>(registry.createDevice(settings)),
-                 rtype::contract::audiodevice::exceptions::AudioBackendException);
+                 aylo::contract::audiodevice::exceptions::AudioBackendException);
 }
 
 TEST(AudioRegistry, FallsBackToNullWhenTheDeviceCannotOpen) {
-    const auto state = std::make_shared<rtype::test::plugins::FakeAudioState>();
+    const auto state = std::make_shared<aylo::test::plugins::FakeAudioState>();
     state->failToOpen = true;
-    const auto registry = rtype::test::plugins::makeFakeAudioRegistry(state);
-    const std::unique_ptr<rtype::contract::audiodevice::IAudioDevice> device =
-        registry->createDevice(rtype::test::plugins::makeFakeAudioSettings());
-    EXPECT_NE(dynamic_cast<rtype::plugins::audio::NullAudioDevice*>(device.get()), nullptr);
+    const auto registry = aylo::test::plugins::makeFakeAudioRegistry(state);
+    const std::unique_ptr<aylo::contract::audiodevice::IAudioDevice> device =
+        registry->createDevice(aylo::test::plugins::makeFakeAudioSettings());
+    EXPECT_NE(dynamic_cast<aylo::plugins::audio::NullAudioDevice*>(device.get()), nullptr);
 }
 
 TEST(AudioRegistry, FallsBackToNullWhenTheFactoryReturnsNothing) {
-    rtype::plugins::audio::AudioRegistry registry;
+    aylo::plugins::audio::AudioRegistry registry;
     registry.devices.add(
-        "empty", [](const rtype::core::config::Settings& /*section*/, std::uint32_t /*maxVoices*/) { return nullptr; });
-    rtype::core::config::Settings settings;
+        "empty", [](const aylo::core::config::Settings& /*section*/, std::uint32_t /*maxVoices*/) { return nullptr; });
+    aylo::core::config::Settings settings;
     settings.set("audio.backend", "empty");
-    const std::unique_ptr<rtype::contract::audiodevice::IAudioDevice> device = registry.createDevice(settings);
-    EXPECT_NE(dynamic_cast<rtype::plugins::audio::NullAudioDevice*>(device.get()), nullptr);
+    const std::unique_ptr<aylo::contract::audiodevice::IAudioDevice> device = registry.createDevice(settings);
+    EXPECT_NE(dynamic_cast<aylo::plugins::audio::NullAudioDevice*>(device.get()), nullptr);
 }
 
 TEST(AudioRegistry, ThrowsWhenARequiredDeviceCannotOpen) {
-    const auto state = std::make_shared<rtype::test::plugins::FakeAudioState>();
+    const auto state = std::make_shared<aylo::test::plugins::FakeAudioState>();
     state->failToOpen = true;
-    const auto registry = rtype::test::plugins::makeFakeAudioRegistry(state);
-    rtype::core::config::Settings settings = rtype::test::plugins::makeFakeAudioSettings();
+    const auto registry = aylo::test::plugins::makeFakeAudioRegistry(state);
+    aylo::core::config::Settings settings = aylo::test::plugins::makeFakeAudioSettings();
     settings.set("audio.required", true);
     EXPECT_THROW(static_cast<void>(registry->createDevice(settings)),
-                 rtype::contract::audiodevice::exceptions::AudioBackendException);
+                 aylo::contract::audiodevice::exceptions::AudioBackendException);
 }
 
 TEST(AudioRegistry, NeverHidesAConfigMistakeBehindTheFallback) {
-    const auto state = std::make_shared<rtype::test::plugins::FakeAudioState>();
-    const auto registry = rtype::test::plugins::makeFakeAudioRegistry(state);
-    rtype::core::config::Settings settings = rtype::test::plugins::makeFakeAudioSettings();
+    const auto state = std::make_shared<aylo::test::plugins::FakeAudioState>();
+    const auto registry = aylo::test::plugins::makeFakeAudioRegistry(state);
+    aylo::core::config::Settings settings = aylo::test::plugins::makeFakeAudioSettings();
     settings.set("fake.unknown", true);
     EXPECT_THROW(static_cast<void>(registry->createDevice(settings)),
-                 rtype::core::config::exceptions::SettingsException);
+                 aylo::core::config::exceptions::SettingsException);
 }

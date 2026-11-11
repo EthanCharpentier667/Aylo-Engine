@@ -11,7 +11,7 @@ outcome. CI runs the same checks on Linux, macOS and Windows.
 ## 1. Configure and build, with the tests
 
 ```sh
-xmake f -y --Tests=y        # add --rtype_duel=y or --AllExamples=y if your change touches an example
+xmake f -y --Tests=y        # add --aylo_duel=y or --AllExamples=y if your change touches an example
 xmake build -y
 ```
 

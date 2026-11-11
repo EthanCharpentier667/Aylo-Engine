@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** WorldProtocolTests
 */
@@ -13,11 +13,11 @@
 #include <variant>
 #include <vector>
 
-#include "rtype/network/admin/AdminProtocol.hpp"
-#include "rtype/network/admin/WorldProtocol.hpp"
+#include "aylo/network/admin/AdminProtocol.hpp"
+#include "aylo/network/admin/WorldProtocol.hpp"
 
 namespace {
-namespace admin = rtype::network::admin;
+namespace admin = aylo::network::admin;
 
 /// @return @p request encoded, decoded and checked to be of type @p T.
 template <typename T>

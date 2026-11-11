@@ -1,6 +1,6 @@
 # Sprites: atlases and animations
 
-The sprite plugin (`src/rtype/plugins/sprite/`, `rtype::plugins::sprite`) cuts textures into named frames and plays
+The sprite plugin (`src/aylo/plugins/sprite/`, `aylo::plugins::sprite`) cuts textures into named frames and plays
 animations made of them. It knows nothing of the renderer: it writes the `SpriteRenderer` of each animated entity, which
 the graphics plugin draws as before. The game adds `SpritePlugin`, and on a client `SpriteDrawPlugin`, which draws the entities and requires `SpritePlugin`, `GraphicsPlugin` and `ShaderPlugin`; a server adds `SpritePlugin` alone if
 it wants its animators to advance.
@@ -15,7 +15,7 @@ A `SpriteAtlas` is a texture, its frames (a name, a rectangle of the texture, an
 const AssetId ship = atlases->load("assets/ship.json");
 
 // A uniform sheet without a file: a grid, and animations in code.
-SpriteAtlas enemy = SpriteAtlas::grid("assets/r-typesheet26.gif", {63.0F, 48.0F}, 6, {2.0F, 0.0F}, 0, {1.0F, 1.0F});
+SpriteAtlas enemy = SpriteAtlas::grid("assets/spritesheet26.gif", {63.0F, 48.0F}, 6, {2.0F, 0.0F}, 0, {1.0F, 1.0F});
 enemy.addAnimation("fly", {0, 1, 2, 3, 4, 5}, 0.08F);
 const AssetId enemies = atlases->add("enemy", std::move(enemy));
 

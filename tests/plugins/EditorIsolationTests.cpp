@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** EditorIsolationTests
 */
@@ -11,6 +11,11 @@
 #include <optional>
 #include <string>
 
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/component/ComponentTraits.hpp"
+#include "aylo/ecs/hierarchy/Parent.hpp"
+#include "aylo/ecs/resource/Resources.hpp"
+#include "aylo/ecs/world/World.hpp"
 #include "editor/scene/Isolation.hpp"
 #include "plugins/capsule/Capsule.hpp"
 #include "plugins/capsule/CapsulePlugin.hpp"
@@ -18,36 +23,31 @@
 #include "plugins/graphics/Camera.hpp"
 #include "plugins/transform/Transform.hpp"
 #include "plugins/transform/TransformPlugin.hpp"
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/component/ComponentTraits.hpp"
-#include "rtype/ecs/hierarchy/Parent.hpp"
-#include "rtype/ecs/resource/Resources.hpp"
-#include "rtype/ecs/world/World.hpp"
 
 namespace {
-namespace capsule = rtype::plugins::capsule;
-namespace scene = rtype::editor::scene;
-using rtype::plugins::transform::GlobalTransform;
-using rtype::plugins::transform::Transform;
+namespace capsule = aylo::plugins::capsule;
+namespace scene = aylo::editor::scene;
+using aylo::plugins::transform::GlobalTransform;
+using aylo::plugins::transform::Transform;
 
 /// @brief An App with the transform and capsule plugins, and a turret at (50, 20) with a muzzle.
 class IsolationTest : public ::testing::Test {
   protected:
     void SetUp() override {
-        app.addPlugin(rtype::plugins::transform::TransformPlugin{});
+        app.addPlugin(aylo::plugins::transform::TransformPlugin{});
         app.addPlugin(capsule::CapsulePlugin{});
         app.finishPlugins();
-        static_cast<void>(app.getWorld().getComponents().registerType<rtype::plugins::graphics::Camera>());
+        static_cast<void>(app.getWorld().getComponents().registerType<aylo::plugins::graphics::Camera>());
         capsule::Capsule turret{"actors/turret.actor"};
         turret.editNode(0).values.set(app.getWorld().getComponents(), Transform{.position = {50.0F, 20.0F}});
         static_cast<void>(turret.addNode("Muzzle", 0));
         app.getWorld().getResources().getMut<capsule::Capsules>()->define(std::move(turret));
     }
 
-    rtype::ecs::World& world() { return app.getWorld(); }
+    aylo::ecs::World& world() { return app.getWorld(); }
 
     const capsule::CapsuleId turretId = capsule::CapsuleId::fromPath("actors/turret.actor");
-    rtype::ecs::App app;
+    aylo::ecs::App app;
 };
 }  // namespace
 
@@ -57,7 +57,7 @@ TEST_F(IsolationTest, SpawnsTheCapsuleUnderAnAnchorFarFromTheGame) {
     ASSERT_TRUE(isolation.has_value()) << error;
     EXPECT_EQ(isolation->capsule, turretId);
     EXPECT_EQ(world().getComponents().get<Transform>(isolation->anchor)->position, scene::kIsolatedOrigin);
-    EXPECT_EQ(world().getComponents().get<rtype::ecs::Parent>(isolation->root)->entity, isolation->anchor);
+    EXPECT_EQ(world().getComponents().get<aylo::ecs::Parent>(isolation->root)->entity, isolation->anchor);
     EXPECT_EQ(world().getComponents().get<Transform>(isolation->root)->position, glm::vec2(50.0F, 20.0F));
 }
 

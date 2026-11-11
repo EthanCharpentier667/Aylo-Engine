@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** main
 */
@@ -12,25 +12,25 @@
 #include <format>
 #include <iostream>
 
-#include "rtype/ecs/command/Commands.hpp"
-#include "rtype/ecs/component/ComponentTraits.hpp"
-#include "rtype/ecs/component/Components.hpp"
-#include "rtype/ecs/entity/Entity.hpp"
-#include "rtype/ecs/query/Query.hpp"
-#include "rtype/ecs/query/QueryTerms.hpp"
-#include "rtype/ecs/system/System.hpp"
-#include "rtype/ecs/world/World.hpp"
+#include "aylo/ecs/command/Commands.hpp"
+#include "aylo/ecs/component/ComponentTraits.hpp"
+#include "aylo/ecs/component/Components.hpp"
+#include "aylo/ecs/entity/Entity.hpp"
+#include "aylo/ecs/query/Query.hpp"
+#include "aylo/ecs/query/QueryTerms.hpp"
+#include "aylo/ecs/system/System.hpp"
+#include "aylo/ecs/world/World.hpp"
 
-using namespace rtype::ecs;
+using namespace aylo::ecs;
 
 namespace {
 struct Health {
     int value;
 };
-RTYPE_ECS_COMPONENT(Health, "example.Health", value);
+AYLO_ECS_COMPONENT(Health, "example.Health", value);
 
 struct Dead {};
-RTYPE_ECS_COMPONENT(Dead, "example.Dead");
+AYLO_ECS_COMPONENT(Dead, "example.Dead");
 
 /// @brief Marks the entities without health as dead, and spawns an explosion for each: both are commands.
 void killTheDying(Query<const Health> query, Commands& commands) {

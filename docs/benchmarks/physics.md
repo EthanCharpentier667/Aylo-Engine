@@ -3,7 +3,7 @@
 > **Implemented:** the physics plugin built from this plan is described in
 > [`../physics/design.md`](../physics/design.md), which also lists where it differs from section 4.
 
-**Context:** our engine is C++23, built with `xmake`, around our own ECS (`rtype::ecs`) with GLM math. The game is
+**Context:** our engine is C++23, built with `xmake`, around our own ECS (`aylo::ecs`) with GLM math. The game is
 **2D for now** (`Transform` holds a `glm::vec2`), and **moving to 3D later is mandatory**, so the physics engine must
 cover both without a rewrite. We need `Collider` and `RigidBody` components, triggers and raycasts.
 
@@ -120,7 +120,7 @@ as much as "2D today".
 
 ### Components and systems
 
-The components stay **descriptors** (`Collider`, `RigidBody`, declared with `RTYPE_ECS_COMPONENT` like `Transform`),
+The components stay **descriptors** (`Collider`, `RigidBody`, declared with `AYLO_ECS_COMPONENT` like `Transform`),
 and an internal `PhysicsHandle` component links the entity to its body. The body stores the entity in its user data
 (`Body::SetUserData`) to go back from a contact to the entity.
 

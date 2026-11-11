@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** QueryTests
 */
@@ -16,61 +16,61 @@
 #include <type_traits>
 #include <vector>
 
-#include "rtype/ecs/change/Mut.hpp"
-#include "rtype/ecs/change/Tick.hpp"
-#include "rtype/ecs/component/ComponentInfo.hpp"
-#include "rtype/ecs/component/ComponentRegistry.hpp"
-#include "rtype/ecs/component/ComponentTraits.hpp"
-#include "rtype/ecs/component/Components.hpp"
-#include "rtype/ecs/entity/Entity.hpp"
-#include "rtype/ecs/query/DynamicQuery.hpp"
-#include "rtype/ecs/query/Query.hpp"
-#include "rtype/ecs/query/QueryBuilder.hpp"
-#include "rtype/ecs/query/QueryIteration.hpp"
-#include "rtype/ecs/query/QueryMatch.hpp"
-#include "rtype/ecs/query/QueryState.hpp"
-#include "rtype/ecs/query/QueryTerm.hpp"
-#include "rtype/ecs/query/QueryTerms.hpp"
-#include "rtype/ecs/type/TypeInfo.hpp"
-#include "rtype/ecs/world/World.hpp"
+#include "aylo/ecs/change/Mut.hpp"
+#include "aylo/ecs/change/Tick.hpp"
+#include "aylo/ecs/component/ComponentInfo.hpp"
+#include "aylo/ecs/component/ComponentRegistry.hpp"
+#include "aylo/ecs/component/ComponentTraits.hpp"
+#include "aylo/ecs/component/Components.hpp"
+#include "aylo/ecs/entity/Entity.hpp"
+#include "aylo/ecs/query/DynamicQuery.hpp"
+#include "aylo/ecs/query/Query.hpp"
+#include "aylo/ecs/query/QueryBuilder.hpp"
+#include "aylo/ecs/query/QueryIteration.hpp"
+#include "aylo/ecs/query/QueryMatch.hpp"
+#include "aylo/ecs/query/QueryState.hpp"
+#include "aylo/ecs/query/QueryTerm.hpp"
+#include "aylo/ecs/query/QueryTerms.hpp"
+#include "aylo/ecs/type/TypeInfo.hpp"
+#include "aylo/ecs/world/World.hpp"
 
-namespace rtype::test::query {
+namespace aylo::test::query {
 struct Position {
     float x;
     float y;
 };
-RTYPE_ECS_COMPONENT(Position, "test.query.Position", x, y);
+AYLO_ECS_COMPONENT(Position, "test.query.Position", x, y);
 
 struct Velocity {
     float x;
     float y;
 };
-RTYPE_ECS_COMPONENT(Velocity, "test.query.Velocity", x, y);
+AYLO_ECS_COMPONENT(Velocity, "test.query.Velocity", x, y);
 
 struct Health {
     std::int32_t value;
 };
-RTYPE_ECS_COMPONENT(Health, "test.query.Health", value);
+AYLO_ECS_COMPONENT(Health, "test.query.Health", value);
 
 struct Dead {};
-RTYPE_ECS_COMPONENT(Dead, "test.query.Dead");
-}  // namespace rtype::test::query
+AYLO_ECS_COMPONENT(Dead, "test.query.Dead");
+}  // namespace aylo::test::query
 
 namespace {
-using rtype::ecs::Added;
-using rtype::ecs::Changed;
-using rtype::ecs::Entity;
-using rtype::ecs::Mut;
-using rtype::ecs::Optional;
-using rtype::ecs::QueryState;
-using rtype::ecs::Tick;
-using rtype::ecs::With;
-using rtype::ecs::Without;
-using rtype::ecs::World;
-using rtype::test::query::Dead;
-using rtype::test::query::Health;
-using rtype::test::query::Position;
-using rtype::test::query::Velocity;
+using aylo::ecs::Added;
+using aylo::ecs::Changed;
+using aylo::ecs::Entity;
+using aylo::ecs::Mut;
+using aylo::ecs::Optional;
+using aylo::ecs::QueryState;
+using aylo::ecs::Tick;
+using aylo::ecs::With;
+using aylo::ecs::Without;
+using aylo::ecs::World;
+using aylo::test::query::Dead;
+using aylo::test::query::Health;
+using aylo::test::query::Position;
+using aylo::test::query::Velocity;
 
 // A match is the entity, then one item per term that has one: filters are left out.
 static_assert(std::is_same_v<QueryState<Position, const Velocity, With<Dead>>::Item,
@@ -92,9 +92,9 @@ std::vector<Entity> matchesOf(const QueryState<Terms...>& query, Tick lastRun = 
 }
 
 /// @return The entities a dynamic query matches, sorted to compare sets.
-std::vector<Entity> matchesOf(const rtype::ecs::DynamicQuery& query, Tick lastRun) {
+std::vector<Entity> matchesOf(const aylo::ecs::DynamicQuery& query, Tick lastRun) {
     std::vector<Entity> entities;
-    for (const rtype::ecs::QueryMatch& match : query.iter(lastRun)) {
+    for (const aylo::ecs::QueryMatch& match : query.iter(lastRun)) {
         entities.push_back(match.getEntity());
     }
     std::ranges::sort(entities, {}, &Entity::getBits);
@@ -195,32 +195,32 @@ TEST(QueryState, RegistersItsComponents) {
 TEST(QueryState, KeepsTheOptionsOfAnAlreadyRegisteredComponent) {
     World world;
     world.getComponents().registerType<Position>(
-        rtype::ecs::ComponentOptions{.replication = rtype::ecs::ReplicationMode::kEveryChange});
+        aylo::ecs::ComponentOptions{.replication = aylo::ecs::ReplicationMode::kEveryChange});
     EXPECT_NO_THROW(QueryState<const Position>{world.getComponents()});
     EXPECT_EQ(world.getComponents().getRegistry().find<Position>()->type.replication,
-              rtype::ecs::ReplicationMode::kEveryChange);
+              aylo::ecs::ReplicationMode::kEveryChange);
 }
 
 TEST(QueryState, CompilesDownToTheDynamicQuery) {
     World world;
     const QueryState<Position, const Velocity, Without<Dead>> query{world.getComponents()};
-    const rtype::ecs::ComponentId position = world.getComponents().getRegistry().find<Position>()->type.id;
-    const rtype::ecs::ComponentId velocity = world.getComponents().getRegistry().find<Velocity>()->type.id;
-    const rtype::ecs::ComponentId dead = world.getComponents().getRegistry().find<Dead>()->type.id;
+    const aylo::ecs::ComponentId position = world.getComponents().getRegistry().find<Position>()->type.id;
+    const aylo::ecs::ComponentId velocity = world.getComponents().getRegistry().find<Velocity>()->type.id;
+    const aylo::ecs::ComponentId dead = world.getComponents().getRegistry().find<Dead>()->type.id;
 
-    const std::vector<rtype::ecs::QueryTerm> expected{{.id = position, .kind = rtype::ecs::TermKind::kWrite},
-                                                      {.id = velocity, .kind = rtype::ecs::TermKind::kRead},
-                                                      {.id = dead, .kind = rtype::ecs::TermKind::kWithout}};
-    const std::span<const rtype::ecs::QueryTerm> terms = query.getDynamic().getTerms();
-    EXPECT_EQ(std::vector<rtype::ecs::QueryTerm>(terms.begin(), terms.end()), expected);
-    const std::vector<rtype::ecs::ComponentAccess> access{{.id = position, .write = true},
-                                                          {.id = velocity, .write = false}};
-    EXPECT_EQ(std::vector<rtype::ecs::ComponentAccess>(query.getAccess().begin(), query.getAccess().end()), access);
+    const std::vector<aylo::ecs::QueryTerm> expected{{.id = position, .kind = aylo::ecs::TermKind::kWrite},
+                                                     {.id = velocity, .kind = aylo::ecs::TermKind::kRead},
+                                                     {.id = dead, .kind = aylo::ecs::TermKind::kWithout}};
+    const std::span<const aylo::ecs::QueryTerm> terms = query.getDynamic().getTerms();
+    EXPECT_EQ(std::vector<aylo::ecs::QueryTerm>(terms.begin(), terms.end()), expected);
+    const std::vector<aylo::ecs::ComponentAccess> access{{.id = position, .write = true},
+                                                         {.id = velocity, .write = false}};
+    EXPECT_EQ(std::vector<aylo::ecs::ComponentAccess>(query.getAccess().begin(), query.getAccess().end()), access);
 }
 
 TEST(QueryState, MatchesTheSameEntitiesAsTheDynamicQuery) {
     World world;
-    rtype::ecs::Components& components = world.getComponents();
+    aylo::ecs::Components& components = world.getComponents();
     std::mt19937 random{99};
     std::bernoulli_distribution half{0.5};
     for (int index = 0; index < 200; ++index) {
@@ -236,8 +236,8 @@ TEST(QueryState, MatchesTheSameEntitiesAsTheDynamicQuery) {
         }
     }
     const QueryState<Position, Optional<const Velocity>, Without<Dead>> typed{components};
-    const rtype::ecs::Result<rtype::ecs::DynamicQuery> dynamic =
-        rtype::ecs::QueryBuilder{}
+    const aylo::ecs::Result<aylo::ecs::DynamicQuery> dynamic =
+        aylo::ecs::QueryBuilder{}
             .write(*components.find("test.query.Position"))
             .optionalRead(*components.find("test.query.Velocity"))
             .without(*components.find("test.query.Dead"))
@@ -249,9 +249,9 @@ TEST(QueryState, MatchesTheSameEntitiesAsTheDynamicQuery) {
 }
 
 // Both passes are C++20 input ranges: std::ranges algorithms and views work on them.
-static_assert(std::input_iterator<rtype::ecs::QueryIteration::Iterator>);
-static_assert(std::sentinel_for<std::default_sentinel_t, rtype::ecs::QueryIteration::Iterator>);
-static_assert(std::ranges::input_range<rtype::ecs::QueryIteration>);
+static_assert(std::input_iterator<aylo::ecs::QueryIteration::Iterator>);
+static_assert(std::sentinel_for<std::default_sentinel_t, aylo::ecs::QueryIteration::Iterator>);
+static_assert(std::ranges::input_range<aylo::ecs::QueryIteration>);
 static_assert(std::input_iterator<QueryState<Position, const Velocity>::Iteration::Iterator>);
 static_assert(std::ranges::input_range<QueryState<Position, const Velocity>::Iteration>);
 
@@ -264,16 +264,16 @@ TEST(QueryState, WorksWithRangesAlgorithms) {
     EXPECT_EQ(std::ranges::distance(typed.iter(0)), 3);
     EXPECT_EQ(std::ranges::count_if(typed.iter(0), [](const auto& match) { return std::get<1>(match).value > 10; }), 2);
 
-    const rtype::ecs::Result<rtype::ecs::DynamicQuery> dynamic =
-        rtype::ecs::QueryBuilder{}.read(*world.getComponents().find("test.query.Health")).build(world.getComponents());
+    const aylo::ecs::Result<aylo::ecs::DynamicQuery> dynamic =
+        aylo::ecs::QueryBuilder{}.read(*world.getComponents().find("test.query.Health")).build(world.getComponents());
     ASSERT_TRUE(dynamic);
     EXPECT_EQ(std::ranges::distance(dynamic->iter(0)), 3);
 }
 
 // A view is iterated directly, and it is an input range like a pass.
-static_assert(std::ranges::input_range<rtype::ecs::Query<Position, const Velocity>>);
+static_assert(std::ranges::input_range<aylo::ecs::Query<Position, const Velocity>>);
 static_assert(
-    std::is_same_v<rtype::ecs::Query<Position, const Velocity>::Item, QueryState<Position, const Velocity>::Item>);
+    std::is_same_v<aylo::ecs::Query<Position, const Velocity>::Item, QueryState<Position, const Velocity>::Item>);
 
 TEST(Query, IteratesTheStateWithStructuredBindings) {
     World world;
@@ -281,7 +281,7 @@ TEST(Query, IteratesTheStateWithStructuredBindings) {
     world.spawn(Position{});  // no velocity: not matched
     const QueryState<Position, const Velocity> state{world.getComponents()};
 
-    rtype::ecs::Query<Position, const Velocity> query{state, 0};
+    aylo::ecs::Query<Position, const Velocity> query{state, 0};
     int count = 0;
     for (auto [entity, position, velocity] : query) {
         EXPECT_EQ(entity, ship);
@@ -301,7 +301,7 @@ TEST(Query, FiltersAgainstItsLastRun) {
     const Entity recent = world.spawn(Health{.value = 2});
     const QueryState<const Health, Added<Health>> state{world.getComponents()};
 
-    rtype::ecs::Query<const Health, Added<Health>> query{state, lastRun};
+    aylo::ecs::Query<const Health, Added<Health>> query{state, lastRun};
     EXPECT_EQ(query.getLastRun(), lastRun);
     std::vector<Entity> matched;
     for (auto [entity, health] : query) {
@@ -316,7 +316,7 @@ TEST(Query, EachBeginStartsANewPass) {
     world.spawn(Health{.value = 2});
     const QueryState<const Health> state{world.getComponents()};
 
-    rtype::ecs::Query<const Health> query{state, 0};
+    aylo::ecs::Query<const Health> query{state, 0};
     EXPECT_EQ(std::ranges::distance(query), 2);
     EXPECT_EQ(std::ranges::distance(query), 2);  // walked again from the start
 }
@@ -328,7 +328,7 @@ TEST(Query, WritesStampTheWorldTickOnlyWhenWritten) {
     world.advanceChangeTick(4);
     const QueryState<Health> state{world.getComponents()};
 
-    for (auto [entity, health] : rtype::ecs::Query<Health>{state, 0}) {
+    for (auto [entity, health] : aylo::ecs::Query<Health>{state, 0}) {
         if (entity == second) {
             health->value = 20;
         }

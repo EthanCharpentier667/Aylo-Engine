@@ -2,7 +2,7 @@
 
 Plain components cover most of a game. An engine call is for what data cannot express: loading an asset, binding an
 input, playing a sound, asking the physics a question. It is a function the engine gives to scripts, with a name
-`rtype.<feature>.<verb>`, called with a table of arguments.
+`aylo.<feature>.<verb>`, called with a table of arguments.
 
 ```luau
 -- while the script loads (top level of a file)

@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ModuleLoaderTests
 */
@@ -19,25 +19,25 @@
 #include <utility>
 #include <vector>
 
-#include "rtype/luau/ErrorKind.hpp"
-#include "rtype/luau/Exceptions.hpp"
-#include "rtype/luau/Failure.hpp"
-#include "rtype/luau/ModuleLoader.hpp"
-#include "rtype/luau/ModuleSource.hpp"
-#include "rtype/luau/Ref.hpp"
-#include "rtype/luau/Result.hpp"
-#include "rtype/luau/Runtime.hpp"
-#include "rtype/luau/RuntimeConfig.hpp"
-#include "rtype/luau/Table.hpp"
-#include "rtype/luau/Value.hpp"
-#include "rtype/luau/detail/RawState.hpp"
+#include "aylo/luau/ErrorKind.hpp"
+#include "aylo/luau/Exceptions.hpp"
+#include "aylo/luau/Failure.hpp"
+#include "aylo/luau/ModuleLoader.hpp"
+#include "aylo/luau/ModuleSource.hpp"
+#include "aylo/luau/Ref.hpp"
+#include "aylo/luau/Result.hpp"
+#include "aylo/luau/Runtime.hpp"
+#include "aylo/luau/RuntimeConfig.hpp"
+#include "aylo/luau/Table.hpp"
+#include "aylo/luau/Value.hpp"
+#include "aylo/luau/detail/RawState.hpp"
 
 namespace {
-using rtype::luau::ErrorKind;
-using rtype::luau::ModuleLoader;
-using rtype::luau::ModuleSource;
-using rtype::luau::Ref;
-using rtype::luau::Result;
+using aylo::luau::ErrorKind;
+using aylo::luau::ModuleLoader;
+using aylo::luau::ModuleSource;
+using aylo::luau::Ref;
+using aylo::luau::Result;
 using Keys = std::vector<std::string>;
 
 /// @brief A runtime, an in-memory set of modules (key to source) and a loader over them.
@@ -69,7 +69,7 @@ class Modules {
 
     ModuleLoader& loader() { return *_loader; }
     void dropLoader() { _loader.reset(); }
-    rtype::luau::Runtime& runtime() { return _runtime; }
+    aylo::luau::Runtime& runtime() { return _runtime; }
 
     /// @brief Requires a path from the root and fails the test if it does not load.
     Ref require(const std::string& path) {
@@ -86,7 +86,7 @@ class Modules {
     }
 
     std::string typeOf(const Ref& ref) {
-        lua_State* state = rtype::luau::detail::rawState(_runtime);
+        lua_State* state = aylo::luau::detail::rawState(_runtime);
         ref.push(state);
         std::string name{luaL_typename(state, -1)};
         lua_pop(state, 1);
@@ -94,7 +94,7 @@ class Modules {
     }
 
     std::string text(const Ref& ref) {
-        lua_State* state = rtype::luau::detail::rawState(_runtime);
+        lua_State* state = aylo::luau::detail::rawState(_runtime);
         ref.push(state);
         const char* value = lua_tostring(state, -1);
         std::string result{value != nullptr ? value : ""};
@@ -104,7 +104,7 @@ class Modules {
 
     /// @brief Calls a function value without arguments and gives its first result as text, or `error: <message>`.
     std::string call(const Ref& function) {
-        lua_State* state = rtype::luau::detail::rawState(_runtime);
+        lua_State* state = aylo::luau::detail::rawState(_runtime);
         function.push(state);
         const int status = lua_pcall(state, 0, 1, 0);
         const char* value = lua_tostring(state, -1);
@@ -119,9 +119,9 @@ class Modules {
     std::vector<std::string> requesters;         ///< Requester key of each resolver call.
 
   private:
-    static rtype::luau::Runtime makeRuntime() {
-        auto runtime = rtype::luau::Runtime::create(
-            rtype::luau::RuntimeConfig{.libs = rtype::luau::RuntimeConfig::Libs::kStandard});
+    static aylo::luau::Runtime makeRuntime() {
+        auto runtime =
+            aylo::luau::Runtime::create(aylo::luau::RuntimeConfig{.libs = aylo::luau::RuntimeConfig::Libs::kStandard});
         EXPECT_TRUE(runtime);
         return std::move(*runtime);
     }
@@ -138,12 +138,12 @@ class Modules {
         }
         const auto found = sources.find(std::string{path});
         if (found == sources.end()) {
-            return rtype::luau::Failure{ErrorKind::kRuntime, std::format("not found: {}", path)};
+            return aylo::luau::Failure{ErrorKind::kRuntime, std::format("not found: {}", path)};
         }
         return ModuleSource{.key = found->first, .chunkName = found->first + ".luau", .source = found->second};
     }
 
-    rtype::luau::Runtime _runtime;
+    aylo::luau::Runtime _runtime;
     std::unique_ptr<ModuleLoader> _loader;
 };
 
@@ -165,7 +165,7 @@ TEST(ModuleLoader, RunsAModuleOnceAndCachesIt) {
     const Ref third = modules.require("b");
 
     EXPECT_EQ(modules.events, (Keys{"+a", "-a", "+b", "-b"}));
-    lua_State* state = rtype::luau::detail::rawState(modules.runtime());
+    lua_State* state = aylo::luau::detail::rawState(modules.runtime());
     first.push(state);
     second.push(state);
     third.push(state);
@@ -182,7 +182,7 @@ TEST(ModuleLoader, PathsWithTheSameKeyShareOneInstance) {
     const Ref byAlias = modules.require("alias");
 
     EXPECT_EQ(modules.events, (Keys{"+a", "-a"}));
-    lua_State* state = rtype::luau::detail::rawState(modules.runtime());
+    lua_State* state = aylo::luau::detail::rawState(modules.runtime());
     byName.push(state);
     byAlias.push(state);
     EXPECT_TRUE(lua_rawequal(state, -2, -1));
@@ -196,7 +196,7 @@ TEST(ModuleLoader, FreezesAReturnedTableShallowly) {
     const Ref table = modules.require("a");
 
     EXPECT_EQ(modules.typeOf(table), "table");
-    lua_State* state = rtype::luau::detail::rawState(modules.runtime());
+    lua_State* state = aylo::luau::detail::rawState(modules.runtime());
     table.push(state);
     EXPECT_TRUE(lua_getreadonly(state, -1));
     lua_getfield(state, -1, "inner");
@@ -222,7 +222,7 @@ TEST(ModuleLoader, ValueOfGivesTheTableOfALoadedModule) {
     const auto value = modules.loader().valueOf("a");
 
     ASSERT_TRUE(value);
-    const auto* table = value->tryAs<rtype::luau::Table>();
+    const auto* table = value->tryAs<aylo::luau::Table>();
     ASSERT_NE(table, nullptr);
     EXPECT_DOUBLE_EQ(table->get("value")->as<double>(), 7.0);
     EXPECT_TRUE(*table->isFrozen());
@@ -374,7 +374,7 @@ TEST(ModuleLoader, EachModuleHasItsOwnGlobalsInAnUnsandboxedRuntimeToo) {
     EXPECT_FALSE(modules.runtime().isSandboxed());
     modules.require("a");
     EXPECT_EQ(modules.text(modules.require("b")), "function");
-    lua_State* state = rtype::luau::detail::rawState(modules.runtime());
+    lua_State* state = aylo::luau::detail::rawState(modules.runtime());
     lua_getglobal(state, "shared");
     EXPECT_TRUE(lua_isnil(state, -1));
     lua_getglobal(state, "require");
@@ -389,7 +389,7 @@ TEST(ModuleLoader, SharedGlobalsLetModulesSeeEachOthersGlobalWrites) {
 
     modules.require("a");
     EXPECT_EQ(modules.text(modules.require("b")), "7");
-    lua_State* state = rtype::luau::detail::rawState(modules.runtime());
+    lua_State* state = aylo::luau::detail::rawState(modules.runtime());
     lua_getglobal(state, "Shared");
     EXPECT_EQ(lua_tonumber(state, -1), 7);
     lua_pop(state, 1);
@@ -400,7 +400,7 @@ TEST(ModuleLoader, SharedGlobalsKeepRequirePerModule) {
     modules.sources["a"] = "return type(require)";
 
     EXPECT_EQ(modules.text(modules.require("a")), "function");
-    lua_State* state = rtype::luau::detail::rawState(modules.runtime());
+    lua_State* state = aylo::luau::detail::rawState(modules.runtime());
     lua_getglobal(state, "require");
     EXPECT_TRUE(lua_isnil(state, -1));
     lua_pop(state, 1);
@@ -418,7 +418,7 @@ TEST(ModuleLoader, SharedGlobalsAreIgnoredByASandboxedRuntime) {
 TEST(ModuleLoader, ModulesSeeTheSharedGlobals) {
     Modules modules{false};
     modules.sources["a"] = "return answer";
-    lua_State* state = rtype::luau::detail::rawState(modules.runtime());
+    lua_State* state = aylo::luau::detail::rawState(modules.runtime());
     lua_pushnumber(state, 42);
     lua_setglobal(state, "answer");
 
@@ -630,11 +630,11 @@ TEST(ModuleLoader, UnloadInATransactionCanBeRolledBack) {
 TEST(ModuleLoader, TransactionMisuseThrows) {
     Modules modules;
 
-    EXPECT_THROW(modules.loader().invalidate({"a"}), rtype::luau::exceptions::InvalidOperation);
-    EXPECT_THROW(modules.loader().commit(), rtype::luau::exceptions::InvalidOperation);
-    EXPECT_THROW(modules.loader().rollback(), rtype::luau::exceptions::InvalidOperation);
+    EXPECT_THROW(modules.loader().invalidate({"a"}), aylo::luau::exceptions::InvalidOperation);
+    EXPECT_THROW(modules.loader().commit(), aylo::luau::exceptions::InvalidOperation);
+    EXPECT_THROW(modules.loader().rollback(), aylo::luau::exceptions::InvalidOperation);
     modules.loader().begin();
-    EXPECT_THROW(modules.loader().begin(), rtype::luau::exceptions::InvalidOperation);
+    EXPECT_THROW(modules.loader().begin(), aylo::luau::exceptions::InvalidOperation);
     modules.loader().commit();
 }
 
@@ -642,7 +642,7 @@ TEST(ModuleLoader, DependentsIncludeAModuleRequiringItself) {
     Modules modules;
     modules.sources["m"] = "local m = {} function m.again() return require('m') end return m";
     modules.require("m");
-    lua_State* state = rtype::luau::detail::rawState(modules.runtime());
+    lua_State* state = aylo::luau::detail::rawState(modules.runtime());
     modules.loader().value("m")->push(state);
     lua_getfield(state, -1, "again");
     EXPECT_EQ(lua_pcall(state, 0, 0, 0), LUA_OK);

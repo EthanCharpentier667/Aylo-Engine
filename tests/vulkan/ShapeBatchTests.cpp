@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ShapeBatchTests
 */
@@ -9,14 +9,14 @@
 
 #include <glm/ext/vector_float4.hpp>
 
+#include "aylo/contract/renderer/shaders/CompiledShader.hpp"
 #include "render/vulkan/rendering/ShapeBatch.hpp"
-#include "rtype/contract/renderer/shaders/CompiledShader.hpp"
 
-using rtype::render::vulkan::rendering::ShapeBatch;
+using aylo::render::vulkan::rendering::ShapeBatch;
 
 namespace {
-using MaterialId = rtype::contract::renderer::MaterialId;
-using ShaderInstanceValues = rtype::contract::renderer::ShaderInstanceValues;
+using MaterialId = aylo::contract::renderer::MaterialId;
+using ShaderInstanceValues = aylo::contract::renderer::ShaderInstanceValues;
 
 constexpr MaterialId kGlow{.index = 0, .generation = 1};
 constexpr MaterialId kFlash{.index = 1, .generation = 1};

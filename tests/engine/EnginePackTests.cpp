@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** EnginePackTests
 */
@@ -16,17 +16,17 @@
 #include <system_error>
 #include <vector>
 
+#include "aylo/ecs/schedule/RunMode.hpp"
+#include "aylo/engine/Engine.hpp"
+#include "aylo/engine/EngineConfig.hpp"
+#include "aylo/engine/Exceptions.hpp"
+#include "aylo/plugins/AssetDirectory.hpp"
 #include "core/vfs/Pack.hpp"
-#include "rtype/ecs/schedule/RunMode.hpp"
-#include "rtype/engine/Engine.hpp"
-#include "rtype/engine/EngineConfig.hpp"
-#include "rtype/engine/Exceptions.hpp"
-#include "rtype/plugins/AssetDirectory.hpp"
 
-using rtype::core::vfs::PackEntry;
-using rtype::engine::Engine;
-using rtype::engine::EngineConfig;
-using rtype::engine::exceptions::RuntimeError;
+using aylo::core::vfs::PackEntry;
+using aylo::engine::Engine;
+using aylo::engine::EngineConfig;
+using aylo::engine::exceptions::RuntimeError;
 
 namespace {
 /// @brief The project of the packed test games: a server on a port the system picks, and hot reload asked for.
@@ -45,17 +45,17 @@ class EnginePackTest : public ::testing::Test {
     /// @return The pack `<root>/game.pak` made of @p entries.
     [[nodiscard]] std::filesystem::path pack(const std::vector<PackEntry>& entries) const {
         const std::filesystem::path file = _root / "game.pak";
-        rtype::core::vfs::writePack(file, entries);
+        aylo::core::vfs::writePack(file, entries);
         return file;
     }
 
     /// @return A headless server config that runs the pack @p file.
     [[nodiscard]] static EngineConfig serverOf(const std::filesystem::path& file) {
-        return {.mode = rtype::ecs::RunMode::kServer, .args = {file.string()}};
+        return {.mode = aylo::ecs::RunMode::kServer, .args = {file.string()}};
     }
 
     std::filesystem::path _root{std::filesystem::temp_directory_path() /
-                                std::format("rtype_engine_pack_{:08x}", std::random_device{}())};
+                                std::format("aylo_engine_pack_{:08x}", std::random_device{}())};
 };
 }  // namespace
 
@@ -98,8 +98,8 @@ TEST_F(EnginePackTest, TheAssetsOfAPackAreReadFromIt) {
     const Engine engine{serverOf(file)};
     const auto& resources = engine.app().getWorld().getResources();
 
-    EXPECT_TRUE(rtype::plugins::assetDirectoryOf(resources).empty());
-    EXPECT_EQ(rtype::plugins::assetSourceOf(resources)->read("levels/a.txt"), "in pack");
+    EXPECT_TRUE(aylo::plugins::assetDirectoryOf(resources).empty());
+    EXPECT_EQ(aylo::plugins::assetSourceOf(resources)->read("levels/a.txt"), "in pack");
 }
 
 TEST_F(EnginePackTest, RefusesAPackWithoutAProject) {

@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** Client
 */
@@ -20,13 +20,13 @@
 #include <variant>
 #include <vector>
 
-#include "rtype/network/NetworkSettings.hpp"
-#include "rtype/network/Types.hpp"
-#include "rtype/network/client/ClientEvent.hpp"
-#include "rtype/network/client/NetClient.hpp"
-#include "rtype/network/io/Address.hpp"
+#include "aylo/network/NetworkSettings.hpp"
+#include "aylo/network/Types.hpp"
+#include "aylo/network/client/ClientEvent.hpp"
+#include "aylo/network/client/NetClient.hpp"
+#include "aylo/network/io/Address.hpp"
 
-using namespace rtype::network;
+using namespace aylo::network;
 
 namespace {
 std::optional<std::uint16_t> parsePort(const std::string& text) {

@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** main
 */
@@ -27,6 +27,15 @@
 #include <utility>
 #include <vector>
 
+#include "aylo/contract/renderer/drawing/Color.hpp"
+#include "aylo/contract/renderer/drawing/Shape.hpp"
+#include "aylo/contract/renderer/shaders/CompiledShader.hpp"
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/app/MinimalPlugins.hpp"
+#include "aylo/ecs/command/Commands.hpp"
+#include "aylo/ecs/schedule/Phase.hpp"
+#include "aylo/ecs/system/ResourceParam.hpp"
+#include "aylo/ecs/system/Side.hpp"
 #include "core/asset/AssetId.hpp"
 #include "core/config/Settings.hpp"
 #include "platform/glfw/Registration.hpp"
@@ -54,38 +63,29 @@
 #include "plugins/transform/Transform.hpp"
 #include "plugins/transform/TransformPlugin.hpp"
 #include "render/vulkan/Registration.hpp"
-#include "rtype/contract/renderer/drawing/Color.hpp"
-#include "rtype/contract/renderer/drawing/Shape.hpp"
-#include "rtype/contract/renderer/shaders/CompiledShader.hpp"
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/app/MinimalPlugins.hpp"
-#include "rtype/ecs/command/Commands.hpp"
-#include "rtype/ecs/schedule/Phase.hpp"
-#include "rtype/ecs/system/ResourceParam.hpp"
-#include "rtype/ecs/system/Side.hpp"
 
-using namespace rtype;
-using namespace rtype::contract::renderer;
-using namespace rtype::plugins::graphics;
-using namespace rtype::plugins::sprite;
-using namespace rtype::plugins::particle;
-using namespace rtype::plugins::shader;
-using namespace rtype::plugins::text;
-using rtype::core::asset::AssetId;
-using rtype::plugins::transform::Transform;
+using namespace aylo;
+using namespace aylo::contract::renderer;
+using namespace aylo::plugins::graphics;
+using namespace aylo::plugins::sprite;
+using namespace aylo::plugins::particle;
+using namespace aylo::plugins::shader;
+using namespace aylo::plugins::text;
+using aylo::core::asset::AssetId;
+using aylo::plugins::transform::Transform;
 
 namespace {
 constexpr float kWidth = 960.0F;
 constexpr float kHeight = 540.0F;
-constexpr rtype::contract::renderer::Color kClear{0.05F, 0.05F, 0.08F, 1.0F};
+constexpr aylo::contract::renderer::Color kClear{0.05F, 0.05F, 0.08F, 1.0F};
 constexpr glm::vec2 kScale{4.0F};
 
 // Startup: loads and compiles the shaders, builds the materials and spawns the ships, the text and the particles.
 void spawnShips(ecs::ResMut<TextureAssets> textures, ecs::ResMut<ShaderAssets> shaders,
                 ecs::ResMut<MaterialAssets> materials, ecs::ResMut<FontAssets> fonts,
                 ecs::ResMut<ParticleEffectAssets> effects, ecs::Commands& commands) {
-    const AssetId sheet = textures->load("examples/assets/r-typesheet24.gif");
-    const AssetId overlay = textures->load("examples/assets/r-fx-explosions.gif");
+    const AssetId sheet = textures->load("examples/assets/spritesheet24.gif");
+    const AssetId overlay = textures->load("examples/assets/fx-explosions.gif");
     const AssetId wave = shaders->load("examples/assets/shaders/wave.glsl");
     const AssetId flash = shaders->load("examples/assets/shaders/flash.glsl");
     const AssetId waving = materials->add("example.waving", Material{.shader = wave}.setTexture("overlay", overlay));
@@ -98,7 +98,7 @@ void spawnShips(ecs::ResMut<TextureAssets> textures, ecs::ResMut<ShaderAssets> s
     commands.spawn().add(Transform{.position = {kWidth * 0.5F, kHeight / 2.0F}, .scale = kScale}).add(waved);
     SpriteRenderer flashed = ship;
     flashed.material = flashing;
-    const rtype::contract::renderer::CompiledShader* compiled = shaders->get(flash);
+    const aylo::contract::renderer::CompiledShader* compiled = shaders->get(flash);
     if (compiled == nullptr) {
         std::cerr << "shader: " << shaders->getEntry(flash)->error << '\n';
         return;
@@ -138,13 +138,13 @@ void drawShapes(ecs::NonSendMut<Backend> backend, ecs::Res<ShaderAssets> shaders
     if (backend->renderer == nullptr) {
         return;
     }
-    rtype::contract::renderer::Shape bar{.kind = rtype::contract::renderer::ShapeKind::kRect,
-                                         .position = {kWidth * 0.2F, kHeight * 0.88F},
-                                         .size = {220.0F, 44.0F},
-                                         .cornerRadius = 12.0F,
-                                         .fillColor = {0.9F, 0.5F, 0.2F, 1.0F},
-                                         .outlineColor = {1.0F, 1.0F, 1.0F, 1.0F},
-                                         .outlineThickness = 3.0F};
+    aylo::contract::renderer::Shape bar{.kind = aylo::contract::renderer::ShapeKind::kRect,
+                                        .position = {kWidth * 0.2F, kHeight * 0.88F},
+                                        .size = {220.0F, 44.0F},
+                                        .cornerRadius = 12.0F,
+                                        .fillColor = {0.9F, 0.5F, 0.2F, 1.0F},
+                                        .outlineColor = {1.0F, 1.0F, 1.0F, 1.0F},
+                                        .outlineThickness = 3.0F};
     backend->renderer->draw(bar);
     if (const ShaderHandles::Material* waving = handles->getMaterial(AssetId::fromPath("example.waving"))) {
         bar.position.x = kWidth * 0.5F;
@@ -152,12 +152,12 @@ void drawShapes(ecs::NonSendMut<Backend> backend, ecs::Res<ShaderAssets> shaders
         bar.instanceValues = waving->instanceDefaults;
         backend->renderer->draw(bar);
     }
-    const rtype::contract::renderer::CompiledShader* flash =
+    const aylo::contract::renderer::CompiledShader* flash =
         shaders->get(AssetId::fromPath("examples/assets/shaders/flash.glsl"));
     const ShaderHandles::Material* flashing = handles->getMaterial(AssetId::fromPath("example.flashing"));
     if (flash != nullptr && flashing != nullptr) {
-        backend->renderer->draw(rtype::contract::renderer::Shape{
-            .kind = rtype::contract::renderer::ShapeKind::kCircle,
+        backend->renderer->draw(aylo::contract::renderer::Shape{
+            .kind = aylo::contract::renderer::ShapeKind::kCircle,
             .position = {kWidth * 0.8F, kHeight * 0.92F},
             .radius = 28.0F,
             .fillColor = {0.2F, 0.5F, 0.9F, 1.0F},
@@ -181,19 +181,19 @@ core::config::Settings makeSettings() {
 int main() {
     try {
         auto registry = std::make_unique<BackendRegistry>();
-        rtype::platform::glfw::registerPlatform(registry->platforms);
+        aylo::platform::glfw::registerPlatform(registry->platforms);
         render::vulkan::registerRenderer(registry->renderers);
 
         ecs::App app;
         app.addPlugins(ecs::MinimalPlugins{})
-            .addPlugin(rtype::plugins::transform::TransformPlugin{})
-            .addPlugin(rtype::plugins::input::InputPlugin{})
+            .addPlugin(aylo::plugins::transform::TransformPlugin{})
+            .addPlugin(aylo::plugins::input::InputPlugin{})
             .addPlugin(GraphicsPlugin{std::move(registry), makeSettings()})
-            .addPlugin(rtype::plugins::shader::ShaderPlugin{})
-            .addPlugin(rtype::plugins::sprite::SpritePlugin{})
-            .addPlugin(rtype::plugins::sprite::SpriteDrawPlugin{})
-            .addPlugin(rtype::plugins::text::TextPlugin{})
-            .addPlugin(rtype::plugins::particle::ParticlePlugin{});
+            .addPlugin(aylo::plugins::shader::ShaderPlugin{})
+            .addPlugin(aylo::plugins::sprite::SpritePlugin{})
+            .addPlugin(aylo::plugins::sprite::SpriteDrawPlugin{})
+            .addPlugin(aylo::plugins::text::TextPlugin{})
+            .addPlugin(aylo::plugins::particle::ParticlePlugin{});
         app.insertResource(ClearColor{.value = kClear});
         app.addSystem(ecs::Phase::kStartup, "example.spawnShips", &spawnShips);
         app.addSystem(ecs::Phase::kRender, "example.drawShapes", &drawShapes)

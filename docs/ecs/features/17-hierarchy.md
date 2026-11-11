@@ -46,8 +46,8 @@ removed component, while the `World` does all of them.
 ### Linking entities
 
 ```c++
-commands.entity(turret).add(rtype::ecs::Parent{.entity = boss});  // or world.setParent(turret, boss)
-commands.entity(turret).remove<rtype::ecs::Parent>();             // or world.removeParent(turret)
+commands.entity(turret).add(aylo::ecs::Parent{.entity = boss});  // or world.setParent(turret, boss)
+commands.entity(turret).remove<aylo::ecs::Parent>();             // or world.removeParent(turret)
 ```
 
 `Commands::flush()` hands every `Parent` to `World::setParent()` and `removeParent()`, however it was recorded, so

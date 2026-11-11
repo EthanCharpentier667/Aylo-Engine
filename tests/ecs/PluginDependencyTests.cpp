@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** PluginDependencyTests
 */
@@ -14,17 +14,17 @@
 #include <utility>
 #include <vector>
 
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/app/Plugin.hpp"
-#include "rtype/ecs/app/PluginRegistry.hpp"
-#include "rtype/ecs/exceptions/PluginException.hpp"
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/app/Plugin.hpp"
+#include "aylo/ecs/app/PluginRegistry.hpp"
+#include "aylo/ecs/exceptions/PluginException.hpp"
 
-namespace rtype::test::plugin_dependency {
+namespace aylo::test::plugin_dependency {
 /// @brief The names of the plugins built, in build order.
 using BuildLog = std::vector<std::string>;
 
 /// @brief A plugin requiring the plugins it is given, and logging its build.
-class RequiringPlugin : public rtype::ecs::Plugin {
+class RequiringPlugin : public aylo::ecs::Plugin {
   public:
     RequiringPlugin(std::string_view name, std::vector<std::string_view> dependencies, BuildLog* log)
         : _name{name}, _dependencies{std::move(dependencies)}, _log{log} {}
@@ -36,7 +36,7 @@ class RequiringPlugin : public rtype::ecs::Plugin {
 
     [[nodiscard]] std::string_view getName() const noexcept override { return _name; }
     [[nodiscard]] std::span<const std::string_view> getDependencies() const noexcept override { return _dependencies; }
-    void build(rtype::ecs::App& /*app*/) override { _log->emplace_back(_name); }
+    void build(aylo::ecs::App& /*app*/) override { _log->emplace_back(_name); }
 
   private:
     std::string _name;                            ///< The plugin's name.
@@ -45,7 +45,7 @@ class RequiringPlugin : public rtype::ecs::Plugin {
 };
 
 /// @brief A plugin without declared dependencies.
-class PlainPlugin : public rtype::ecs::Plugin {
+class PlainPlugin : public aylo::ecs::Plugin {
   public:
     PlainPlugin() = default;
     ~PlainPlugin() override = default;
@@ -55,11 +55,11 @@ class PlainPlugin : public rtype::ecs::Plugin {
     PlainPlugin& operator=(PlainPlugin&& other) noexcept = default;
 
     [[nodiscard]] std::string_view getName() const noexcept override { return "test.plain"; }
-    void build(rtype::ecs::App& /*app*/) override {}
+    void build(aylo::ecs::App& /*app*/) override {}
 };
 
 /// @brief Registers a RequiringPlugin factory in the App's registry.
-void registerPlugin(rtype::ecs::App& app, std::string_view name, std::vector<std::string_view> dependencies,
+void registerPlugin(aylo::ecs::App& app, std::string_view name, std::vector<std::string_view> dependencies,
                     BuildLog* log) {
     app.getPluginRegistry().add(std::string{name}, [name, dependencies = std::move(dependencies), log] {
         return std::make_unique<RequiringPlugin>(name, dependencies, log);
@@ -67,24 +67,24 @@ void registerPlugin(rtype::ecs::App& app, std::string_view name, std::vector<std
 }
 
 /// @return The message of the PluginException thrown by adding the plugin, or an empty string if none is.
-std::string addError(rtype::ecs::App& app, RequiringPlugin plugin) {
+std::string addError(aylo::ecs::App& app, RequiringPlugin plugin) {
     try {
         app.addPlugin(std::move(plugin));
-    } catch (const rtype::ecs::exceptions::PluginException& error) {
+    } catch (const aylo::ecs::exceptions::PluginException& error) {
         return error.what();
     }
     return "";
 }
-}  // namespace rtype::test::plugin_dependency
+}  // namespace aylo::test::plugin_dependency
 
-namespace pdep = rtype::test::plugin_dependency;
+namespace pdep = aylo::test::plugin_dependency;
 
 TEST(PluginDependency, PluginsDeclareNoDependenciesByDefault) {
     EXPECT_TRUE(pdep::PlainPlugin{}.getDependencies().empty());
 }
 
 TEST(PluginDependency, AnAddedDependencyIsNotBuiltAgain) {
-    rtype::ecs::App app;
+    aylo::ecs::App app;
     pdep::BuildLog log;
     app.addPlugin(pdep::RequiringPlugin{"test.b", {}, &log});
     testing::internal::CaptureStderr();
@@ -94,7 +94,7 @@ TEST(PluginDependency, AnAddedDependencyIsNotBuiltAgain) {
 }
 
 TEST(PluginDependency, BuildsAMissingDependencyFromTheRegistryFirst) {
-    rtype::ecs::App app;
+    aylo::ecs::App app;
     pdep::BuildLog log;
     pdep::registerPlugin(app, "test.b", {}, &log);
     testing::internal::CaptureStderr();
@@ -106,7 +106,7 @@ TEST(PluginDependency, BuildsAMissingDependencyFromTheRegistryFirst) {
 }
 
 TEST(PluginDependency, AddingTheDependencyAfterwardsDoesNothing) {
-    rtype::ecs::App app;
+    aylo::ecs::App app;
     pdep::BuildLog log;
     pdep::registerPlugin(app, "test.b", {}, &log);
     testing::internal::CaptureStderr();
@@ -117,7 +117,7 @@ TEST(PluginDependency, AddingTheDependencyAfterwardsDoesNothing) {
 }
 
 TEST(PluginDependency, ResolvesTransitiveDependencies) {
-    rtype::ecs::App app;
+    aylo::ecs::App app;
     pdep::BuildLog log;
     pdep::registerPlugin(app, "test.b", {"test.c"}, &log);
     pdep::registerPlugin(app, "test.c", {}, &log);
@@ -128,7 +128,7 @@ TEST(PluginDependency, ResolvesTransitiveDependencies) {
 }
 
 TEST(PluginDependency, BuildsASharedDependencyOnce) {
-    rtype::ecs::App app;
+    aylo::ecs::App app;
     pdep::BuildLog log;
     pdep::registerPlugin(app, "test.b", {"test.d"}, &log);
     pdep::registerPlugin(app, "test.c", {"test.d"}, &log);
@@ -140,7 +140,7 @@ TEST(PluginDependency, BuildsASharedDependencyOnce) {
 }
 
 TEST(PluginDependency, RefusesADependencyNeitherAddedNorRegistered) {
-    rtype::ecs::App app;
+    aylo::ecs::App app;
     pdep::BuildLog log;
     pdep::registerPlugin(app, "test.other", {}, &log);
     const std::string message = pdep::addError(app, pdep::RequiringPlugin{"test.a", {"test.b"}, &log});
@@ -151,14 +151,14 @@ TEST(PluginDependency, RefusesADependencyNeitherAddedNorRegistered) {
 }
 
 TEST(PluginDependency, SaysWhenNoPluginIsRegistered) {
-    rtype::ecs::App app;
+    aylo::ecs::App app;
     pdep::BuildLog log;
     const std::string message = pdep::addError(app, pdep::RequiringPlugin{"test.a", {"test.b"}, &log});
     EXPECT_NE(message.find("registered: none"), std::string::npos) << message;
 }
 
 TEST(PluginDependency, RefusesACycleAndShowsItsPath) {
-    rtype::ecs::App app;
+    aylo::ecs::App app;
     pdep::BuildLog log;
     pdep::registerPlugin(app, "test.b", {"test.c"}, &log);
     pdep::registerPlugin(app, "test.c", {"test.a"}, &log);
@@ -172,14 +172,14 @@ TEST(PluginDependency, RefusesACycleAndShowsItsPath) {
 }
 
 TEST(PluginDependency, RefusesAPluginRequiringItself) {
-    rtype::ecs::App app;
+    aylo::ecs::App app;
     pdep::BuildLog log;
     const std::string message = pdep::addError(app, pdep::RequiringPlugin{"test.a", {"test.a"}, &log});
     EXPECT_EQ(message, "Plugin dependency cycle: 'test.a' -> 'test.a'");
 }
 
 TEST(PluginDependency, RefusesAFactoryBuildingAnotherPlugin) {
-    rtype::ecs::App app;
+    aylo::ecs::App app;
     pdep::BuildLog log;
     app.getPluginRegistry().add("test.b", [&log] {
         return std::make_unique<pdep::RequiringPlugin>("test.c", std::vector<std::string_view>{}, &log);
@@ -190,7 +190,7 @@ TEST(PluginDependency, RefusesAFactoryBuildingAnotherPlugin) {
 }
 
 TEST(PluginDependency, StaysUsableAfterAnError) {
-    rtype::ecs::App app;
+    aylo::ecs::App app;
     pdep::BuildLog log;
     static_cast<void>(pdep::addError(app, pdep::RequiringPlugin{"test.a", {"test.missing"}, &log}));
     pdep::registerPlugin(app, "test.missing", {}, &log);
@@ -201,7 +201,7 @@ TEST(PluginDependency, StaysUsableAfterAnError) {
 }
 
 TEST(PluginDependency, GetPluginsListsThePluginsInTheOrderTheyWereRecorded) {
-    rtype::ecs::App app;
+    aylo::ecs::App app;
     pdep::BuildLog log;
     pdep::registerPlugin(app, "test.b", {}, &log);
     testing::internal::CaptureStderr();
@@ -209,7 +209,7 @@ TEST(PluginDependency, GetPluginsListsThePluginsInTheOrderTheyWereRecorded) {
     app.addPlugin(pdep::RequiringPlugin{"test.a", {}, &log});  // already added: ignored
     static_cast<void>(testing::internal::GetCapturedStderr());
     std::vector<std::string> names;
-    for (const rtype::ecs::Plugin* plugin : app.getPlugins()) {
+    for (const aylo::ecs::Plugin* plugin : app.getPlugins()) {
         names.emplace_back(plugin->getName());
     }
     EXPECT_EQ(names, (std::vector<std::string>{"test.b", "test.a"}));

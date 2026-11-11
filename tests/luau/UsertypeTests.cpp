@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** UsertypeTests
 */
@@ -19,24 +19,24 @@
 #include <tuple>
 #include <utility>
 
-#include "rtype/luau/ErrorKind.hpp"
-#include "rtype/luau/Exceptions.hpp"
-#include "rtype/luau/Function.hpp"
-#include "rtype/luau/Result.hpp"
-#include "rtype/luau/Runtime.hpp"
-#include "rtype/luau/RuntimeConfig.hpp"
-#include "rtype/luau/Table.hpp"
-#include "rtype/luau/Userdata.hpp"
-#include "rtype/luau/Usertype.hpp"
-#include "rtype/luau/Value.hpp"
-#include "rtype/luau/ValuePack.hpp"
-#include "rtype/luau/detail/RawState.hpp"
-#include "rtype/luau/detail/Stack.hpp"
+#include "aylo/luau/ErrorKind.hpp"
+#include "aylo/luau/Exceptions.hpp"
+#include "aylo/luau/Function.hpp"
+#include "aylo/luau/Result.hpp"
+#include "aylo/luau/Runtime.hpp"
+#include "aylo/luau/RuntimeConfig.hpp"
+#include "aylo/luau/Table.hpp"
+#include "aylo/luau/Userdata.hpp"
+#include "aylo/luau/Usertype.hpp"
+#include "aylo/luau/Value.hpp"
+#include "aylo/luau/ValuePack.hpp"
+#include "aylo/luau/detail/RawState.hpp"
+#include "aylo/luau/detail/Stack.hpp"
 
 namespace {
-using Userdata = rtype::luau::Userdata;
-using Value = rtype::luau::Value;
-using ValuePack = rtype::luau::ValuePack;
+using Userdata = aylo::luau::Userdata;
+using Value = aylo::luau::Value;
+using ValuePack = aylo::luau::ValuePack;
 
 /// @brief A C++ type exposed to the scripts. It keeps a `tracker` alive, to see when it is destroyed.
 struct Counter {
@@ -60,10 +60,10 @@ struct Bag {
 };
 
 /// @brief Creates a runtime with the standard libraries, failing the test if it cannot be created.
-rtype::luau::Runtime makeRuntime() {
-    auto runtime = rtype::luau::Runtime::create({
-        .libs = rtype::luau::RuntimeConfig::Libs::kStandard,
-        .optimizationLevel = rtype::luau::RuntimeConfig::OptimizationLevel::kStandard,
+aylo::luau::Runtime makeRuntime() {
+    auto runtime = aylo::luau::Runtime::create({
+        .libs = aylo::luau::RuntimeConfig::Libs::kStandard,
+        .optimizationLevel = aylo::luau::RuntimeConfig::OptimizationLevel::kStandard,
     });
     EXPECT_TRUE(runtime);
     return std::move(*runtime);
@@ -71,9 +71,8 @@ rtype::luau::Runtime makeRuntime() {
 
 /// @brief Registers `Counter` with a constructor, a read-write `value`, a read-only `double`, methods, `__eq` and
 ///        `__tostring`.
-rtype::luau::Usertype<Counter> registerCounter(rtype::luau::Runtime& runtime,
-                                               const std::shared_ptr<int>& tracker = {}) {
-    return rtype::luau::expect(runtime.usertype<Counter>("Counter"))
+aylo::luau::Usertype<Counter> registerCounter(aylo::luau::Runtime& runtime, const std::shared_ptr<int>& tracker = {}) {
+    return aylo::luau::expect(runtime.usertype<Counter>("Counter"))
         .constructor([tracker](const double start) { return Counter{.value = start, .tracker = tracker}; })
         .getter("value", [](const Counter& counter) { return counter.value; })
         .setter("value", [](Counter& counter, const double value) { counter.value = value; })
@@ -94,7 +93,7 @@ rtype::luau::Usertype<Counter> registerCounter(rtype::luau::Runtime& runtime,
 }
 
 /// @brief Runs @p source, failing the test if it raises an error.
-void run(const rtype::luau::Runtime& runtime, const std::string& source) {
+void run(const aylo::luau::Runtime& runtime, const std::string& source) {
     const auto script = runtime.load("usertype-test", source);
     ASSERT_TRUE(script);
     const auto result = runtime.run(*script);
@@ -102,7 +101,7 @@ void run(const rtype::luau::Runtime& runtime, const std::string& source) {
 }
 
 /// @brief Runs @p source, which must raise an error, and returns its message.
-std::string runForError(const rtype::luau::Runtime& runtime, const std::string& source) {
+std::string runForError(const aylo::luau::Runtime& runtime, const std::string& source) {
     const auto script = runtime.load("usertype-test", source);
     EXPECT_TRUE(script);
     const auto result = runtime.run(*script);
@@ -110,12 +109,12 @@ std::string runForError(const rtype::luau::Runtime& runtime, const std::string& 
     if (result) {
         return {};
     }
-    EXPECT_EQ(result.error().kind(), rtype::luau::ErrorKind::kRuntime);
+    EXPECT_EQ(result.error().kind(), aylo::luau::ErrorKind::kRuntime);
     return std::string{result.error().message()};
 }
 
 /// @brief Reads a global of the runtime as a number.
-double globalNumber(const rtype::luau::Runtime& runtime, const std::string_view name) {
+double globalNumber(const aylo::luau::Runtime& runtime, const std::string_view name) {
     const auto value = runtime.globals().get(name);
     EXPECT_TRUE(value);
     const auto* number = value->tryAs<double>();
@@ -146,7 +145,7 @@ TEST(Usertype, KeepsItsMetatableWhenItsLastObjectIsCollected) {
     registerCounter(runtime);
 
     run(runtime, "Counter.new(1)");
-    lua_gc(rtype::luau::detail::rawState(runtime), LUA_GCCOLLECT, 0);
+    lua_gc(aylo::luau::detail::rawState(runtime), LUA_GCCOLLECT, 0);
     // New tables take the memory of what was collected: a collected metatable would be overwritten.
     run(runtime, R"(
         kept = {}
@@ -221,7 +220,7 @@ TEST(Usertype, RaisesAnErrorWhenAMethodGetsNilAsObject) {
 TEST(Usertype, RaisesAnErrorWhenAMethodGetsAnotherUserdataAsObject) {
     auto runtime = makeRuntime();
     registerCounter(runtime);
-    rtype::luau::expect(runtime.usertype<Other>("Other")).constructor([](const double value) {
+    aylo::luau::expect(runtime.usertype<Other>("Other")).constructor([](const double value) {
         return Other{.value = value};
     });
 
@@ -312,7 +311,7 @@ TEST(Usertype, ComparesWithTheEqualityOfTheType) {
 
 TEST(Usertype, ComparesByIdentityWithoutEquality) {
     auto runtime = makeRuntime();
-    rtype::luau::expect(runtime.usertype<Plain>("Plain")).constructor([](const double value) {
+    aylo::luau::expect(runtime.usertype<Plain>("Plain")).constructor([](const double value) {
         return Plain{.value = value};
     });
 
@@ -352,26 +351,26 @@ TEST(Usertype, DestroysItsObjectsWhenTheyAreCollected) {
         Counter.new(2)
     )");
     // `collectgarbage` does not work in scripts of this runtime yet (it fails with or without usertypes).
-    lua_gc(rtype::luau::detail::rawState(runtime), LUA_GCCOLLECT, 0);
+    lua_gc(aylo::luau::detail::rawState(runtime), LUA_GCCOLLECT, 0);
 
     EXPECT_EQ(tracker.use_count(), 2);  // the test and the constructor handler
 }
 
 TEST(Usertype, ReadsMembersKnownAtRuntimeThroughTheFallbacks) {
     auto runtime = makeRuntime();
-    rtype::luau::expect(runtime.usertype<Bag>("Bag"))
+    aylo::luau::expect(runtime.usertype<Bag>("Bag"))
         .constructor([] { return Bag{}; })
         .index([](Bag& bag, const std::string_view key) -> Value {
             const auto field = bag.fields.find(key);
             if (field == bag.fields.end()) {
-                throw rtype::luau::exceptions::RuntimeError{std::format("no field '{}'", key)};
+                throw aylo::luau::exceptions::RuntimeError{std::format("no field '{}'", key)};
             }
             return Value{field->second};
         })
         .newIndex([](Bag& bag, const std::string_view key, const Value& value) {
             const auto* number = value.tryAs<double>();
             if (number == nullptr) {
-                throw rtype::luau::exceptions::RuntimeError{"fields are numbers"};
+                throw aylo::luau::exceptions::RuntimeError{"fields are numbers"};
             }
             bag.fields.insert_or_assign(std::string{key}, *number);
         });
@@ -391,7 +390,7 @@ TEST(Usertype, ReadsMembersKnownAtRuntimeThroughTheFallbacks) {
 
 TEST(Usertype, PrefersGettersAndMethodsToTheFallback) {
     auto runtime = makeRuntime();
-    rtype::luau::expect(runtime.usertype<Bag>("Bag"))
+    aylo::luau::expect(runtime.usertype<Bag>("Bag"))
         .constructor([] { return Bag{}; })
         .getter("size", [](const Bag& bag) { return static_cast<double>(bag.fields.size()); })
         .index([](Bag&, const std::string_view) -> Value { return Value{-1.0}; });
@@ -425,7 +424,7 @@ TEST(Usertype, LetsCppReadTheObjectOfAUserdataItReceived) {
     auto runtime = makeRuntime();
     registerCounter(runtime);
     Counter* seen = nullptr;
-    auto inspect = rtype::luau::Function::create(runtime, "inspect");
+    auto inspect = aylo::luau::Function::create(runtime, "inspect");
     inspect.bind([&seen](const Userdata& userdata) {
         seen = userdata.tryAs<Counter>();
         if (seen != nullptr) {
@@ -448,7 +447,7 @@ TEST(Usertype, LetsCppReadTheObjectOfAUserdataItReceived) {
 TEST(Usertype, RefusesToReadTheObjectAsAnotherType) {
     auto runtime = makeRuntime();
     const auto counter = registerCounter(runtime);
-    std::ignore = rtype::luau::expect(runtime.usertype<Other>("Other"));
+    std::ignore = aylo::luau::expect(runtime.usertype<Other>("Other"));
 
     const auto userdata = counter.create(Counter{.value = 1});
 
@@ -461,7 +460,7 @@ TEST(Usertype, RefusesToReadTheObjectAsAnotherType) {
 TEST(Usertype, GivesEachTypeItsOwnTag) {
     auto runtime = makeRuntime();
     const auto counter = registerCounter(runtime);
-    const auto other = rtype::luau::expect(runtime.usertype<Other>("Other"));
+    const auto other = aylo::luau::expect(runtime.usertype<Other>("Other"));
 
     const auto first = counter.create(Counter{});
     const auto second = other.create(Other{});
@@ -477,20 +476,20 @@ TEST(Usertype, RefusesToPushAUserdataInAnotherRuntime) {
     const auto userdata = registerCounter(runtime).create(Counter{});
     ASSERT_TRUE(userdata);
 
-    const auto pushed = rtype::luau::detail::pushUserdata(rtype::luau::detail::rawState(foreign), *userdata);
+    const auto pushed = aylo::luau::detail::pushUserdata(aylo::luau::detail::rawState(foreign), *userdata);
 
     ASSERT_FALSE(pushed);
-    EXPECT_EQ(pushed.error().kind(), rtype::luau::ErrorKind::kRuntime);
+    EXPECT_EQ(pushed.error().kind(), aylo::luau::ErrorKind::kRuntime);
 }
 
 TEST(Usertype, IsRegisteredOncePerRuntime) {
     auto runtime = makeRuntime();
     registerCounter(runtime);
 
-    EXPECT_THROW(std::ignore = rtype::luau::expect(runtime.usertype<Counter>("Again")),
-                 rtype::luau::exceptions::InvalidOperation);
+    EXPECT_THROW(std::ignore = aylo::luau::expect(runtime.usertype<Counter>("Again")),
+                 aylo::luau::exceptions::InvalidOperation);
     EXPECT_EQ(std::as_const(runtime).usertype<Counter>().name(), "Counter");
-    EXPECT_THROW(std::ignore = std::as_const(runtime).usertype<Other>(), rtype::luau::exceptions::InvalidOperation);
+    EXPECT_THROW(std::ignore = std::as_const(runtime).usertype<Other>(), aylo::luau::exceptions::InvalidOperation);
 }
 
 TEST(Usertype, KeepsATypeSeparateInEachRuntime) {
@@ -519,24 +518,24 @@ TEST(Usertype, SurvivesMovingTheRuntime) {
 
 TEST(Usertype, RejectsAMethodNameWithAnEmbeddedNul) {
     auto runtime = makeRuntime();
-    auto type = rtype::luau::expect(runtime.usertype<Counter>("Counter"));
+    auto type = aylo::luau::expect(runtime.usertype<Counter>("Counter"));
 
     EXPECT_THROW(std::ignore = type.method(std::string{"a\0b", 3}, [](Counter&) {}),
-                 rtype::luau::exceptions::InvalidOperation);
+                 aylo::luau::exceptions::InvalidOperation);
 }
 
 TEST(Usertype, RejectsAConstructorWhoseNameIsAlreadyAGlobal) {
     auto runtime = makeRuntime();
-    auto type = rtype::luau::expect(runtime.usertype<Counter>("math"));
+    auto type = aylo::luau::expect(runtime.usertype<Counter>("math"));
 
-    EXPECT_THROW(std::ignore = type.constructor([] { return Counter{}; }), rtype::luau::exceptions::InvalidOperation);
+    EXPECT_THROW(std::ignore = type.constructor([] { return Counter{}; }), aylo::luau::exceptions::InvalidOperation);
     run(runtime, "result = math.max(1, 2)");
     EXPECT_EQ(globalNumber(runtime, "result"), 2);
 }
 
 TEST(Usertype, AllowsSettingTheConstructorOfATypeTwice) {
     auto runtime = makeRuntime();
-    auto type = rtype::luau::expect(runtime.usertype<Counter>("Counter"));
+    auto type = aylo::luau::expect(runtime.usertype<Counter>("Counter"));
 
     type.constructor([] { return Counter{.value = 1}; });
     EXPECT_NO_THROW(std::ignore = type.constructor([] { return Counter{.value = 2}; }));
@@ -550,7 +549,7 @@ struct Numbered {
 };
 
 template <std::size_t... Indices>
-std::size_t registerNumbered(rtype::luau::Runtime& runtime, std::index_sequence<Indices...> /*unused*/) {
+std::size_t registerNumbered(aylo::luau::Runtime& runtime, std::index_sequence<Indices...> /*unused*/) {
     std::size_t registered{0};
     ((registered += runtime.usertype<Numbered<Indices>>(std::format("Numbered{}", Indices)).has_value() ? 1 : 0), ...);
     return registered;
@@ -565,7 +564,7 @@ TEST(Usertype, ReturnsAnErrorWhenTheRuntimeHasNoTagLeft) {
     const auto last = runtime.usertype<Numbered<127>>("Last");
 
     ASSERT_FALSE(last);
-    EXPECT_EQ(last.error().kind(), rtype::luau::ErrorKind::kLimitExceeded);
+    EXPECT_EQ(last.error().kind(), aylo::luau::ErrorKind::kLimitExceeded);
     EXPECT_NE(last.error().message().find("Last"), std::string_view::npos);
 }
 
@@ -594,17 +593,17 @@ struct Probe {
 TEST(Usertype, ReadsAUserdataFromADestructorWhileTheRuntimeCloses) {
     auto callback = std::make_shared<std::function<void()>>();
     bool ran{false};
-    std::optional<rtype::luau::Userdata> handle;
+    std::optional<aylo::luau::Userdata> handle;
     {
         auto runtime = makeRuntime();
-        const auto probe = rtype::luau::expect(runtime.usertype<Probe>("Probe"));
+        const auto probe = aylo::luau::expect(runtime.usertype<Probe>("Probe"));
         const auto created = probe.create(Probe{callback});
         ASSERT_TRUE(created);
         handle = *created;
         *callback = [&] {
             ran = true;
             // The registry is gone: the handle of a closing runtime is invalid, and must not read it.
-            EXPECT_THROW(std::ignore = handle->tryAs<Probe>(), rtype::luau::exceptions::InvalidRef);
+            EXPECT_THROW(std::ignore = handle->tryAs<Probe>(), aylo::luau::exceptions::InvalidRef);
             handle.reset();
         };
         // The runtime goes out of scope here, and with it the registry before the state.
@@ -617,8 +616,8 @@ TEST(Usertype, ConstructorAfterSandboxThrowsInsteadOfWritingTheFrozenGlobals) {
     auto runtime = makeRuntime();
     runtime.sandbox();
 
-    EXPECT_THROW(rtype::luau::expect(runtime.usertype<Other>("Other")).constructor([](const double value) {
+    EXPECT_THROW(aylo::luau::expect(runtime.usertype<Other>("Other")).constructor([](const double value) {
         return Other{.value = value};
     }),
-                 rtype::luau::exceptions::InvalidOperation);
+                 aylo::luau::exceptions::InvalidOperation);
 }

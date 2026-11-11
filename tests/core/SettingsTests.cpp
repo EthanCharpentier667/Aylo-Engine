@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** SettingsTests
 */
@@ -15,8 +15,8 @@
 
 namespace {
 
-using rtype::core::config::Settings;
-using rtype::core::config::exceptions::SettingsException;
+using aylo::core::config::Settings;
+using aylo::core::config::exceptions::SettingsException;
 
 }  // namespace
 

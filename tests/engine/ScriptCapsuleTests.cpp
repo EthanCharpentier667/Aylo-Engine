@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ScriptCapsuleTests
 */
@@ -16,42 +16,42 @@
 #include <vector>
 
 #include "ScriptProbe.hpp"
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/app/PluginRegistry.hpp"
+#include "aylo/ecs/component/ComponentTraits.hpp"
+#include "aylo/ecs/component/Components.hpp"
+#include "aylo/ecs/entity/Entity.hpp"
+#include "aylo/ecs/query/Query.hpp"
+#include "aylo/ecs/query/QueryState.hpp"
+#include "aylo/scripting/ScriptHost.hpp"
 #include "core/asset/AssetId.hpp"
 #include "plugins/capsule/Capsule.hpp"
 #include "plugins/capsule/CapsulePlugin.hpp"
 #include "plugins/capsule/Capsules.hpp"
 #include "plugins/capsule/LoadedCapsule.hpp"
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/app/PluginRegistry.hpp"
-#include "rtype/ecs/component/ComponentTraits.hpp"
-#include "rtype/ecs/component/Components.hpp"
-#include "rtype/ecs/entity/Entity.hpp"
-#include "rtype/ecs/query/Query.hpp"
-#include "rtype/ecs/query/QueryState.hpp"
-#include "rtype/scripting/ScriptHost.hpp"
 
-namespace rtype::test::script_capsule {
+namespace aylo::test::script_capsule {
 struct Health {
     std::int32_t value;
 };
-RTYPE_ECS_COMPONENT(Health, "test.scriptcapsule.Health", value);
+AYLO_ECS_COMPONENT(Health, "test.scriptcapsule.Health", value);
 
 struct Armor {
     std::int32_t value{0};
     std::int32_t extra{0};
 };
-RTYPE_ECS_COMPONENT(Armor, "test.scriptcapsule.Armor", value, extra);
-}  // namespace rtype::test::script_capsule
+AYLO_ECS_COMPONENT(Armor, "test.scriptcapsule.Armor", value, extra);
+}  // namespace aylo::test::script_capsule
 
-namespace capsule = rtype::plugins::capsule;
-namespace sc = rtype::test::script_capsule;
+namespace capsule = aylo::plugins::capsule;
+namespace sc = aylo::test::script_capsule;
 
 namespace {
 /// @brief A standalone App with the capsule plugin, "actors/bydo.actor" (Health 3, a "Gun" child), "scenes/one.scene"
 /// and "scenes/two.scene" (a bydo each), and a script host on it.
 struct ScriptApp {
-    rtype::ecs::App app;
-    std::unique_ptr<rtype::scripting::ScriptHost> host;
+    aylo::ecs::App app;
+    std::unique_ptr<aylo::scripting::ScriptHost> host;
 
     ScriptApp() {
         app.addPlugin(capsule::CapsulePlugin{});
@@ -69,8 +69,8 @@ struct ScriptApp {
                 .id = capsule::CapsuleId::fromPath("actors/bydo.actor"), .path = "actors/bydo.actor"};
             capsules.define(std::move(level));
         }
-        app.getPluginRegistry().addScriptForms("test.Probe", rtype::tests::kProbeForms);
-        auto created = rtype::scripting::ScriptHost::create(app, {});
+        app.getPluginRegistry().addScriptForms("test.Probe", aylo::tests::kProbeForms);
+        auto created = aylo::scripting::ScriptHost::create(app, {});
         EXPECT_TRUE(created) << (created ? "" : std::string{created.error().message()});
         host = std::move(*created);
     }
@@ -106,7 +106,7 @@ TEST(ScriptCapsule, ASystemSpawnsLoadsAndReloadsCapsules) {
         })
     )"),
               "");
-    rtype::ecs::World& world = script.app.getWorld();
+    aylo::ecs::World& world = script.app.getWorld();
     script.app.runFrame();
     EXPECT_EQ(world.getEntityCount(), 5U);  // the bydo and its gun, the first level, its bydo and gun
     script.app.runFrame();
@@ -116,7 +116,7 @@ TEST(ScriptCapsule, ASystemSpawnsLoadsAndReloadsCapsules) {
 
     const auto* loaded = world.getResources().get<capsule::LoadedCapsule>();
     ASSERT_NE(loaded, nullptr);
-    EXPECT_EQ(loaded->capsule, rtype::core::asset::AssetId::fromPath("scenes/two.scene"));
+    EXPECT_EQ(loaded->capsule, aylo::core::asset::AssetId::fromPath("scenes/two.scene"));
     EXPECT_EQ(script.run("assert(probe.first ~= probe.second)"), "");
 }
 
@@ -136,10 +136,10 @@ TEST(ScriptCapsule, AnOverrideAddedAfterTheSpawnReplacesTheCapsulesValue) {
     )"),
               "");
     script.app.runFrame();
-    rtype::ecs::World& world = script.app.getWorld();
+    aylo::ecs::World& world = script.app.getWorld();
     std::vector<std::int32_t> health;
-    const rtype::ecs::QueryState<const sc::Health> state{world.getComponents()};
-    rtype::ecs::Query<const sc::Health> query{state, 0};
+    const aylo::ecs::QueryState<const sc::Health> state{world.getComponents()};
+    aylo::ecs::Query<const sc::Health> query{state, 0};
     for (auto [entity, value] : query) {
         health.push_back(value.value);
     }
@@ -177,12 +177,12 @@ TEST(ScriptCapsule, TheFormsSpawnLoadAndReloadInOneCallEach) {
         })
     )"),
               "");
-    rtype::ecs::World& world = script.app.getWorld();
+    aylo::ecs::World& world = script.app.getWorld();
     script.app.runFrame();
     EXPECT_EQ(world.getEntityCount(), 5U);  // the bydo and its gun, the level, its bydo and gun
     std::vector<std::pair<std::int32_t, std::int32_t>> armors;
-    const rtype::ecs::QueryState<const sc::Armor> state{world.getComponents()};
-    rtype::ecs::Query<const sc::Armor> query{state, 0};
+    const aylo::ecs::QueryState<const sc::Armor> state{world.getComponents()};
+    aylo::ecs::Query<const sc::Armor> query{state, 0};
     for (auto [entity, armor] : query) {
         armors.emplace_back(armor.value, armor.extra);
     }
@@ -190,7 +190,7 @@ TEST(ScriptCapsule, TheFormsSpawnLoadAndReloadInOneCallEach) {
     EXPECT_EQ(armors,
               (std::vector<std::pair<std::int32_t, std::int32_t>>{{1, 2}, {1, 9}}));  // level's bydo, patched one
     EXPECT_EQ(world.getResources().get<capsule::LoadedCapsule>()->capsule,
-              rtype::core::asset::AssetId::fromPath("scenes/one.scene"));
+              aylo::core::asset::AssetId::fromPath("scenes/one.scene"));
     EXPECT_EQ(script.run("assert(probe.level ~= nil and probe.bydo ~= nil)"), "");
 
     script.app.runFrame();

@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** EntityCommandsTests
 */
@@ -9,42 +9,42 @@
 
 #include <cstdint>
 
-#include "rtype/ecs/command/Commands.hpp"
-#include "rtype/ecs/component/ComponentTraits.hpp"
-#include "rtype/ecs/entity/Entity.hpp"
-#include "rtype/ecs/world/World.hpp"
+#include "aylo/ecs/command/Commands.hpp"
+#include "aylo/ecs/component/ComponentTraits.hpp"
+#include "aylo/ecs/entity/Entity.hpp"
+#include "aylo/ecs/world/World.hpp"
 
-namespace rtype::test::entity_commands {
+namespace aylo::test::entity_commands {
 struct Position {
     float x;
     float y;
 };
-RTYPE_ECS_COMPONENT(Position, "test.entity_commands.Position", x, y);
+AYLO_ECS_COMPONENT(Position, "test.entity_commands.Position", x, y);
 
 struct Velocity {
     float x;
     float y;
 };
-RTYPE_ECS_COMPONENT(Velocity, "test.entity_commands.Velocity", x, y);
+AYLO_ECS_COMPONENT(Velocity, "test.entity_commands.Velocity", x, y);
 
 struct Shield {
     std::int32_t strength;
 };
-RTYPE_ECS_COMPONENT(Shield, "test.entity_commands.Shield", strength);
+AYLO_ECS_COMPONENT(Shield, "test.entity_commands.Shield", strength);
 
 struct Dead {};
-RTYPE_ECS_COMPONENT(Dead, "test.entity_commands.Dead");
-}  // namespace rtype::test::entity_commands
+AYLO_ECS_COMPONENT(Dead, "test.entity_commands.Dead");
+}  // namespace aylo::test::entity_commands
 
 namespace {
-using rtype::ecs::Commands;
-using rtype::ecs::Entity;
-using rtype::ecs::EntityCommands;
-using rtype::ecs::World;
-using rtype::test::entity_commands::Dead;
-using rtype::test::entity_commands::Position;
-using rtype::test::entity_commands::Shield;
-using rtype::test::entity_commands::Velocity;
+using aylo::ecs::Commands;
+using aylo::ecs::Entity;
+using aylo::ecs::EntityCommands;
+using aylo::ecs::World;
+using aylo::test::entity_commands::Dead;
+using aylo::test::entity_commands::Position;
+using aylo::test::entity_commands::Shield;
+using aylo::test::entity_commands::Velocity;
 }  // namespace
 
 TEST(EntityCommands, SpawnsWithChainedComponents) {

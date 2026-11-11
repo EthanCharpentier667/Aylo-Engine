@@ -131,7 +131,7 @@ Each datagram confirms the last 33 datagrams it received from the other side (`a
 messages are put again in later datagrams until a datagram carrying them is confirmed. The receiver drops
 duplicates by message id.
 
-Details: [Transport](design.md#6-transport-rtype-network).
+Details: [Transport](design.md#6-transport-aylo-network).
 
 ## Snapshots: send states, never differences
 

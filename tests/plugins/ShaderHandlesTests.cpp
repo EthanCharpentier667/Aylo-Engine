@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ShaderHandlesTests
 */
@@ -18,20 +18,20 @@
 
 #include "FakeBackend.hpp"
 #include "TestImages.hpp"
+#include "aylo/contract/renderer/shaders/CompiledShader.hpp"
+#include "aylo/ecs/resource/ResourceTraits.hpp"
 #include "core/asset/AssetId.hpp"
 #include "plugins/graphics/TextureAssets.hpp"
 #include "plugins/shader/Material.hpp"
 #include "plugins/shader/MaterialAssets.hpp"
 #include "plugins/shader/ShaderAssets.hpp"
 #include "plugins/shader/ShaderHandles.hpp"
-#include "rtype/contract/renderer/shaders/CompiledShader.hpp"
-#include "rtype/ecs/resource/ResourceTraits.hpp"
 
-using rtype::core::asset::AssetId;
-using rtype::plugins::shader::Material;
-using rtype::plugins::shader::ShaderHandles;
+using aylo::core::asset::AssetId;
+using aylo::plugins::shader::Material;
+using aylo::plugins::shader::ShaderHandles;
 
-static_assert(rtype::ecs::Resource<ShaderHandles>);
+static_assert(aylo::ecs::Resource<ShaderHandles>);
 
 namespace {
 /// @brief A shader with a material value, a texture and an instance value.
@@ -49,13 +49,13 @@ class ShaderHandlesTest : public ::testing::Test {
     /// @brief Runs ShaderHandles::update(), as the ShaderPlugin does each frame.
     void update() { _handles.update(_shaders, _materials, _textures, _renderer); }
 
-    std::shared_ptr<rtype::test::plugins::FakeBackendState> _state{
-        std::make_shared<rtype::test::plugins::FakeBackendState>()};  ///< Drives the fake renderer.
-    rtype::test::plugins::FakeRenderer _renderer{_state};             ///< Records the calls.
-    rtype::plugins::shader::ShaderAssets _shaders;                    ///< The game's shaders.
-    rtype::plugins::shader::MaterialAssets _materials;                ///< The game's materials.
-    rtype::plugins::graphics::TextureAssets _textures;                ///< The game's textures.
-    ShaderHandles _handles;                                           ///< Under test.
+    std::shared_ptr<aylo::test::plugins::FakeBackendState> _state{
+        std::make_shared<aylo::test::plugins::FakeBackendState>()};  ///< Drives the fake renderer.
+    aylo::test::plugins::FakeRenderer _renderer{_state};             ///< Records the calls.
+    aylo::plugins::shader::ShaderAssets _shaders;                    ///< The game's shaders.
+    aylo::plugins::shader::MaterialAssets _materials;                ///< The game's materials.
+    aylo::plugins::graphics::TextureAssets _textures;                ///< The game's textures.
+    ShaderHandles _handles;                                          ///< Under test.
 };
 
 /// @brief ShaderHandlesTest with a shader file of its own, to reload.
@@ -74,7 +74,7 @@ class ShaderReloadTest : public ShaderHandlesTest {
     void write(const std::string_view text) const { std::ofstream{_file, std::ios::binary} << text; }
 
     std::filesystem::path _file{std::filesystem::temp_directory_path() /
-                                std::format("rtype_shader_handles_{:08x}.glsl", std::random_device{}())};
+                                std::format("aylo_shader_handles_{:08x}.glsl", std::random_device{}())};
 };
 }  // namespace
 
@@ -89,7 +89,7 @@ TEST_F(ShaderHandlesTest, CreatesTheShadersAndTheirMaterials) {
     EXPECT_EQ(_state->createdMaterials[0].values.size(), _shaders.get(shader)->materialSize);
     const ShaderHandles::Material* created = _handles.getMaterial(material);
     ASSERT_NE(created, nullptr);
-    EXPECT_NE(created->material, rtype::contract::renderer::MaterialId{});
+    EXPECT_NE(created->material, aylo::contract::renderer::MaterialId{});
     EXPECT_FLOAT_EQ(created->instanceDefaults[0].x, 0.5F);
 }
 
@@ -114,12 +114,12 @@ TEST_F(ShaderHandlesTest, AMaterialWaitsForItsShader) {
 }
 
 TEST_F(ShaderHandlesTest, AMaterialWaitsForItsTextures) {
-    const AssetId noise = _textures.load("noise.png", rtype::test::plugins::twoPixelPng());
+    const AssetId noise = _textures.load("noise.png", aylo::test::plugins::twoPixelPng());
     const AssetId material =
         _materials.add("red", Material{.shader = _shaders.add("glow", kShader)}.setTexture("noise", noise));
     update();
     EXPECT_EQ(_handles.getMaterial(material), nullptr);
-    rtype::plugins::graphics::updateTextures(_textures, _renderer);
+    aylo::plugins::graphics::updateTextures(_textures, _renderer);
     update();
     ASSERT_EQ(_state->createdMaterials.size(), 1U);
     EXPECT_EQ(_state->createdMaterials[0].textures[0], *_textures.getTexture(noise));
@@ -174,7 +174,7 @@ TEST_F(ShaderReloadTest, ReplacesTheShaderAndItsMaterialsInOneUpdate) {
     const AssetId shader = _shaders.load(_file);
     const AssetId material = _materials.add("red", Material{.shader = shader});
     update();
-    const rtype::contract::renderer::MaterialId before = _handles.getMaterial(material)->material;
+    const aylo::contract::renderer::MaterialId before = _handles.getMaterial(material)->material;
 
     write("instance uniform float flash = 0.25;\nuniform sampler2D noise;\nvoid fragment() { COLOR.a *= flash; }\n");
     ASSERT_TRUE(_shaders.reload(shader));

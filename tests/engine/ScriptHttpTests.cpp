@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ScriptHttpTests
 */
@@ -16,29 +16,29 @@
 
 #include "LocalHttpServer.hpp"
 #include "ScriptProbe.hpp"
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/app/PluginRegistry.hpp"
+#include "aylo/scripting/ScriptHost.hpp"
 #include "plugins/http/HttpPlugin.hpp"
 #include "plugins/http/HttpSettings.hpp"
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/app/PluginRegistry.hpp"
-#include "rtype/scripting/ScriptHost.hpp"
 
 namespace {
 using namespace std::chrono_literals;
-using rtype::test::plugins::LocalHttpServer;
+using aylo::test::plugins::LocalHttpServer;
 
 /// @brief A standalone App with the HttpPlugin reaching 127.0.0.1 over plain HTTP, and a script host on it.
 struct HttpScripts {
-    rtype::ecs::App app;
-    std::unique_ptr<rtype::scripting::ScriptHost> host;
+    aylo::ecs::App app;
+    std::unique_ptr<aylo::scripting::ScriptHost> host;
 
     HttpScripts() {
-        rtype::plugins::http::HttpSettings settings;
+        aylo::plugins::http::HttpSettings settings;
         settings.allowedHosts = {"127.0.0.1"};
         settings.allowHttp = true;
         settings.timeout = 5.0;
-        app.addPlugin(rtype::plugins::http::HttpPlugin{settings});
-        app.getPluginRegistry().addScriptForms("test.Probe", rtype::tests::kProbeForms);
-        auto created = rtype::scripting::ScriptHost::create(app, {.isClient = true, .isServer = true});
+        app.addPlugin(aylo::plugins::http::HttpPlugin{settings});
+        app.getPluginRegistry().addScriptForms("test.Probe", aylo::tests::kProbeForms);
+        auto created = aylo::scripting::ScriptHost::create(app, {.isClient = true, .isServer = true});
         EXPECT_TRUE(created) << (created ? "" : std::string{created.error().message()});
         host = std::move(*created);
     }

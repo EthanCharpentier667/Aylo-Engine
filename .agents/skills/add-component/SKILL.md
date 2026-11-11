@@ -5,13 +5,13 @@ description: Add a component, resource or event to an engine plugin of the AYLO 
 
 # Add a component, resource or event
 
-Read `src/rtype/plugins/AGENTS.md`, `src/rtype/ecs/AGENTS.md`, `docs/ecs/features/02-component-registry.md` (the
+Read `src/aylo/plugins/AGENTS.md`, `src/aylo/ecs/AGENTS.md`, `docs/ecs/features/02-component-registry.md` (the
 description of a type), `docs/ecs/features/10-resources.md`, `11-events.md` and `15-reflection-and-serialization.md`,
 and `docs/CodeStyle.md`.
 
 ## Checklist
 
-1. **Place it.** In the plugin that owns it (`src/rtype/plugins/<name>/`), in the namespace of the plugin. Data several
+1. **Place it.** In the plugin that owns it (`src/aylo/plugins/<name>/`), in the namespace of the plugin. Data several
    unrelated modules need goes to `core`; data a contract needs is plain data in the contract, and its ECS declaration
    stays in the plugin that uses it.
 2. **Write the plain struct.** Fields with defaults, documented with `///<`. Reflected fields must be of a type the ECS
@@ -19,8 +19,8 @@ and `docs/CodeStyle.md`.
    asset ids (the asset-id reflection header), and strings of the ECS. For another type, add a reflection like the
    existing ones (`plugins/GraphicsReflection.hpp`, the audio reflection) instead of exposing it unreflected.
 3. **Declare it** right after the struct, in the same namespace, with the macro of its kind and a stable name in the
-   `rtype.` namespace for engine data: `RTYPE_ECS_COMPONENT(Type, "rtype.Name", fields...)`, `RTYPE_ECS_RESOURCE(...)`
-   or `RTYPE_ECS_EVENT(...)`. Fields that are not listed are stored but invisible to scripts, serialization and
+   `aylo.` namespace for engine data: `AYLO_ECS_COMPONENT(Type, "rtype.Name", fields...)`, `AYLO_ECS_RESOURCE(...)`
+   or `AYLO_ECS_EVENT(...)`. Fields that are not listed are stored but invisible to scripts, serialization and
    replication. A struct with no field is a tag.
 4. **Say where it lives.** Server only, client only or both, and whether and how it is replicated (never, on every
    change, or at spawn). The server is authoritative: a client never writes replicated data. Choose the least that is

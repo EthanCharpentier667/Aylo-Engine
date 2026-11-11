@@ -26,7 +26,7 @@ plugins.
 
 ## Our choice
 
-Bevy's model: `rtype::ecs::App`, `rtype::ecs::Plugin`, and plugin groups. Plus two things specific to
+Bevy's model: `aylo::ecs::App`, `aylo::ecs::Plugin`, and plugin groups. Plus two things specific to
 us: **Luau plugins** loaded through `LuauPlugin`, and a **standalone mode** that runs server and client
 sides in one App.
 
@@ -35,9 +35,9 @@ sides in one App.
 ### The plugin interface
 
 ```c++
-namespace rtype::ecs {
+namespace aylo::ecs {
 /// @brief A reusable bundle of components, resources, events and systems.
-class RTYPE_ECS_API Plugin {
+class AYLO_ECS_API Plugin {
   public:
     virtual ~Plugin();
     [[nodiscard]] virtual std::string_view getName() const noexcept = 0;
@@ -49,7 +49,7 @@ class RTYPE_ECS_API Plugin {
     Plugin() = default;
     // copy and move constructors and assignments = default
 };
-}  // namespace rtype::ecs
+}  // namespace aylo::ecs
 ```
 
 `build` registers things; it does not run gameplay. A plugin is **built as soon as it is added**, and
@@ -70,7 +70,7 @@ itself. Names, not types: a plugin loaded from a library can require another one
 It returns a static array, so the names outlive the call:
 
 ```c++
-class TextPlugin : public rtype::ecs::Plugin {
+class TextPlugin : public aylo::ecs::Plugin {
   public:
     static constexpr std::array<std::string_view, 2> kDependencies{TransformPlugin::kName, TilemapPlugin::kName};
     std::span<const std::string_view> getDependencies() const noexcept override { return kDependencies; }
@@ -102,23 +102,23 @@ app.addPlugin(TextPlugin{});  // builds TransformPlugin first (warning), throws 
 
 ### The App
 
-`rtype::ecs::App` (`app/App.hpp`) owns **one world, its `Schedules` and one run mode**, the plugins added to
+`aylo::ecs::App` (`app/App.hpp`) owns **one world, its `Schedules` and one run mode**, the plugins added to
 it, and the loop:
 
 ```c++
-class GamePlugin : public rtype::ecs::Plugin {
+class GamePlugin : public aylo::ecs::Plugin {
   public:
     std::string_view getName() const noexcept override { return "game"; }
-    void build(rtype::ecs::App& app) override {
+    void build(aylo::ecs::App& app) override {
         app.insertResource(Score{.value = 0});
-        app.addSystem(rtype::ecs::Phase::kStartup, "game.spawnPlayer", &spawnPlayer);
-        app.addSystem(rtype::ecs::Phase::kFixedUpdate, "game.movement", &movement);
-        app.addSystem(rtype::ecs::Phase::kRender, "game.drawScore", &drawScore).setSide(rtype::ecs::Side::kClient);
+        app.addSystem(aylo::ecs::Phase::kStartup, "game.spawnPlayer", &spawnPlayer);
+        app.addSystem(aylo::ecs::Phase::kFixedUpdate, "game.movement", &movement);
+        app.addSystem(aylo::ecs::Phase::kRender, "game.drawScore", &drawScore).setSide(aylo::ecs::Side::kClient);
     }
 };
 
-rtype::ecs::App app{rtype::ecs::RunMode::kStandalone};
-app.addPlugins(rtype::ecs::MinimalPlugins{}).addPlugin(GamePlugin{});
+aylo::ecs::App app{aylo::ecs::RunMode::kStandalone};
+app.addPlugins(aylo::ecs::MinimalPlugins{}).addPlugin(GamePlugin{});
 return app.run();   // Startup once, then frames until a system sends AppExit; returns its code
 ```
 
@@ -147,9 +147,9 @@ per second, at most 5 per frame) before its first frame; `MinimalPlugins` adds t
 it, add your own before `MinimalPlugins` and before the first frame: the default one is then skipped, by name.
 
 ```c++
-app.addPlugin(rtype::ecs::TimePlugin{rtype::ecs::FixedTimestep{30, 5}})   // 30 Hz
-    .addPlugins(rtype::ecs::MinimalPlugins{});
-app.addPlugin(rtype::ecs::TimePlugin::manual(std::chrono::milliseconds{50}));  // tests: every frame lasts 50 ms
+app.addPlugin(aylo::ecs::TimePlugin{aylo::ecs::FixedTimestep{30, 5}})   // 30 Hz
+    .addPlugins(aylo::ecs::MinimalPlugins{});
+app.addPlugin(aylo::ecs::TimePlugin::manual(std::chrono::milliseconds{50}));  // tests: every frame lasts 50 ms
 ```
 
 `TimePlugin` measures `std::chrono::steady_clock`; `manual()` makes every frame last a fixed duration, so tests
@@ -160,22 +160,22 @@ of `TimePlugin`.
 ### Three ways to start
 
 ```c++
-// Client: rtype::ecs::App app{rtype::ecs::RunMode::kClient};
-app.addPlugins(rtype::plugins::DefaultPlugins{})   // window, input, render, audio, assets, script
-    .addPlugin(rtype::plugins::ClientPlugin{"127.0.0.1", 4242})
-    .addPlugin(rtype::plugins::LuauPlugin{"scripts/rtype/plugin.luau"})
+// Client: aylo::ecs::App app{aylo::ecs::RunMode::kClient};
+app.addPlugins(aylo::plugins::DefaultPlugins{})   // window, input, render, audio, assets, script
+    .addPlugin(aylo::plugins::ClientPlugin{"127.0.0.1", 4242})
+    .addPlugin(aylo::plugins::LuauPlugin{"scripts/aylo/plugin.luau"})
     .run();
 
-// Dedicated server (headless): rtype::ecs::App app{rtype::ecs::RunMode::kServer};
-app.addPlugins(rtype::ecs::MinimalPlugins{})               // time (later assets metadata, script)
-    .addPlugin(rtype::plugins::ServerPlugin{4242})
-    .addPlugin(rtype::plugins::LuauPlugin{"scripts/rtype/plugin.luau"})
+// Dedicated server (headless): aylo::ecs::App app{aylo::ecs::RunMode::kServer};
+app.addPlugins(aylo::ecs::MinimalPlugins{})               // time (later assets metadata, script)
+    .addPlugin(aylo::plugins::ServerPlugin{4242})
+    .addPlugin(aylo::plugins::LuauPlugin{"scripts/aylo/plugin.luau"})
     .run();
 
-// Standalone (single player, tests): rtype::ecs::App app{rtype::ecs::RunMode::kStandalone};
-app.addPlugins(rtype::plugins::DefaultPlugins{})
-    .addPlugin(rtype::plugins::StandalonePlugin{})
-    .addPlugin(rtype::plugins::LuauPlugin{"scripts/rtype/plugin.luau"})
+// Standalone (single player, tests): aylo::ecs::App app{aylo::ecs::RunMode::kStandalone};
+app.addPlugins(aylo::plugins::DefaultPlugins{})
+    .addPlugin(aylo::plugins::StandalonePlugin{})
+    .addPlugin(aylo::plugins::LuauPlugin{"scripts/aylo/plugin.luau"})
     .run();
 ```
 
@@ -198,22 +198,22 @@ fills `PlayerInput` directly from local input instead of from the network. Becau
 
 | Group | Plugins |
 |---|---|
-| `MinimalPlugins` (`rtype::ecs`) | `TimePlugin`; later `AssetPlugin` (metadata only), `ScriptPlugin` |
+| `MinimalPlugins` (`aylo::ecs`) | `TimePlugin`; later `AssetPlugin` (metadata only), `ScriptPlugin` |
 | `DefaultPlugins` | `MinimalPlugins` + `WindowPlugin`, `InputPlugin`, `RenderPlugin`, `AudioPlugin`, `TransformPlugin`, `HierarchyPlugin` |
 | Opt-in | `ClientPlugin`, `ServerPlugin`, `StandalonePlugin`, `CollisionPlugin` |
 
 ### Wiring Ethan's backends
 
-`GraphicsPlugin` (`plugins/backend/`, `rtype::plugins::backend`) reuses `BackendRegistry` unchanged. The executable,
+`GraphicsPlugin` (`plugins/backend/`, `aylo::plugins::backend`) reuses `BackendRegistry` unchanged. The executable,
 the only place that knows GLFW and Vulkan, fills a registry and hands it to the plugin with the `Settings`, so the
 plugins depend on no backend:
 
 ```c++
-auto registry = std::make_unique<rtype::plugins::graphics::BackendRegistry>();
-rtype::platform::glfw::registerPlatform(registry->platforms);
-rtype::render::vulkan::registerRenderer(registry->renderers);
-app.addPlugins(rtype::ecs::MinimalPlugins{})
-    .addPlugin(rtype::plugins::graphics::GraphicsPlugin{std::move(registry), settings});  // brings InputPlugin
+auto registry = std::make_unique<aylo::plugins::graphics::BackendRegistry>();
+aylo::platform::glfw::registerPlatform(registry->platforms);
+aylo::render::vulkan::registerRenderer(registry->renderers);
+app.addPlugins(aylo::ecs::MinimalPlugins{})
+    .addPlugin(aylo::plugins::graphics::GraphicsPlugin{std::move(registry), settings});  // brings InputPlugin
 return app.run();
 ```
 
@@ -254,14 +254,14 @@ local RtypePlugin = ecs.plugin("rtype.Game")
 function RtypePlugin:build(app)
     app:load("components/Shield.luau")
     app:load("systems/ShieldRegen.luau")
-    app:addPlugin("scripts/rtype/weapons/plugin.luau")
+    app:addPlugin("scripts/aylo/weapons/plugin.luau")
 end
 
 return RtypePlugin
 ```
 
 A C++ game plugin is added beside it when part of the game needs native speed
-(`rtype::game::CollisionPlugin`).
+(`aylo::game::CollisionPlugin`).
 
 ### The loop
 

@@ -1,0 +1,104 @@
+/*
+** EPITECH PROJECT, 2026
+** aylo
+** File description:
+** FontAssets
+*/
+
+#pragma once
+
+#include <cstddef>
+#include <filesystem>
+#include <memory>
+#include <string>
+#include <vector>
+
+#include "aylo/contract/renderer/drawing/Texture.hpp"
+#include "aylo/ecs/resource/ResourceTraits.hpp"
+#include "core/asset/AssetId.hpp"
+#include "core/asset/AssetStore.hpp"
+#include "core/vfs/FileSource.hpp"
+#include "plugins/text/Export.hpp"
+#include "plugins/text/Font.hpp"
+
+namespace aylo::plugins::text {
+
+/// @brief The fonts, as the ECS resource "rtype.FontAssets" the TextPlugin inserts: systems ask for a font and get its
+/// AssetId at once, TextRenderer components keep that id.
+///
+/// @details A font is read when it is asked for, on every side (a server can measure texts too). Its atlas image is
+/// not: the TextPlugin hands it to TextureAssets on the client, which loads it before the frame that draws it. A font
+/// that cannot be read is recorded as failed, with the reason, which is also printed: one missing font does not stop
+/// the game.
+/// @code
+/// void spawnTitle(aylo::ecs::Commands& commands, aylo::ecs::ResMut<aylo::plugins::text::FontAssets> fonts) {
+///     commands.spawn()
+///         .add(aylo::plugins::transform::Transform{.position = {400.0F, 100.0F}})
+///         .add(aylo::plugins::text::TextRenderer{.text = "R-Type", .font = fonts->load("assets/fonts/orbitron.json"),
+///                                                 .size = 64.0F, .anchor = {0.5F, 0.5F}});
+/// }
+/// @endcode
+class AYLO_PLUGIN_TEXT_API FontAssets {
+  public:
+    /// @brief One font: its file (or the name it was added under), the font (nothing if it could not be read) and why
+    /// it could not be.
+    using Entry = core::asset::AssetStore<Font>::Entry;
+
+    /// @brief An atlas image a font needs, for TextureAssets.
+    struct TextureRequest {
+        std::string path;                      ///< The image file.
+        contract::renderer::TextureDesc desc;  ///< Linear filtering and encoding.
+    };
+
+    FontAssets() = default;
+    ~FontAssets() = default;
+    FontAssets(const FontAssets& other) = delete;
+    FontAssets& operator=(const FontAssets& other) = delete;
+    FontAssets(FontAssets&& other) noexcept = default;
+    FontAssets& operator=(FontAssets&& other) noexcept = default;
+
+    /// @brief Sets where the files are read; a path that leaves it fails (core::asset::resolveAssetPath()).
+    /// @param directory The assets' directory; empty: the working directory, unchecked.
+    void setDirectory(std::filesystem::path directory);
+
+    /// @brief Sets where the files are read: the game's folder or its pack (plugins::assetSourceOf()).
+    /// @param source The files; null: the working directory, unchecked.
+    void setSource(std::shared_ptr<const core::vfs::FileSource> source);
+
+    /// @return The number of fonts known, read or failed.
+    [[nodiscard]] std::size_t getCount() const noexcept;
+
+    /// @brief Reads the msdf-atlas-gen JSON file at @p path (detail::parseFontJson()); its image is the same path with
+    /// the extension `.png`.
+    /// @return Its id (AssetId::fromPath()), at once, even if it failed. Asking twice gives the first one.
+    /// @throws core::asset::exceptions::AssetLoadException If another path already has this id (a hash collision).
+    core::asset::AssetId load(const std::filesystem::path& path);
+
+    /// @brief Adds a font built in code, known by @p name.
+    /// @return Its id (AssetId::fromPath(name)). Adding a name twice keeps the first font.
+    /// @throws core::asset::exceptions::AssetLoadException If another name already has this id (a hash collision).
+    core::asset::AssetId add(const std::string& name, Font font);
+
+    /// @return The font @p id names, or nullptr if it is unknown or failed.
+    [[nodiscard]] const Font* get(core::asset::AssetId id) const;
+
+    /// @return The entry of @p id, read or failed, or nullptr if it is unknown.
+    [[nodiscard]] const Entry* getEntry(core::asset::AssetId id) const;
+
+    /// @brief Forgets the font @p id names. Its image stays in TextureAssets.
+    /// @return False, doing nothing, if no font has this id.
+    bool unload(core::asset::AssetId id);
+
+    /// @return The images the fonts added since the last call need, for TextureAssets. Called by the TextPlugin.
+    [[nodiscard]] std::vector<TextureRequest> takeTextureRequests();
+
+  private:
+    /// @brief Asks for the atlas image of @p font, just stored.
+    void requestTexture(const Font& font);
+
+    core::asset::AssetStore<Font> _fonts{"Font"};  ///< Every font asked for, by id.
+    std::vector<TextureRequest> _textureRequests;  ///< Images to hand to TextureAssets.
+};
+AYLO_ECS_RESOURCE(FontAssets, "rtype.FontAssets");
+
+}  // namespace aylo::plugins::text

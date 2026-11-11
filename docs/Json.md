@@ -1,6 +1,6 @@
 # JSON
 
-The `rtype.Json` plugin (`src/rtype/plugins/json/`, library `plugin-json`) gives scripts a JSON codec: encode a table,
+The `rtype.Json` plugin (`src/aylo/plugins/json/`, library `plugin-json`) gives scripts a JSON codec: encode a table,
 decode a text (an HTTP body, an AI model's reply, a save). It requires no other plugin and runs on every side.
 
 ## Why it looks like this

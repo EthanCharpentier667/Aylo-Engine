@@ -1,21 +1,21 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** main
 */
 
 #include <algorithm>
+#include <aylo/luau/Function.hpp>
+#include <aylo/luau/LibraryBuilder.hpp>
+#include <aylo/luau/Runtime.hpp>
+#include <aylo/luau/Table.hpp>
+#include <aylo/luau/Value.hpp>
+#include <aylo/luau/ValuePack.hpp>
 #include <cmath>
 #include <iostream>
-#include <rtype/luau/Function.hpp>
-#include <rtype/luau/LibraryBuilder.hpp>
-#include <rtype/luau/Runtime.hpp>
-#include <rtype/luau/Table.hpp>
-#include <rtype/luau/Value.hpp>
-#include <rtype/luau/ValuePack.hpp>
 
-using namespace rtype::luau;
+using namespace aylo::luau;
 
 int main() {
     auto runtime = Runtime::create({

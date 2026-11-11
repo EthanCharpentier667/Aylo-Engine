@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** main
 */
@@ -27,6 +27,18 @@
 #include <optional>
 #include <string>
 
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/app/AppExit.hpp"
+#include "aylo/ecs/app/MinimalPlugins.hpp"
+#include "aylo/ecs/command/Commands.hpp"
+#include "aylo/ecs/entity/Entity.hpp"
+#include "aylo/ecs/query/Query.hpp"
+#include "aylo/ecs/resource/ResourceTraits.hpp"
+#include "aylo/ecs/schedule/Phase.hpp"
+#include "aylo/ecs/system/EventReader.hpp"
+#include "aylo/ecs/system/EventWriter.hpp"
+#include "aylo/ecs/system/ResourceParam.hpp"
+#include "aylo/ecs/time/Time.hpp"
 #include "plugins/physics/Collider.hpp"
 #include "plugins/physics/CollisionEvents.hpp"
 #include "plugins/physics/MoveAndSlide.hpp"
@@ -38,22 +50,10 @@
 #include "plugins/physics/Velocity.hpp"
 #include "plugins/transform/Transform.hpp"
 #include "plugins/transform/TransformPlugin.hpp"
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/app/AppExit.hpp"
-#include "rtype/ecs/app/MinimalPlugins.hpp"
-#include "rtype/ecs/command/Commands.hpp"
-#include "rtype/ecs/entity/Entity.hpp"
-#include "rtype/ecs/query/Query.hpp"
-#include "rtype/ecs/resource/ResourceTraits.hpp"
-#include "rtype/ecs/schedule/Phase.hpp"
-#include "rtype/ecs/system/EventReader.hpp"
-#include "rtype/ecs/system/EventWriter.hpp"
-#include "rtype/ecs/system/ResourceParam.hpp"
-#include "rtype/ecs/time/Time.hpp"
 
-using namespace rtype::ecs;
-using namespace rtype::plugins::physics;
-using rtype::plugins::transform::Transform;
+using namespace aylo::ecs;
+using namespace aylo::plugins::physics;
+using aylo::plugins::transform::Transform;
 
 namespace {
 constexpr std::uint64_t kTicksPerSecond = 60;
@@ -81,7 +81,7 @@ struct Scene {
     Entity zone;
     Entity drone;
 };
-RTYPE_ECS_RESOURCE(Scene, "example.Scene");
+AYLO_ECS_RESOURCE(Scene, "example.Scene");
 
 // Startup: spawns the scene. Distances are in world units (pixels), Y down.
 void spawnScene(Commands& commands, ResMut<Scene> scene) {
@@ -269,7 +269,7 @@ int main() {
         // MinimalPlugins brings Time (fixed ticks at 60 Hz), which the physics steps with.
         app.addPlugins(MinimalPlugins{});
         // 980 units/s^2 down is 9.8 m/s^2 at 100 units per meter. Invalid settings throw a PhysicsException here.
-        app.addPlugin(rtype::plugins::transform::TransformPlugin{});
+        app.addPlugin(aylo::plugins::transform::TransformPlugin{});
         app.addPlugin(PhysicsPlugin{PhysicsSettings{.gravity = {0.0F, 980.0F}, .unitsPerMeter = 100.0F}});
         app.insertResource(Scene{});
         app.addSystem(Phase::kStartup, "example.spawnScene", &spawnScene);

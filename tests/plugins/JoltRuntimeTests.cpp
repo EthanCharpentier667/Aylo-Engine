@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** JoltRuntimeTests
 */
@@ -15,7 +15,7 @@
 
 #include "plugins/physics/detail/JoltRuntime.hpp"
 
-using rtype::plugins::physics::detail::JoltRuntime;
+using aylo::plugins::physics::detail::JoltRuntime;
 
 namespace {
 constexpr std::size_t kThreadCount = 8;

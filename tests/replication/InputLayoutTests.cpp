@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** InputLayoutTests
 */
@@ -13,16 +13,16 @@
 #include <limits>
 #include <string>
 
-#include "rtype/replication/component/PlayerInput.hpp"
-#include "rtype/replication/exceptions/ReplicationExceptions.hpp"
-#include "rtype/replication/input/InputKind.hpp"
-#include "rtype/replication/input/InputLayout.hpp"
+#include "aylo/replication/component/PlayerInput.hpp"
+#include "aylo/replication/exceptions/ReplicationExceptions.hpp"
+#include "aylo/replication/input/InputKind.hpp"
+#include "aylo/replication/input/InputLayout.hpp"
 
 namespace {
-using rtype::replication::component::PlayerInput;
-using rtype::replication::exceptions::InputLayoutException;
-using rtype::replication::input::InputKind;
-using rtype::replication::input::InputLayout;
+using aylo::replication::component::PlayerInput;
+using aylo::replication::exceptions::InputLayoutException;
+using aylo::replication::input::InputKind;
+using aylo::replication::input::InputLayout;
 
 InputLayout makeLayout() {
     InputLayout layout;

@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** MiniaudioDeviceTests
 */
@@ -14,15 +14,15 @@
 #include <memory>
 #include <vector>
 
-#include "rtype/audio/miniaudio/Registration.hpp"
-#include "rtype/contract/audiodevice/AudioDeviceRegistry.hpp"
-#include "rtype/contract/audiodevice/AudioTypes.hpp"
-#include "rtype/contract/audiodevice/IAudioDevice.hpp"
-#include "rtype/core/config/Settings.hpp"
+#include "aylo/audio/miniaudio/Registration.hpp"
+#include "aylo/contract/audiodevice/AudioDeviceRegistry.hpp"
+#include "aylo/contract/audiodevice/AudioTypes.hpp"
+#include "aylo/contract/audiodevice/IAudioDevice.hpp"
+#include "aylo/core/config/Settings.hpp"
 
-using rtype::contract::audiodevice::IAudioDevice;
-using rtype::contract::audiodevice::SoundDesc;
-using rtype::contract::audiodevice::SoundId;
+using aylo::contract::audiodevice::IAudioDevice;
+using aylo::contract::audiodevice::SoundDesc;
+using aylo::contract::audiodevice::SoundId;
 
 namespace {
 /// @brief Appends @p value to @p bytes, little endian, on @p size bytes.
@@ -64,12 +64,12 @@ std::vector<std::byte> silentWav(const std::uint32_t frames) {
 class MiniaudioDeviceTest : public ::testing::Test {
   protected:
     void SetUp() override {
-        rtype::contract::audiodevice::AudioDeviceRegistry registry;
-        rtype::audio::miniaudio::registerAudio(registry);
+        aylo::contract::audiodevice::AudioDeviceRegistry registry;
+        aylo::audio::miniaudio::registerAudio(registry);
         const auto* factory = registry.find("miniaudio");
         ASSERT_NE(factory, nullptr);
         try {
-            _device = (*factory)(rtype::core::config::Settings{}, 8);
+            _device = (*factory)(aylo::core::config::Settings{}, 8);
         } catch (const std::exception& error) {
             GTEST_SKIP() << "No audio device opens here: " << error.what();
         }

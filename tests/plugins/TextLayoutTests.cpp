@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** TextLayoutTests
 */
@@ -9,17 +9,17 @@
 
 #include <glm/ext/vector_float2.hpp>
 
+#include "aylo/contract/renderer/drawing/Text.hpp"
+#include "aylo/contract/renderer/drawing/Texture.hpp"
+#include "aylo/contract/renderer/math/Rect.hpp"
 #include "plugins/text/Font.hpp"
 #include "plugins/text/TextLayout.hpp"
-#include "rtype/contract/renderer/drawing/Text.hpp"
-#include "rtype/contract/renderer/drawing/Texture.hpp"
-#include "rtype/contract/renderer/math/Rect.hpp"
 
-using rtype::contract::renderer::math::Rect;
-using rtype::plugins::text::Font;
-using rtype::plugins::text::Glyph;
-using rtype::plugins::text::TextAlign;
-using rtype::plugins::text::TextLayout;
+using aylo::contract::renderer::math::Rect;
+using aylo::plugins::text::Font;
+using aylo::plugins::text::Glyph;
+using aylo::plugins::text::TextAlign;
+using aylo::plugins::text::TextLayout;
 
 namespace {
 /// @brief A font with round numbers: lines 1.5 ems apart, the baseline 1 em down; 'A' and 'B' half an em wide

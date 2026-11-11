@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** AssetFilesTests
 */
@@ -13,14 +13,14 @@
 
 #include "core/asset/AssetFiles.hpp"
 
-using rtype::core::asset::isInsideDirectory;
+using aylo::core::asset::isInsideDirectory;
 
 namespace {
 /// @brief A folder with an `inner` and an `outer` side, removed when the test ends.
 class Sandbox : public ::testing::Test {
   protected:
     void SetUp() override {
-        _base = std::filesystem::temp_directory_path() / "rtype-inside-directory";
+        _base = std::filesystem::temp_directory_path() / "aylo-inside-directory";
         std::filesystem::remove_all(_base);
         _root = _base / "root";
         _outside = _base / "outside";

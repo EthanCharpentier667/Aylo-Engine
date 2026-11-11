@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** main
 */
@@ -13,12 +13,12 @@
 #include <exception>
 #include <iostream>
 
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/time/FixedTimestep.hpp"
-#include "rtype/ecs/time/TimePlugin.hpp"
-#include "rtype/scripting/plugin/ScriptingPlugin.hpp"
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/time/FixedTimestep.hpp"
+#include "aylo/ecs/time/TimePlugin.hpp"
+#include "aylo/scripting/plugin/ScriptingPlugin.hpp"
 
-using namespace rtype;
+using namespace aylo;
 
 int main() {
     try {

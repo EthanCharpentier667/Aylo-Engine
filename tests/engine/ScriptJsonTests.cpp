@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ScriptJsonTests
 */
@@ -11,19 +11,19 @@
 #include <string>
 #include <utility>
 
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/scripting/ScriptHost.hpp"
 #include "plugins/json/JsonPlugin.hpp"
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/scripting/ScriptHost.hpp"
 
 namespace {
 /// @brief A standalone App with the JsonPlugin, and a script host on it.
 struct JsonScripts {
-    rtype::ecs::App app;
-    std::unique_ptr<rtype::scripting::ScriptHost> host;
+    aylo::ecs::App app;
+    std::unique_ptr<aylo::scripting::ScriptHost> host;
 
     JsonScripts() {
-        app.addPlugin(rtype::plugins::json::JsonPlugin{});
-        auto created = rtype::scripting::ScriptHost::create(app, {.isClient = true, .isServer = true});
+        app.addPlugin(aylo::plugins::json::JsonPlugin{});
+        auto created = aylo::scripting::ScriptHost::create(app, {.isClient = true, .isServer = true});
         EXPECT_TRUE(created) << (created ? "" : std::string{created.error().message()});
         host = std::move(*created);
     }

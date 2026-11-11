@@ -34,7 +34,7 @@ type-erased API and Luau can declare, send and read their own.
 
 ### Declaring and storing
 
-An event is a C++ type declared with `RTYPE_ECS_EVENT`, or a run-time (Luau) description. It is the third
+An event is a C++ type declared with `AYLO_ECS_EVENT`, or a run-time (Luau) description. It is the third
 kind of the [type core](../design.md) (see "The type core"): `EventInfo { TypeInfo type; }`, registered in an
 `EventRegistry` (`TypeRegistry<EventInfo>`), its values kept in an `EventStorage` (one double-buffered queue
 per event type, in two `ByteColumn`s). Like a resource, an event may be any movable class, including a
@@ -42,13 +42,13 @@ move-only one; a struct without fields is an event that carries no data.
 
 ```c++
 struct Collision {
-    rtype::ecs::Entity a;
-    rtype::ecs::Entity b;
+    aylo::ecs::Entity a;
+    aylo::ecs::Entity b;
 };
-RTYPE_ECS_EVENT(Collision, "rtype.Collision", a, b);   // reflected: reachable from Luau
+AYLO_ECS_EVENT(Collision, "rtype.Collision", a, b);   // reflected: reachable from Luau
 
 struct GameOver {};
-RTYPE_ECS_EVENT(GameOver, "game.GameOver");            // no data: counted, not read
+AYLO_ECS_EVENT(GameOver, "game.GameOver");            // no data: counted, not read
 ```
 
 Events are **local to a world**: `validate()` refuses a replicated event, and `EventOptions` only holds the
@@ -61,10 +61,10 @@ Events live in an `Events` object owned by the world, reached with `world.getEve
 `world.getComponents()` and `world.getResources()`, see [World](06-world.md)):
 
 ```c++
-rtype::ecs::Events& events = world.getEvents();
+aylo::ecs::Events& events = world.getEvents();
 events.send(Collision{.a = bullet, .b = enemy});
 
-rtype::ecs::EventCursor cursor;   // one per reader and per event type
+aylo::ecs::EventCursor cursor;   // one per reader and per event type
 for (const Collision& collision : events.read<Collision>(cursor)) {
     // ...
 }
@@ -149,11 +149,11 @@ run's reader takes (with `read()`) the events not read yet, as a range of `const
 scheduler which queues a system writes and reads.
 
 ```c++
-void detectCollisions(/* queries... */ rtype::ecs::EventWriter<Collision> collisions) {
+void detectCollisions(/* queries... */ aylo::ecs::EventWriter<Collision> collisions) {
     collisions.send({.a = bullet, .b = enemy});
 }
 
-void applyDamage(rtype::ecs::EventReader<Collision> collisions, rtype::ecs::Query<Health> health) {
+void applyDamage(aylo::ecs::EventReader<Collision> collisions, aylo::ecs::Query<Health> health) {
     for (const Collision& collision : collisions) {
         // ...
     }
@@ -162,7 +162,7 @@ void applyDamage(rtype::ecs::EventReader<Collision> collisions, rtype::ecs::Quer
 
 ### Platform events
 
-Ethan's `rtype::contract::platform::Event` is a `std::variant` of `event::Resized`, `event::KeyPressed`,
+Ethan's `aylo::contract::platform::Event` is a `std::variant` of `event::Resized`, `event::KeyPressed`,
 `event::Closed`... The window plugin's `PreUpdate` system calls `IPlatform::pollEvents()` and sends each
 alternative to its own queue (one event type per alternative: `event::Resized`, ...). A system interested only in resizes reads
 only that queue.

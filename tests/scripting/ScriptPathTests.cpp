@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ScriptPathTests
 */
@@ -10,11 +10,11 @@
 #include <string>
 #include <vector>
 
-#include "rtype/scripting/ErrorKind.hpp"
-#include "rtype/scripting/modules/ScriptPath.hpp"
+#include "aylo/scripting/ErrorKind.hpp"
+#include "aylo/scripting/modules/ScriptPath.hpp"
 
-using rtype::scripting::ErrorKind;
-using rtype::scripting::modules::ScriptPath;
+using aylo::scripting::ErrorKind;
+using aylo::scripting::modules::ScriptPath;
 
 namespace {
 using Segments = std::vector<std::string>;

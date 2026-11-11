@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** EventParamTests
 */
@@ -12,26 +12,26 @@
 #include <ranges>
 #include <vector>
 
-#include "rtype/ecs/event/EventCursor.hpp"
-#include "rtype/ecs/event/EventTraits.hpp"
-#include "rtype/ecs/system/EventReader.hpp"
-#include "rtype/ecs/system/EventWriter.hpp"
-#include "rtype/ecs/world/World.hpp"
+#include "aylo/ecs/event/EventCursor.hpp"
+#include "aylo/ecs/event/EventTraits.hpp"
+#include "aylo/ecs/system/EventReader.hpp"
+#include "aylo/ecs/system/EventWriter.hpp"
+#include "aylo/ecs/world/World.hpp"
 
-namespace rtype::test::event_param {
+namespace aylo::test::event_param {
 struct Collision {
     std::uint32_t a;
     std::uint32_t b;
 };
-RTYPE_ECS_EVENT(Collision, "test.event_param.Collision", a, b);
-}  // namespace rtype::test::event_param
+AYLO_ECS_EVENT(Collision, "test.event_param.Collision", a, b);
+}  // namespace aylo::test::event_param
 
 namespace {
-using rtype::ecs::EventCursor;
-using rtype::ecs::EventReader;
-using rtype::ecs::EventWriter;
-using rtype::ecs::World;
-using rtype::test::event_param::Collision;
+using aylo::ecs::EventCursor;
+using aylo::ecs::EventReader;
+using aylo::ecs::EventWriter;
+using aylo::ecs::World;
+using aylo::test::event_param::Collision;
 
 static_assert(std::ranges::forward_range<EventReader<Collision>>);
 
