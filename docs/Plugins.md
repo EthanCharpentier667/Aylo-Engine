@@ -129,6 +129,17 @@ RTYPE_PLUGIN_LIBRARY(registrar) {
 
 A backend knows no ECS, so it writes `RTYPE_LIBRARY` and fills the registry it finds. The plugin that owns the registry
 offers it under a name the contract declares, such as `kRendererRegistryService`, and takes it back when it is built.
+It also offers the registry's names (`LibraryRegistrar::provideNames()`), so what does not know the contract can list
+the backends each library brings: the game export ([release/export.md](release/export.md)) keeps only the libraries of
+the backends a game names.
+
+### What a library links
+
+Next to each plugin library, the build writes `<library>.links` (`xmake/modules/plugin_links.lua`, from the rules
+`rtype.plugin_library` and `rtype.game_plugin`): the file names of the plugin libraries it links, one per line, empty if
+none. The system loads them with it, so an export that keeps a library keeps them too, even when its plugins do not
+require theirs (the sprite library links `graphics` and `shader`, see [Linking](#linking)). The release zip holds them;
+the `Engine` never reads them.
 
 ### Setup forms
 

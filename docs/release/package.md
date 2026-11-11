@@ -16,8 +16,8 @@ aylo-engine-<version>-<os>-<arch>/
 │   │                        other engine modules are static, inside aylo-runtime)
 │   ├── plugins/             the plugin libraries, real files; the engine scans this folder
 │   │   └── backends/        the platform, renderer and audio backends, scanned too
-│   └── licenses/            THIRD_PARTY_NOTICES.md
-├── tools/aylo-sign(.exe)
+│   └── licenses/            THIRD_PARTY_NOTICES.md, and by-library/<file>.md: the notices of each binary
+├── tools/aylo-sign(.exe)   aylo-export(.exe): signs the game plugins, exports a game ([`export.md`](export.md))
 ├── templates/game/          a game that runs, from examples/games/template/game/
 ├── manual/                  the manual, built for offline reading
 ├── README.md  LICENSE  VERSION
@@ -31,6 +31,17 @@ rpath, the DLLs of `lib/` sit next to the executable instead (there is no `lib/`
 the DLLs of `plugins/` find them. How a binary finds its libraries is in
 [`self-contained.md`](self-contained.md#how-the-build-gets-there).
 The editor will get its own `editor/` folder, outside `runtime/`, so that shipping the runtime never ships it.
+
+The notices are made, not written by hand (`xmake/modules/third_party_notices.lua`). A binary contains the packages of
+its target and those of the static modules it links (`aylo-runtime` holds Luau, Asio and libsodium through `engine`,
+`luau` and `network`); a library `lib/` takes from the system (the Vulkan loader and MoltenVK on macOS, the GCC runtime on
+Linux) has its own entry. `licenses/by-library/<file>.md` holds the rows of one binary, and `THIRD_PARTY_NOTICES.md` all
+of them. A package the table does not know stops the release, so the notices cannot fall behind the build. The game
+export keeps the files of the binaries it keeps ([`export.md`](export.md)); the smoke test checks that every binary it
+may keep has one.
+
+The names of the layout are written once per language: `src/rtype/core/layout/Layout.hpp` for the engine and its
+tools, `xmake/modules/layout.lua` for the build and this task. The smoke test checks them end to end.
 
 `manifest.json` holds the `version` (a nightly build is `<version>-nightly.<commit>`), the `commit`, the `platform` and
 `arch`, the `toolchain`, the `library_abi` and the `sha256` of every other file of the zip. Its version, commit,
@@ -58,7 +69,7 @@ is `rtype::core::version::describe` (`src/rtype/core/version/`).
 
 ```sh
 xmake f -y -m release
-xmake package-release            # builds aylo-runtime and aylo-sign first (--no-build to skip), then packages
+xmake package-release            # builds aylo-runtime, aylo-sign and aylo-export first (--no-build to skip), then packages
 ```
 
 The output is in `build/package/`. Options: `--no-build` packages what is already built, `--no-manual` leaves the manual
@@ -68,7 +79,7 @@ It then:
 1. copies the runtime, `lib/` and `plugins/` as the build made them, leaving out the libraries made for the tests,
    adds the C++ runtime to `lib/` (Linux, with `patchelf`) and sets the search paths of the executable and the tool to
    the folders of the zip (`$ORIGIN/lib:$ORIGIN/plugins`, and `$ORIGIN/../runtime/lib:$ORIGIN/../runtime/plugins` for
-   `tools/aylo-sign`; on Windows its DLLs are copied next to it);
+   `tools/aylo-sign` and `tools/aylo-export`; on Windows their DLLs are copied next to them);
 2. adds the licenses, the template game, the manual, the README, the version and the license of the repository (with a
    warning when the repository has none);
 3. strips what is not stripped and keeps the debug information apart;
@@ -80,7 +91,9 @@ It then:
 
 `.github/scripts/smoke-test.sh <zip>` (`.ps1` on Windows) behaves like a user: it unzips into an empty directory and
 checks the layout and the hashes of the manifest, the version the runtime reports, the dependencies of `runtime/`, a
-server started on `templates/game` and a headless client connecting to it, and `aylo-sign keygen`. Run it on a machine
+server started on `templates/game` and a headless client connecting to it, `aylo-sign keygen`, and a game exported with
+`tools/aylo-export` (its layout, only the libraries its `export.json` lists, nothing outside it, its server and client
+run from its pack, [`export.md`](export.md)). Run it on a machine
 with no toolchain, such as a bare container, for the answer that counts.
 
 The server's output goes to a file, and a program's output to a file is buffered, so a player joining reaches the log

@@ -10,6 +10,7 @@
 #include <concepts>
 #include <cstddef>
 #include <filesystem>
+#include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -17,6 +18,7 @@
 #include <vector>
 
 #include "core/asset/AssetId.hpp"
+#include "core/vfs/FileSource.hpp"
 
 namespace rtype::core::asset {
 
@@ -52,12 +54,20 @@ class AssetStore {
     AssetStore(AssetStore&& other) noexcept = default;
     AssetStore& operator=(AssetStore&& other) noexcept = default;
 
-    /// @brief Sets where load() reads the files; a path that leaves it fails (resolveAssetPath()).
+    /// @brief Sets where load() reads the files: a folder on disk, as setSource() with a vfs::DirectorySource; a path
+    /// that leaves it fails (resolveAssetPath()).
     /// @param directory The assets' directory; empty: the working directory, unchecked.
     void setDirectory(std::filesystem::path directory);
 
-    /// @return Where load() reads the files.
-    [[nodiscard]] const std::filesystem::path& getDirectory() const noexcept;
+    /// @brief Sets where load() reads the files: the game's folder or its pack (plugins::assetSourceOf()).
+    /// @param source The files; null: the working directory, unchecked.
+    void setSource(std::shared_ptr<const vfs::FileSource> source);
+
+    /// @return Where load() reads the files, never null.
+    [[nodiscard]] const vfs::FileSource& getSource() const noexcept;
+
+    /// @return The folder on disk load() reads the files from; empty for the working directory or a pack.
+    [[nodiscard]] std::filesystem::path getDirectory() const;
 
     /// @return The number of assets known, read or failed.
     [[nodiscard]] std::size_t getCount() const noexcept;
@@ -105,9 +115,9 @@ class AssetStore {
     void fail(AssetId id, std::string path, std::string error);
 
   private:
-    std::string _kind;                            ///< "Atlas", "Tilemap", "Font"...
-    std::filesystem::path _directory;             ///< Where load() reads the files.
-    std::unordered_map<AssetId, Entry> _entries;  ///< Every asset asked for, by id.
+    std::string _kind;                               ///< "Atlas", "Tilemap", "Font"...
+    std::shared_ptr<const vfs::FileSource> _source;  ///< Where load() reads the files, never null.
+    std::unordered_map<AssetId, Entry> _entries;     ///< Every asset asked for, by id.
 };
 
 }  // namespace rtype::core::asset

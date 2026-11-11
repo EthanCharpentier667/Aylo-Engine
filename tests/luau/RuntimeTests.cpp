@@ -382,3 +382,42 @@ TEST(Runtime, AllOptimizationLevelsRunScripts) {
         EXPECT_TRUE(runtime.run(*script));
     }
 }
+
+TEST(Runtime, LoadsAPrecompiledChunkAsItsSource) {
+    const auto runtime = makeRuntime();
+    const auto chunk = runtime.precompile("local a, b = ...; return a * b");
+    ASSERT_TRUE(chunk);
+    EXPECT_TRUE(std::string_view{*chunk}.starts_with(rtype::luau::Runtime::kBytecodeHeader));
+    auto script = runtime.load("product", *chunk);
+    ASSERT_TRUE(script);
+    rtype::luau::ValuePack arguments;
+    arguments.add(rtype::luau::Value{4.0});
+    arguments.add(rtype::luau::Value{5.0});
+
+    const auto returned = runtime.call(*script, arguments);
+
+    ASSERT_TRUE(returned);
+    ASSERT_EQ(returned->size(), 1U);
+    EXPECT_DOUBLE_EQ(returned->values()[0].as<double>(), 20.0);
+}
+
+TEST(Runtime, APrecompiledChunkKeepsTheLinesOfItsErrors) {
+    const auto runtime = makeRuntime();
+    const auto chunk = runtime.precompile("local x = 1\nerror('broken')");
+    ASSERT_TRUE(chunk);
+    auto script = runtime.load("lines.luau", *chunk);
+    ASSERT_TRUE(script);
+
+    const auto returned = runtime.call(*script, {});
+
+    ASSERT_FALSE(returned);
+    EXPECT_NE(returned.error().message().find("lines.luau:2"), std::string::npos) << returned.error().message();
+}
+
+TEST(Runtime, PrecompileReturnsTheCompilationError) {
+    const auto runtime = makeRuntime();
+    const auto chunk = runtime.precompile("local = ");
+
+    ASSERT_FALSE(chunk);
+    EXPECT_EQ(chunk.error().kind(), rtype::luau::ErrorKind::kCompilation);
+}

@@ -13,6 +13,7 @@
 #include <filesystem>
 #include <format>
 #include <iostream>
+#include <memory>
 #include <optional>
 #include <span>
 #include <string>
@@ -21,15 +22,23 @@
 
 #include "core/asset/AssetFiles.hpp"
 #include "core/asset/AssetId.hpp"
+#include "core/vfs/DirectorySource.hpp"
+#include "core/vfs/FileSource.hpp"
 #include "rtype/contract/audiodevice/AudioTypes.hpp"
 #include "rtype/contract/audiodevice/IAudioDevice.hpp"
 #include "rtype/contract/audiodevice/exceptions/AudioExceptions.hpp"
 
 namespace rtype::plugins::audio {
 
-void AudioAssets::setDirectory(std::filesystem::path directory) { _directory = std::move(directory); }
+void AudioAssets::setDirectory(std::filesystem::path directory) {
+    _source = std::make_shared<core::vfs::DirectorySource>(std::move(directory));
+}
 
-const std::filesystem::path& AudioAssets::getDirectory() const noexcept { return _directory; }
+void AudioAssets::setSource(std::shared_ptr<const core::vfs::FileSource> source) {
+    _source = source ? std::move(source) : std::make_shared<core::vfs::DirectorySource>(std::filesystem::path{});
+}
+
+const core::vfs::FileSource& AudioAssets::getSource() const noexcept { return *_source; }
 
 std::size_t AudioAssets::getCount() const noexcept { return _entries.size(); }
 
@@ -118,10 +127,17 @@ void updateSounds(AudioAssets& assets, contract::audiodevice::IAudioDevice& devi
     for (const core::asset::AssetId id : queued) {
         const AudioAssets::Entry& entry = *assets.get(id);
         try {
-            const contract::audiodevice::SoundId sound =
-                entry.encoded.empty()
-                    ? device.createSound(core::asset::resolveAssetPath(assets.getDirectory(), entry.path), entry.desc)
-                    : device.createSound(entry.encoded, entry.desc);
+            contract::audiodevice::SoundId sound;
+            if (!entry.encoded.empty()) {
+                sound = device.createSound(entry.encoded, entry.desc);
+            } else if (const std::optional<std::filesystem::path> directory = assets.getSource().directory()) {
+                // A file on disk: the backend opens it, and a streamed sound keeps reading it.
+                sound = device.createSound(core::asset::resolveAssetPath(*directory, entry.path), entry.desc);
+            } else {
+                // A pack: the backend gets the bytes (EXP-05 streams them).
+                const std::vector<std::byte> bytes = core::vfs::readBytes(assets.getSource(), entry.path);
+                sound = device.createSound(bytes, entry.desc);
+            }
             assets.setLoaded(id, sound);
         } catch (const std::exception& error) {
             std::cerr << "[AudioAssets] " << error.what() << '\n';

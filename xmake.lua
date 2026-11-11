@@ -113,6 +113,10 @@ rule("rtype.plugin_library")
             target:add("rpathdirs", up .. "/lib")
         end
     end)
+    after_build(function (target)
+        import("plugin_links")
+        plugin_links.write(target)
+    end)
 rule_end()
 
 -- Makes a target a game's own plugin library: a folder `<game>/plugins/<name>/`, with its xmake.lua and its sources, built
@@ -128,6 +132,10 @@ rule("rtype.game_plugin")
             target:add("rpathdirs", path.join("@loader_path", path.relative(path.join(build, "lib"), folder)),
                        path.join("@loader_path", path.relative(path.join(build, "plugins"), folder)))
         end
+    end)
+    after_build(function (target)
+        import("plugin_links")
+        plugin_links.write(target)
     end)
 rule_end()
 
@@ -212,6 +220,19 @@ includes("src/rtype/render/vulkan")
 includes("src/rtype/audio/miniaudio")
 includes("src/rtype/runtime")
 includes("src/rtype/tools/sign")
+includes("src/rtype/tools/export")
+
+-- The version and the commit of the build, as a header the executables include (rtype/build/BuildInfo.hpp): generated
+-- once per configuration, rewritten only when they change (xmake/modules/engine_version.lua).
+target("build-info")
+    set_kind("headeronly")
+    on_config(function (target)
+        import("core.project.config")
+        import("engine_version")
+        local dir = path.join(config.builddir(), "generated")
+        engine_version.writeHeader(dir)
+        target:add("includedirs", dir, {public = true})
+    end)
 
 -- Every backend library, for what loads them without linking them.
 target("backend-libraries")

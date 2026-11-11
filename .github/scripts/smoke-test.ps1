@@ -47,6 +47,17 @@ try {
     foreach ($folder in 'runtime\plugins', 'runtime\plugins\backends', 'templates\game\scripts', 'templates\game\assets') {
         if (Test-Path -LiteralPath (Join-Path $root $folder) -PathType Container) { Ok "has $folder\" } else { Fail "missing $folder\" }
     }
+    # The game export keeps the notices of the binaries it keeps: each binary it may keep has its own.
+    $binaries = @(Get-Item -LiteralPath $runtime -ErrorAction SilentlyContinue) +
+                @(Get-ChildItem -LiteralPath (Join-Path $root 'runtime\plugins') -Recurse -File -Filter '*.dll')
+    $unnoticed = 0
+    foreach ($binary in $binaries) {
+        if (-not (Test-Path -LiteralPath (Join-Path $root "runtime\licenses\by-library\$($binary.Name).md") -PathType Leaf)) {
+            $unnoticed++
+            [Console]::Error.WriteLine("  no notices for $($binary.Name)")
+        }
+    }
+    if ($unnoticed -eq 0) { Ok "every binary has its notices in runtime\licenses\by-library\" } else { Fail "$unnoticed binaries have no notices" }
 
     # --- Version ------------------------------------------------------------------------------------------------------
     if (Test-Path -LiteralPath $runtime) {
@@ -127,6 +138,61 @@ try {
         Ok 'aylo-sign keygen makes a key pair'
     } else {
         Fail 'aylo-sign keygen did not make smoke.pub and smoke.key'
+    }
+
+    # --- An exported game (tools\aylo-export) ---------------------------------------------------------------------
+    # What a game developer ships: the template exported with the zip's runtime, then run from the export alone.
+    $exporter = Join-Path $root 'tools\aylo-export.exe'
+    if (Test-Path -LiteralPath $exporter) {
+        $source = Join-Path $work 'MyGame'
+        New-Item -ItemType Directory -Path $source | Out-Null
+        Copy-Item -Recurse -LiteralPath (Join-Path $root 'templates\game') -Destination (Join-Path $source 'game')
+        $exports = Join-Path $work 'exports'
+        & $exporter (Join-Path $source 'game') $exports *> (Join-Path $work 'export.log')
+        if ($LASTEXITCODE -eq 0) { Ok 'aylo-export exported templates\game' } else { Fail "aylo-export failed: $(Get-Content -Raw -LiteralPath (Join-Path $work 'export.log'))" }
+        $exported = Join-Path $exports 'MyGame'
+        foreach ($file in 'MyGame.exe', 'game.pak', 'export.json', 'licenses\THIRD_PARTY_NOTICES.md', 'play.bat') {
+            if (Test-Path -LiteralPath (Join-Path $exported $file) -PathType Leaf) { Ok "the export has $file" } else { Fail "the export has no $file" }
+        }
+        # Only the libraries export.json lists, and each one it lists.
+        $json = Get-Content -Raw -LiteralPath (Join-Path $exported 'export.json') -ErrorAction SilentlyContinue
+        $listed = ([regex]::Matches([string]$json, '"file": "plugins/')).Count
+        $shipped = @(Get-ChildItem -LiteralPath (Join-Path $exported 'plugins') -Recurse -File -Filter '*.dll' -ErrorAction SilentlyContinue)
+        $unlisted = @($shipped | Where-Object {
+            $relative = 'plugins/' + $_.FullName.Substring((Join-Path $exported 'plugins').Length + 1).Replace('\', '/')
+            -not ([string]$json).Contains("""file"": ""$relative""")
+        })
+        if ($unlisted.Count -eq 0 -and $shipped.Count -eq $listed) {
+            Ok "the export ships the $($shipped.Count) libraries export.json lists, and no other"
+        } else {
+            Fail "the export ships $($shipped.Count) libraries, export.json lists $listed ($($unlisted.Count) not listed)"
+        }
+        # The program alone, started from another folder: it finds game.pak next to itself. Its output is buffered
+        # on Windows, so both programs are only checked to stay up.
+        $program = Join-Path $exported 'MyGame.exe'
+        if (Test-Path -LiteralPath $program) {
+            $exportPort = 20000 + (Get-Random -Maximum 20000)
+            $exportServer = Start-Process -FilePath $program -ArgumentList '--server', '--port', $exportPort -WorkingDirectory $work `
+                -RedirectStandardOutput (Join-Path $work 'export-server.log') -RedirectStandardError (Join-Path $work 'export-server.err') -PassThru -WindowStyle Hidden
+            $processes += $exportServer
+            Start-Sleep -Seconds 2
+            $exportClient = Start-Process -FilePath $program -ArgumentList 'game.pak', '--port', $exportPort, '--headless' -WorkingDirectory $exported `
+                -RedirectStandardOutput (Join-Path $work 'export-client.log') -RedirectStandardError (Join-Path $work 'export-client.err') -PassThru -WindowStyle Hidden
+            $processes += $exportClient
+            Start-Sleep -Seconds 4
+            if ($exportServer.HasExited) {
+                Fail "the exported server stopped with code $($exportServer.ExitCode): $(Get-Content -Raw -LiteralPath (Join-Path $work 'export-server.err'))"
+            } else {
+                Ok 'the exported server, run from its pack, is running'
+            }
+            if ($exportClient.HasExited) {
+                Fail "the exported client exited with code $($exportClient.ExitCode): $(Get-Content -Raw -LiteralPath (Join-Path $work 'export-client.err'))"
+            } else {
+                Ok 'the exported headless client is running'
+            }
+        }
+    } else {
+        Fail 'tools\aylo-export.exe is missing'
     }
 } finally {
     foreach ($process in $processes) {

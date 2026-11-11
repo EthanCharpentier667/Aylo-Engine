@@ -171,7 +171,7 @@ std::span<const std::string_view> TilemapPlugin::getDependencies() const noexcep
 void TilemapPlugin::build(ecs::App& app) {
     ecs::Resources& resources = app.getWorld().getResources();
     resources.insertIfAbsent<TilemapAssets>();
-    resources.getMut<TilemapAssets>()->setDirectory(assetDirectoryOf(resources));
+    resources.getMut<TilemapAssets>()->setSource(assetSourceOf(resources));
     resources.insertIfAbsent<graphics::TextureAssets>();
     resources.insertIfAbsent<graphics::SpriteQueue>();
     resources.insertIfAbsent<graphics::VisibleArea>();

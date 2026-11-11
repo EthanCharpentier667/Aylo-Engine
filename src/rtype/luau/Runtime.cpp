@@ -156,13 +156,33 @@ Result<Runtime> Runtime::create(const RuntimeConfig config) {
 
 detail::UsertypeRegistry& Runtime::usertypes() const { return *_usertypes; }
 
+Result<std::string> Runtime::precompile(const std::string& source) const {
+    Result<Bytecode> bytecode = compile(source);
+
+    if (!bytecode) {
+        return forwardError<std::string>(std::move(bytecode));
+    }
+    std::string chunk{kBytecodeHeader};
+    chunk.append(bytecode->data().get(), bytecode->size());
+    return chunk;
+}
+
 Result<Script> Runtime::load(std::string name, const std::string& source) const {
+    if (std::string_view{source}.starts_with(kBytecodeHeader)) {
+        // Precompiled (precompile()): loaded as it is. Luau does not check bytecode, so it must come from where the
+        // engine itself comes from, such as the pack of an exported game.
+        const std::string_view bytecode = std::string_view{source}.substr(kBytecodeHeader.size());
+        return loadBytecode(std::move(name), bytecode.data(), bytecode.size());
+    }
     Result<Bytecode> bytecode = compile(source);
 
     if (!bytecode) {
         return forwardError<Script>(std::move(bytecode));
     }
+    return loadBytecode(std::move(name), bytecode->data().get(), bytecode->size());
+}
 
+Result<Script> Runtime::loadBytecode(std::string name, const char* bytecode, const std::size_t size) const {
     lua_State* threadState = lua_newthread(_state.get());
     Ref thread = Ref::pop(_state.get());
 
@@ -174,8 +194,7 @@ Result<Script> Runtime::load(std::string name, const std::string& source) const 
     // The '=' prefix makes Luau use the name as it is in messages (`Shield.luau:3:`), not as `[string
     // "Shield.luau"]:3:`.
     const std::string chunkName{"=" + name};
-    const std::int32_t result =
-        luau_load(threadState, chunkName.c_str(), bytecode->data().get(), bytecode->size(), kLuauGlobalEnv);
+    const std::int32_t result = luau_load(threadState, chunkName.c_str(), bytecode, size, kLuauGlobalEnv);
 
     if (result != 0) {
         const std::string message{lua_tostring(threadState, -1)};

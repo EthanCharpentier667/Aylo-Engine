@@ -24,6 +24,9 @@ namespace rtype::editor::panels {
 /// buttons, what is being edited and the last message.
 RTYPE_EDITOR_API void drawToolbar(EditorState& state, contract::platform::IPlatform& platform);
 
+/// @brief The Export panel (File > Export...): exports the game as a player gets it, with only the plugins it needs
+/// and its files in one pack, the same as `aylo-export`, then shows what was kept and why.
+RTYPE_EDITOR_API void drawExportPanel(EditorState& state);
 /// @brief The Game panel: shows the scene the renderer draws into a texture, as big as the panel, and tells the input
 /// bridge where it is so the mouse and the keyboard reach the game only when they should.
 RTYPE_EDITOR_API void drawGamePanel(EditorState& state, contract::renderer::IRenderer& renderer);

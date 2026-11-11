@@ -103,7 +103,7 @@ std::span<const std::string_view> TextPlugin::getDependencies() const noexcept {
 void TextPlugin::build(ecs::App& app) {
     ecs::Resources& resources = app.getWorld().getResources();
     resources.insertIfAbsent<FontAssets>();
-    resources.getMut<FontAssets>()->setDirectory(assetDirectoryOf(resources));
+    resources.getMut<FontAssets>()->setSource(assetSourceOf(resources));
     resources.insertIfAbsent<graphics::TextureAssets>();
     resources.insertIfAbsent<graphics::SpriteQueue>();
     static_cast<void>(app.getWorld().getComponents().registerType<TextRenderer>());

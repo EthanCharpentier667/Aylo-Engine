@@ -24,6 +24,21 @@ The directory is `EngineConfig::game` (`game` by default), or the first argument
 is resolved against the working directory, then made absolute once, at construction, so a later change of directory
 does not move the game. If the directory has no `project.luau`, the constructor throws `exceptions::RuntimeError`.
 
+### Or a pack
+
+An exported game is one pack (`core::vfs::PackSource`, [`../release/export.md`](../release/export.md)) holding the same
+files. The engine runs one when the first argument is a `.pak` file, or, given no game, when the default directory has
+no `project.luau` and `game.pak` (`Engine::kPackFile`) is next to the program. Then:
+
+- `gameFiles()` is the pack, and `isPacked()` is true; `project.luau` is read from it
+  (`scripting::loadProjectSettings(name, text, ...)`), the scripts through a `SubSource` on `scripts/`
+  (`ScriptingPlugin::Config::source`, `ScriptResolver` on a source, with the same case rules), the assets through one on
+  `assets/` (`AssetDirectory::source`, no `path`). A script may be precompiled (`luau::Runtime::precompile()`).
+- `gameDirectory()` is the folder named after the pack next to it (`game/` for `game.pak`): only the game's native
+  plugins are there, in `plugins/`, as a library must be a file to be loaded.
+- Hot reload is off: a pack has no files to follow. A `hotReload = true` setting is logged and ignored.
+- A file that is not a pack, a damaged one or one with no `project.luau` is an `exceptions::RuntimeError` naming it.
+
 ## The command line
 
 `CommandLine` reads flags only: `--name value`, `--name=value`, or a bare `--name` (`true`). A flag given twice keeps
@@ -57,6 +72,7 @@ the token protects against other users' programs reaching the port, not against 
 | `aylo-runtime --server` (`src/rtype/runtime/`) | `kServer` | nothing (headless) | `game/` only |
 | `aylo-runtime` (`src/rtype/runtime/`) | `kClient` | the backends `project.luau` names (`platform`, `renderer`, `audio.backend`) | `game/` only |
 | `aylo-editor` (`src/rtype/editor/app/`) | `kStandalone`, `EngineConfig::debug` true | as the client, plus `rtype.Editor` (`EngineConfig::addPlugins`) | `game/` only, both sides in one world, with a local client 1 (`docs/Editor.md`) |
+| `aylo-export` (`src/rtype/tools/export/`) | none: it runs no game | nothing: it loads the libraries to read what they bring (`exporting::selectLibraries()`) | copies `game/` into an export (`exporting::exportGame()`, `../release/export.md`) |
 | `rtype_duel` (example) | `server` or `client`, the first argument | as the client, on the client side | its `game/` only (Luau) |
 | `ethan_game(bestoftheworld)` (example) | `kStandalone` | as the client | `setup` |
 
@@ -118,6 +134,25 @@ A plugin reads its section when it is built, so a section is only checked if its
 an error, as in `network`. A server and a client list what they need (`engine.isClient` separates them). See
 [`../Plugins.md`](../Plugins.md#loading) for the folders, the entry points and the signatures.
 
+### What a game needs
+
+`exporting::selectLibraries()` (`engine/exporting/LibrarySelection`) answers which plugin and backend libraries a game
+needs, for an export that ships only those ([`../release/export.md`](../release/export.md)). It reads `project.luau`
+for the server side, then for the client side, with `scripting::loadProjectSettings()` as `build()` does, and loads the
+libraries of each side as `registerLibraries()` does. It registers them one at a time
+(`PluginLoader::registerInto(registrar, registered)`) and compares the plugin names and the backend names
+(`LibraryRegistrar::listNames()`) before and after each one, so it knows which library brings what. It keeps:
+
+- the libraries of the plugins a side names, of `rtype.Transform`, and of what they require (each plugin is created from
+  its factory to read `getDependencies()`, never built);
+- on a client, the libraries of the backends the settings of `Engine::kBackendSettings` name;
+- every library of `<game>/plugins/`, checked with `plugin::gamePluginVerifier()` as the `Engine` checks them;
+- then what those link, from their `.links` files ([`../Plugins.md`](../Plugins.md#what-a-library-links)).
+
+Each library comes with its reasons (`named in plugins (client)`, `required by rtype.Shader`, `backend 'glfw'
+(platform)`, `linked by librtype-plugin-sprite.dylib`). A name no library brings is an error naming it and those that
+exist.
+
 ## Assets
 
 Everything a game loads is in `<game>/assets/`, and every path starts there: `engine.assets.texture("ship.png")` reads
@@ -130,8 +165,14 @@ is named by this path, the same on every side.
   directory once normalized, and a link that points out of it. The asset is then recorded as failed, like a missing
   file. A `../` that stays inside is fine: a Tiled map in `levels/` names `../backgrounds/a.png`.
 - **How the plugins know it.** The `Engine` inserts the `AssetDirectory` resource before it builds them, and each one
-  hands it to its asset resource. A program without an `Engine` has none: its paths are relative to the working
-  directory and nothing is checked.
+  hands its source (`plugins::assetSourceOf()`) to its asset resource. A program without an `Engine` has none: its
+  paths are relative to the working directory and nothing is checked.
+- **Read through a source.** Every reader (the asset stores, `TextureAssets`, `ShaderAssets`, `AudioAssets`, the atlas
+  packer, `CapsuleFiles`) reads through a `core::vfs::FileSource`: `read()`, `exists()`, `list()`, and `directory()`,
+  the folder on disk when there is one. In development it is a `core::vfs::DirectorySource` on `<game>/assets/`, with
+  the checks above; an exported game will read its pack instead ([`../release/export.md`](../release/export.md),
+  EXP-06 and EXP-07). What needs a file on disk asks `directory()`: hot reload follows only a folder, and a sound is
+  opened by its path when it has one (a streamed music keeps reading it), from its bytes otherwise.
 
 ## Reloading
 

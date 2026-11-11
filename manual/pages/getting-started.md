@@ -17,6 +17,10 @@ The folder must contain a `project.luau`. A client also needs the `assets/` fold
 server can run with `project.luau` and `scripts/` alone. A relative path is resolved against the working
 directory when the program starts.
 
+The first argument can also be a `.pak` file: the one file an exported game ships its project, scripts and assets in
+(see [Shipping your game](shipping.md)). Given no game, and with no `game/` folder where it starts, the program runs the
+`game.pak` next to itself. A game run from a pack never reloads its files.
+
 ## The command line is yours
 
 `aylo-runtime --version` prints the version of the engine, the commit it was built from and the library version, and

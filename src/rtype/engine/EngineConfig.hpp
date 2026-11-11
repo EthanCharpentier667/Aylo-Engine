@@ -14,6 +14,7 @@
 #include <vector>
 
 #include "core/config/Settings.hpp"
+#include "core/layout/Layout.hpp"
 #include "rtype/ecs/app/App.hpp"
 #include "rtype/ecs/schedule/RunMode.hpp"
 
@@ -39,7 +40,7 @@ struct EngineConfig {
     ecs::RunMode mode{ecs::RunMode::kStandalone};
 
     /// @brief The game directory when the command line starts with no directory; relative to the working directory.
-    std::filesystem::path game{"game"};
+    std::filesystem::path game{core::layout::kGameFolder};
 
     /// @brief The command line, without the program name: the game directory (optional), then any flag `project.luau`
     /// reads from `engine.args`.

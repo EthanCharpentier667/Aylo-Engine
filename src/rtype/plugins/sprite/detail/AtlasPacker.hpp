@@ -10,6 +10,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <functional>
 #include <glm/ext/vector_uint2.hpp>
 #include <span>
 #include <string>
@@ -43,5 +44,11 @@ inline constexpr std::uint32_t kMaxPackedSize = 4096;
 /// in kMaxPackedSize x kMaxPackedSize.
 [[nodiscard]] RTYPE_PLUGIN_SPRITE_API PackedImages packImages(std::span<const std::filesystem::path> images,
                                                               std::uint32_t padding);
+
+/// @brief As packImages(), reading each image's bytes with @p read (from the game's files) instead of from disk.
+/// @param read Returns the bytes of an image of @p images; it throws when it cannot.
+[[nodiscard]] RTYPE_PLUGIN_SPRITE_API PackedImages
+packImages(std::span<const std::filesystem::path> images, std::uint32_t padding,
+           const std::function<std::vector<std::byte>(const std::filesystem::path&)>& read);
 
 }  // namespace rtype::plugins::sprite::detail

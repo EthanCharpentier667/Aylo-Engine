@@ -10,6 +10,7 @@
 #include <filesystem>
 #include <format>
 #include <iostream>
+#include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -19,20 +20,32 @@
 #include "core/asset/AssetFiles.hpp"
 #include "core/asset/AssetId.hpp"
 #include "core/asset/exceptions/AssetExceptions.hpp"
+#include "core/vfs/DirectorySource.hpp"
 
 namespace rtype::core::asset {
 
 template <typename T>
-AssetStore<T>::AssetStore(std::string kind) : _kind{std::move(kind)} {}
+AssetStore<T>::AssetStore(std::string kind)
+    : _kind{std::move(kind)}, _source{std::make_shared<vfs::DirectorySource>(std::filesystem::path{})} {}
 
 template <typename T>
 void AssetStore<T>::setDirectory(std::filesystem::path directory) {
-    _directory = std::move(directory);
+    _source = std::make_shared<vfs::DirectorySource>(std::move(directory));
 }
 
 template <typename T>
-const std::filesystem::path& AssetStore<T>::getDirectory() const noexcept {
-    return _directory;
+void AssetStore<T>::setSource(std::shared_ptr<const vfs::FileSource> source) {
+    _source = source ? std::move(source) : std::make_shared<vfs::DirectorySource>(std::filesystem::path{});
+}
+
+template <typename T>
+const vfs::FileSource& AssetStore<T>::getSource() const noexcept {
+    return *_source;
+}
+
+template <typename T>
+std::filesystem::path AssetStore<T>::getDirectory() const {
+    return _source->directory().value_or(std::filesystem::path{});
 }
 
 template <typename T>
@@ -69,7 +82,7 @@ auto AssetStore<T>::load(const std::filesystem::path& path, const Parse& parse) 
     }
     std::string text;
     try {
-        text = readTextFile(resolveAssetPath(_directory, path));
+        text = _source->read(path.generic_string());
     } catch (const exceptions::AssetLoadException& error) {
         fail(*id, name, std::format("{} '{}': {}", _kind, name, error.what()));
         return Stored{.id = *id};

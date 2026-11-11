@@ -15,6 +15,7 @@
 #include <string>
 #include <string_view>
 
+#include "core/vfs/FileSource.hpp"
 #include "rtype/ecs/app/App.hpp"
 #include "rtype/ecs/app/Plugin.hpp"
 #include "rtype/scripting/Export.hpp"
@@ -39,7 +40,9 @@ class RTYPE_SCRIPTING_API ScriptingPlugin : public ecs::Plugin {
   public:
     /// @brief What the plugin loads and the flags the scripts see.
     struct Config {
-        std::filesystem::path directory{"game/scripts"};  ///< Where the scripts are.
+        std::filesystem::path directory{"game/scripts"};  ///< Where the scripts are, and how messages name them.
+        /// @brief Where the scripts are read instead of `directory`: `scripts/` of an exported game's pack. Optional.
+        std::shared_ptr<const core::vfs::FileSource> source;
         std::optional<std::string> main;    ///< `scripts.main`: the entry every process runs first, no extension.
         std::optional<std::string> server;  ///< `scripts.server`: the entry of the server side.
         std::optional<std::string> client;  ///< `scripts.client`: the entry of the client side.

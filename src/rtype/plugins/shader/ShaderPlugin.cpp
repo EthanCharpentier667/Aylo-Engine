@@ -65,8 +65,9 @@ void ShaderPlugin::build(ecs::App& app) {
         .before(std::string{graphics::GraphicsPlugin::kBeginFrameSystem})
         .setSide(ecs::Side::kClient);
     addShaderCalls(app);
+    resources.getMut<ShaderAssets>()->setSource(assetSourceOf(resources));
+    // Only files on disk are followed: a pack has none to watch.
     const std::filesystem::path directory = assetDirectoryOf(resources);
-    resources.getMut<ShaderAssets>()->setDirectory(directory);
     core::reload::HotReloader* reloader = hotReloaderOf(resources);
     if (reloader != nullptr && !directory.empty()) {
         // The reloader's paths are relative to the game; the assets' directory is a folder of it.

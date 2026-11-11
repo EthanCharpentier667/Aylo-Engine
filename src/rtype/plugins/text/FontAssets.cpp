@@ -9,18 +9,22 @@
 
 #include <cstddef>
 #include <filesystem>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include "core/asset/AssetId.hpp"
 #include "core/asset/AssetStore.hpp"
+#include "core/vfs/FileSource.hpp"
 #include "plugins/text/Font.hpp"
 #include "plugins/text/detail/FontJson.hpp"
 
 namespace rtype::plugins::text {
 
 void FontAssets::setDirectory(std::filesystem::path directory) { _fonts.setDirectory(std::move(directory)); }
+
+void FontAssets::setSource(std::shared_ptr<const core::vfs::FileSource> source) { _fonts.setSource(std::move(source)); }
 
 std::size_t FontAssets::getCount() const noexcept { return _fonts.getCount(); }
 

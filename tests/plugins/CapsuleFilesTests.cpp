@@ -12,13 +12,18 @@
 #include <filesystem>
 #include <format>
 #include <fstream>
+#include <map>
 #include <memory>
+#include <optional>
 #include <random>
 #include <string>
 #include <string_view>
 #include <system_error>
+#include <utility>
 #include <vector>
 
+#include "core/asset/exceptions/AssetExceptions.hpp"
+#include "core/vfs/FileSource.hpp"
 #include "plugins/AssetDirectory.hpp"
 #include "plugins/HotReload.hpp"
 #include "plugins/capsule/Capsule.hpp"
@@ -288,4 +293,51 @@ TEST_F(CapsuleFilesTest, ReloadsWhatACapsuleAToolRedefinedSpawnedWithoutHotReloa
     ASSERT_TRUE(app.getWorld().isAlive(turret));
     EXPECT_EQ(app.getWorld().getComponents().get<tf::Health>(turret)->value, 42);
     EXPECT_TRUE(resources.get<capsule::ReloadedCapsules>()->capsules.empty());
+}
+
+namespace {
+/// @brief Capsule files held in memory, as a pack holds them.
+class MemoryAssets final : public rtype::core::vfs::FileSource {
+  public:
+    explicit MemoryAssets(std::map<std::string, std::string> files) : _files{std::move(files)} {}
+
+    [[nodiscard]] std::string read(const std::string_view path) const override {
+        const auto found = _files.find(std::string{path});
+        if (found == _files.end()) {
+            throw rtype::core::asset::exceptions::AssetLoadException{std::format("no '{}' in memory", path)};
+        }
+        return found->second;
+    }
+    [[nodiscard]] bool exists(const std::string_view path) const noexcept override {
+        return _files.contains(std::string{path});
+    }
+    [[nodiscard]] std::vector<std::string> list(std::string_view /*folder*/) const override {
+        std::vector<std::string> paths;
+        for (const auto& [path, text] : _files) {
+            paths.push_back(path);
+        }
+        return paths;
+    }
+    [[nodiscard]] std::optional<std::filesystem::path> directory() const override { return std::nullopt; }
+
+  private:
+    std::map<std::string, std::string> _files;  ///< The files, by path.
+};
+}  // namespace
+
+TEST_F(CapsuleFilesTest, ReadsTheCapsuleFilesOfASourceWithNoFolder) {
+    capsule::CapsuleFiles files{std::make_shared<MemoryAssets>(std::map<std::string, std::string>{
+                                    {"actors/boss.actor", std::string{kBoss}},
+                                    {"actors/turret.actor", std::string{kTurret}},
+                                    {"sprites/ship.png", "not a capsule"},
+                                }),
+                                world.getComponents()};
+    const std::vector<capsule::CapsuleId> read = files.loadAll(capsules);
+
+    EXPECT_EQ(read.size(), 2U);
+    EXPECT_NE(capsules.find("actors/boss.actor"), nullptr);
+    EXPECT_NE(capsules.find("actors/turret.actor"), nullptr);
+    const tf::Armor* armor = valueOf<tf::Armor>("actors/boss.actor", 1);
+    ASSERT_NE(armor, nullptr);
+    EXPECT_EQ(armor->extra, 9);
 }

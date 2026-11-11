@@ -9,10 +9,12 @@
 
 #include <filesystem>
 #include <map>
+#include <memory>
 #include <string>
 #include <string_view>
 #include <vector>
 
+#include "core/vfs/FileSource.hpp"
 #include "rtype/luau/ModuleLoader.hpp"
 #include "rtype/luau/ModuleSource.hpp"
 #include "rtype/scripting/Export.hpp"
@@ -45,6 +47,15 @@ class RTYPE_SCRIPTING_API ScriptResolver {
     /// case), or if a target is absolute or leaves `scripts/` (by `..` or a link).
     explicit ScriptResolver(std::filesystem::path scriptsRoot, const std::map<std::string, std::string>& aliases = {});
 
+    /// @brief Creates a resolver over the scripts of a source: `scripts/` of an exported game's pack. Names are found
+    /// in the source's listing, with the same case rules as on disk, and a script may be a precompiled chunk
+    /// (luau::Runtime::precompile()).
+    /// @param scripts The scripts, as a source of their own (core::vfs::SubSource on `scripts`); never null.
+    /// @param aliases As the other constructor.
+    /// @throws exceptions::ScriptLoadException As the other constructor.
+    explicit ScriptResolver(std::shared_ptr<const core::vfs::FileSource> scripts,
+                            const std::map<std::string, std::string>& aliases = {});
+
     /// @brief Resolves a require path.
     /// @param requesterKey Key of the requiring file, empty for a root require.
     /// @param path The string given to `require`.
@@ -63,14 +74,18 @@ class RTYPE_SCRIPTING_API ScriptResolver {
     /// becomes a loader failure with the same message.
     [[nodiscard]] luau::ModuleLoader::Resolver forLoader() const;
 
-    /// @return The scripts folder.
+    /// @return The scripts folder; empty when the scripts are read from a source.
     [[nodiscard]] const std::filesystem::path& root() const noexcept;
 
   private:
     /// @brief Reads the file candidates of a resolved folder path.
     [[nodiscard]] Result<luau::ModuleSource> load(const std::vector<std::string>& target) const;
 
-    std::filesystem::path _root;                               ///< The scripts folder.
+    /// @brief Fills the aliases, checked (both constructors).
+    void addAliases(const std::map<std::string, std::string>& aliases);
+
+    std::filesystem::path _root;                               ///< The scripts folder; empty with a source.
+    std::shared_ptr<const core::vfs::FileSource> _source;      ///< The scripts, when not read from _root.
     std::map<std::string, std::vector<std::string>> _aliases;  ///< Lowercase name -> target segments.
 };
 }  // namespace rtype::scripting::modules

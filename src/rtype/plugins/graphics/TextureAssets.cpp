@@ -13,6 +13,7 @@
 #include <filesystem>
 #include <format>
 #include <iostream>
+#include <memory>
 #include <optional>
 #include <span>
 #include <string>
@@ -22,6 +23,8 @@
 #include "core/asset/AssetFiles.hpp"
 #include "core/asset/AssetId.hpp"
 #include "core/asset/exceptions/AssetExceptions.hpp"
+#include "core/vfs/DirectorySource.hpp"
+#include "core/vfs/FileSource.hpp"
 #include "plugins/graphics/ImageDecoding.hpp"
 #include "rtype/contract/renderer/IRenderer.hpp"
 #include "rtype/contract/renderer/drawing/Texture.hpp"
@@ -32,9 +35,15 @@ namespace {
 constexpr std::size_t kChannels = 4;
 }  // namespace
 
-void TextureAssets::setDirectory(std::filesystem::path directory) { _directory = std::move(directory); }
+void TextureAssets::setDirectory(std::filesystem::path directory) {
+    _source = std::make_shared<core::vfs::DirectorySource>(std::move(directory));
+}
 
-const std::filesystem::path& TextureAssets::getDirectory() const noexcept { return _directory; }
+void TextureAssets::setSource(std::shared_ptr<const core::vfs::FileSource> source) {
+    _source = source ? std::move(source) : std::make_shared<core::vfs::DirectorySource>(std::filesystem::path{});
+}
+
+const core::vfs::FileSource& TextureAssets::getSource() const noexcept { return *_source; }
 
 std::size_t TextureAssets::getCount() const noexcept { return _entries.size(); }
 
@@ -145,9 +154,8 @@ void updateTextures(TextureAssets& assets, contract::renderer::IRenderer& render
                 continue;
             }
             const DecodedImage image =
-                decodeImage(entry.path, entry.encoded.empty()
-                                            ? readFile(core::asset::resolveAssetPath(assets.getDirectory(), entry.path))
-                                            : entry.encoded);
+                decodeImage(entry.path, entry.encoded.empty() ? core::vfs::readBytes(assets.getSource(), entry.path)
+                                                              : entry.encoded);
             desc.size = image.size;
             assets.setLoaded(id, renderer.createTexture(desc, image.pixels), desc);
         } catch (const std::exception& error) {

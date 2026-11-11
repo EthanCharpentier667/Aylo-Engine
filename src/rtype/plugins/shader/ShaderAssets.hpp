@@ -9,6 +9,7 @@
 
 #include <cstddef>
 #include <filesystem>
+#include <memory>
 #include <string>
 #include <string_view>
 #include <unordered_set>
@@ -16,6 +17,8 @@
 
 #include "core/asset/AssetId.hpp"
 #include "core/asset/AssetStore.hpp"
+#include "core/vfs/DirectorySource.hpp"
+#include "core/vfs/FileSource.hpp"
 #include "plugins/shader/Export.hpp"
 #include "rtype/contract/renderer/shaders/CompiledShader.hpp"
 #include "rtype/ecs/resource/ResourceTraits.hpp"
@@ -51,6 +54,13 @@ class RTYPE_PLUGIN_SHADER_API ShaderAssets {
     /// A path that leaves it fails (core::asset::resolveAssetPath()).
     /// @param directory The assets' directory; empty: the working directory, unchecked.
     void setDirectory(std::filesystem::path directory);
+
+    /// @brief Sets where the files are read: the game's folder or its pack (plugins::assetSourceOf()).
+    /// @param source The files; null: the working directory, unchecked.
+    void setSource(std::shared_ptr<const core::vfs::FileSource> source);
+
+    /// @return Where the files are read, never null.
+    [[nodiscard]] const core::vfs::FileSource& getSource() const noexcept;
 
     /// @brief Reads and compiles the shader file at @p path (the engine's GLSL dialect, docs/Shaders.md).
     /// @param path Relative to setDirectory()'s directory. It names the shader as it is given.
@@ -93,7 +103,8 @@ class RTYPE_PLUGIN_SHADER_API ShaderAssets {
     [[nodiscard]] contract::renderer::CompiledShader compileFile(const std::string& name) const;
 
     core::asset::AssetStore<contract::renderer::CompiledShader> _shaders{"Shader"};  ///< Every shader, by id.
-    std::filesystem::path _directory;                 ///< What the paths given to load() are relative to.
+    std::shared_ptr<const core::vfs::FileSource> _source{
+        std::make_shared<core::vfs::DirectorySource>(std::filesystem::path{})};  ///< Where the files are read.
     std::unordered_set<core::asset::AssetId> _files;  ///< The shaders load() read from a file.
     std::vector<core::asset::AssetId> _added;         ///< Compiled since the last takeAdded().
     std::vector<core::asset::AssetId> _reloaded;      ///< Replaced since the last takeReloaded().

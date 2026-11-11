@@ -84,6 +84,7 @@ nav:
   - Release:
       - release/README.md
       - Plan: release/plan.md
+      - Export: release/export.md
       - Package: release/package.md
       - Process: release/release-process.md
       - Self-contained: release/self-contained.md

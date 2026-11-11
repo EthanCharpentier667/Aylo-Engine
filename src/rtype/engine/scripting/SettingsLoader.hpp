@@ -8,9 +8,11 @@
 #pragma once
 
 #include <filesystem>
+#include <string>
 #include <string_view>
 
 #include "rtype/core/config/Settings.hpp"
+#include "rtype/ecs/schedule/RunMode.hpp"
 #include "rtype/engine/CommandLine.hpp"
 #include "rtype/engine/Export.hpp"
 #include "rtype/luau/Function.hpp"
@@ -76,6 +78,12 @@ class RTYPE_ENGINE_API SettingsLoader {
     /// @throws luau::exceptions::RuntimeError If the file cannot be read or compiled, or if the script fails.
     void load(const std::filesystem::path& path);
 
+    /// @brief As load(), for a script given as its text: `project.luau` read from an exported game's pack.
+    /// @param name How messages name the script.
+    /// @param source Its source.
+    /// @throws luau::exceptions::RuntimeError If it cannot be compiled, or if it fails.
+    void load(std::string name, const std::string& source);
+
   private:
     luau::Runtime _runtime;      ///< The sandboxed runtime the scripts run in.
     luau::Table _engineTable;    ///< The `engine` global.
@@ -84,4 +92,24 @@ class RTYPE_ENGINE_API SettingsLoader {
         _groupMetatable;  ///< The metatable of `engine.settings` and of every group: its `__index` is _createGroup.
     luau::Function _createGroup;  ///< The native `__index` of _groupMetatable, which creates the missing groups.
 };
+
+/// @brief Reads a game's settings as the Engine does for one side: `engine.isClient` and `engine.isServer` from
+/// @p mode, `engine.isDebug`, and `engine.args` from @p commandLine.
+/// @param projectFile The game's `project.luau`.
+/// @param mode The side the settings are read for.
+/// @param commandLine The flags, as `engine.args`.
+/// @param isDebug `engine.isDebug`.
+/// @return The settings the file gives.
+/// @throws luau::exceptions::RuntimeError If the file cannot be read or compiled, or if the script fails.
+/// @throws exceptions::RuntimeError If a setting has an unsupported type (build()).
+[[nodiscard]] RTYPE_ENGINE_API core::config::Settings loadProjectSettings(const std::filesystem::path& projectFile,
+                                                                          ecs::RunMode mode,
+                                                                          const CommandLine& commandLine, bool isDebug);
+
+/// @brief As the other loadProjectSettings(), for a project given as its text (read from a pack).
+/// @param name How messages name it.
+/// @param source The text of `project.luau`.
+[[nodiscard]] RTYPE_ENGINE_API core::config::Settings loadProjectSettings(std::string name, const std::string& source,
+                                                                          ecs::RunMode mode,
+                                                                          const CommandLine& commandLine, bool isDebug);
 }  // namespace rtype::engine::scripting

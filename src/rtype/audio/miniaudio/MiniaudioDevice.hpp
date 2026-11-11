@@ -71,7 +71,8 @@ class RTYPE_AUDIO_MINIAUDIO_API MiniaudioDevice : public contract::audiodevice::
     struct LoadedSound {
         std::string name;                       ///< The file path, or the name its bytes are registered under.
         contract::audiodevice::SoundDesc desc;  ///< Streamed or decoded.
-        std::vector<std::byte> encoded;      ///< The bytes given in memory, registered under `name`; empty for a file.
+        std::vector<std::byte>
+            encoded;  ///< The bytes given in memory, registered under `name` unless streamed; empty for a file.
         std::unique_ptr<core::Sound> model;  ///< Loaded once to check the file and fill the cache; never played.
     };
 

@@ -21,6 +21,7 @@
 
 #include "core/asset/AssetFiles.hpp"
 #include "core/asset/AssetId.hpp"
+#include "core/vfs/FileSource.hpp"
 #include "plugins/particle/IParticleEffectLoader.hpp"
 #include "plugins/particle/ParticleEffect.hpp"
 #include "rtype/contract/renderer/exceptions/ParticleExceptions.hpp"
@@ -30,6 +31,10 @@ namespace rtype::plugins::particle {
 
 void ParticleEffectAssets::setDirectory(std::filesystem::path directory) {
     _effects.setDirectory(std::move(directory));
+}
+
+void ParticleEffectAssets::setSource(std::shared_ptr<const core::vfs::FileSource> source) {
+    _effects.setSource(std::move(source));
 }
 
 std::size_t ParticleEffectAssets::getCount() const noexcept { return _effects.getCount(); }

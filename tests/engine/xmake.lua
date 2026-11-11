@@ -11,7 +11,7 @@ target("engine-test-plugin")
 target("engine-tests")
     set_kind("binary")
     -- Built first, not linked: the Engine loads them.
-    add_deps("backend-libraries", {inherit = false})
+    add_deps("backend-libraries", "aylo-runtime", {inherit = false})
     set_default(false)
     set_group("tests")
     add_deps("engine-test-plugin", "plugin-libraries", "engine", "replication", "plugin-capsule", "plugin-graphics", "plugin-http", "plugin-json", "plugin-input", "plugin-particle", "plugin-persistence", "plugin-physics", "plugin-physics-debug", "plugin-shader", "plugin-shape", "plugin-sprite", "plugin-text", "plugin-tilemap", "plugin-transform")

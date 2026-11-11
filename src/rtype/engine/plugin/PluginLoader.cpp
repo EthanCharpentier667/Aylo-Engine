@@ -11,6 +11,7 @@
 #include <cstddef>
 #include <filesystem>
 #include <format>
+#include <functional>
 #include <system_error>
 #include <utility>
 #include <vector>
@@ -47,9 +48,15 @@ void PluginLoader::load(const std::filesystem::path& directory, const Verifier& 
     }
 }
 
-void PluginLoader::registerInto(core::library::LibraryRegistrar& registrar) const {
+void PluginLoader::registerInto(core::library::LibraryRegistrar& registrar) const { registerInto(registrar, {}); }
+
+void PluginLoader::registerInto(core::library::LibraryRegistrar& registrar,
+                                const std::function<void(const std::filesystem::path&)>& registered) const {
     for (const Loaded& loaded : _libraries) {
         loaded.entry->registerLibrary(registrar);
+        if (registered) {
+            registered(loaded.file);
+        }
     }
 }
 

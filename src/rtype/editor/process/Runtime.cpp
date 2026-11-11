@@ -9,21 +9,19 @@
 
 #include <cstdint>
 #include <filesystem>
+#include <format>
 #include <string>
 #include <utility>
 #include <vector>
 
+#include "core/layout/Layout.hpp"
 #include "core/system/ExecutablePath.hpp"
 
 namespace rtype::editor::process {
 
 std::filesystem::path runtimePath() {
-#ifdef _WIN32
-    constexpr const char* kName = "aylo-runtime.exe";
-#else
-    constexpr const char* kName = "aylo-runtime";
-#endif
-    return core::system::getExecutableDirectory() / kName;
+    return core::system::getExecutableDirectory() /
+           std::format("{}{}", core::layout::kRuntimeProgram, core::layout::kProgramExtension);
 }
 
 std::vector<std::string> serverArguments(const std::filesystem::path& game, const std::uint16_t port,

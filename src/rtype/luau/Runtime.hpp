@@ -7,9 +7,11 @@
 
 #pragma once
 
+#include <cstddef>
 #include <filesystem>
 #include <memory>
 #include <string>
+#include <string_view>
 
 #include "Bytecode.hpp"
 #include "Export.hpp"
@@ -65,6 +67,17 @@ class RTYPE_LUAU_API Runtime {
     /// @return The loaded script, or an error (`ErrorKind::kCompilation` if the compilation fails,
     ///         `ErrorKind::kRuntime` if the bytecode cannot be loaded).
     [[nodiscard]] Result<Script> load(std::string name, const std::string& source) const;
+
+    /// @brief What a precompiled chunk starts with (precompile()): an ESC, as no source starts, then "Luau".
+    static constexpr std::string_view kBytecodeHeader{"\x1bLuau"};
+
+    /// @brief Compiles @p source to a chunk load() takes instead of the source: kBytecodeHeader, then the bytecode,
+    /// with the line numbers error messages carry. A game is exported with its scripts precompiled.
+    /// @param source Luau source code.
+    /// @return The chunk, or an `ErrorKind::kCompilation` error.
+    /// @warning Luau does not check the bytecode it loads: a chunk must come from where the engine comes from (the
+    /// pack of an exported game), never from the network.
+    [[nodiscard]] Result<std::string> precompile(const std::string& source) const;
 
     /// @brief Compiles and loads a script from a file, without running it.
     ///
@@ -149,6 +162,9 @@ class RTYPE_LUAU_API Runtime {
     /// @param source Luau source code.
     /// @return The bytecode, or an `ErrorKind::kCompilation` error.
     [[nodiscard]] Result<Bytecode> compile(const std::string& source) const;
+
+    /// @brief Loads the compiled @p bytecode of @p size bytes as the script @p name, in a thread of its own.
+    [[nodiscard]] Result<Script> loadBytecode(std::string name, const char* bytecode, std::size_t size) const;
 
     /// @brief Gets the usertypes registered in the Lua state.
     /// @return The registry.

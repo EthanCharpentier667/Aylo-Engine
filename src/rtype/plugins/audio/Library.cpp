@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "core/config/Settings.hpp"
 #include "plugins/audio/AudioCalls.hpp"
@@ -20,9 +21,11 @@ RTYPE_PLUGIN_LIBRARY(registrar) {
     rtype::plugins::audio::addAudioForms(registrar.getPlugins());
     using rtype::plugins::audio::AudioPlugin;
     using rtype::plugins::audio::AudioRegistry;
-    // Filled by the backend libraries, then given to the plugin when it is built.
     auto audio = std::make_shared<std::unique_ptr<AudioRegistry>>(std::make_unique<AudioRegistry>());
     registrar.getLibrary().provide(rtype::contract::audiodevice::kAudioDeviceRegistryService, (*audio)->devices);
+    registrar.getLibrary().provideNames(rtype::contract::audiodevice::kAudioDeviceRegistryService, [audio] {
+        return *audio ? (*audio)->devices.getNames() : std::vector<std::string>{};
+    });
     registrar.getPlugins().add(std::string{AudioPlugin::kName}, [audio](const rtype::core::config::Settings& settings) {
         return std::make_unique<AudioPlugin>(std::move(*audio), settings);
     });

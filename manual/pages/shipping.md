@@ -1,8 +1,8 @@
 # Shipping your game
 
-You make your game with the engine release, and you ship the engine's `runtime/` folder with your game. The player
-installs nothing: no compiler, no library, no engine. This page covers the download, what is in it, what to copy when
-you ship, and what your players will see the first time they run it.
+You make your game with the engine release, then export it: `aylo-export` puts your game and the part of the engine it
+uses in one folder. The player installs nothing: no compiler, no library, no engine. This page covers the download, what
+is in it, how to export, and what your players will see the first time they run it.
 
 ## Download the engine
 
@@ -34,6 +34,7 @@ aylo-engine-<version>-<os>-<arch>/
       backends/           the window, renderer and audio backends
     licenses/             the notices of the libraries inside
   editor/                 planned: the editor (aylo-editor). Never shipped.
+  tools/aylo-export       exports your game: what you ship (aylo-export.exe on Windows)
   tools/aylo-sign         makes the signatures of native plugins
   templates/game/         a small game to start from
   manual/                 this manual, to read offline
@@ -41,7 +42,7 @@ aylo-engine-<version>-<os>-<arch>/
   manifest.json           the version, and the checksum of every file
 ```
 
-Only `runtime/` goes to your players. Everything else is for you.
+Nothing of the zip goes to your players as it is: `aylo-export` takes what your game needs from `runtime/`.
 
 ## Make a game with it
 
@@ -62,46 +63,83 @@ explains the command line, and [Project settings](project-settings.md) the file.
 
 ## Ship your game
 
-A shipped game is two folders side by side: the engine's `runtime/` as it came, and your `game/`. Rename the program to
-your game's name; the folder is what matters, so the libraries and plugins are still found.
-
-```
-MyGame/
-  runtime/
-    MyGame              was aylo-runtime
-    (lib/, plugins/, licenses/, untouched)
-  game/
-    project.luau
-    .luaurc             for the editor only, optional
-    scripts/            the entries (`main`, `server`, `client`) and what they require
-    assets/
-  play.sh               or play.bat on Windows
-```
-
-The program looks for `game/` in the folder you start it from, so a small launcher is enough:
+Export your game with `tools/aylo-export`: the folder of your game first, then where the export goes.
 
 ```sh
-#!/bin/sh
-# play.sh
-cd "$(dirname "$0")"
-exec ./runtime/MyGame game "$@"
+./aylo-engine-0.3.0-linux-x86_64/tools/aylo-export my_game/game exports
 ```
 
-```bat
-@echo off
-rem play.bat
-cd /d "%~dp0"
-runtime\MyGame.exe game %*
+```
+Exported to exports/my_game (10.4 MB)
+  librtype-plugin-graphics.so: named in plugins (client)
+  librtype-plugin-input.so: linked by librtype-plugin-graphics.so; required by rtype.graphics
+  librtype-plugin-transform.so: every game; linked by librtype-plugin-graphics.so
+  librtype-platform-glfw.so: backend 'glfw' (platform)
+  librtype-render-vulkan.so: backend 'vulkan' (renderer)
 ```
 
-Your players run `play.sh`, and a dedicated server runs `./play.sh --server`. Zip the `MyGame/` folder and you have your
-release. Check it on a machine that has never seen the engine, or in a clean virtual machine, before you publish it.
+It reads your `project.luau` the way the engine does, once for the server and once for a player, and keeps only the
+plugins and backends it names, the ones those plugins need, and `rtype.Transform`, which every game has.
+Each line says why a library is kept. The template game above ships five of the engine's libraries instead of all of
+them.
+
+The export is a folder you zip and publish:
+
+```
+exports/my_game/
+  my_game               the program (my_game.exe on Windows)
+  game.pak              your game in one file: project.luau, scripts/ (compiled), assets/
+  lib/                  what every plugin needs (on Windows, next to the program)
+  plugins/              only the plugins your game uses
+    backends/           only the window, renderer and audio backends it names
+  game/
+    plugins/            your native plugins and their signatures, if you have some
+  licenses/
+    THIRD_PARTY_NOTICES.md   the notices of the libraries kept
+  play.sh               or play.bat on Windows
+  export.json           the engine version, the libraries kept and why, the SHA-256 of every file
+```
+
+`game.pak` holds your `project.luau`, your `assets/` and your `scripts/`, compiled: you do not hand out the source of
+your scripts, and the export stops on a script that does not compile, before it writes anything. The program finds
+`game.pak` next to itself, so a player can also start it without `play.sh`. A game run from its pack never reloads its
+files, whatever `hotReload` says. Your [native plugins](native-plugins.md) stay files, in `game/plugins/`: a library is
+not loaded from a pack.
+
+| Option | Default | What it does |
+|---|---|---|
+| `--name <name>` | the name of your game's folder (`my_game` for `my_game/game`) | the name of the export folder and of the program |
+| `--runtime <folder>` | the zip's `runtime/`, next to `tools/` | the runtime the export takes the program and the libraries from |
+| `--no-pack` | off | ships your game as its folder, `game/`, with the scripts as you wrote them, instead of `game.pak` |
+
+Your players run `play.sh` (`play.bat` on Windows), and a dedicated server runs `./play.sh --server`. Every other flag
+reaches your `project.luau` as `engine.args`, as with `aylo-runtime`. Check the export on a machine that has never seen
+the engine, or in a clean virtual machine, before you publish it.
 
 !!! warning
-    Keep `licenses/` in the folder. The libraries inside the runtime ask for their notices to travel with them.
+    The export reads `project.luau` with no flags, as a player starts the game. If a flag changes the plugins or the
+    backends you name (`engine.args.headless` in the template), name in the default branch everything the other
+    branches need, or the export leaves it out and that branch stops with `unknown plugin`.
 
-Leave the files of `runtime/` where they are. A plugin that `project.luau` names but whose file is missing stops the
-start with the names that exist; take a file out only if you checked that your game does not name it.
+What the export leaves out of your game: the files and folders whose name starts with a dot (`.luaurc` is for your
+editor), and in `plugins/` everything but the libraries and their `.sig` files: the sources of your
+[native plugins](native-plugins.md) stay with you.
+
+### When the export stops
+
+The export checks everything before it writes anything, and leaves nothing behind when it stops:
+
+| Message | Cause |
+|---|---|
+| `Invalid setting 'plugins' (client): unknown plugin 'game.Bos' (known: ...)` | `project.luau` names a plugin no library brings: a typo, or a native plugin you did not build |
+| `Plugin 'rtype.Sprite' requires 'rtype.graphics', which no library registers (known: ...)` | the runtime is missing a library: export with the whole `runtime/` of a release |
+| `Invalid setting 'platform' (client): no backend library registers 'glfx' (known: ...)` | a backend name with a typo (`platform`, `renderer`, `audio.backend`) |
+| `Cannot export: scripts/player.luau does not compile: ...` | a script with a syntax error: the message gives its line |
+| `'exports/my_game' already exists and is not empty: remove it, or export elsewhere` | an export is never written over another one |
+| `Invalid name 'a/b': it names a folder and a program, so it must be a file name` | `--name` with a `/`, `\` or `:` in it |
+
+A warning, not an error: `The runtime has no notices for ...`. You exported with a runtime that is not the release's (a
+build of the engine): the export has no third-party notices. Export with the release zip to ship them.
 
 ### What the player needs
 
@@ -125,7 +163,7 @@ A download made with `curl` or `gh` is not marked.
 **Windows.** SmartScreen shows "Windows protected your PC". Click *More info*, then *Run anyway*.
 
 **Linux.** There is no prompt. If the zip tool dropped the right to run, restore it with
-`chmod +x runtime/MyGame play.sh`.
+`chmod +x MyGame play.sh`.
 
 ## Sign your own build
 
@@ -177,12 +215,12 @@ Engine versions follow [semantic versioning](https://semver.org): `major.minor.p
 | `0.x.y` | The script API is still settling. **A minor version can break your scripts.** Read the notes of a release before you update, and ship the version you tested. |
 | `1.0.0` and later | A patch fixes bugs, a minor version adds features and keeps your scripts working, and only a major version can break them. |
 
-To update, unzip the new release and replace the **whole** `runtime/` folder of your game with the new one. Do not mix
-files from two versions: the libraries and plugins of a release are made for each other. Then run your game and play it
+To update, unzip the new release and export your game again with its `tools/aylo-export`, into a new folder. Do not mix
+files from two exports: the libraries and plugins of a release are made for each other. Then run your game and play it
 once through before you ship.
 
 ## See also
 
 - [Getting started](getting-started.md): the command line and the folder of a game.
-- [Project settings](project-settings.md): the plugins and backends your game chooses, which must exist in `runtime/`.
+- [Project settings](project-settings.md): the plugins and backends your game chooses, which the export keeps.
 - [Native plugins](native-plugins.md): the C++ plugins a game can ship, and their signatures.

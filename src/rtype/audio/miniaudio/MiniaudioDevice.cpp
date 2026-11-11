@@ -68,9 +68,15 @@ contract::audiodevice::VoiceId MiniaudioDevice::play(contract::audiodevice::Soun
     const LoadedSound& loaded = found->second;
     std::unique_ptr<core::Sound> voice;
     try {
-        voice = loaded.desc.stream
-                    ? std::make_unique<core::Sound>(_engine, loaded.name, flagsOf(loaded.desc), &groupOf(params.bus))
-                    : std::make_unique<core::Sound>(_engine, *loaded.model, flagsOf(loaded.desc), &groupOf(params.bus));
+        if (!loaded.desc.stream) {
+            voice = std::make_unique<core::Sound>(_engine, *loaded.model, flagsOf(loaded.desc), &groupOf(params.bus));
+        } else if (!loaded.encoded.empty()) {
+            // Streamed from its bytes: each voice decodes them on its own.
+            voice = std::make_unique<core::Sound>(_engine, std::span<const std::byte>{loaded.encoded},
+                                                  flagsOf(loaded.desc), &groupOf(params.bus));
+        } else {
+            voice = std::make_unique<core::Sound>(_engine, loaded.name, flagsOf(loaded.desc), &groupOf(params.bus));
+        }
     } catch (const exceptions::MiniaudioException& error) {
         std::cerr << "[MiniaudioDevice] " << error.what() << '\n';
         return {};
@@ -130,6 +136,14 @@ core::SoundGroup& MiniaudioDevice::groupOf(contract::audiodevice::Bus bus) {
 
 contract::audiodevice::SoundId MiniaudioDevice::addSound(LoadedSound sound) {
     ma_resource_manager* resources = ma_engine_get_resource_manager(_engine.get());
+    if (sound.desc.stream && !sound.encoded.empty()) {
+        // The resource manager streams files only: a streamed sound given as bytes is decoded by each voice from them.
+        sound.model = std::make_unique<core::Sound>(_engine, std::span<const std::byte>{sound.encoded},
+                                                    flagsOf(sound.desc), nullptr);
+        const contract::audiodevice::SoundId id{.value = _nextSound++};
+        _sounds.emplace(id.value, std::move(sound));
+        return id;
+    }
     if (!sound.encoded.empty()) {
         const ma_result result = ma_resource_manager_register_encoded_data(resources, sound.name.c_str(),
                                                                            sound.encoded.data(), sound.encoded.size());
@@ -150,7 +164,8 @@ contract::audiodevice::SoundId MiniaudioDevice::addSound(LoadedSound sound) {
 
 void MiniaudioDevice::releaseSound(LoadedSound& sound) noexcept {
     sound.model.reset();
-    if (!sound.encoded.empty()) {
+    // A streamed sound given as bytes was never registered (addSound()).
+    if (!sound.encoded.empty() && !sound.desc.stream) {
         static_cast<void>(
             ma_resource_manager_unregister_data(ma_engine_get_resource_manager(_engine.get()), sound.name.c_str()));
         sound.encoded.clear();

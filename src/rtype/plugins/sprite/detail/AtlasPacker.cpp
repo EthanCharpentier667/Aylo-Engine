@@ -15,6 +15,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <format>
+#include <functional>
 #include <glm/ext/vector_float2.hpp>
 #include <glm/ext/vector_uint2.hpp>
 #include <iterator>
@@ -44,11 +45,11 @@ struct Decoded {
     graphics::DecodedImage image;  ///< Its pixels.
 };
 
-/// @return The RGBA pixels of the image file at @p path.
+/// @return The RGBA pixels of the image @p path, its bytes read by @p read.
 /// @throws core::asset::exceptions::AssetLoadException If it cannot be read or decoded.
-Decoded decode(const std::filesystem::path& path) {
-    return Decoded{.name = path.stem().string(),
-                   .image = graphics::decodeImage(path.generic_string(), graphics::readFile(path))};
+Decoded decode(const std::filesystem::path& path,
+               const std::function<std::vector<std::byte>(const std::filesystem::path&)>& read) {
+    return Decoded{.name = path.stem().string(), .image = graphics::decodeImage(path.generic_string(), read(path))};
 }
 
 /// @return Where each image goes in a @p size image, @p padding pixels apart, or nothing if they do not all fit.
@@ -73,13 +74,18 @@ std::optional<std::vector<stbrp_rect>> tryPack(const std::vector<Decoded>& image
 }  // namespace
 
 PackedImages packImages(std::span<const std::filesystem::path> images, std::uint32_t padding) {
+    return packImages(images, padding, [](const std::filesystem::path& path) { return graphics::readFile(path); });
+}
+
+PackedImages packImages(std::span<const std::filesystem::path> images, std::uint32_t padding,
+                        const std::function<std::vector<std::byte>(const std::filesystem::path&)>& read) {
     if (images.empty()) {
         throw exceptions::AtlasException{"no image to pack"};
     }
     std::vector<Decoded> decoded;
     std::unordered_set<std::string> names;
     for (const std::filesystem::path& path : images) {
-        decoded.push_back(decode(path));
+        decoded.push_back(decode(path, read));
         if (!names.insert(decoded.back().name).second) {
             throw exceptions::AtlasException{
                 std::format("two images are named '{}': frames are named after the file", decoded.back().name)};

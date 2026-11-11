@@ -132,11 +132,17 @@ void CapsulePlugin::build(ecs::App& app) {
     // editor) changed. It runs whether or not hot reload is on.
     resources.insertIfAbsent<ReloadedCapsules>();
     app.addSystem(ecs::Phase::kRender, std::string{kHotReloadSystem}, &reloadCapsules).setSide(ecs::Side::kBoth);
-    const std::filesystem::path directory = assetDirectoryOf(resources);
+    // A game has assets (a folder or a pack); a program without an Engine has none, and reads no capsule file.
+    const auto* assetDirectory = resources.get<AssetDirectory>();
+    if (assetDirectory == nullptr || (assetDirectory->path.empty() && !assetDirectory->source)) {
+        return;
+    }
+    resources.insert(CapsuleFiles{assetSourceOf(resources), components});
+    // Only files on disk are followed: a pack has none to watch.
+    const std::filesystem::path directory = assetDirectory->path;
     if (directory.empty()) {
         return;
     }
-    resources.insert(CapsuleFiles{directory, components});
     core::reload::HotReloader* reloader = hotReloaderOf(resources);
     if (reloader == nullptr) {
         return;

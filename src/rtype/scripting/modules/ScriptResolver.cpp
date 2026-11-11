@@ -13,6 +13,7 @@
 #include <filesystem>
 #include <format>
 #include <map>
+#include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -23,6 +24,8 @@
 
 #include "core/asset/AssetFiles.hpp"
 #include "core/asset/exceptions/AssetExceptions.hpp"
+#include "core/layout/Layout.hpp"
+#include "core/vfs/FileSource.hpp"
 #include "rtype/luau/ErrorKind.hpp"
 #include "rtype/luau/Failure.hpp"
 #include "rtype/luau/ModuleLoader.hpp"
@@ -38,7 +41,7 @@ namespace {
 using Segments = std::vector<std::string>;
 
 constexpr std::string_view kInit = "init.luau";
-constexpr std::string_view kScripts = "scripts";
+constexpr std::string_view kScripts = core::layout::kScriptsFolder;
 constexpr std::string_view kSelf = "self";
 
 [[nodiscard]] char lower(const char c) noexcept {
@@ -123,6 +126,50 @@ struct Lookup {
     return lookup(current, fileName, false);
 }
 
+/// @brief Looks for @p name in the folder @p folder of @p source ("" for its root), as lookup() does on disk: by the
+/// names of the source's listing, a folder being the first part of a deeper path.
+[[nodiscard]] Lookup lookupIn(const core::vfs::FileSource& source, const std::string& folder,
+                              const std::string_view name, const bool isFolder) {
+    Lookup result;
+    result.isFolder = isFolder;
+    const std::string prefix = folder.empty() ? std::string{} : folder + "/";
+    for (const std::string& file : source.list(folder)) {
+        if (!file.starts_with(prefix)) {
+            continue;
+        }
+        const std::string_view rest = std::string_view{file}.substr(prefix.size());
+        const std::size_t slash = rest.find('/');
+        if ((slash != std::string_view::npos) != isFolder) {
+            continue;
+        }
+        const std::string_view entryName = isFolder ? rest.substr(0, slash) : rest;
+        if (entryName == name) {
+            result.status = Lookup::Status::kFound;
+            result.realName = std::string{entryName};
+            return result;
+        }
+        if (result.status == Lookup::Status::kMissing && equalsIgnoringCase(entryName, name)) {
+            result.status = Lookup::Status::kCaseMismatch;
+            result.realName = std::string{entryName};
+        }
+    }
+    return result;
+}
+
+/// @brief walk() over the folders of a source.
+[[nodiscard]] Lookup walkIn(const core::vfs::FileSource& source, const Segments& folders,
+                            const std::string_view fileName) {
+    std::string current;
+    for (const std::string& folder : folders) {
+        const Lookup found = lookupIn(source, current, folder, true);
+        if (found.status != Lookup::Status::kFound) {
+            return found;
+        }
+        current += current.empty() ? folder : "/" + folder;
+    }
+    return lookupIn(source, current, fileName, false);
+}
+
 [[nodiscard]] std::string caseMessage(const Lookup& found) {
     return std::format("case mismatch: the {} is '{}'", found.isFolder ? "folder" : "file", found.realName);
 }
@@ -149,7 +196,8 @@ struct Requester {
 }
 
 /// @brief Validates an alias target and gives its segments; an empty result with no error means `scripts/` itself.
-[[nodiscard]] std::optional<Segments> targetSegments(const std::filesystem::path& root, const std::string& target) {
+[[nodiscard]] std::optional<Segments> targetSegments(const std::filesystem::path& root, const std::string& target,
+                                                     const bool onDisk) {
     const std::filesystem::path normal = std::filesystem::path{target}.lexically_normal();
     if (target.empty() || target.contains('\\') || normal.has_root_path()) {
         return std::nullopt;
@@ -164,7 +212,8 @@ struct Requester {
             segments.push_back(name);
         }
     }
-    if (!core::asset::isInsideDirectory(root, root / normal)) {
+    // On disk a link could leave the folder; a source has no link, and refuses what leaves it.
+    if (onDisk && !core::asset::isInsideDirectory(root, root / normal)) {
         return std::nullopt;
     }
     return segments;
@@ -188,6 +237,16 @@ struct Requester {
 
 ScriptResolver::ScriptResolver(std::filesystem::path scriptsRoot, const std::map<std::string, std::string>& aliases)
     : _root{std::move(scriptsRoot)} {
+    addAliases(aliases);
+}
+
+ScriptResolver::ScriptResolver(std::shared_ptr<const core::vfs::FileSource> scripts,
+                               const std::map<std::string, std::string>& aliases)
+    : _source{std::move(scripts)} {
+    addAliases(aliases);
+}
+
+void ScriptResolver::addAliases(const std::map<std::string, std::string>& aliases) {
     for (const auto& [name, target] : aliases) {
         if (!ScriptPath::isValidAliasName(name)) {
             throw exceptions::ScriptLoadException{
@@ -197,7 +256,7 @@ ScriptResolver::ScriptResolver(std::filesystem::path scriptsRoot, const std::map
         if (key == kScripts || key == kSelf) {
             throw exceptions::ScriptLoadException{std::format("scripts alias '{}': '{}' is reserved", name, key)};
         }
-        auto segments = targetSegments(_root, target);
+        auto segments = targetSegments(_root, target, !_source);
         if (!segments) {
             throw exceptions::ScriptLoadException{
                 std::format("scripts alias '{}': the target '{}' must be a folder inside scripts/", name, target)};
@@ -283,7 +342,8 @@ Result<luau::ModuleSource> ScriptResolver::load(const Segments& target) const {
     }
     candidates.push_back({.folders = target, .fileName = std::string{kInit}, .found = {}});
     for (Candidate& candidate : candidates) {
-        candidate.found = walk(_root, candidate.folders, candidate.fileName);
+        candidate.found = _source ? walkIn(*_source, candidate.folders, candidate.fileName)
+                                  : walk(_root, candidate.folders, candidate.fileName);
     }
 
     const auto foundCount =
@@ -312,6 +372,18 @@ Result<luau::ModuleSource> ScriptResolver::load(const Segments& target) const {
         *std::ranges::find_if(candidates, [](const Candidate& c) { return c.found.status == Lookup::Status::kFound; });
     Segments parts = chosen.folders;
     parts.push_back(chosen.fileName);
+    if (_source) {
+        luau::ModuleSource source;
+        source.key = join(parts);
+        source.chunkName = std::format("{}/{}", kScripts, source.key);
+        try {
+            source.source = _source->read(source.key);
+        } catch (const core::asset::exceptions::AssetLoadException& exception) {
+            return fail(ErrorKind::kModuleNotFound,
+                        std::format("cannot read {}: {}", source.chunkName, exception.what()));
+        }
+        return source;
+    }
     std::filesystem::path file = _root;
     for (const std::string& part : parts) {
         file /= part;
