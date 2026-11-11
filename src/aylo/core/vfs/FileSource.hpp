@@ -25,7 +25,7 @@ namespace aylo::core::vfs {
 /// @details A path is relative to the source and written with forward slashes (`levels/space.tmj`); it is normalized
 /// first (core::asset::normalizePath()), so `a/../b.png` is `b.png`. A path that is absolute or leaves the source is
 /// refused, as a missing file is. The source is shared by the readers and outlives them: the Engine keeps it in the
-/// world's `rtype.AssetDirectory` resource.
+/// world's `aylo.AssetDirectory` resource.
 class AYLO_HEADER_ONLY_API FileSource {
   public:
     FileSource() = default;

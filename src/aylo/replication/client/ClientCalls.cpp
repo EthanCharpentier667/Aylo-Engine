@@ -18,7 +18,7 @@
 
 namespace aylo::replication::client {
 namespace {
-/// @brief `rtype.replication.localClient`: this client's id, once the server gave it.
+/// @brief `aylo.replication.localClient`: this client's id, once the server gave it.
 LocalClient localClient(ecs::Res<ClientState> state) {
     const std::optional<network::ClientId> id = state->clientId();
     return LocalClient{.connected = id.has_value(), .client = id.value_or(std::uint32_t{0})};

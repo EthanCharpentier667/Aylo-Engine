@@ -260,37 +260,37 @@ function engine.ui.spawn(commands, spec, parent)
 	for name, value in spec.components or {} do
 		components[name] = value
 	end
-	components["rtype.UiNode"] = readNode(form, spec.style)
+	components["aylo.UiNode"] = readNode(form, spec.style)
 	if spec.background ~= nil then
-		components["rtype.UiBackground"] = readBackground(spec.background)
+		components["aylo.UiBackground"] = readBackground(spec.background)
 	end
 	if spec.image ~= nil then
-		components["rtype.UiImage"] = readImage(spec.image)
+		components["aylo.UiImage"] = readImage(spec.image)
 	end
 	if spec.text ~= nil then
-		components["rtype.UiText"] = readText(spec.text)
+		components["aylo.UiText"] = readText(spec.text)
 	end
 	local reacts = spec.button ~= nil or spec.toggle ~= nil or spec.slider ~= nil or spec.input ~= nil
 	if spec.button ~= nil then
-		components["rtype.UiButton"] = readButton(spec.button)
+		components["aylo.UiButton"] = readButton(spec.button)
 	end
 	if spec.toggle ~= nil then
-		components["rtype.UiToggle"] = readToggle(spec.toggle)
+		components["aylo.UiToggle"] = readToggle(spec.toggle)
 	end
 	if spec.slider ~= nil then
-		components["rtype.UiSlider"] = readSlider(spec.slider)
+		components["aylo.UiSlider"] = readSlider(spec.slider)
 	end
 	if spec.input ~= nil then
-		components["rtype.UiTextInput"] = readInput(spec.input)
-		components["rtype.UiText"] = components["rtype.UiText"] or {}
+		components["aylo.UiTextInput"] = readInput(spec.input)
+		components["aylo.UiText"] = components["aylo.UiText"] or {}
 	end
 	if spec.scroll ~= nil then
-		components["rtype.UiScroll"] = { speed = spec.scroll.speed }
-		components["rtype.UiNode"].overflow = names.overflow.scroll
+		components["aylo.UiScroll"] = { speed = spec.scroll.speed }
+		components["aylo.UiNode"].overflow = names.overflow.scroll
 	end
 	if spec.interaction ~= nil or reacts then
 		local interaction = spec.interaction or {}
-		components["rtype.UiInteraction"] = { disabled = interaction.disabled, focusable = interaction.focusable }
+		components["aylo.UiInteraction"] = { disabled = interaction.disabled, focusable = interaction.focusable }
 	end
 	local entity = commands:spawn(components)
 	if parent ~= nil then

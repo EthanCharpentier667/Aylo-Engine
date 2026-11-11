@@ -29,7 +29,7 @@ struct CollisionStarted {
     glm::vec2 point{0.0F, 0.0F};   ///< Where they touched, in world units, Y down.
     glm::vec2 normal{0.0F, 0.0F};  ///< Unit vector from first to second, Y down.
 };
-AYLO_ECS_EVENT(CollisionStarted, "rtype.CollisionStarted", first, second, point, normal);
+AYLO_ECS_EVENT(CollisionStarted, "aylo.CollisionStarted", first, second, point, normal);
 
 /// @brief Two solid colliders stopped touching. Not sent when one of them was despawned, lost its collider or was
 /// rebuilt.
@@ -37,20 +37,20 @@ struct CollisionEnded {
     ecs::Entity first;   ///< One entity of the pair.
     ecs::Entity second;  ///< The other one.
 };
-AYLO_ECS_EVENT(CollisionEnded, "rtype.CollisionEnded", first, second);
+AYLO_ECS_EVENT(CollisionEnded, "aylo.CollisionEnded", first, second);
 
 /// @brief A collider entered a sensor (Collider::sensor): a pickup, a level trigger.
 struct TriggerEntered {
     ecs::Entity trigger;  ///< The sensor's entity.
     ecs::Entity other;    ///< The entity that entered it.
 };
-AYLO_ECS_EVENT(TriggerEntered, "rtype.TriggerEntered", trigger, other);
+AYLO_ECS_EVENT(TriggerEntered, "aylo.TriggerEntered", trigger, other);
 
 /// @brief A collider left a sensor. Not sent when one of them was despawned, lost its collider or was rebuilt.
 struct TriggerExited {
     ecs::Entity trigger;  ///< The sensor's entity.
     ecs::Entity other;    ///< The entity that left it.
 };
-AYLO_ECS_EVENT(TriggerExited, "rtype.TriggerExited", trigger, other);
+AYLO_ECS_EVENT(TriggerExited, "aylo.TriggerExited", trigger, other);
 
 }  // namespace aylo::plugins::physics

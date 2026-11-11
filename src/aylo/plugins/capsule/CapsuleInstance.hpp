@@ -23,5 +23,5 @@ struct CapsuleInstance {
     std::uint32_t version{0};      ///< The capsule's version when it was spawned (Capsule::getVersion()).
     bool nested{false};            ///< Spawned as a node of another capsule, not by itself.
 };
-AYLO_ECS_COMPONENT(CapsuleInstance, "rtype.CapsuleInstance", capsule, version, nested);
+AYLO_ECS_COMPONENT(CapsuleInstance, "aylo.CapsuleInstance", capsule, version, nested);
 }  // namespace aylo::plugins::capsule

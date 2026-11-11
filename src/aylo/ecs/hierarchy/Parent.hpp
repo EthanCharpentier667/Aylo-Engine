@@ -19,7 +19,7 @@ namespace aylo::ecs {
 struct Parent {
     Entity entity;  ///< The parent.
 };
-AYLO_ECS_COMPONENT(Parent, "rtype.Parent", entity);
+AYLO_ECS_COMPONENT(Parent, "aylo.Parent", entity);
 
 /// @brief The options Parent is always registered with, whoever does it first: Transforms are relative, so a client
 /// needs the hierarchy to place what the server sends.

@@ -37,7 +37,7 @@ Everything that stores or moves component data depends on it: [Pool](04-pool.md)
 Luau, is described by one `ComponentInfo`. The core only ever looks at `ComponentInfo`.
 
 - **Ids are dense numbers local to a world** (0, 1, 2, ...), so they can index plain vectors.
-- **Names are the stable identity** (`"rtype.Position"`, `"game.Shield"`): used by files, scripts and
+- **Names are the stable identity** (`"aylo.Position"`, `"game.Shield"`): used by files, scripts and
   the network.
 
 ## How it works
@@ -134,7 +134,7 @@ struct Health {
     [[nodiscard]] bool isDead() const noexcept { return value <= 0; }  // pure helper: allowed
 };
 
-AYLO_ECS_COMPONENT(Health, "rtype.Health", value, max);
+AYLO_ECS_COMPONENT(Health, "aylo.Health", value, max);
 ```
 
 The macro specializes `aylo::ecs::ComponentTraits<Health>`: the name, a compile-time hash of it, the

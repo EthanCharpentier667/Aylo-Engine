@@ -72,7 +72,7 @@ src/aylo/plugins/audio/            namespace aylo::plugins::audio   (target plug
 ├── AudioSource.hpp                 a sound attached to an entity (component)
 ├── AudioListener.hpp               where the player hears from (component)
 ├── AudioEvents.hpp                 PlaySound, PlayMusic, StopMusic
-├── AudioResources.hpp              the "rtype.Audio" and "rtype.AudioSetup" resources
+├── AudioResources.hpp              the "aylo.Audio" and "aylo.AudioSetup" resources
 ├── NullAudioDevice.hpp/.cpp        the silent backend
 └── exceptions/AudioExceptions.hpp  AudioBackendException, AudioLoadException
 
@@ -286,7 +286,7 @@ app.addPlugin(aylo::plugins::audio::AudioPlugin{std::move(audio), settings});
 
 ## 7. Sounds as assets: `AudioAssets`
 
-The resource `"rtype.AudioAssets"` works as `TextureAssets` does, so gameplay code reads the same for both:
+The resource `"aylo.AudioAssets"` works as `TextureAssets` does, so gameplay code reads the same for both:
 
 ```cpp
 void spawnShip(aylo::ecs::Commands& commands, aylo::ecs::ResMut<aylo::plugins::audio::AudioAssets> sounds)
@@ -310,10 +310,10 @@ void spawnShip(aylo::ecs::Commands& commands, aylo::ecs::ResMut<aylo::plugins::a
 
 | Resource | Kind | What it holds |
 |---|---|---|
-| `"rtype.Audio"` | main thread | `std::unique_ptr<IAudioDevice>`, created at Startup |
-| `"rtype.AudioSetup"` | plain | the registry and the settings, handed to the Startup system (as `BackendSetup`) |
-| `"rtype.AudioAssets"` | plain | the sounds by `AssetId` |
-| `"rtype.AudioVolumes"` | plain | `master`, `music`, `effects`; starts from the config, applied when it changes |
+| `"aylo.Audio"` | main thread | `std::unique_ptr<IAudioDevice>`, created at Startup |
+| `"aylo.AudioSetup"` | plain | the registry and the settings, handed to the Startup system (as `BackendSetup`) |
+| `"aylo.AudioAssets"` | plain | the sounds by `AssetId` |
+| `"aylo.AudioVolumes"` | plain | `master`, `music`, `effects`; starts from the config, applied when it changes |
 
 ### Components
 
@@ -332,7 +332,7 @@ struct AudioSource {
 struct AudioListener {};
 ```
 
-The plugin keeps the voice of each source in the `"rtype.Audio"` resource, by entity: each frame, the sources it no
+The plugin keeps the voice of each source in the `"aylo.Audio"` resource, by entity: each frame, the sources it no
 longer finds (component removed, entity despawned) get their voice stopped. A map rather than an internal component,
 because the ECS has no removal hook, and a component would go with its entity before the plugin could stop its voice.
 
@@ -365,8 +365,8 @@ with `SoundDesc{.stream = true}`.
 
 ### From scripts
 
-The plugin registers two [engine calls](../ecs/features/19-luau-bridge.md#engine-calls): `rtype.audio.loadSound { path,
-stream }` returns the sound's id, and `rtype.audio.playSound { sound, bus, volume, pitch, position }` sends a
+The plugin registers two [engine calls](../ecs/features/19-luau-bridge.md#engine-calls): `aylo.audio.loadSound { path,
+stream }` returns the sound's id, and `aylo.audio.playSound { sound, bus, volume, pitch, position }` sends a
 `PlaySound`, which scripts cannot send through `ctx.events` because its `position` is optional (a `position` left out
 plays centred). `PlayMusic` and `StopMusic` are plain data: scripts send them as events.
 
@@ -376,11 +376,11 @@ All are client systems (`setSide(ecs::Side::kClient)`), as the graphics plugin's
 
 | Phase | Name | What it does |
 |---|---|---|
-| Startup | `rtype.audio.create` | `AudioRegistry::createDevice()` into `"rtype.Audio"`, applies `AudioVolumes` |
-| PostUpdate | `rtype.audio.sounds` | `updateSounds()`: loads the queued sounds, destroys the unloaded ones |
-| PostUpdate | `rtype.audio.play` | plays `PlaySound`, then `StopMusic`, then `PlayMusic` (a play sent with a stop wins); after `rtype.audio.sounds` |
-| PostUpdate | `rtype.audio.sources` | starts new `AudioSource`s, stops removed ones, updates pan and volume; after `rtype.Transform.Propagate` |
-| PostUpdate | `rtype.audio.update` | applies `AudioVolumes` if changed, then `IAudioDevice::update()`; last |
+| Startup | `aylo.audio.create` | `AudioRegistry::createDevice()` into `"aylo.Audio"`, applies `AudioVolumes` |
+| PostUpdate | `aylo.audio.sounds` | `updateSounds()`: loads the queued sounds, destroys the unloaded ones |
+| PostUpdate | `aylo.audio.play` | plays `PlaySound`, then `StopMusic`, then `PlayMusic` (a play sent with a stop wins); after `aylo.audio.sounds` |
+| PostUpdate | `aylo.audio.sources` | starts new `AudioSource`s, stops removed ones, updates pan and volume; after `aylo.Transform.Propagate` |
+| PostUpdate | `aylo.audio.update` | applies `AudioVolumes` if changed, then `IAudioDevice::update()`; last |
 
 Running in PostUpdate, after the transform propagation, means a sound asked for during this frame's Update is heard in
 this frame, from where its entity is now. An entity spawned this frame has no `GlobalTransform` yet (the
@@ -429,7 +429,7 @@ Hands out ids and tracks the voices' state (a looping voice plays until stopped,
 
 ## 10. Threading, errors and the server
 
-- **Main thread only.** `"rtype.Audio"` is a main-thread resource and every `IAudioDevice` call comes from the main
+- **Main thread only.** `"aylo.Audio"` is a main-thread resource and every `IAudioDevice` call comes from the main
   thread. The backends' audio threads stay inside them: no callback reaches the ECS, ended voices are found by
   polling in `update()`.
 - **Errors.** `AudioBackendException` for a missing or unknown backend, or a device that cannot open while required;

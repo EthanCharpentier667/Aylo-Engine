@@ -137,14 +137,14 @@ ReplicationMode replicationOf(PhysicsApp& app, const char* name) {
 
 TEST(PhysicsNetwork, ColliderAndRigidBodyAreReplicated) {
     PhysicsApp app{RunMode::kStandalone};
-    EXPECT_EQ(replicationOf(app, "rtype.Collider"), ReplicationMode::kEveryChange);
-    EXPECT_EQ(replicationOf(app, "rtype.RigidBody"), ReplicationMode::kEveryChange);
+    EXPECT_EQ(replicationOf(app, "aylo.Collider"), ReplicationMode::kEveryChange);
+    EXPECT_EQ(replicationOf(app, "aylo.RigidBody"), ReplicationMode::kEveryChange);
 }
 
 TEST(PhysicsNetwork, TheInternalComponentsAreNot) {
     PhysicsApp app{RunMode::kStandalone};
-    EXPECT_EQ(replicationOf(app, "rtype.Velocity"), ReplicationMode::kNone);
-    EXPECT_EQ(replicationOf(app, "rtype.PhysicsHandle"), ReplicationMode::kNone);
+    EXPECT_EQ(replicationOf(app, "aylo.Velocity"), ReplicationMode::kNone);
+    EXPECT_EQ(replicationOf(app, "aylo.PhysicsHandle"), ReplicationMode::kNone);
 }
 
 TEST(PhysicsNetwork, TheDebugPluginRegistersColliderTheSameWayInEitherOrder) {

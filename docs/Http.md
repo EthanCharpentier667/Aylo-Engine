@@ -1,13 +1,13 @@
 # HTTP
 
-The `rtype.Http` plugin (`src/aylo/plugins/http/`, library `plugin-http`) lets a game's scripts send HTTPS requests
+The `aylo.Http` plugin (`src/aylo/plugins/http/`, library `plugin-http`) lets a game's scripts send HTTPS requests
 and read the responses: to call a web API, such as an AI model's, from gameplay. It requires no other plugin.
 
 ## Why it looks like this
 
 - **Nothing waits.** A request takes from milliseconds to many seconds (an AI model's answer), and a frame lasts 16 ms.
-  `rtype.http.request` returns an id at once; the response comes later as an `rtype.HttpResponse` event. There is no
-  thread: a curl multi handle is advanced, without waiting, by one system per frame (`rtype.Http.Poll`, PreUpdate),
+  `aylo.http.request` returns an id at once; the response comes later as an `aylo.HttpResponse` event. There is no
+  thread: a curl multi handle is advanced, without waiting, by one system per frame (`aylo.Http.Poll`, PreUpdate),
   so systems of Update read a response in the frame it ends.
 - **The server is authoritative, and keeps the secrets.** A game lists the plugin on the side that makes the requests,
   the server in a networked game (`if not engine.isClient then ... end` in `project.luau`). An API key is never
@@ -29,12 +29,12 @@ and read the responses: to call a web API, such as an AI model's, from gameplay.
 
 | File | What |
 |---|---|
-| `HttpPlugin` | Inserts the `HttpClient`, registers the event and the calls, adds `rtype.Http.Poll` |
+| `HttpPlugin` | Inserts the `HttpClient`, registers the event and the calls, adds `aylo.Http.Poll` |
 | `HttpSettings` | The `http` section of `project.luau`, checked when the plugin is created |
-| `HttpClient` | The resource `rtype.HttpClient`: `send()`, `cancel()`, `poll()`; at most `maxConcurrent` in flight, the next ones queued (highest `priority` first, send order among equals, at most `maxQueued`) |
+| `HttpClient` | The resource `aylo.HttpClient`: `send()`, `cancel()`, `poll()`; at most `maxConcurrent` in flight, the next ones queued (highest `priority` first, send order among equals, at most `maxQueued`) |
 | `detail/CurlClient` | The libcurl transfers. Private: curl reaches no public header |
 | `HttpEvents.hpp` | `HttpResponse` |
-| `HttpCalls.hpp` | `rtype.http.request`, `rtype.http.cancel`, and the `engine.http.request` helper (`HttpForms.luau`) |
+| `HttpCalls.hpp` | `aylo.http.request`, `aylo.http.cancel`, and the `engine.http.request` helper (`HttpForms.luau`) |
 
 libcurl is a private package of the plugin: Schannel on Windows, OpenSSL 3 on Linux and macOS (the xmake package
 picks it). `curl_global_init()` is reference-counted by curl and called once per `HttpClient`.
@@ -55,7 +55,7 @@ picks it). `curl_global_init()` is reference-counted by curl and called once per
 
 ```luau
 -- project.luau (server)
-engine.settings.plugins = { "rtype.Http" }
+engine.settings.plugins = { "aylo.Http" }
 engine.settings.http.allowedHosts = { "api.example.com" }
 engine.settings.http.secrets = { "EXAMPLE_API_KEY" }
 
@@ -63,8 +63,8 @@ engine.settings.http.secrets = { "EXAMPLE_API_KEY" }
 engine.ecs.system("game.Ask", {
     phase = "Update",
     query = {},
-    calls = { "rtype.http.request" },
-    events = { read = { "rtype.HttpResponse" } },
+    calls = { "aylo.http.request" },
+    events = { read = { "aylo.HttpResponse" } },
     run = function(ctx)
         local id = engine.http.request(ctx, {
             method = "POST",
@@ -72,7 +72,7 @@ engine.ecs.system("game.Ask", {
             headers = { Authorization = "Bearer {{env:EXAMPLE_API_KEY}}", ["Content-Type"] = "application/json" },
             body = '{"question":"where to mine?"}',
         })
-        for response in ctx.events.read("rtype.HttpResponse") do
+        for response in ctx.events.read("aylo.HttpResponse") do
             if response.ok then print(response.body) else print(response.status, response.error) end
         end
     end,
@@ -81,11 +81,11 @@ engine.ecs.system("game.Ask", {
 
 | Call | Arguments | Result |
 |---|---|---|
-| `rtype.http.request` | `method` (`"GET"`), `url`, `headers` (`Name: value` lines), `body`, `timeout` (0: the setting), `priority` (whole number, `0`; higher is sent first) | `request`, its id |
-| `rtype.http.cancel` | `request` | `cancelled`: false when it already ended |
+| `aylo.http.request` | `method` (`"GET"`), `url`, `headers` (`Name: value` lines), `body`, `timeout` (0: the setting), `priority` (whole number, `0`; higher is sent first) | `request`, its id |
+| `aylo.http.cancel` | `request` | `cancelled`: false when it already ended |
 
 `engine.http.request(ctx, { url, method, headers, body, timeout, priority })` is the same call with `headers` as a table; `ctx` is
-nil while the script loads. `rtype.HttpResponse` carries `request`, `status`, `ok`, `body` and `error`.
+nil while the script loads. `aylo.HttpResponse` carries `request`, `status`, `ok`, `body` and `error`.
 
 To build a body or read a reply as a table, use the JSON codec: [`Json.md`](Json.md) (`engine.json.encode` / `decode`).
 

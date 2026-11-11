@@ -13,7 +13,7 @@ end
 engine.ecs.system("game.TrackObstacles", {
 	phase = "PostUpdate",
 	side = "server",
-	query = { read = { "rtype.Transform" }, write = { "game.Obstacle" }, added = { "game.Obstacle" } },
+	query = { read = { "aylo.Transform" }, write = { "game.Obstacle" }, added = { "game.Obstacle" } },
 	before = { "net.snapshot" },
 	run = function(ctx)
 		for _, transform, obstacle in ctx.query do

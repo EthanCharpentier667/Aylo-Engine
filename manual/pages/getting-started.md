@@ -115,24 +115,24 @@ When your game is ready, [Shipping your game](shipping.md) explains what to give
 
 ## Stopping the game and running a test
 
-To know that the player closed the window, read the event `rtype.Closed` in a system (declare it under `events = { read = { "rtype.Closed" } }`). The engine does not stop the game by itself: send `rtype.AppExit` in answer, after saving for example.
+To know that the player closed the window, read the event `aylo.Closed` in a system (declare it under `events = { read = { "aylo.Closed" } }`). The engine does not stop the game by itself: send `aylo.AppExit` in answer, after saving for example.
 
-A script stops the process with the event `rtype.AppExit`. The game finishes the frame it was sent in, and `aylo-runtime`
+A script stops the process with the event `aylo.AppExit`. The game finishes the frame it was sent in, and `aylo-runtime`
 returns `code` as its exit code (`0` is success; send another number to fail):
 
 ```luau
 engine.ecs.system("game.Quit", {
 	phase = "Update",
 	query = {},
-	events = { send = { "rtype.AppExit" } },
+	events = { send = { "aylo.AppExit" } },
 	run = function(ctx)
-		ctx.events.send("rtype.AppExit", { code = 1 })
+		ctx.events.send("aylo.AppExit", { code = 1 })
 	end,
 })
 ```
 
 If several are sent, the first one read gives the code. `--ticks <n>` runs at most `n` frames and then exits with `0`,
-unless an `rtype.AppExit` came first: with it a test game checks its rules in a system and sends `AppExit` with a
+unless an `aylo.AppExit` came first: with it a test game checks its rules in a system and sends `AppExit` with a
 non-zero code when one fails, so a CI job just checks the exit status:
 
 ```sh

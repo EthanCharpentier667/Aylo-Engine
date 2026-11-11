@@ -101,7 +101,7 @@ struct RoomResult {
     bool droppedContacts = false;
 };
 
-// The time spent in each step, measured by two systems around "rtype.Physics.Step".
+// The time spent in each step, measured by two systems around "aylo.Physics.Step".
 struct StepClock {
     Clock::time_point start;
     std::vector<double> stepsMs;

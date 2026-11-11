@@ -40,7 +40,7 @@ FieldType getFieldType(std::string_view name) {
 }  // namespace
 
 TEST(ParticleTypesTests, EmitterReflectsEveryField) {
-    EXPECT_EQ(aylo::ecs::TypeTraits<ParticleEmitter>::kName, "rtype.ParticleEmitter");
+    EXPECT_EQ(aylo::ecs::TypeTraits<ParticleEmitter>::kName, "aylo.ParticleEmitter");
     EXPECT_EQ(aylo::ecs::TypeTraits<ParticleEmitter>::kFields.size(), 8U);
     EXPECT_EQ(getFieldType<ParticleEmitter>("effect"), FieldType::kAssetId);
     EXPECT_EQ(getFieldType<ParticleEmitter>("simulation"), FieldType::kU8);
@@ -56,10 +56,10 @@ TEST(ParticleTypesTests, EmitterDefaultsPlayTheEffectsChoice) {
 }
 
 TEST(ParticleTypesTests, EventsReflectTheirFields) {
-    EXPECT_EQ(aylo::ecs::TypeTraits<SpawnParticles>::kName, "rtype.SpawnParticles");
+    EXPECT_EQ(aylo::ecs::TypeTraits<SpawnParticles>::kName, "aylo.SpawnParticles");
     EXPECT_EQ(getFieldType<SpawnParticles>("effect"), FieldType::kAssetId);
     EXPECT_EQ(getFieldType<SpawnParticles>("position"), FieldType::kVec2);
     EXPECT_EQ(getFieldType<SpawnParticles>("layer"), FieldType::kI32);
-    EXPECT_EQ(aylo::ecs::TypeTraits<ParticlesFinished>::kName, "rtype.ParticlesFinished");
+    EXPECT_EQ(aylo::ecs::TypeTraits<ParticlesFinished>::kName, "aylo.ParticlesFinished");
     EXPECT_EQ(getFieldType<ParticlesFinished>("entity"), FieldType::kEntity);
 }

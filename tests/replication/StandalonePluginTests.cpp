@@ -62,10 +62,10 @@ TEST(StandalonePlugin, IsNamedAndRegistersTheVocabulary) {
     const std::unique_ptr<App> holder = makeApp();
     App& app = *holder;
 
-    EXPECT_EQ(StandalonePlugin{}.getName(), "rtype.replication.standalone");
-    EXPECT_TRUE(app.hasPlugin("rtype.replication"));
-    for (const char* call : {"rtype.net.declarePacket", "rtype.net.sendToServer", "rtype.net.sendToClients",
-                             "rtype.replication.localClient", "rtype.replication.readInput"}) {
+    EXPECT_EQ(StandalonePlugin{}.getName(), "aylo.replication.standalone");
+    EXPECT_TRUE(app.hasPlugin("aylo.replication"));
+    for (const char* call : {"aylo.net.declarePacket", "aylo.net.sendToServer", "aylo.net.sendToClients",
+                             "aylo.replication.localClient", "aylo.replication.readInput"}) {
         EXPECT_NE(app.getWorld().getCalls().findByName(call), nullptr) << call;
     }
     EXPECT_NE(app.getWorld().getEvents().getRegistry().findByName("net.PacketReceived"), nullptr);

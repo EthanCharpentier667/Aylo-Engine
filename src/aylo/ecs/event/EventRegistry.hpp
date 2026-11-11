@@ -49,7 +49,7 @@ struct KindTraits<EventInfo> {
 /// @code
 /// aylo::ecs::EventRegistry registry;
 /// const aylo::ecs::EventId collision = registry.registerType<Collision>();
-/// const aylo::ecs::EventInfo* info = registry.findByName("rtype.Collision");
+/// const aylo::ecs::EventInfo* info = registry.findByName("aylo.Collision");
 /// @endcode
 using EventRegistry = TypeRegistry<EventInfo>;
 }  // namespace aylo::ecs

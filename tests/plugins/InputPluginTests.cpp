@@ -65,9 +65,9 @@ const aylo::contract::platform::event::KeyReleased kSpaceReleased{.key = aylo::c
 TEST(InputPlugin, InsertsInputAndRegistersTheEvents) {
     aylo::ecs::App app;
     app.addPlugin(aylo::plugins::input::InputPlugin{});
-    EXPECT_TRUE(app.hasPlugin("rtype.Input"));
+    EXPECT_TRUE(app.hasPlugin("aylo.Input"));
     EXPECT_TRUE(app.getWorld().getResources().has<aylo::plugins::input::Input>());
-    EXPECT_TRUE(app.getWorld().getEvents().find("rtype.PlatformEvent"));
+    EXPECT_TRUE(app.getWorld().getEvents().find("aylo.PlatformEvent"));
 }
 
 TEST(InputPlugin, AKeyPressedThisFrameIsPressedThenHeld) {

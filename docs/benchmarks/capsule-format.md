@@ -38,10 +38,10 @@ Ours ([`CapsuleFormat.md`](../CapsuleFormat.md)):
 game.Health = { value = 50 }
 
 [node path="LeftTurret" instance="actors/turret.actor"]
-rtype.Transform = { position = (-40, 0) }
+aylo.Transform = { position = (-40, 0) }
 
 [node path="Background" side=client]
-rtype.SpriteRenderer = { texture = "sprites/bg.png", layer = -10 }
+aylo.SpriteRenderer = { texture = "sprites/bg.png", layer = -10 }
 ```
 
 The closest TOML:
@@ -57,12 +57,12 @@ game.Health = { value = 50 }
 [[node]]
 path = "LeftTurret"
 instance = "actors/turret.actor"
-rtype.Transform = { position = [-40.0, 0.0] }
+aylo.Transform = { position = [-40.0, 0.0] }
 
 [[node]]
 path = "Background"
 side = "client"
-rtype.SpriteRenderer = { texture = "sprites/bg.png", layer = -10 }
+aylo.SpriteRenderer = { texture = "sprites/bg.png", layer = -10 }
 ```
 
 Our section headers carry attributes (`[node path="." side=client]`), and `(x, y)` vectors and bare words such as

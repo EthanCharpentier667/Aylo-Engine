@@ -25,22 +25,22 @@ struct Health {
     std::int32_t value;
     std::int32_t max;
 };
-AYLO_ECS_COMPONENT(Health, "rtype.Health", value, max);
+AYLO_ECS_COMPONENT(Health, "aylo.Health", value, max);
 
 struct Transform {
     float x;
     float y;
 };
-AYLO_ECS_COMPONENT(Transform, "rtype.Transform", x, y);
+AYLO_ECS_COMPONENT(Transform, "aylo.Transform", x, y);
 
 struct Dead {};
-AYLO_ECS_COMPONENT(Dead, "rtype.Dead");
+AYLO_ECS_COMPONENT(Dead, "aylo.Dead");
 
-/// @brief Another struct claiming the name "rtype.Health", with another layout.
+/// @brief Another struct claiming the name "aylo.Health", with another layout.
 struct OtherHealth {
     float value;
 };
-AYLO_ECS_COMPONENT(OtherHealth, "rtype.Health", value);
+AYLO_ECS_COMPONENT(OtherHealth, "aylo.Health", value);
 }  // namespace aylo::test::registry
 
 namespace {
@@ -76,24 +76,24 @@ TEST(ComponentRegistry, FindsComponentsByIdNameHashAndType) {
 
     const aylo::ecs::ComponentInfo* byId = registry.findById(id);
     ASSERT_NE(byId, nullptr);
-    EXPECT_EQ(byId->type.name, "rtype.Health");
+    EXPECT_EQ(byId->type.name, "aylo.Health");
     EXPECT_EQ(byId->type.id, id);
-    EXPECT_EQ(registry.findByName("rtype.Health"), byId);
-    EXPECT_EQ(registry.findByHash(aylo::core::hash::hashName("rtype.Health")), byId);
+    EXPECT_EQ(registry.findByName("aylo.Health"), byId);
+    EXPECT_EQ(registry.findByHash(aylo::core::hash::hashName("aylo.Health")), byId);
     EXPECT_EQ(registry.find<aylo::test::registry::Health>(), byId);
 }
 
 TEST(ComponentRegistry, FindReturnsNullForAnotherLayoutUnderTheSameName) {
     aylo::ecs::ComponentRegistry registry;
     static_cast<void>(registry.registerType<aylo::test::registry::Health>());
-    EXPECT_EQ(registry.find<aylo::test::registry::OtherHealth>(), nullptr);  // "rtype.Health", but not this layout
+    EXPECT_EQ(registry.find<aylo::test::registry::OtherHealth>(), nullptr);  // "aylo.Health", but not this layout
     EXPECT_NE(registry.find<aylo::test::registry::Health>(), nullptr);
 }
 
 TEST(ComponentRegistry, FindReturnsNullForARunTimeComponentThatOnlySharesTheName) {
     aylo::ecs::ComponentRegistry registry;
     aylo::ecs::ComponentInfo script = makeShield();  // 8 bytes like Health, other fields
-    script.type.name = "rtype.Health";
+    script.type.name = "aylo.Health";
     ASSERT_TRUE(registry.registerType(std::move(script)));
     EXPECT_EQ(registry.find<aylo::test::registry::Health>(), nullptr);
     EXPECT_THROW(static_cast<void>(registry.registerType<aylo::test::registry::Health>()),
@@ -112,8 +112,8 @@ TEST(ComponentRegistry, ReturnsNullForUnknownComponents) {
     static_cast<void>(registry.registerType<aylo::test::registry::Health>());
     EXPECT_EQ(registry.findById(1), nullptr);
     EXPECT_EQ(registry.findById(aylo::ecs::kInvalidComponentId), nullptr);
-    EXPECT_EQ(registry.findByName("rtype.Unknown"), nullptr);
-    EXPECT_EQ(registry.findByHash(aylo::core::hash::hashName("rtype.Unknown")), nullptr);
+    EXPECT_EQ(registry.findByName("aylo.Unknown"), nullptr);
+    EXPECT_EQ(registry.findByHash(aylo::core::hash::hashName("aylo.Unknown")), nullptr);
     EXPECT_EQ(registry.find<aylo::test::registry::Transform>(), nullptr);
 }
 
@@ -230,7 +230,7 @@ TEST(ComponentRegistry, PointersStayValidAfterManyRegistrations) {
         ASSERT_TRUE(registry.registerType(std::move(other)));
     }
     EXPECT_EQ(registry.findById(health), info);
-    EXPECT_EQ(info->type.name, "rtype.Health");
+    EXPECT_EQ(info->type.name, "aylo.Health");
 }
 
 TEST(ComponentRegistry, KeepsItsComponentsWhenMoved) {
@@ -238,5 +238,5 @@ TEST(ComponentRegistry, KeepsItsComponentsWhenMoved) {
     const aylo::ecs::ComponentId health = registry.registerType<aylo::test::registry::Health>();
     const aylo::ecs::ComponentRegistry moved{std::move(registry)};
     ASSERT_NE(moved.findById(health), nullptr);
-    EXPECT_EQ(moved.findByName("rtype.Health")->type.id, health);
+    EXPECT_EQ(moved.findByName("aylo.Health")->type.id, health);
 }

@@ -270,7 +270,7 @@ TEST(ScriptCommands, SetParentAndRemoveParentLinkEntitiesAndDespawnCascades) {
         })
         engine.ecs.system("game.Count", {
             phase = "PostUpdate",
-            query = { read = { "rtype.Parent" } },
+            query = { read = { "aylo.Parent" } },
             run = function(ctx)
                 probe.linked = 0
                 for _ in ctx.query do
@@ -322,7 +322,7 @@ TEST(ScriptHierarchy, ScriptsReadChildrenAndParentThroughDeclaredTerms) {
     ASSERT_EQ(fixture.run(R"(
         engine.ecs.system("game.ReadChildren", {
             phase = "Update",
-            query = { read = { "rtype.Children" } },
+            query = { read = { "aylo.Children" } },
             run = function(ctx)
                 for entity, children in ctx.query do
                     probe.owner = entity
@@ -332,7 +332,7 @@ TEST(ScriptHierarchy, ScriptsReadChildrenAndParentThroughDeclaredTerms) {
         })
         engine.ecs.system("game.ReadParent", {
             phase = "Update",
-            query = { read = { "rtype.Parent" } },
+            query = { read = { "aylo.Parent" } },
             run = function(ctx)
                 probe.parents = {}
                 for entity, parent in ctx.query do
@@ -361,7 +361,7 @@ TEST(ScriptHierarchy, ChangingTheListGivenToAScriptChangesNothing) {
     ASSERT_EQ(fixture.run(R"(
         engine.ecs.system("game.Tamper", {
             phase = "Update",
-            query = { read = { "rtype.Children" } },
+            query = { read = { "aylo.Children" } },
             run = function(ctx)
                 for _, children in ctx.query do
                     local list = children.entities
@@ -383,7 +383,7 @@ TEST(ScriptHierarchy, RefusesASystemWritingTheHierarchy) {
     const std::string parent = fixture.run(R"(
         engine.ecs.system("game.WriteParent", {
             phase = "Update",
-            query = { write = { "rtype.Parent" } },
+            query = { write = { "aylo.Parent" } },
             run = function(ctx) end,
         })
     )");
@@ -391,7 +391,7 @@ TEST(ScriptHierarchy, RefusesASystemWritingTheHierarchy) {
     const std::string children = fixture.run(R"(
         engine.ecs.system("game.WriteChildren", {
             phase = "Update",
-            query = { optionalWrite = { "rtype.Children" }, with = { "game.Marker" } },
+            query = { optionalWrite = { "aylo.Children" }, with = { "game.Marker" } },
             run = function(ctx) end,
         })
     )");
@@ -758,7 +758,7 @@ TEST(ScriptCommands, PatchRefusesTheHierarchy) {
             query = { with = { "game.Marker" } },
             run = function(ctx)
                 local parent = ctx.commands:spawn()
-                ctx.commands:patch(ctx.commands:spawn(), "rtype.Parent", { entity = parent })
+                ctx.commands:patch(ctx.commands:spawn(), "aylo.Parent", { entity = parent })
             end,
         })
     )"),
@@ -768,5 +768,5 @@ TEST(ScriptCommands, PatchRefusesTheHierarchy) {
     fixture.app.runFrame();
     const std::string log = testing::internal::GetCapturedStderr();
 
-    EXPECT_NE(log.find("cannot patch 'rtype.Parent': use setParent and removeParent"), std::string::npos) << log;
+    EXPECT_NE(log.find("cannot patch 'aylo.Parent': use setParent and removeParent"), std::string::npos) << log;
 }

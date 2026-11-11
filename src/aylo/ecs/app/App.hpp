@@ -97,7 +97,7 @@ class AYLO_ECS_API App {
     Schedule::SystemConfig addSystem(Phase phase, std::string name, Function function, Configs... configs);
 
     /// @brief Gives scripts an engine call made of a function (makeCallInfo() tells what it may take and return).
-    /// @param name Its stable name, such as "rtype.audio.loadSound".
+    /// @param name Its stable name, such as "aylo.audio.loadSound".
     /// @return The call's id in the world's Calls.
     /// @throws exceptions::CallException When the name is taken, or the arguments or result break a rule of
     /// validateType().

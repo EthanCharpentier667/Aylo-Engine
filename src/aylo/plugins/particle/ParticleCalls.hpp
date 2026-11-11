@@ -28,16 +28,16 @@
 
 namespace aylo::plugins::particle {
 
-inline constexpr std::string_view kBeginEffectCall = "rtype.particle.beginEffect";  ///< Starts a ParticleEffectDraft.
-inline constexpr std::string_view kAddBurstCall = "rtype.particle.addBurst";        ///< Adds a burst to a draft.
-inline constexpr std::string_view kAddColorKeyCall = "rtype.particle.addColorKey";  ///< Adds to its colorOverLife.
-inline constexpr std::string_view kAddCurveKeyCall = "rtype.particle.addCurveKey";  ///< Adds to its size or speed.
-inline constexpr std::string_view kAddEffectCall = "rtype.particle.addEffect";      ///< ParticleEffectAssets::add().
+inline constexpr std::string_view kBeginEffectCall = "aylo.particle.beginEffect";  ///< Starts a ParticleEffectDraft.
+inline constexpr std::string_view kAddBurstCall = "aylo.particle.addBurst";        ///< Adds a burst to a draft.
+inline constexpr std::string_view kAddColorKeyCall = "aylo.particle.addColorKey";  ///< Adds to its colorOverLife.
+inline constexpr std::string_view kAddCurveKeyCall = "aylo.particle.addCurveKey";  ///< Adds to its size or speed.
+inline constexpr std::string_view kAddEffectCall = "aylo.particle.addEffect";      ///< ParticleEffectAssets::add().
 
-/// @brief The effects a script is describing, by name: `rtype.particle.beginEffect` starts one, the `add*Key` and
-/// `addBurst` calls fill it, and `rtype.particle.addEffect` checks it and moves it to the ParticleEffectAssets. An
+/// @brief The effects a script is describing, by name: `aylo.particle.beginEffect` starts one, the `add*Key` and
+/// `addBurst` calls fill it, and `aylo.particle.addEffect` checks it and moves it to the ParticleEffectAssets. An
 /// effect is built whole before it is stored, so a mistake in its description never leaves half of it playing.
-/// The ECS resource "rtype.ParticleEffectDrafts", inserted by the ParticlePlugin.
+/// The ECS resource "aylo.ParticleEffectDrafts", inserted by the ParticlePlugin.
 struct ParticleEffectDrafts {
     std::map<std::string, ParticleEffect, std::less<>> effects;  ///< Begun and not added yet.
 
@@ -49,9 +49,9 @@ struct ParticleEffectDrafts {
     ParticleEffectDrafts(ParticleEffectDrafts&& other) noexcept = default;
     ParticleEffectDrafts& operator=(ParticleEffectDrafts&& other) noexcept = default;
 };
-AYLO_ECS_RESOURCE(ParticleEffectDrafts, "rtype.ParticleEffectDrafts");
+AYLO_ECS_RESOURCE(ParticleEffectDrafts, "aylo.ParticleEffectDrafts");
 
-/// @brief The arguments of `rtype.particle.beginEffect`: everything of an effect but its lists, which the calls below
+/// @brief The arguments of `aylo.particle.beginEffect`: everything of an effect but its lists, which the calls below
 /// add. Each default is the one of ParticleEffect. Beginning a name again starts it over.
 struct BeginEffectArguments {
     ecs::String name;                ///< What the effect is known by: its id is AssetId::fromPath(name).
@@ -93,52 +93,52 @@ struct BeginEffectArguments {
     float flipbookCycles{1.0F};                        ///< Times the frames play over a life.
     core::asset::AssetId material;                     ///< From `engine.assets.material`; the default one if not given.
 };
-AYLO_ECS_CALL_DATA(BeginEffectArguments, "rtype.particle.BeginEffectArguments", name, simulation, capacity, space,
+AYLO_ECS_CALL_DATA(BeginEffectArguments, "aylo.particle.BeginEffectArguments", name, simulation, capacity, space,
                    sortByAge, rate, duration, loop, shape, radius, edgeOnly, rectSize, lifetimeMin, lifetimeMax,
                    speedMin, speedMax, angleMin, angleMax, rotationMin, rotationMax, angularVelocityMin,
                    angularVelocityMax, sizeMin, sizeMax, color, gravity, drag, texture, sourcePosition, sourceSize,
                    blend, alignment, stretch, flipbookColumns, flipbookRows, flipbookFrames, flipbookCycles, material);
 
-/// @brief The arguments of `rtype.particle.addBurst`: particles emitted at once, in each cycle.
+/// @brief The arguments of `aylo.particle.addBurst`: particles emitted at once, in each cycle.
 struct AddBurstArguments {
-    ecs::String name;         ///< The effect begun with `rtype.particle.beginEffect`.
+    ecs::String name;         ///< The effect begun with `aylo.particle.beginEffect`.
     float time{0.0F};         ///< Seconds after the start of the cycle.
     std::uint32_t count{0};   ///< Particles emitted each time.
     std::uint32_t cycles{1};  ///< How many times it happens.
     float interval{0.0F};     ///< Seconds between two times.
 };
-AYLO_ECS_CALL_DATA(AddBurstArguments, "rtype.particle.AddBurstArguments", name, time, count, cycles, interval);
+AYLO_ECS_CALL_DATA(AddBurstArguments, "aylo.particle.AddBurstArguments", name, time, count, cycles, interval);
 
-/// @brief The arguments of `rtype.particle.addColorKey`: a key of the effect's colorOverLife, after the others.
+/// @brief The arguments of `aylo.particle.addColorKey`: a key of the effect's colorOverLife, after the others.
 struct AddColorKeyArguments {
-    ecs::String name;                         ///< The effect begun with `rtype.particle.beginEffect`.
+    ecs::String name;                         ///< The effect begun with `aylo.particle.beginEffect`.
     float t{0.0F};                            ///< 0 at birth, 1 at death.
     glm::vec4 color{1.0F, 1.0F, 1.0F, 1.0F};  ///< The colour at t, alpha included.
 };
-AYLO_ECS_CALL_DATA(AddColorKeyArguments, "rtype.particle.AddColorKeyArguments", name, t, color);
+AYLO_ECS_CALL_DATA(AddColorKeyArguments, "aylo.particle.AddColorKeyArguments", name, t, color);
 
-/// @brief The arguments of `rtype.particle.addCurveKey`: a key of the effect's sizeOverLife or speedOverLife.
+/// @brief The arguments of `aylo.particle.addCurveKey`: a key of the effect's sizeOverLife or speedOverLife.
 struct AddCurveKeyArguments {
-    ecs::String name;           ///< The effect begun with `rtype.particle.beginEffect`.
+    ecs::String name;           ///< The effect begun with `aylo.particle.beginEffect`.
     ecs::String curve{"size"};  ///< "size" or "speed".
     float t{0.0F};              ///< 0 at birth, 1 at death.
     float value{1.0F};          ///< The multiplier at t.
 };
-AYLO_ECS_CALL_DATA(AddCurveKeyArguments, "rtype.particle.AddCurveKeyArguments", name, curve, t, value);
+AYLO_ECS_CALL_DATA(AddCurveKeyArguments, "aylo.particle.AddCurveKeyArguments", name, curve, t, value);
 
-/// @brief The arguments of `rtype.particle.addEffect`.
+/// @brief The arguments of `aylo.particle.addEffect`.
 struct AddEffectArguments {
-    ecs::String name;  ///< The effect begun with `rtype.particle.beginEffect`.
+    ecs::String name;  ///< The effect begun with `aylo.particle.beginEffect`.
 };
-AYLO_ECS_CALL_DATA(AddEffectArguments, "rtype.particle.AddEffectArguments", name);
+AYLO_ECS_CALL_DATA(AddEffectArguments, "aylo.particle.AddEffectArguments", name);
 
-/// @brief The result of `rtype.particle.addEffect`.
+/// @brief The result of `aylo.particle.addEffect`.
 struct EffectResult {
     core::asset::AssetId effect;  ///< For a ParticleEmitter or a SpawnParticles.
 };
-AYLO_ECS_CALL_DATA(EffectResult, "rtype.particle.EffectResult", effect);
+AYLO_ECS_CALL_DATA(EffectResult, "aylo.particle.EffectResult", effect);
 
-/// @brief Registers the particle engine calls on @p app, for scripts: `rtype.particle.beginEffect`, `addBurst`,
+/// @brief Registers the particle engine calls on @p app, for scripts: `aylo.particle.beginEffect`, `addBurst`,
 /// `addColorKey`, `addCurveKey` and `addEffect`. They throw a contract::renderer::exceptions::ParticleException
 /// naming what is wrong (an unknown name or draft, an invalid effect). Called by the ParticlePlugin.
 void addParticleCalls(ecs::App& app);

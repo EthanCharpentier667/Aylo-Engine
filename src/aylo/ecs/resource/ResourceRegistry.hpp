@@ -54,7 +54,7 @@ struct KindTraits<ResourceInfo> {
 /// @code
 /// aylo::ecs::ResourceRegistry registry;
 /// const aylo::ecs::ResourceId backend = registry.registerType<Backend>({.nonSend = true});
-/// const aylo::ecs::ResourceInfo* time = registry.findByName("rtype.Time");
+/// const aylo::ecs::ResourceInfo* time = registry.findByName("aylo.Time");
 /// @endcode
 using ResourceRegistry = TypeRegistry<ResourceInfo>;
 }  // namespace aylo::ecs

@@ -20,7 +20,7 @@ class World;
 
 namespace aylo::editor::panels {
 
-/// @return The name of a component or a resource without its namespace: "Transform" for "rtype.Transform".
+/// @return The name of a component or a resource without its namespace: "Transform" for "aylo.Transform".
 [[nodiscard]] AYLO_EDITOR_API std::string shortName(std::string_view name);
 
 /// @return The entities of @p world that have a component, by index: only those with a component whose name contains

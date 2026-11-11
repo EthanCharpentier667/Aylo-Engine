@@ -279,8 +279,8 @@ std::uint32_t networkIdOf(Server& server, const aylo::ecs::Entity entity) {
 }  // namespace
 
 TEST(ServerPlugin, IsNamed) {
-    EXPECT_EQ((ServerPlugin{network::NetworkSettings{}, ReplicationSettings{}}.getName()), "rtype.replication.server");
-    EXPECT_EQ(ServerPlugin::kName, "rtype.replication.server");
+    EXPECT_EQ((ServerPlugin{network::NetworkSettings{}, ReplicationSettings{}}.getName()), "aylo.replication.server");
+    EXPECT_EQ(ServerPlugin::kName, "aylo.replication.server");
     EXPECT_EQ(ServerPlugin::kReceiveSystem, "net.receive");
     EXPECT_EQ(ServerPlugin::kApplyInputsSystem, "net.applyInputs");
     EXPECT_EQ(ServerPlugin::kAssignIdsSystem, "net.assignIds");
@@ -289,8 +289,8 @@ TEST(ServerPlugin, IsNamed) {
 
 TEST(ServerPlugin, AddsTheReplicationPluginAndTheState) {
     Server server;
-    EXPECT_TRUE(server.app().hasPlugin("rtype.replication"));
-    EXPECT_TRUE(server.app().hasPlugin("rtype.replication.server"));
+    EXPECT_TRUE(server.app().hasPlugin("aylo.replication"));
+    EXPECT_TRUE(server.app().hasPlugin("aylo.replication.server"));
     EXPECT_TRUE(server.world().getResources().has<ServerState>());
 }
 

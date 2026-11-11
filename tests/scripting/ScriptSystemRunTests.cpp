@@ -335,8 +335,8 @@ TEST(ScriptSystemRun, AScriptStopsTheAppWithACodeThroughAppExit) {
         engine.ecs.system("game.Quit", {
             phase = "Update",
             query = {},
-            events = { send = { "rtype.AppExit" } },
-            run = function(ctx) ctx.events.send("rtype.AppExit", { code = 3 }) end,
+            events = { send = { "aylo.AppExit" } },
+            run = function(ctx) ctx.events.send("aylo.AppExit", { code = 3 }) end,
         })
     )"),
               "");

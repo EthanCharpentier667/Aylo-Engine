@@ -23,7 +23,7 @@
 
 namespace aylo::plugins::text {
 
-/// @brief The fonts, as the ECS resource "rtype.FontAssets" the TextPlugin inserts: systems ask for a font and get its
+/// @brief The fonts, as the ECS resource "aylo.FontAssets" the TextPlugin inserts: systems ask for a font and get its
 /// AssetId at once, TextRenderer components keep that id.
 ///
 /// @details A font is read when it is asked for, on every side (a server can measure texts too). Its atlas image is
@@ -99,6 +99,6 @@ class AYLO_PLUGIN_TEXT_API FontAssets {
     core::asset::AssetStore<Font> _fonts{"Font"};  ///< Every font asked for, by id.
     std::vector<TextureRequest> _textureRequests;  ///< Images to hand to TextureAssets.
 };
-AYLO_ECS_RESOURCE(FontAssets, "rtype.FontAssets");
+AYLO_ECS_RESOURCE(FontAssets, "aylo.FontAssets");
 
 }  // namespace aylo::plugins::text

@@ -238,8 +238,8 @@ TEST(PhysicsContacts, FilteredPairsSendNothing) {
 
 TEST(PhysicsContacts, ThePluginRegistersTheEvents) {
     PhysicsApp fixture;
-    EXPECT_TRUE(fixture.app.getWorld().getEvents().find("rtype.CollisionStarted"));
-    EXPECT_TRUE(fixture.app.getWorld().getEvents().find("rtype.CollisionEnded"));
-    EXPECT_TRUE(fixture.app.getWorld().getEvents().find("rtype.TriggerEntered"));
-    EXPECT_TRUE(fixture.app.getWorld().getEvents().find("rtype.TriggerExited"));
+    EXPECT_TRUE(fixture.app.getWorld().getEvents().find("aylo.CollisionStarted"));
+    EXPECT_TRUE(fixture.app.getWorld().getEvents().find("aylo.CollisionEnded"));
+    EXPECT_TRUE(fixture.app.getWorld().getEvents().find("aylo.TriggerEntered"));
+    EXPECT_TRUE(fixture.app.getWorld().getEvents().find("aylo.TriggerExited"));
 }

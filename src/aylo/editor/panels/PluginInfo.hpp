@@ -24,7 +24,7 @@ struct PluginRow {
     std::string name;                     ///< Its name (Plugin::getName()).
     std::vector<std::string> requires_;   ///< The plugins it requires (Plugin::getDependencies()).
     std::vector<std::string> requiredBy;  ///< The plugins added that require it, in the order added.
-    bool isEngine{false};                 ///< Whether it is an engine plugin (its name starts with "rtype.").
+    bool isEngine{false};                 ///< Whether it is an engine plugin (its name starts with "aylo.").
 };
 
 /// @brief The plugins of @p app that the Plugins panel lists.

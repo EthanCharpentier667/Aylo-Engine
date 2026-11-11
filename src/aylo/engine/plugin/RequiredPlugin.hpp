@@ -20,7 +20,7 @@ namespace aylo::engine::plugin {
 /// @brief Builds a plugin every game needs from what the loaded libraries registered, as the plugins a game lists are:
 /// the Engine links none of them.
 /// @param registry The plugins the libraries registered.
-/// @param name The plugin's name, such as "rtype.Transform".
+/// @param name The plugin's name, such as "aylo.Transform".
 /// @param searched The folders the libraries were looked for in, named in the error.
 /// @return The plugin, never null.
 /// @throws exceptions::RuntimeError When no library registered @p name: the message names it, the folders searched

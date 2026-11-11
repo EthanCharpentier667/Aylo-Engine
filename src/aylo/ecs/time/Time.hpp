@@ -30,5 +30,5 @@ struct Time {
     float alpha{0.F};       ///< How far the frame is into the next fixed tick, in [0, 1): to interpolate what is drawn.
     double elapsed{0.};     ///< The sum of the frames' durations since the start, in seconds (a double: it grows).
 };
-AYLO_ECS_RESOURCE(Time, "rtype.Time", delta, fixedDelta, tick, alpha, elapsed);
+AYLO_ECS_RESOURCE(Time, "aylo.Time", delta, fixedDelta, tick, alpha, elapsed);
 }  // namespace aylo::ecs

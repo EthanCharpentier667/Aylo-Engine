@@ -53,7 +53,7 @@ class ShapeApp {
 
 TEST(ShapePlugin, RegistersShapeRenderer) {
     ShapeApp app;
-    EXPECT_TRUE(app.app().getWorld().getComponents().find("rtype.ShapeRenderer"));
+    EXPECT_TRUE(app.app().getWorld().getComponents().find("aylo.ShapeRenderer"));
 }
 
 TEST(ShapePlugin, DrawsTheShapesAtTheirGlobalTransformOverTheSprites) {

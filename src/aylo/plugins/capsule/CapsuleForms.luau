@@ -2,7 +2,7 @@
 -- form makes in its `calls`.
 --
 --   local bydo = engine.capsule.spawn(ctx, "actors/bydo.actor", {
---       ["rtype.Transform"] = { position = { x = 820, y = 140 } },
+--       ["aylo.Transform"] = { position = { x = 820, y = 140 } },
 --   })
 --
 -- The overrides change only the fields they name, over the capsule's values: each is a ctx.commands:patch of the root,
@@ -73,14 +73,14 @@ local function spawningForm(form, name)
 	end
 end
 
--- Spawns a copy of `capsule` and returns its root. Needs "rtype.capsule.spawn" in the system's `calls`.
-engine.capsule.spawn = spawningForm("engine.capsule.spawn", "rtype.capsule.spawn")
+-- Spawns a copy of `capsule` and returns its root. Needs "aylo.capsule.spawn" in the system's `calls`.
+engine.capsule.spawn = spawningForm("engine.capsule.spawn", "aylo.capsule.spawn")
 
--- Despawns the capsule loaded before, spawns `capsule` and returns its root. Needs "rtype.capsule.load" in `calls`.
-engine.capsule.load = spawningForm("engine.capsule.load", "rtype.capsule.load")
+-- Despawns the capsule loaded before, spawns `capsule` and returns its root. Needs "aylo.capsule.load" in `calls`.
+engine.capsule.load = spawningForm("engine.capsule.load", "aylo.capsule.load")
 
 -- Spawns the current version of the capsule again into `root`; returns false if `root` is not a capsule's root.
--- Needs "rtype.capsule.reload" in `calls`.
+-- Needs "aylo.capsule.reload" in `calls`.
 function engine.capsule.reload(...)
 	local form = "engine.capsule.reload"
 	forms.arguments(form, 2, ...)
@@ -89,5 +89,5 @@ function engine.capsule.reload(...)
 	if root == nil then
 		forms.fail(form, "expected the capsule's root second")
 	end
-	return call(form, ctx, "rtype.capsule.reload", { root = root })
+	return call(form, ctx, "aylo.capsule.reload", { root = root })
 end

@@ -771,10 +771,10 @@ the `engine.net` forms) and a `LocalSession` resource, and these systems:
   for a real client, and delivers the packets sent since the last frame.
 - `net.applyInputs` (FixedUpdate, the name of the server's) writes the local input in the `PlayerInput` of the entities
   `net.Owner` gives to client 1, setting `previousButtons` first, so pressed and released edges are right on the fixed
-  step. The input is read by `rtype.engine.networkInput` (PostUpdate, `engine/NetworkInput`) from the same actions and
+  step. The input is read by `aylo.engine.networkInput` (PostUpdate, `engine/NetworkInput`) from the same actions and
   the same `InputLayout` as a client, and kept in the `LocalSession`.
-- `rtype.replication.localClient` answers `{ connected = true, client = 1 }`.
-- `rtype.net.sendToServer` and `rtype.net.sendToClients` check the packet like the network path (same schema and
+- `aylo.replication.localClient` answers `{ connected = true, client = 1 }`.
+- `aylo.net.sendToServer` and `aylo.net.sendToClients` check the packet like the network path (same schema and
   `parseValues`), encode it, and queue it in the `LocalSession`; `net.receive` decodes it with the same `decodePacket`
   and raises `net.PacketReceived`, one frame later. A packet to the server has `sender = 1`, one to the clients
   `sender = 0`; `sendToClients` to a client other than 1 returns false.
@@ -918,8 +918,8 @@ app:inputAction("fire", "button", { key = "Space", gamepad = "South" })
 function Shoot:run(ctx)
     for entity, transform, input in ctx.query do
         if input:isHeld("fire") then
-            local bullet = ctx.call("rtype.capsule.spawn", { capsule = "actors/bullet.actor" })
-            ctx.commands:add(bullet, "rtype.Transform", { position = transform.position })
+            local bullet = ctx.call("aylo.capsule.spawn", { capsule = "actors/bullet.actor" })
+            ctx.commands:add(bullet, "aylo.Transform", { position = transform.position })
         end
     end
 end
@@ -1085,7 +1085,7 @@ the rules of the game port stay untouched. It lives in `aylo/network/admin/` and
   *SetField* reads the value as the field's type (numbers must fit, floats must be finite, a vector has 2, 3 or 4
   numbers separated by spaces or commas); an entity field, a list (but a text) and the components `Parent` and
   `Children` are refused with `kBadValue`, an unknown name with `kUnknownComponent` or `kUnknownField`, a dead entity
-  with `kUnknownEntity`. *Spawn* gives the entity a `rtype.Name` (`Entity` when empty), since an entity without a
+  with `kUnknownEntity`. *Spawn* gives the entity a `aylo.Name` (`Entity` when empty), since an entity without a
   component cannot be listed. *Run* acts on the `Schedules` as the editor's own pause does (`setPaused`, `step`).
 
   **When it happens.** A read is answered from the world as it is. SetField, Spawn and Despawn are recorded in the

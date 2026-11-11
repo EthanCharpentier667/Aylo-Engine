@@ -12,7 +12,7 @@
 
 TEST(JsonPlugin, IsNamedAndRequiresNothing) {
     const aylo::plugins::json::JsonPlugin plugin;
-    EXPECT_EQ(plugin.getName(), "rtype.Json");
+    EXPECT_EQ(plugin.getName(), "aylo.Json");
     EXPECT_TRUE(plugin.getDependencies().empty());
 }
 

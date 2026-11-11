@@ -27,8 +27,8 @@ namespace aylo::plugins::physics::debug {
 /// switches: enabled (flipped by a key, F3 by default) and drawAll (every collider, PhysicsDebug or not). The plugin
 /// does all the drawing, from the components (Collider, GlobalTransform, Velocity), so it shows exactly where sprites
 /// are drawn and needs no physics body. Its systems run on the client side (so also in standalone):
-/// - "rtype.PhysicsDebug.Toggle", in Update: flips PhysicsDebugSettings::enabled on the toggle key;
-/// - "rtype.PhysicsDebug.Draw", in Render after the sprites and the ShapeRenderers: draws the outlines and arrows as
+/// - "aylo.PhysicsDebug.Toggle", in Update: flips PhysicsDebugSettings::enabled on the toggle key;
+/// - "aylo.PhysicsDebug.Draw", in Render after the sprites and the ShapeRenderers: draws the outlines and arrows as
 /// shapes (shapes are
 ///   overlays, drawn on top of the sprites).
 /// It draws through the GraphicsPlugin's renderer, so add it to clients with a window only; the headless server never
@@ -41,9 +41,9 @@ namespace aylo::plugins::physics::debug {
 /// @endcode
 class AYLO_PLUGIN_PHYSICS_DEBUG_API PhysicsDebugPlugin : public ecs::Plugin {
   public:
-    static constexpr std::string_view kName = "rtype.PhysicsDebug";                 ///< The plugin's name.
-    static constexpr std::string_view kToggleSystem = "rtype.PhysicsDebug.Toggle";  ///< Flips enabled on the key.
-    static constexpr std::string_view kDrawSystem = "rtype.PhysicsDebug.Draw";      ///< Draws the outlines and arrows.
+    static constexpr std::string_view kName = "aylo.PhysicsDebug";                 ///< The plugin's name.
+    static constexpr std::string_view kToggleSystem = "aylo.PhysicsDebug.Toggle";  ///< Flips enabled on the key.
+    static constexpr std::string_view kDrawSystem = "aylo.PhysicsDebug.Draw";      ///< Draws the outlines and arrows.
 
     /// @param settings What it inserts, replacing the default ones.
     explicit PhysicsDebugPlugin(PhysicsDebugSettings settings);
@@ -54,7 +54,7 @@ class AYLO_PLUGIN_PHYSICS_DEBUG_API PhysicsDebugPlugin : public ecs::Plugin {
     PhysicsDebugPlugin(PhysicsDebugPlugin&& other) noexcept = default;
     PhysicsDebugPlugin& operator=(PhysicsDebugPlugin&& other) noexcept = default;
 
-    /// @return "rtype.PhysicsDebug".
+    /// @return "aylo.PhysicsDebug".
     [[nodiscard]] std::string_view getName() const noexcept override;
 
     /// @return The GraphicsPlugin, which it draws through, the InputPlugin, for its key, the ShapePlugin, which it

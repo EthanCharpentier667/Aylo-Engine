@@ -37,8 +37,8 @@ namespace aylo::ecs {
 /// outlive it. A world's schedules, one per phase, are held by Schedules.
 /// @code
 /// aylo::ecs::Schedule schedule{world, aylo::ecs::RunMode::kStandalone, aylo::ecs::Phase::kFixedUpdate};
-/// schedule.addSystem("rtype.movement", &movement);
-/// schedule.addSystem("rtype.collision", &detect).after("rtype.movement");
+/// schedule.addSystem("aylo.movement", &movement);
+/// schedule.addSystem("aylo.collision", &detect).after("aylo.movement");
 /// schedule.run();
 /// @endcode
 class AYLO_ECS_API Schedule {
@@ -183,7 +183,7 @@ class AYLO_ECS_API Schedule {
                                                            const detail::DependencyGraph& graph) const;
 
     /// @return The name of the first type `first` and `second` both use, one of them writing it, as
-    /// "component 'rtype.Position'"; nothing if they do not conflict.
+    /// "component 'aylo.Position'"; nothing if they do not conflict.
     [[nodiscard]] std::optional<std::string> findConflict(const System& first, const System& second) const;
 
     /// @return The events written by the systems that run in this mode, sorted, without duplicates.

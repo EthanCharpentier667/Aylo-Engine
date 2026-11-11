@@ -35,7 +35,7 @@ struct Health {
     std::int32_t value;
     std::int32_t max;
 };
-AYLO_ECS_COMPONENT(Health, "rtype.Health", value, max);
+AYLO_ECS_COMPONENT(Health, "aylo.Health", value, max);
 
 struct Path {
     std::array<Vec2, 4> points;
@@ -45,7 +45,7 @@ struct Path {
 AYLO_ECS_COMPONENT(Path, "test.Path", points, speeds, flags);
 
 struct Dead {};
-AYLO_ECS_COMPONENT(Dead, "rtype.Dead");
+AYLO_ECS_COMPONENT(Dead, "aylo.Dead");
 
 struct Scaled {
     float scale{1.0F};
@@ -74,7 +74,7 @@ AYLO_ECS_COMPONENT(GlobalPosition, "test.GlobalPosition", x, y);
 static_assert(aylo::ecs::Component<aylo::test::traits::Health>);
 static_assert(aylo::ecs::Component<GlobalPosition>);
 static_assert(!aylo::ecs::Component<int>);
-static_assert(aylo::ecs::ComponentTraits<aylo::test::traits::Health>::kName == "rtype.Health");
+static_assert(aylo::ecs::ComponentTraits<aylo::test::traits::Health>::kName == "aylo.Health");
 static_assert(aylo::ecs::ComponentTraits<aylo::test::traits::Health>::kLayoutHash != 0, "known at compile time");
 
 namespace {
@@ -90,8 +90,8 @@ struct Storage {
 
 TEST(ComponentTraits, RecordsNameAndHash) {
     using Traits = aylo::ecs::ComponentTraits<aylo::test::traits::Health>;
-    EXPECT_EQ(Traits::kName, "rtype.Health");
-    EXPECT_EQ(Traits::kHash, aylo::core::hash::hashName("rtype.Health"));
+    EXPECT_EQ(Traits::kName, "aylo.Health");
+    EXPECT_EQ(Traits::kHash, aylo::core::hash::hashName("aylo.Health"));
 }
 
 TEST(ComponentTraits, WorksInsideANamespaceAndAtGlobalScope) {

@@ -38,6 +38,6 @@ struct PhysicsDebugSettings {
     [[nodiscard]] AYLO_PLUGIN_PHYSICS_DEBUG_API static PhysicsDebugSettings fromSettings(
         const core::config::Settings& settings);
 };
-AYLO_ECS_RESOURCE(PhysicsDebugSettings, "rtype.PhysicsDebugSettings");
+AYLO_ECS_RESOURCE(PhysicsDebugSettings, "aylo.PhysicsDebugSettings");
 
 }  // namespace aylo::plugins::physics::debug

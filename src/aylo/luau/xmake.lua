@@ -1,7 +1,7 @@
 add_requires("luau 696", "tl_expected")
 
 target("luau")
-    -- Static, linked into the executable: no plugin links it (rtype.static_modules enforces it).
+    -- Static, linked into the executable: no plugin links it (aylo.static_modules enforces it).
     set_kind("static")
     set_basename("aylo-luau")
     add_files("**.cpp")

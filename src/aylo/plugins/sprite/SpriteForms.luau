@@ -79,13 +79,13 @@ engine.assets.atlas = function(...)
 	if path ~= nil and (spec.name ~= nil or spec.grid ~= nil or spec.frames ~= nil) then
 		forms.fail(form, "'name', 'grid' and 'frames' make an atlas from a 'texture', not from a 'path'")
 	end
-	local create = "rtype.sprite.loadAtlas"
+	local create = "aylo.sprite.loadAtlas"
 	local fields = { path = path }
 	local id = path
 	local frames = {}
 	if texture ~= nil then
 		local name = forms.string(form, spec, "name")
-		create = "rtype.sprite.createAtlas"
+		create = "aylo.sprite.createAtlas"
 		fields = { texture = texture, name = name }
 		id = name or texture
 		if spec.grid ~= nil then
@@ -111,11 +111,11 @@ engine.assets.atlas = function(...)
 	end
 	for _, frame in frames do
 		frame.atlas = atlas
-		forms.call(form, "rtype.sprite.addFrame", frame)
+		forms.call(form, "aylo.sprite.addFrame", frame)
 	end
 	for _, animation in animations do
 		animation.atlas = atlas
-		forms.call(form, "rtype.sprite.addAnimation", animation)
+		forms.call(form, "aylo.sprite.addAnimation", animation)
 	end
 	return atlas
 end

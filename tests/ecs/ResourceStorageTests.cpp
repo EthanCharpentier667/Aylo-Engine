@@ -45,7 +45,7 @@ struct Time {
     float delta;
     float fixedDelta;
 };
-AYLO_ECS_RESOURCE(Time, "rtype.Time");
+AYLO_ECS_RESOURCE(Time, "aylo.Time");
 
 struct Tracked {
     std::int32_t value;
@@ -56,10 +56,10 @@ AYLO_ECS_RESOURCE(Tracked, "test.Tracked");
 struct Backend {
     std::unique_ptr<std::int32_t> window;
 };
-AYLO_ECS_RESOURCE(Backend, "rtype.Backend");
+AYLO_ECS_RESOURCE(Backend, "aylo.Backend");
 
 struct Paused {};
-AYLO_ECS_RESOURCE(Paused, "rtype.Paused");
+AYLO_ECS_RESOURCE(Paused, "aylo.Paused");
 
 /// @brief A resource whose copy throws on demand, counting its instances.
 struct Fragile {
@@ -116,7 +116,7 @@ TEST(ResourceStorage, StartsEmpty) {
     EXPECT_FALSE(storage.hasValue());
     EXPECT_TRUE(storage.get().empty());
     EXPECT_FALSE(storage.remove());
-    EXPECT_EQ(storage.getInfo().type.name, "rtype.Time");
+    EXPECT_EQ(storage.getInfo().type.name, "aylo.Time");
 }
 
 TEST(ResourceStorage, InsertMoveThenGet) {

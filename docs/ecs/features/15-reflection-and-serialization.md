@@ -50,10 +50,10 @@ struct Transform {
     glm::vec2 scale;
 };
 
-AYLO_ECS_COMPONENT(Transform, "rtype.Transform", position, rotation, scale);
+AYLO_ECS_COMPONENT(Transform, "aylo.Transform", position, rotation, scale);
 ```
 
-Resulting description of `rtype.Transform` (size 20, alignment 4):
+Resulting description of `aylo.Transform` (size 20, alignment 4):
 
 | Field | `FieldType` | Offset | Size |
 |---|---|---|---|

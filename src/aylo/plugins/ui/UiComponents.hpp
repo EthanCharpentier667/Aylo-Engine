@@ -33,7 +33,7 @@ struct UiComputed {
     glm::vec4 padding{0.0F};      ///< Its padding, in view pixels: left, top, right, bottom.
     std::uint32_t order = 0;      ///< Its rank in the draw order, from 0 at the bottom.
 };
-AYLO_ECS_COMPONENT(UiComputed, "rtype.UiComputed", position, size, contentSize, clip, padding, order);
+AYLO_ECS_COMPONENT(UiComputed, "aylo.UiComputed", position, size, contentSize, clip, padding, order);
 
 /// @brief Fills a node with a colour, rounded and outlined if asked: the renderer's signed distance shapes.
 struct UiBackground {
@@ -42,7 +42,7 @@ struct UiBackground {
     contract::renderer::Color borderColor{0.0F};  ///< Its outline.
     float borderWidth = 0.0F;                     ///< In view pixels, inside the node. 0: no outline.
 };
-AYLO_ECS_COMPONENT(UiBackground, "rtype.UiBackground", color, cornerRadius, borderColor, borderWidth);
+AYLO_ECS_COMPONENT(UiBackground, "aylo.UiBackground", color, cornerRadius, borderColor, borderWidth);
 
 /// @brief Fills a node with an image, stretched, or by nine parts if `slice` is set.
 struct UiImage {
@@ -53,7 +53,7 @@ struct UiImage {
                               ///< size, and only the middle stretches. All 0: stretched as a whole.
     float sliceScale = 1.0F;  ///< View pixels per pixel of the borders.
 };
-AYLO_ECS_COMPONENT(UiImage, "rtype.UiImage", texture, source, color, slice, sliceScale);
+AYLO_ECS_COMPONENT(UiImage, "aylo.UiImage", texture, source, color, slice, sliceScale);
 
 /// @brief Writes in a node, which is as big as its text unless its UiNode says otherwise.
 struct UiText {
@@ -64,6 +64,6 @@ struct UiText {
     text::TextAlign align = text::TextAlign::kLeft;  ///< How the lines line up in the node.
     bool wrap = false;                               ///< Breaks the lines between words to stay inside the node.
 };
-AYLO_ECS_COMPONENT(UiText, "rtype.UiText", text, font, size, color, align, wrap);
+AYLO_ECS_COMPONENT(UiText, "aylo.UiText", text, font, size, color, align, wrap);
 
 }  // namespace aylo::plugins::ui

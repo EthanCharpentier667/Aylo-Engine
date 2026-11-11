@@ -1,1 +1,1 @@
-engine.assets.tilemap = engine.forms.file("engine.assets.tilemap", "rtype.tilemap.load", {})
+engine.assets.tilemap = engine.forms.file("engine.assets.tilemap", "aylo.tilemap.load", {})

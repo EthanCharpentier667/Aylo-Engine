@@ -42,7 +42,7 @@ void countFixed(ResMut<FixedRuns> runs) { ++runs->count; }
 const TimeClock* timeClockOf(const App& app) { return dynamic_cast<const TimeClock*>(app.getSchedules().getClock()); }
 }  // namespace
 
-TEST(TimePlugin, IsNamedRtypeTime) { EXPECT_EQ(TimePlugin{}.getName(), "rtype.time"); }
+TEST(TimePlugin, IsNamedRtypeTime) { EXPECT_EQ(TimePlugin{}.getName(), "aylo.time"); }
 
 TEST(TimePlugin, MeasuresTheRealClockAtSixtyHertzByDefault) {
     const TimePlugin plugin;

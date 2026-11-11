@@ -54,5 +54,5 @@ struct TextRenderer {
     core::asset::AssetId material;  ///< From MaterialAssets; the default material if empty or not created yet. Its
                                     ///< `instance uniform` values come from the entity's MaterialInstance.
 };
-AYLO_ECS_COMPONENT(TextRenderer, "rtype.TextRenderer", text, font, size, color, align, anchor, layer, material);
+AYLO_ECS_COMPONENT(TextRenderer, "aylo.TextRenderer", text, font, size, color, align, anchor, layer, material);
 }  // namespace aylo::plugins::text

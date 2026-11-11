@@ -18,5 +18,5 @@ namespace aylo::ecs {
 struct Children {
     std::vector<Entity> entities;  ///< The children.
 };
-AYLO_ECS_COMPONENT(Children, "rtype.Children", entities);
+AYLO_ECS_COMPONENT(Children, "aylo.Children", entities);
 }  // namespace aylo::ecs

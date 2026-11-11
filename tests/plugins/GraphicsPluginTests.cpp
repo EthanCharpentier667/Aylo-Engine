@@ -89,8 +89,8 @@ TEST(GraphicsPlugin, CreatesNothingBeforeTheFirstFrame) {
 TEST(GraphicsPlugin, InsertsTheTextureAssetsAndRegistersSpriteRenderer) {
     BackendApp app;
     EXPECT_TRUE(app.app().getWorld().getResources().has<aylo::plugins::graphics::TextureAssets>());
-    EXPECT_TRUE(app.app().getWorld().getComponents().find("rtype.SpriteRenderer"));
-    EXPECT_TRUE(app.app().getWorld().getComponents().find("rtype.Camera"));
+    EXPECT_TRUE(app.app().getWorld().getComponents().find("aylo.SpriteRenderer"));
+    EXPECT_TRUE(app.app().getWorld().getComponents().find("aylo.Camera"));
 }
 
 TEST(GraphicsPlugin, LoadsTheQueuedTexturesBeforeTheFrame) {
@@ -321,7 +321,7 @@ TEST(GraphicsPlugin, FeedsInput) {
 
 TEST(GraphicsPlugin, ReflectsTheCameraPriority) {
     using Traits = aylo::ecs::ComponentTraits<aylo::plugins::graphics::Camera>;
-    EXPECT_EQ(Traits::kName, "rtype.Camera");
+    EXPECT_EQ(Traits::kName, "aylo.Camera");
     ASSERT_EQ(Traits::kFields.size(), 1U);
     EXPECT_EQ(Traits::kFields[0].name, "priority");
     EXPECT_EQ(Traits::kFields[0].type, aylo::ecs::FieldType::kI32);

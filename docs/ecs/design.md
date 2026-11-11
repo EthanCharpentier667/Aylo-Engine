@@ -252,7 +252,7 @@ struct TypeHooks {
 /// @brief What every kind of ECS data (components, resources) knows about its type.
 struct TypeInfo {
     TypeId id;
-    std::string name;  ///< Stable, unique key: "rtype.Position", "game.Shield".
+    std::string name;  ///< Stable, unique key: "aylo.Position", "game.Shield".
     std::size_t size;  ///< 0 for tags.
     std::size_t alignment;
     Presence presence{Presence::kBoth};
@@ -284,7 +284,7 @@ that means the same for every kind lives once in `type/`, and each kind adds onl
 | `TypeTraits<T>` (name, kind, hashes, fields, hooks, `makeTypeInfo()`), `AYLO_ECS_DETAIL_DESCRIBE` | `ComponentTraits<T>`, `AYLO_ECS_COMPONENT` (plain copyable aggregates) | `ResourceTraits<T>`, `AYLO_ECS_RESOURCE` (any movable type; fields optional) | `EventTraits<T>`, `AYLO_ECS_EVENT` (any movable type; fields optional) |
 | `TypeRegistry<Info>`: ids, lookups, layout check, the checks every kind shares | `KindTraits<ComponentInfo>` (storage), `ComponentRegistry` | `KindTraits<ResourceInfo>` (main thread), `ResourceRegistry` | `KindTraits<EventInfo>` (presence only), `EventRegistry` |
 | `ByteColumn` (built from a `TypeInfo`) | `SparseSetStorage`: one value per entity | `ResourceStorage`: zero or one value | `EventStorage`: two buffers, events of the last two updates |
-| `ErrorKind` (`kInvalidType`, `kLayoutMismatch`, `kNameCollision`, ...), `TypeRegistrationException` | "Component 'rtype.Health': ..." | "Resource 'rtype.Time': ..." | "Event 'rtype.Collision': ..." |
+| `ErrorKind` (`kInvalidType`, `kLayoutMismatch`, `kNameCollision`, ...), `TypeRegistrationException` | "Component 'aylo.Health': ..." | "Resource 'aylo.Time': ..." | "Event 'aylo.Collision': ..." |
 
 A name is one kind of type only: `WorldState::checkNameFree(name, kind)` refuses registering a name another
 kind uses (it checks every registry but the one of the kind registering it), so the Luau bridge, the network
@@ -335,8 +335,8 @@ struct Position {
 struct Dead {};  // tag
 
 // Specializes aylo::ecs::ComponentTraits<T>: name, name hash and field list (name, type, offset).
-AYLO_ECS_COMPONENT(Position, "rtype.Position", x, y);
-AYLO_ECS_COMPONENT(Dead, "rtype.Dead");
+AYLO_ECS_COMPONENT(Position, "aylo.Position", x, y);
+AYLO_ECS_COMPONENT(Dead, "aylo.Dead");
 
 void TransformPlugin::build(aylo::ecs::App& app) {
     app.component<Position>().replicate(aylo::ecs::ReplicationMode::kEveryChange);
@@ -511,7 +511,7 @@ const aylo::ecs::Entity ship = world.spawn();
 world.getComponents().add(ship, Position{.x = 10.F, .y = 20.F});
 
 // Type-erased equivalent, used by the Luau bridge and the replication plugin.
-const std::optional<aylo::ecs::ComponentId> id = world.getComponents().find("rtype.Position");
+const std::optional<aylo::ecs::ComponentId> id = world.getComponents().find("aylo.Position");
 const bool added = world.getComponents().add(ship, *id, bytes);
 ```
 
@@ -598,8 +598,8 @@ systems that only know components by id (replication, scripts) still declare the
 are given as a `ScriptCallable`, the one way to pass a callable that keeps state (a handle to the script).
 
 ```c++
-app.addSystem(aylo::ecs::Phase::kFixedUpdate, "rtype.movement", &movement);
-app.addSystem(aylo::ecs::Phase::kFixedUpdate, "rtype.collision", &detectCollisions).after("rtype.movement");
+app.addSystem(aylo::ecs::Phase::kFixedUpdate, "aylo.movement", &movement);
+app.addSystem(aylo::ecs::Phase::kFixedUpdate, "aylo.collision", &detectCollisions).after("aylo.movement");
 ```
 
 Serves: R1, R2, R4 (access sets allow a parallel scheduler later without changing systems).
@@ -983,8 +983,8 @@ API with a `DynamicQuery` and an explicit access list.
 -- ShieldRegen.luau
 local ShieldRegen = ecs.system("game.ShieldRegen", {
     phase = "FixedUpdate",
-    query = { write = { "game.Shield" }, without = { "rtype.Dead" } },
-    after = { "rtype.movement" },
+    query = { write = { "game.Shield" }, without = { "aylo.Dead" } },
+    after = { "aylo.movement" },
 })
 
 function ShieldRegen:run(ctx)
@@ -1001,10 +1001,10 @@ Entities are created and destroyed through the system's commands:
 ```luau
 function WaveSpawner:run(ctx)
     ctx.commands:spawn({
-        ["rtype.Transform"] = { position = vec2(800, 300) },
+        ["aylo.Transform"] = { position = vec2(800, 300) },
         ["game.Shield"] = {},                -- defaults
     })
-    ctx.call("rtype.capsule.spawn", { capsule = "actors/bydo.actor" })
+    ctx.call("aylo.capsule.spawn", { capsule = "actors/bydo.actor" })
 end
 ```
 
@@ -1016,7 +1016,7 @@ assembled from.
 
 ```luau
 -- scripts/aylo/plugin.luau
-local RtypePlugin = ecs.plugin("rtype.Game")
+local RtypePlugin = ecs.plugin("aylo.Game")
 
 function RtypePlugin:build(app)
     -- Components and systems, from files laid out however the game prefers.
@@ -1163,8 +1163,8 @@ struct Collision {
     aylo::ecs::Entity b;
 };
 
-AYLO_ECS_COMPONENT(Collider, "rtype.Collider", halfSize, offset);
-AYLO_ECS_COMPONENT(CollisionLayers, "rtype.CollisionLayers", member, mask);
+AYLO_ECS_COMPONENT(Collider, "aylo.Collider", halfSize, offset);
+AYLO_ECS_COMPONENT(CollisionLayers, "aylo.CollisionLayers", member, mask);
 ```
 
 Bit masks were dropped for component options (see
@@ -1214,7 +1214,7 @@ flowchart TD
 6. **Emit.** Each overlapping pair is appended to the `Collision` event buffer (`push_back` into a
    vector that keeps its capacity between ticks). Pairs are emitted in a deterministic order (cell
    order, then box order), so the same inputs give the same events.
-7. **Readers.** Systems ordered `after("rtype.collision")` read the events in the same tick.
+7. **Readers.** Systems ordered `after("aylo.collision")` read the events in the same tick.
 
 ### How the event queue works underneath
 
@@ -1299,7 +1299,7 @@ end
 return EnemyKilledScore
 ```
 
-A Luau game can also read `rtype.Collision` directly; that is the simplest start, and the place to
+A Luau game can also read `aylo.Collision` directly; that is the simplest start, and the place to
 move to C++ if profiling shows the event volume is too high.
 
 ## The App on Top of the Engine Layer
@@ -1315,9 +1315,9 @@ Going Bevy-style now means the ECS owns the loop. Ethan's **interfaces stay**; w
 | `IPlatform::pollEvents()` | `PreUpdate` system that forwards each `Event` alternative to `Events<…>` |
 | `Input` / `InputAction` | Resource updated by a `PreUpdate` system from window events; feeds `PlayerInput` |
 | `IRenderer` | Called by `Render`-phase systems: `beginFrame` / `setView` / `draw` / `endFrame` |
-| `graphics::Sprite` (with `position`) | **Kept as the renderer's draw command.** The ECS component is `plugins::sprite::SpriteRenderer` (`AssetId`, source rect, color, origin, layer), and the position comes from `plugins::transform::GlobalTransform`. The graphics plugin's Render system `rtype.graphics.sprites` looks up each texture's `TextureId` in `TextureAssets`, sorts the sprites by layer then texture, and calls `draw()`; game code only spawns entities. |
-| `graphics::Camera` | **Split in two.** The ECS component `"rtype.Camera"` (`graphics/Camera.hpp`) holds only the `projection` (an `Orthographic`, not the `Projection` variant, so it stays standard-layout) and a `priority`, reflected; where the camera is comes from its entity's `Transform`, like any other entity. The renderer gets a `graphics::View` (position, rotation, projection, `graphics/View.hpp`): the graphics plugin's Render system `rtype.graphics.camera` builds it from the `GlobalTransform` and the `Camera` of the entity with the highest priority and passes it to `setView()`, between `beginFrame` and `endFrame`. |
-| `TextureId` (the RAII `Texture` and `Handle<Tag>` / `Resource<Tag, Owner>` are gone) | The renderer owns the textures; the `plugins::graphics::TextureAssets` resource (inserted by `GraphicsPlugin`) maps each `AssetId` to its `TextureId`. `load(path)` returns the `AssetId` at once and queues the texture; the `GraphicsPlugin`'s Render system `rtype.graphics.textures` decodes the queued images (stb) and creates them (`updateTextures()`), so gameplay never touches the renderer; components keep only the `AssetId` |
+| `graphics::Sprite` (with `position`) | **Kept as the renderer's draw command.** The ECS component is `plugins::sprite::SpriteRenderer` (`AssetId`, source rect, color, origin, layer), and the position comes from `plugins::transform::GlobalTransform`. The graphics plugin's Render system `aylo.graphics.sprites` looks up each texture's `TextureId` in `TextureAssets`, sorts the sprites by layer then texture, and calls `draw()`; game code only spawns entities. |
+| `graphics::Camera` | **Split in two.** The ECS component `"aylo.Camera"` (`graphics/Camera.hpp`) holds only the `projection` (an `Orthographic`, not the `Projection` variant, so it stays standard-layout) and a `priority`, reflected; where the camera is comes from its entity's `Transform`, like any other entity. The renderer gets a `graphics::View` (position, rotation, projection, `graphics/View.hpp`): the graphics plugin's Render system `aylo.graphics.camera` builds it from the `GlobalTransform` and the `Camera` of the entity with the highest priority and passes it to `setView()`, between `beginFrame` and `endFrame`. |
+| `TextureId` (the RAII `Texture` and `Handle<Tag>` / `Resource<Tag, Owner>` are gone) | The renderer owns the textures; the `plugins::graphics::TextureAssets` resource (inserted by `GraphicsPlugin`) maps each `AssetId` to its `TextureId`. `load(path)` returns the `AssetId` at once and queues the texture; the `GraphicsPlugin`'s Render system `aylo.graphics.textures` decodes the queued images (stb) and creates them (`updateTextures()`), so gameplay never touches the renderer; components keep only the `AssetId` |
 | `IAudio` | **Removed** (it had no implementation). Audio will come back as its own plugin once a library is chosen (miniaudio, OpenAL...): its interface, a resource of sounds by `AssetId`, sounds triggered by events |
 | `Settings` | Resource, filled from the config file at startup |
 

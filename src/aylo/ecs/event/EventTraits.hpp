@@ -46,13 +46,13 @@ struct EventTraits : TypeTraits<T> {
 ///     aylo::ecs::Entity a;
 ///     aylo::ecs::Entity b;
 /// };
-/// AYLO_ECS_EVENT(Collision, "rtype.Collision", a, b);
+/// AYLO_ECS_EVENT(Collision, "aylo.Collision", a, b);
 ///
 /// struct GameOver {};
 /// AYLO_ECS_EVENT(GameOver, "game.GameOver");
 /// @endcode
 /// @param Type The type, as named in the current namespace.
-/// @param Name Its stable name, a string literal such as "rtype.Collision".
+/// @param Name Its stable name, a string literal such as "aylo.Collision".
 /// @param ... The fields to reflect, if any.
 #define AYLO_ECS_EVENT(Type, Name, ...)                                                                 \
     AYLO_ECS_DETAIL_DESCRIBE(::aylo::ecs::detail::describeEvent, Type, Name __VA_OPT__(, ) __VA_ARGS__) \

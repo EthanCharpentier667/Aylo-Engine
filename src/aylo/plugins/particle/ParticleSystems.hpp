@@ -39,7 +39,7 @@ struct EmitterState {
     contract::renderer::ParticleEmission emission;
 };
 
-/// @brief The live state of every emitter, by entity, as the resource "rtype.ParticleSystems" the ParticlePlugin
+/// @brief The live state of every emitter, by entity, as the resource "aylo.ParticleSystems" the ParticlePlugin
 /// inserts. Client-side.
 ///
 /// @details A resource rather than a component: the ECS has no removal detection yet, so a system sweeps it every frame
@@ -91,6 +91,6 @@ class AYLO_PLUGIN_PARTICLE_API ParticleSystems {
     std::uint32_t _seedCount{0};                          ///< Seeds picked so far.
     std::unordered_set<core::asset::AssetId> _fallbacks;  ///< Effects whose GPU fallback was reported.
 };
-AYLO_ECS_RESOURCE(ParticleSystems, "rtype.ParticleSystems");
+AYLO_ECS_RESOURCE(ParticleSystems, "aylo.ParticleSystems");
 
 }  // namespace aylo::plugins::particle

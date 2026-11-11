@@ -79,7 +79,7 @@ same ticks for the same frame times, and 60 Hz gives exactly 60 ticks per second
 rounding of 1/60 s. With the defaults, 5 ms frames run a tick every 3 or 4 frames, 16 ms frames almost one
 per frame, and 50 ms frames 3 per frame.
 
-The time plugin inserts the `Time` resource (`time/Time.hpp`, `"rtype.Time"`), and its clock keeps it up to
+The time plugin inserts the `Time` resource (`time/Time.hpp`, `"aylo.Time"`), and its clock keeps it up to
 date:
 
 | Field | Meaning | Set |
@@ -145,9 +145,9 @@ game's own pause menu is gameplay, not this.
 ### Ordering inside a phase
 
 ```c++
-app.addSystem(aylo::ecs::Phase::kFixedUpdate, "rtype.movement", &movement);
-app.addSystem(aylo::ecs::Phase::kFixedUpdate, "rtype.collision", &detectCollisions).after("rtype.movement");
-app.addSystem(aylo::ecs::Phase::kFixedUpdate, "rtype.damage", &applyDamage).after("rtype.collision");
+app.addSystem(aylo::ecs::Phase::kFixedUpdate, "aylo.movement", &movement);
+app.addSystem(aylo::ecs::Phase::kFixedUpdate, "aylo.collision", &detectCollisions).after("aylo.movement");
+app.addSystem(aylo::ecs::Phase::kFixedUpdate, "aylo.damage", &applyDamage).after("aylo.collision");
 ```
 
 Systems live in **one `Schedule` per phase** (`schedule/Schedule.hpp`): a schedule orders, checks and runs
@@ -159,9 +159,9 @@ directly:
 
 ```c++
 aylo::ecs::Schedules schedules{world, aylo::ecs::RunMode::kStandalone};
-schedules.addSystem(aylo::ecs::Phase::kFixedUpdate, "rtype.movement", &movement);
-schedules.addSystem(aylo::ecs::Phase::kFixedUpdate, "rtype.collision", &detect).after("rtype.movement");
-schedules.addSystem(aylo::ecs::Phase::kUpdate, "rtype.camera", &follow).setSide(aylo::ecs::Side::kClient);
+schedules.addSystem(aylo::ecs::Phase::kFixedUpdate, "aylo.movement", &movement);
+schedules.addSystem(aylo::ecs::Phase::kFixedUpdate, "aylo.collision", &detect).after("aylo.movement");
+schedules.addSystem(aylo::ecs::Phase::kUpdate, "aylo.camera", &follow).setSide(aylo::ecs::Side::kClient);
 schedules.build();                                // checks and sorts every schedule
 schedules.run(aylo::ecs::Phase::kFixedUpdate);   // one phase: its systems, then their commands
 schedules.runFrame();                             // a whole frame (above)

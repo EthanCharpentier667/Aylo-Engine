@@ -90,7 +90,7 @@ aylo::ecs::Result<aylo::ecs::DynamicQuery> query = aylo::ecs::QueryBuilder{}
 for (aylo::ecs::QueryMatch& match : query->iter(lastRun)) {
     aylo::ecs::Entity entity = match.getEntity();
     std::span<std::byte> shield = match.getMut(0);         // data term 0: game.Shield, marked changed
-    std::span<const std::byte> position = match.get(1);    // data term 1: rtype.Position, read only
+    std::span<const std::byte> position = match.get(1);    // data term 1: aylo.Position, read only
 }
 ```
 

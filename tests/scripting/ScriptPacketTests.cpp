@@ -89,7 +89,7 @@ local commands = {
 }
 local nextCommand = 1
 engine.ecs.system("game.Commands", {
-    phase = "Update", side = "client", query = {}, calls = { "rtype.net.sendToServer" },
+    phase = "Update", side = "client", query = {}, calls = { "aylo.net.sendToServer" },
     events = { send = { "test.packets.Checked" } },
     run = function(ctx)
         while nextCommand <= #commands do
@@ -107,7 +107,7 @@ engine.ecs.system("game.Commands", {
 constexpr std::string_view kServer = R"(
 local catalog = { laser = 10 }
 engine.ecs.system("game.Rules", {
-    phase = "Update", side = "server", query = {}, calls = { "rtype.net.sendToClients" },
+    phase = "Update", side = "server", query = {}, calls = { "aylo.net.sendToClients" },
     events = { read = { "net.PacketReceived" }, send = { "test.packets.Checked" } },
     run = function(ctx)
         for _, packet in engine.net.received(ctx) do
@@ -273,7 +273,7 @@ TEST(ScriptPackets, AClientCommandIsValidatedByTheServerAndAnswered) {
 TEST(ScriptPackets, TheServerOnlySendsToTheClientItNames) {
     constexpr std::string_view kEcho = R"(
 engine.ecs.system("game.Rules", {
-    phase = "Update", side = "server", query = {}, calls = { "rtype.net.sendToClients" },
+    phase = "Update", side = "server", query = {}, calls = { "aylo.net.sendToClients" },
     events = { read = { "net.PacketReceived" }, send = { "test.packets.Checked" } },
     run = function(ctx)
         for _, packet in engine.net.received(ctx) do
@@ -301,7 +301,7 @@ TEST(ScriptPackets, ASendThatBreaksTheSchemaIsAScriptErrorAndNothingTravels) {
 local rejected = false
 local sent = false
 engine.ecs.system("game.Commands", {
-    phase = "Update", side = "client", query = {}, calls = { "rtype.net.sendToServer" },
+    phase = "Update", side = "client", query = {}, calls = { "aylo.net.sendToServer" },
     events = { send = { "test.packets.Checked" } },
     run = function(ctx)
         if not rejected then
@@ -373,7 +373,7 @@ TEST(ScriptPackets, AScriptSendsAndReadsAPacketDeclaredInCpp) {
     constexpr std::string_view kNativeClient = R"(
 local sent = false
 engine.ecs.system("native.Send", {
-    phase = "Update", side = "client", query = {}, calls = { "rtype.net.sendToServer" },
+    phase = "Update", side = "client", query = {}, calls = { "aylo.net.sendToServer" },
     run = function(ctx)
         if not sent and engine.net.sendToServer(ctx, "native.Ping", { n = 42, who = "me" }) then
             sent = true

@@ -28,7 +28,7 @@ namespace aylo::plugins::capsule {
 class Capsules;
 
 /// @brief The capsule files of a game: the `.capsule`, `.scene` and `.actor` files under its assets, as the resource
-/// "rtype.CapsuleFiles" the CapsulePlugin inserts when the game has an asset directory.
+/// "aylo.CapsuleFiles" the CapsulePlugin inserts when the game has an asset directory.
 /// @details loadAll() reads them all once every plugin is built (CapsulePlugin::finish()), so a file can use the
 /// components scripts declare; a file instancing another reads it first. With hot reload, the CapsuleReloadable hands
 /// the files saved since to reload(), which reads them again with the files that instance them (their overrides start
@@ -81,5 +81,5 @@ class AYLO_PLUGIN_CAPSULE_API CapsuleFiles {
     std::map<std::string, std::set<std::string>> _uses;    ///< The capsules each file instances, by its path.
 };
 
-AYLO_ECS_RESOURCE(CapsuleFiles, "rtype.CapsuleFiles");
+AYLO_ECS_RESOURCE(CapsuleFiles, "aylo.CapsuleFiles");
 }  // namespace aylo::plugins::capsule

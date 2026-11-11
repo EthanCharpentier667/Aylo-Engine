@@ -27,7 +27,7 @@ struct Time {
     float delta;
     float fixedDelta;
 };
-AYLO_ECS_RESOURCE(Time, "rtype.Time");
+AYLO_ECS_RESOURCE(Time, "aylo.Time");
 
 /// @brief A class with a constructor and private members: not a valid component, but a valid resource.
 class Settings {
@@ -44,16 +44,16 @@ class Settings {
   private:
     std::string _path;  ///< Path of the configuration file.
 };
-AYLO_ECS_RESOURCE(Settings, "rtype.Settings");
+AYLO_ECS_RESOURCE(Settings, "aylo.Settings");
 
 /// @brief A move-only resource, like the platform and renderer backend.
 struct Backend {
     std::unique_ptr<std::int32_t> window;
 };
-AYLO_ECS_RESOURCE(Backend, "rtype.Backend");
+AYLO_ECS_RESOURCE(Backend, "aylo.Backend");
 
 struct Paused {};
-AYLO_ECS_RESOURCE(Paused, "rtype.Paused");
+AYLO_ECS_RESOURCE(Paused, "aylo.Paused");
 
 struct alignas(16) Aligned16 {
     std::array<float, 4> values;
@@ -99,14 +99,14 @@ TEST(ResourceTraits, LayoutHashMatchesTheRunTimeHash) {
 }
 
 TEST(ResourceTraits, NameAndHash) {
-    static_assert(aylo::ecs::ResourceTraits<traits::Time>::kName == "rtype.Time");
-    static_assert(aylo::ecs::ResourceTraits<traits::Time>::kHash == aylo::core::hash::hashName("rtype.Time"));
+    static_assert(aylo::ecs::ResourceTraits<traits::Time>::kName == "aylo.Time");
+    static_assert(aylo::ecs::ResourceTraits<traits::Time>::kHash == aylo::core::hash::hashName("aylo.Time"));
 }
 
 TEST(ResourceTraits, PlainDataHasNoHooks) {
     const aylo::ecs::ResourceInfo info = aylo::ecs::ResourceTraits<traits::Time>::makeInfo();
     EXPECT_EQ(info.type.id, aylo::ecs::kInvalidResourceId);
-    EXPECT_EQ(info.type.name, "rtype.Time");
+    EXPECT_EQ(info.type.name, "aylo.Time");
     EXPECT_EQ(info.type.size, sizeof(traits::Time));
     EXPECT_EQ(info.type.alignment, alignof(traits::Time));
     EXPECT_TRUE(info.type.copyable);

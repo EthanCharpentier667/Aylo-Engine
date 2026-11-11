@@ -131,7 +131,7 @@ template <typename Value, std::size_t Count>
     const auto found = drafts.effects.find(name);
     if (found == drafts.effects.end()) {
         throw ParticleException{
-            std::format("No particle effect '{}' was begun (call rtype.particle.beginEffect first)", name)};
+            std::format("No particle effect '{}' was begun (call aylo.particle.beginEffect first)", name)};
     }
     return found->second;
 }
@@ -172,7 +172,7 @@ EffectResult addEffect(ecs::ResMut<ParticleEffectDrafts> drafts, ecs::ResMut<Par
                        const AddEffectArguments& arguments) {
     const auto found = drafts->effects.find(arguments.name.view());
     if (found == drafts->effects.end()) {
-        throw ParticleException{std::format("No particle effect '{}' was begun (call rtype.particle.beginEffect first)",
+        throw ParticleException{std::format("No particle effect '{}' was begun (call aylo.particle.beginEffect first)",
                                             arguments.name.view())};
     }
     // Taken out first: an invalid effect is not left behind for the next try.

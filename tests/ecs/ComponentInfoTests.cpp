@@ -19,7 +19,7 @@ namespace {
 /// @return A valid description of a `{ std::int32_t value; std::int32_t max; }` component.
 aylo::ecs::ComponentInfo makeHealth() {
     return aylo::ecs::ComponentInfo{
-        .type = {.name = "rtype.Health",
+        .type = {.name = "aylo.Health",
                  .size = 8,
                  .alignment = 4,
                  .fields = {{.name = "value", .type = aylo::ecs::FieldType::kI32, .offset = 0},
@@ -69,7 +69,7 @@ TEST(Validate, AcceptsAValidComponent) { EXPECT_TRUE(aylo::ecs::validate(makeHea
 
 TEST(Validate, AcceptsATag) {
     EXPECT_TRUE(
-        aylo::ecs::validate(aylo::ecs::ComponentInfo{.type = {.name = "rtype.Dead", .size = 0, .alignment = 1}}));
+        aylo::ecs::validate(aylo::ecs::ComponentInfo{.type = {.name = "aylo.Dead", .size = 0, .alignment = 1}}));
 }
 
 TEST(Validate, AcceptsAReplicatedComponentAndAReplicatedTag) {
@@ -79,7 +79,7 @@ TEST(Validate, AcceptsAReplicatedComponentAndAReplicatedTag) {
 
     const aylo::ecs::ComponentInfo tag{
         .type = {
-            .name = "rtype.Player", .size = 0, .alignment = 1, .replication = aylo::ecs::ReplicationMode::kSpawnOnly}};
+            .name = "aylo.Player", .size = 0, .alignment = 1, .replication = aylo::ecs::ReplicationMode::kSpawnOnly}};
     EXPECT_TRUE(aylo::ecs::validate(tag));
 }
 
@@ -101,71 +101,71 @@ TEST(Validate, RejectsAnEmptyName) {
 TEST(Validate, RejectsAnAlignmentThatIsNotAPowerOfTwo) {
     aylo::ecs::ComponentInfo info = makeHealth();
     info.type.alignment = 0;
-    expectInvalid(info, {"rtype.Health", "alignment 0"});
+    expectInvalid(info, {"aylo.Health", "alignment 0"});
     info.type.alignment = 3;
-    expectInvalid(info, {"rtype.Health", "alignment 3"});
+    expectInvalid(info, {"aylo.Health", "alignment 3"});
 }
 
 TEST(Validate, RejectsASizeThatIsNotAMultipleOfTheAlignment) {
     aylo::ecs::ComponentInfo info = makeHealth();
     info.type.size = 6;
-    expectInvalid(info, {"rtype.Health", "size 6"});
+    expectInvalid(info, {"aylo.Health", "size 6"});
 }
 
 TEST(Validate, RejectsATagWithFields) {
     aylo::ecs::ComponentInfo info = makeHealth();
     info.type.size = 0;
-    expectInvalid(info, {"rtype.Health", "tag"});
+    expectInvalid(info, {"aylo.Health", "tag"});
 }
 
 TEST(Validate, RejectsAReplicatedClientOnlyComponent) {
     aylo::ecs::ComponentInfo info = makeHealth();
     info.type.presence = aylo::ecs::Presence::kClientOnly;
     info.type.replication = aylo::ecs::ReplicationMode::kEveryChange;
-    expectInvalid(info, {"rtype.Health", "client-only"});
+    expectInvalid(info, {"aylo.Health", "client-only"});
 }
 
 TEST(Validate, RejectsAReplicatedComponentWithoutFields) {
     aylo::ecs::ComponentInfo info = makeHealth();
     info.type.fields.clear();
     info.type.replication = aylo::ecs::ReplicationMode::kEveryChange;
-    expectInvalid(info, {"rtype.Health", "fields"});
+    expectInvalid(info, {"aylo.Health", "fields"});
 }
 
 TEST(Validate, RejectsAFieldWithoutName) {
     aylo::ecs::ComponentInfo info = makeHealth();
     info.type.fields.at(1).name.clear();
-    expectInvalid(info, {"rtype.Health", "offset 4", "no name"});
+    expectInvalid(info, {"aylo.Health", "offset 4", "no name"});
 }
 
 TEST(Validate, RejectsADuplicateField) {
     aylo::ecs::ComponentInfo info = makeHealth();
     info.type.fields.at(1).name = "value";
-    expectInvalid(info, {"rtype.Health", "'value'", "twice"});
+    expectInvalid(info, {"aylo.Health", "'value'", "twice"});
 }
 
 TEST(Validate, RejectsAnEmptyArrayField) {
     aylo::ecs::ComponentInfo info = makeHealth();
     info.type.fields.at(1).count = 0;
-    expectInvalid(info, {"rtype.Health", "'max'", "count of 0"});
+    expectInvalid(info, {"aylo.Health", "'max'", "count of 0"});
 }
 
 TEST(Validate, RejectsAMisalignedField) {
     aylo::ecs::ComponentInfo info = makeHealth();
     info.type.fields.at(1).offset = 2;
-    expectInvalid(info, {"rtype.Health", "'max'", "aligned"});
+    expectInvalid(info, {"aylo.Health", "'max'", "aligned"});
 }
 
 TEST(Validate, RejectsAFieldPastTheEnd) {
     aylo::ecs::ComponentInfo info = makeHealth();
     info.type.fields.at(1).offset = 8;
-    expectInvalid(info, {"rtype.Health", "'max'", "ends at byte 12"});
+    expectInvalid(info, {"aylo.Health", "'max'", "ends at byte 12"});
 }
 
 TEST(Validate, RejectsAHugeArrayWithoutOverflowing) {
     aylo::ecs::ComponentInfo info = makeHealth();
     info.type.fields.at(1).count = 0xFFFFFFFFU;
-    expectInvalid(info, {"rtype.Health", "'max'", "past the component size"});
+    expectInvalid(info, {"aylo.Health", "'max'", "past the component size"});
 }
 
 TEST(Validate, RejectsOverlappingFields) {
@@ -185,14 +185,14 @@ TEST(LayoutHash, IsStable) {
 TEST(Validate, RejectsANonCopyableComponent) {
     aylo::ecs::ComponentInfo info = makeHealth();
     info.type.copyable = false;
-    expectInvalid(info, {"rtype.Health", "copyable"});
+    expectInvalid(info, {"aylo.Health", "copyable"});
 }
 
 TEST(LayoutHash, ChangesWithTheLayout) {
     const std::uint64_t original = aylo::ecs::computeLayoutHash(makeHealth().type);
 
     aylo::ecs::ComponentInfo renamed = makeHealth();
-    renamed.type.name = "rtype.Shield";
+    renamed.type.name = "aylo.Shield";
     EXPECT_NE(aylo::ecs::computeLayoutHash(renamed.type), original);
 
     aylo::ecs::ComponentInfo bigger = makeHealth();

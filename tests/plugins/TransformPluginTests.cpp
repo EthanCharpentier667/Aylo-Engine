@@ -65,18 +65,18 @@ struct TransformApp {
 
 TEST(Transform, ReflectsItsFields) {
     using Traits = aylo::ecs::ComponentTraits<Transform>;
-    EXPECT_EQ(Traits::kName, "rtype.Transform");
+    EXPECT_EQ(Traits::kName, "aylo.Transform");
     ASSERT_EQ(Traits::kFields.size(), 3U);
     EXPECT_EQ(Traits::kFields[0].type, aylo::ecs::FieldType::kVec2);
     EXPECT_EQ(Traits::kFields[1].type, aylo::ecs::FieldType::kF32);
     EXPECT_EQ(Traits::kFields[2].type, aylo::ecs::FieldType::kVec2);
-    EXPECT_EQ(aylo::ecs::ComponentTraits<GlobalTransform>::kName, "rtype.GlobalTransform");
+    EXPECT_EQ(aylo::ecs::ComponentTraits<GlobalTransform>::kName, "aylo.GlobalTransform");
 }
 
 TEST(TransformPlugin, RegistersTheComponents) {
     TransformApp fixture;
-    EXPECT_TRUE(fixture.app.getWorld().getComponents().find("rtype.Transform"));
-    EXPECT_TRUE(fixture.app.getWorld().getComponents().find("rtype.GlobalTransform"));
+    EXPECT_TRUE(fixture.app.getWorld().getComponents().find("aylo.Transform"));
+    EXPECT_TRUE(fixture.app.getWorld().getComponents().find("aylo.GlobalTransform"));
 }
 
 TEST(TransformPlugin, GivesAGlobalTransformEqualToTheTransform) {
@@ -259,6 +259,6 @@ TEST(TransformHierarchy, AttachInPlaceKeepsAnEntityWhereItIs) {
 
 TEST(TransformPlugin, RegistersTheHierarchy) {
     TransformApp fixture;
-    EXPECT_TRUE(fixture.app.getWorld().getComponents().find("rtype.Parent"));
-    EXPECT_TRUE(fixture.app.getWorld().getComponents().find("rtype.Children"));
+    EXPECT_TRUE(fixture.app.getWorld().getComponents().find("aylo.Parent"));
+    EXPECT_TRUE(fixture.app.getWorld().getComponents().find("aylo.Children"));
 }

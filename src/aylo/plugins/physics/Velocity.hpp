@@ -32,6 +32,6 @@ struct Velocity {
 
     friend bool operator==(const Velocity& first, const Velocity& second) = default;
 };
-AYLO_ECS_COMPONENT(Velocity, "rtype.Velocity", linear, angular);
+AYLO_ECS_COMPONENT(Velocity, "aylo.Velocity", linear, angular);
 
 }  // namespace aylo::plugins::physics

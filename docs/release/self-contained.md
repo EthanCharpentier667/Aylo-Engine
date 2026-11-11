@@ -45,7 +45,7 @@ names the ones we know: the Vulkan loader, and the window system libraries GLFW 
 - **The engine's own modules are static.** `luau`, `network`, `replication`, `scripting` and `engine` are linked into
   `aylo-runtime` (and `aylo-sign`), so the release holds their code once, with the packages they wrap (`libsodium`,
   Asio, Luau), and has five libraries fewer to bundle and to find. `ecs` and the contracts stay shared, as do the
-  plugins and the backends. The build refuses a shared library that links a static module (`rtype.static_modules`).
+  plugins and the backends. The build refuses a shared library that links a static module (`aylo.static_modules`).
 - **GLFW is linked alone on Linux** (`platform-glfw`). It opens X11 and Wayland itself, but the xmake package lists
   them and thirty `libxcb-*` libraries as links, which the build trims to `glfw3` before linking.
 - **The Vulkan loader is opened, not linked** (`render-vulkan`, `core::Loader`), on Linux and Windows: the loader comes
@@ -53,7 +53,7 @@ names the ones we know: the Vulkan loader, and the window system libraries GLFW 
   install the driver of your graphics card` instead of a library that refuses to load. VMA is told not to bind the Vulkan
   functions itself (`VMA_STATIC_VULKAN_FUNCTIONS=0`): the allocator takes them from the dispatchers of the Vulkan
   instance and device.
-- **Every binary has relative search paths only**, set by the build (rules `rtype.layout` and `rtype.plugin_library`):
+- **Every binary has relative search paths only**, set by the build (rules `aylo.layout` and `aylo.plugin_library`):
   a plugin `$ORIGIN` (the plugins it links) and `$ORIGIN/../lib`; a backend `$ORIGIN/../../lib`; a library of `lib/`
   `$ORIGIN`, and the engine also `$ORIGIN/../plugins`, where the transform and input plugins it links are; an executable
   `$ORIGIN/lib` and `$ORIGIN/plugins`. Nothing looks above `runtime/`. A search path is not inherited by the libraries a

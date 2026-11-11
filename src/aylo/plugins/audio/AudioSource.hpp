@@ -32,5 +32,5 @@ struct AudioSource {
     bool loop{false};                                                      ///< Plays until removed, instead of once.
     bool spatial{true};  ///< Panned from its GlobalTransform; false, or no GlobalTransform: centred.
 };
-AYLO_ECS_COMPONENT(AudioSource, "rtype.AudioSource", sound, bus, volume, pitch, loop, spatial);
+AYLO_ECS_COMPONENT(AudioSource, "aylo.AudioSource", sound, bus, volume, pitch, loop, spatial);
 }  // namespace aylo::plugins::audio

@@ -135,7 +135,7 @@ executable links sit next to it.
 
 The engine stops linking `plugin-transform` and `plugin-input` and loads them from their libraries like the others
 (the transform plugin, which every game has, by name; a clear error if it is missing). `NetworkInput` stays in the
-engine and reads the input through the `rtype.input.read` engine call: moving it to the input plugin would make a plugin
+engine and reads the input through the `aylo.input.read` engine call: moving it to the input plugin would make a plugin
 depend on `replication`.
 
 ### REL-12: static modules

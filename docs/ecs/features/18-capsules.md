@@ -32,7 +32,7 @@ game's files.
 ## Our choice
 
 - **A plugin, not an ECS feature:** capsules only use the ECS's public API (spawn, add a component by id and bytes,
-  `Commands`, `setParent`), so they live in `plugin-capsule` (`rtype.Capsule`), as `bevy_scene` lives outside
+  `Commands`, `setParent`), so they live in `plugin-capsule` (`aylo.Capsule`), as `bevy_scene` lives outside
   `bevy_ecs`.
 - **One behaviour, two steps.** A file is read once into a capsule: each node's components as bytes ready to copy. A
   spawn then only allocates entities and copies bytes, so spawning a bullet hundreds of times never parses text.
@@ -49,11 +49,11 @@ A game names it in its `project.luau`, and the `Engine` loads it from its librar
 [Plugins](../../Plugins.md#loading)):
 
 ```lua
-engine.settings.plugins = { "rtype.Capsule" }
+engine.settings.plugins = { "aylo.Capsule" }
 ```
 
 A program on a bare `App` (tests, examples) adds `aylo::plugins::capsule::CapsulePlugin{}`. It inserts the `Capsules`
-resource (`"rtype.Capsules"`), the `LoadedCapsule` resource (`"rtype.LoadedCapsule"`), registers the `CapsuleInstance`
+resource (`"aylo.Capsules"`), the `LoadedCapsule` resource (`"aylo.LoadedCapsule"`), registers the `CapsuleInstance`
 component and the engine calls. It requires no plugin and reads no settings.
 
 ### A capsule
@@ -108,10 +108,10 @@ first and a parent before its children, each with its components written by fiel
 game.Health = { value = 50 }
 
 [node path="LeftTurret" instance="actors/turret.actor"]
-rtype.Transform = { position = (-40, 0) }
+aylo.Transform = { position = (-40, 0) }
 
 [node path="Background" side=client]
-rtype.SpriteRenderer = { texture = "sprites/bg.png", layer = -10 }
+aylo.SpriteRenderer = { texture = "sprites/bg.png", layer = -10 }
 ```
 
 `format::readCapsule()` reads a file into a capsule (an error names the file, line and column) and
@@ -125,7 +125,7 @@ the start, naming the file, line and column.
 **Hot reload.** With the engine's hot reload (`hotReload`, the `HotReload` resource), the plugin adds a
 `CapsuleReloadable` to the engine's `HotReloader`, following the capsule files of the assets. Between two frames, a
 saved or added file is read again (`CapsuleFiles::reload()`) with the files that instance it, and the capsules read go
-to the `ReloadedCapsules` resource; the next frame, the Render system `rtype.Capsule.HotReload` (every side) reloads
+to the `ReloadedCapsules` resource; the next frame, the Render system `aylo.Capsule.HotReload` (every side) reloads
 what was spawned from them, nested roots through their outermost capsule. A file saved broken keeps its old version and
 the reload is reported as failed with the file, line and column; a removed file is ignored.
 
@@ -160,13 +160,13 @@ descendants go with it.
 
 ### Loading: switching levels
 
-`loadCapsule()` (and the `rtype.capsule.load` call) switches the level: it despawns the root the `LoadedCapsule`
+`loadCapsule()` (and the `aylo.capsule.load` call) switches the level: it despawns the root the `LoadedCapsule`
 resource names, spawns the new capsule and remembers it. Entities outside the old capsule's tree (the player, a game
 manager) stay.
 
 ### Names
 
-Each spawned entity gets a `rtype.Name` (`ecs/entity/Name.hpp`) before its node's values: the node's name, the
+Each spawned entity gets a `aylo.Name` (`ecs/entity/Name.hpp`) before its node's values: the node's name, the
 capsule file's name (its stem) for the root. A node that gives a `Name` replaces it; an instance's root is named by the
 node that places it.
 
@@ -175,7 +175,7 @@ node that places it.
 `reloadCapsule(commands, capsules, root, instance, children)` despawns the root's children, adds the capsule's current
 root values again, spawns its children again and updates `CapsuleInstance.version`. The root entity and its other
 components stay. A nested root (`nested`) is reloaded from its own capsule, which replaces the outer node's values on
-it; reloading the outermost capsule it belongs to keeps them. The plugin's Render system `rtype.Capsule.HotReload`
+it; reloading the outermost capsule it belongs to keeps them. The plugin's Render system `aylo.Capsule.HotReload`
 reloads, at every frame, what was spawned from the capsules the `ReloadedCapsules` resource names, nested roots through
 their outermost capsule: hot reload names the files it read again there, and a tool (the editor) the capsules it
 redefined. The system and the resource are there with or without hot reload.
@@ -187,9 +187,9 @@ Scripts describe nothing: files do. A system spawns, loads and reloads through t
 
 | Call | Arguments | Result |
 |---|---|---|
-| `rtype.capsule.spawn` | `capsule` (a path) | the root, reserved at once |
-| `rtype.capsule.load` | `capsule` (a path) | the new root; the capsule loaded before is despawned |
-| `rtype.capsule.reload` | `root` | `true` if it was a capsule's root |
+| `aylo.capsule.spawn` | `capsule` (a path) | the root, reserved at once |
+| `aylo.capsule.load` | `capsule` (a path) | the new root; the capsule loaded before is despawned |
+| `aylo.capsule.reload` | `root` | `true` if it was a capsule's root |
 
 The plugin also brings setup forms (`CapsuleForms.luau`, registered by `addCapsuleForms()` from its library and its
 build step): `engine.capsule.spawn(ctx, path, overrides)`, `engine.capsule.load(ctx, path, overrides)` and
@@ -201,10 +201,10 @@ named change, over the values the capsule gives the root.
 engine.ecs.system("game.Waves", {
     phase = "Update",
     query = {},
-    calls = { "rtype.capsule.spawn", "rtype.capsule.load" },
+    calls = { "aylo.capsule.spawn", "aylo.capsule.load" },
     run = function(ctx)
         local bydo = engine.capsule.spawn(ctx, "actors/bydo.actor", {
-            ["rtype.Transform"] = { position = { x = 820, y = 140 } },   -- rotation and scale stay the capsule's
+            ["aylo.Transform"] = { position = { x = 820, y = 140 } },   -- rotation and scale stay the capsule's
         })
         -- when the boss is defeated:
         engine.capsule.load(ctx, "scenes/level2.scene")

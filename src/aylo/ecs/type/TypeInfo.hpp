@@ -47,7 +47,7 @@ enum class ReplicationMode : std::uint8_t {
 /// description with validateType() before using it.
 struct TypeInfo {
     TypeId id{kInvalidTypeId};                            ///< Dense id, assigned by the registry.
-    std::string name;                                     ///< Stable, unique key: "rtype.Position", "rtype.Time".
+    std::string name;                                     ///< Stable, unique key: "aylo.Position", "aylo.Time".
     std::size_t size{0};                                  ///< Bytes per value; 0 for an empty type (a tag).
     std::size_t alignment{1};                             ///< Required alignment, a power of two.
     Presence presence{Presence::kBoth};                   ///< On which side of the network it exists.

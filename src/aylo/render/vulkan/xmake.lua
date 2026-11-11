@@ -73,7 +73,7 @@ rule_end()
 
 -- Vulkan renderer: IRenderer with Vulkan.
 target("render-vulkan")
-    add_rules("rtype.plugin_library", {folder = "plugins/backends"})
+    add_rules("aylo.plugin_library", {folder = "plugins/backends"})
     set_kind("shared")
     set_basename("aylo-render-vulkan")
     -- contract-renderer for IRenderer, interop-vulkan for IVulkanSurfaceSource (implemented by the platforms).

@@ -33,7 +33,7 @@ enum class AssetState : std::uint8_t {
     kFailed,  ///< Could not be loaded; the entry says why.
 };
 
-/// @brief The textures, as the ECS resource "rtype.TextureAssets" the GraphicsPlugin inserts: systems ask for a texture
+/// @brief The textures, as the ECS resource "aylo.TextureAssets" the GraphicsPlugin inserts: systems ask for a texture
 /// by path and get its AssetId at once, components keep that id, and the GraphicsPlugin loads the queued textures.
 ///
 /// @details load() records the texture as queued and returns its id, without touching the renderer: gameplay systems
@@ -149,7 +149,7 @@ class AYLO_PLUGIN_GRAPHICS_API TextureAssets {
     std::vector<core::asset::AssetId> _queued;             ///< The queued textures, in the order they were asked for.
     std::vector<contract::renderer::TextureId> _unloaded;  ///< Textures to destroy, from unload().
 };
-AYLO_ECS_RESOURCE(TextureAssets, "rtype.TextureAssets");
+AYLO_ECS_RESOURCE(TextureAssets, "aylo.TextureAssets");
 
 /// @brief Destroys the textures unloaded since the last call, then loads the queued ones: decodes each image (through
 /// stb_image, from its file or from the bytes given to load()) into RGBA pixels, or takes the pixels given to

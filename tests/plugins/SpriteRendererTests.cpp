@@ -39,7 +39,7 @@ TEST(SpriteRenderer, HasNeutralDefaults) {
 
 TEST(SpriteRenderer, ReflectsEveryFieldField) {
     using Traits = aylo::ecs::ComponentTraits<aylo::plugins::sprite::SpriteRenderer>;
-    EXPECT_EQ(Traits::kName, "rtype.SpriteRenderer");
+    EXPECT_EQ(Traits::kName, "aylo.SpriteRenderer");
     ASSERT_EQ(Traits::kFields.size(), 7U);
     EXPECT_EQ(Traits::kFields[0].name, "texture");
     EXPECT_EQ(Traits::kFields[0].type, aylo::ecs::FieldType::kAssetId);

@@ -22,6 +22,6 @@ struct PhysicsHandle {
 
     friend bool operator==(const PhysicsHandle& first, const PhysicsHandle& second) = default;
 };
-AYLO_ECS_COMPONENT(PhysicsHandle, "rtype.PhysicsHandle", body);
+AYLO_ECS_COMPONENT(PhysicsHandle, "aylo.PhysicsHandle", body);
 
 }  // namespace aylo::plugins::physics

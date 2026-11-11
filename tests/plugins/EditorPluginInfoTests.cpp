@@ -34,21 +34,21 @@ class NamedPlugin : public aylo::ecs::Plugin {
 
 TEST(EditorPluginInfo, ListsLoadedPluginsWithRequiresAndRequiredBy) {
     aylo::ecs::App app;
-    app.addPlugin(NamedPlugin{"rtype.Base", {}});
-    app.addPlugin(NamedPlugin{"game.Boss", {"rtype.Base"}});
+    app.addPlugin(NamedPlugin{"aylo.Base", {}});
+    app.addPlugin(NamedPlugin{"game.Boss", {"aylo.Base"}});
     const auto list = aylo::editor::panels::collectPlugins(app, "");
     ASSERT_EQ(list.loaded.size(), 2U);
-    EXPECT_EQ(list.loaded[0].name, "rtype.Base");
+    EXPECT_EQ(list.loaded[0].name, "aylo.Base");
     EXPECT_TRUE(list.loaded[0].isEngine);
     EXPECT_EQ(list.loaded[0].requiredBy, (std::vector<std::string>{"game.Boss"}));
-    EXPECT_EQ(list.loaded[1].requires_, (std::vector<std::string>{"rtype.Base"}));
+    EXPECT_EQ(list.loaded[1].requires_, (std::vector<std::string>{"aylo.Base"}));
     EXPECT_FALSE(list.loaded[1].isEngine);
 }
 
 TEST(EditorPluginInfo, FiltersByNameIgnoringCaseButKeepsRequiredBy) {
     aylo::ecs::App app;
-    app.addPlugin(NamedPlugin{"rtype.Base", {}});
-    app.addPlugin(NamedPlugin{"game.Boss", {"rtype.Base"}});
+    app.addPlugin(NamedPlugin{"aylo.Base", {}});
+    app.addPlugin(NamedPlugin{"game.Boss", {"aylo.Base"}});
     const auto list = aylo::editor::panels::collectPlugins(app, "BASE");
     ASSERT_EQ(list.loaded.size(), 1U);
     EXPECT_EQ(list.loaded[0].requiredBy, (std::vector<std::string>{"game.Boss"}));

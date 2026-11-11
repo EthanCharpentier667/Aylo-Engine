@@ -19,8 +19,8 @@
 
 namespace aylo::plugins::json {
 
-inline constexpr std::string_view kEncodeCall = "rtype.json.encode";  ///< detail::encode().
-inline constexpr std::string_view kDecodeCall = "rtype.json.decode";  ///< detail::decode().
+inline constexpr std::string_view kEncodeCall = "aylo.json.encode";  ///< detail::encode().
+inline constexpr std::string_view kDecodeCall = "aylo.json.decode";  ///< detail::decode().
 
 /// @brief The kind of one node of a value flattened into a pre-order stream, the way `EncodeArguments` and
 /// `DecodeResult` carry it (docs/Json.md): the real encoding and decoding (number formatting, string escaping, JSON
@@ -44,7 +44,7 @@ enum class NodeKind : std::uint8_t {
     kOrderedObject,  ///< Encode only (`engine.json.map()`): written with its keys kept in the given order.
 };
 
-/// @brief The arguments of `rtype.json.encode`: a value flattened into a pre-order node stream by `JsonForms.luau`.
+/// @brief The arguments of `aylo.json.encode`: a value flattened into a pre-order node stream by `JsonForms.luau`.
 struct EncodeArguments {
     std::vector<std::uint8_t> kinds;         ///< Each node's NodeKind, in pre-order.
     std::vector<double> numbers;             ///< One value per `kNumber` node, in order.
@@ -52,21 +52,21 @@ struct EncodeArguments {
     std::string text;                        ///< Every string node's bytes and every key's bytes, concatenated.
     std::vector<std::uint32_t> textLengths;  ///< The length, in `text`, of each piece above, in the order it is read.
 };
-AYLO_ECS_CALL_DATA(EncodeArguments, "rtype.json.EncodeArguments", kinds, numbers, counts, text, textLengths);
+AYLO_ECS_CALL_DATA(EncodeArguments, "aylo.json.EncodeArguments", kinds, numbers, counts, text, textLengths);
 
-/// @brief The result of `rtype.json.encode`.
+/// @brief The result of `aylo.json.encode`.
 struct EncodeResult {
     std::string text;  ///< The JSON text.
 };
-AYLO_ECS_CALL_DATA(EncodeResult, "rtype.json.EncodeResult", text);
+AYLO_ECS_CALL_DATA(EncodeResult, "aylo.json.EncodeResult", text);
 
-/// @brief The arguments of `rtype.json.decode`.
+/// @brief The arguments of `aylo.json.decode`.
 struct DecodeArguments {
     std::string text;  ///< The JSON text to parse.
 };
-AYLO_ECS_CALL_DATA(DecodeArguments, "rtype.json.DecodeArguments", text);
+AYLO_ECS_CALL_DATA(DecodeArguments, "aylo.json.DecodeArguments", text);
 
-/// @brief The result of `rtype.json.decode`: the parsed value, flattened the same way as `EncodeArguments` (never a
+/// @brief The result of `aylo.json.decode`: the parsed value, flattened the same way as `EncodeArguments` (never a
 /// `kOrderedObject`: a decoded object has no order of its own for `JsonForms.luau` to keep). `JsonForms.luau` rebuilds
 /// a Luau value from it.
 struct DecodeResult {
@@ -76,9 +76,9 @@ struct DecodeResult {
     std::string strings;
     std::vector<std::uint32_t> stringLengths;
 };
-AYLO_ECS_CALL_DATA(DecodeResult, "rtype.json.DecodeResult", kinds, numbers, counts, strings, stringLengths);
+AYLO_ECS_CALL_DATA(DecodeResult, "aylo.json.DecodeResult", kinds, numbers, counts, strings, stringLengths);
 
-/// @brief Registers `rtype.json.encode` and `rtype.json.decode` on @p app, and the forms (addJsonForms()). Called by
+/// @brief Registers `aylo.json.encode` and `aylo.json.decode` on @p app, and the forms (addJsonForms()). Called by
 /// the JsonPlugin.
 AYLO_PLUGIN_JSON_API void addJsonCalls(ecs::App& app);
 

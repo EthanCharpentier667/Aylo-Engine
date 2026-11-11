@@ -15,7 +15,7 @@
 
 namespace aylo::plugins::tilemap {
 
-/// @brief Draws one layer of a map (the component "rtype.TilemapLayer"): where comes from the entity's GlobalTransform
+/// @brief Draws one layer of a map (the component "aylo.TilemapLayer"): where comes from the entity's GlobalTransform
 /// (the map's origin for this layer, and its scale; a layer is not rotated).
 ///
 /// @details spawnTilemap() spawns one entity per layer of a map. The TilemapPlugin draws a tile layer's chunks that the
@@ -26,6 +26,6 @@ struct TilemapLayer {
     std::uint32_t layer = 0;     ///< Index in Tilemap::getLayers().
     std::int32_t drawLayer = 0;  ///< Draw order among sprites: as SpriteRenderer::layer, higher on top.
 };
-AYLO_ECS_COMPONENT(TilemapLayer, "rtype.TilemapLayer", map, layer, drawLayer);
+AYLO_ECS_COMPONENT(TilemapLayer, "aylo.TilemapLayer", map, layer, drawLayer);
 
 }  // namespace aylo::plugins::tilemap

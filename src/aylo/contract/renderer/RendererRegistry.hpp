@@ -21,7 +21,7 @@
 namespace aylo::contract::renderer {
 
 /// @brief The name a RendererRegistry is offered under to the libraries.
-inline constexpr std::string_view kRendererRegistryService = "rtype.contract.renderers";
+inline constexpr std::string_view kRendererRegistryService = "aylo.contract.renderers";
 
 /// @brief Renderers by name, so the configuration picks one instead of the code.
 ///

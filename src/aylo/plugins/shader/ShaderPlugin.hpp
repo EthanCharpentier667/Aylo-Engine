@@ -22,7 +22,7 @@ namespace aylo::plugins::shader {
 /// @brief Game shaders and materials: inserts the ShaderAssets, MaterialAssets and ShaderHandles resources, registers
 /// MaterialInstance, and keeps the renderer up to date with them.
 ///
-/// @details One system: Render "rtype.Shader.Update", on the client, after the GraphicsPlugin loads the textures and
+/// @details One system: Render "aylo.Shader.Update", on the client, after the GraphicsPlugin loads the textures and
 /// before it begins the frame: ShaderHandles::update() creates the shaders and materials added during this frame's
 /// Update, so they are drawn in this frame, and destroys the unloaded ones. A SpriteRenderer names its material by
 /// AssetId; the GraphicsPlugin draws it with the material ShaderHandles created, or the default one until then.
@@ -39,8 +39,8 @@ namespace aylo::plugins::shader {
 /// @endcode
 class AYLO_PLUGIN_SHADER_API ShaderPlugin : public ecs::Plugin {
   public:
-    static constexpr std::string_view kName = "rtype.Shader";                 ///< The plugin's name.
-    static constexpr std::string_view kUpdateSystem = "rtype.Shader.Update";  ///< Updates the renderer.
+    static constexpr std::string_view kName = "aylo.Shader";                 ///< The plugin's name.
+    static constexpr std::string_view kUpdateSystem = "aylo.Shader.Update";  ///< Updates the renderer.
 
     ShaderPlugin() = default;
     ~ShaderPlugin() override = default;
@@ -49,7 +49,7 @@ class AYLO_PLUGIN_SHADER_API ShaderPlugin : public ecs::Plugin {
     ShaderPlugin(ShaderPlugin&& other) noexcept = default;
     ShaderPlugin& operator=(ShaderPlugin&& other) noexcept = default;
 
-    /// @return "rtype.Shader".
+    /// @return "aylo.Shader".
     [[nodiscard]] std::string_view getName() const noexcept override;
 
     /// @return The plugins this one needs.

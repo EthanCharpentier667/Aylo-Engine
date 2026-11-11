@@ -8,7 +8,7 @@ anything else. The engine treats them the same way.
 Add the plugin in `project.luau`:
 
 ```luau
-engine.settings.plugins = { "rtype.Capsule" }
+engine.settings.plugins = { "aylo.Capsule" }
 ```
 
 ## What a capsule holds
@@ -21,8 +21,8 @@ A capsule is a tree of nodes. Each node becomes one entity when the capsule is s
 - optionally, **another capsule** it spawns instead of a plain entity: a boss's turret node spawns
   `actors/turret.actor`, and the node's own components replace the turret's (its position on the boss).
 
-A level is a capsule whose root has no `rtype.Transform`: its children stay where the level put them. A capsule that
-should move as one gives its root a `rtype.Transform`.
+A level is a capsule whose root has no `aylo.Transform`: its children stay where the level put them. A capsule that
+should move as one gives its root a `aylo.Transform`.
 
 ## Capsule files
 
@@ -36,16 +36,16 @@ starts, after your scripts, so a file can use the components they declare. A cap
 # The boss, with a turret on each side.
 [node path="."]
 game.Health = { value = 50 }
-rtype.Transform = {}
+aylo.Transform = {}
 
 [node path="LeftTurret" instance="actors/turret.actor"]
-rtype.Transform = { position = (-40, 0) }
+aylo.Transform = { position = (-40, 0) }
 
 [node path="RightTurret" instance="actors/turret.actor"]
-rtype.Transform = { position = (40, 0) }
+aylo.Transform = { position = (40, 0) }
 
 [node path="Shadow" side=client]
-rtype.SpriteRenderer = { texture = "sprites/boss_shadow.png", layer = -1 }
+aylo.SpriteRenderer = { texture = "sprites/boss_shadow.png", layer = -1 }
 ```
 
 Each `[node]` is one entity: `path="."` is the root, `instance` places another capsule there (write only the fields
@@ -59,8 +59,8 @@ your files, what saving one does to a running game, and what a file looks like o
 
 ## Names
 
-Each entity a capsule spawns gets a `rtype.Name`: the name of its node (`LeftTurret`), or for the root, the file's name
-without its folder and extension (`boss` for `actors/boss.actor`). A node that gives a `rtype.Name` of its own keeps it.
+Each entity a capsule spawns gets a `aylo.Name`: the name of its node (`LeftTurret`), or for the root, the file's name
+without its folder and extension (`boss` for `actors/boss.actor`). A node that gives a `aylo.Name` of its own keeps it.
 The [editor](editor.md) shows entities by these names; a script can read them like any component.
 
 ## Spawning, switching levels, reloading
@@ -72,10 +72,10 @@ system lists that call in its `calls`:
 engine.ecs.system("game.Waves", {
 	phase = "Update",
 	query = {},
-	calls = { "rtype.capsule.spawn", "rtype.capsule.load" },
+	calls = { "aylo.capsule.spawn", "aylo.capsule.load" },
 	run = function(ctx)
 		local bydo = engine.capsule.spawn(ctx, "actors/bydo.actor", {
-			["rtype.Transform"] = { position = { x = 820, y = 140 } },
+			["aylo.Transform"] = { position = { x = 820, y = 140 } },
 		})
 
 		if bossDefeated then
@@ -87,9 +87,9 @@ engine.ecs.system("game.Waves", {
 
 | Form | Needs in `calls` | Returns | What it does |
 |---|---|---|---|
-| `engine.capsule.spawn(ctx, path, overrides)` | `rtype.capsule.spawn` | the root entity | Spawns a copy of the capsule |
-| `engine.capsule.load(ctx, path, overrides)` | `rtype.capsule.load` | the root entity | Switches levels: the capsule loaded before is despawned, then this one is spawned |
-| `engine.capsule.reload(ctx, root)` | `rtype.capsule.reload` | `true` if `root` was a capsule's root, `false` otherwise | Spawns the capsule's current version again into the same root |
+| `engine.capsule.spawn(ctx, path, overrides)` | `aylo.capsule.spawn` | the root entity | Spawns a copy of the capsule |
+| `engine.capsule.load(ctx, path, overrides)` | `aylo.capsule.load` | the root entity | Switches levels: the capsule loaded before is despawned, then this one is spawned |
+| `engine.capsule.reload(ctx, root)` | `aylo.capsule.reload` | `true` if `root` was a capsule's root, `false` otherwise | Spawns the capsule's current version again into the same root |
 
 `path` is the capsule file's path in `assets/`. `overrides` is optional: a table of component name to fields, written
 over the capsule root's values. **Only the fields you name change**: in the example the bydo keeps the rotation, the
@@ -109,13 +109,13 @@ The forms are thin: `engine.capsule.spawn(ctx, path, overrides)` is the call fol
 
 | Call | Arguments | Result |
 |---|---|---|
-| `rtype.capsule.spawn` | `capsule` (a path) | the root entity |
-| `rtype.capsule.load` | `capsule` (a path) | the root entity |
-| `rtype.capsule.reload` | `root` (an entity) | `true` if it was a capsule's root |
+| `aylo.capsule.spawn` | `capsule` (a path) | the root entity |
+| `aylo.capsule.load` | `capsule` (a path) | the root entity |
+| `aylo.capsule.reload` | `root` (an entity) | `true` if it was a capsule's root |
 
 ```luau
-local bydo = ctx.call("rtype.capsule.spawn", { capsule = "actors/bydo.actor" })
-ctx.commands:patch(bydo, "rtype.Transform", { position = { x = 820, y = 140 } })
+local bydo = ctx.call("aylo.capsule.spawn", { capsule = "actors/bydo.actor" })
+ctx.commands:patch(bydo, "aylo.Transform", { position = { x = 820, y = 140 } })
 ```
 
 ## Sides
@@ -133,7 +133,7 @@ call. Nothing is spawned then. The forms start their errors with their name:
 |---|---|
 | `engine.capsule.spawn: expected the system's ctx first` | The first argument is not the `ctx` of `run` |
 | `engine.capsule.spawn: expected the capsule's path second ("actors/bydo.actor")` | The path is missing, empty or not a string |
-| `engine.capsule.spawn: overrides: 'rtype.Transform' must be a table of fields` | An override is not a table |
+| `engine.capsule.spawn: overrides: 'aylo.Transform' must be a table of fields` | An override is not a table |
 | `engine.capsule.spawn: overrides: ...` followed by the field's error | An override names a field the component does not have, or a value that does not fit; the capsule is spawned without it |
 | `engine.capsule.spawn: ...` followed by the call's error | An unknown capsule, or the call missing from the system's `calls` |
 

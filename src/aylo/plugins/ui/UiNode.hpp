@@ -185,7 +185,7 @@ struct UiNode {
     std::int32_t zIndex = 0;                       ///< Draw order among its siblings: higher on top.
     bool ignorePointer = false;                    ///< The pointer goes through it to what is under it.
 };
-AYLO_ECS_COMPONENT(UiNode, "rtype.UiNode", display, position, direction, wrap, justify, alignItems, alignSelf,
+AYLO_ECS_COMPONENT(UiNode, "aylo.UiNode", display, position, direction, wrap, justify, alignItems, alignSelf,
                    alignContent, overflow, grow, shrink, basis, width, height, minWidth, minHeight, maxWidth, maxHeight,
                    aspectRatio, left, top, right, bottom, marginLeft, marginTop, marginRight, marginBottom, paddingLeft,
                    paddingTop, paddingRight, paddingBottom, border, rowGap, columnGap, zIndex, ignorePointer);

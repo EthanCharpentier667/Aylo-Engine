@@ -28,14 +28,14 @@ namespace aylo::replication::standalone {
 /// | PreUpdate   | `net.receive`      | raises `net.ClientConnected` for client 1 once; delivers the packets   |
 /// | FixedUpdate | `net.applyInputs` | writes the local input in the PlayerInput of the entity client 1 owns  |
 ///
-/// `rtype.replication.localClient` answers `{connected = true, client = 1}`, and `rtype.net.sendToServer` and
-/// `rtype.net.sendToClients` loop the packet back into the world, one frame later, with the same checks as the
+/// `aylo.replication.localClient` answers `{connected = true, client = 1}`, and `aylo.net.sendToServer` and
+/// `aylo.net.sendToClients` loop the packet back into the world, one frame later, with the same checks as the
 /// network. A packet to the server has `sender` 1, one to the clients has `sender` 0: scripts tell the side they are
 /// for from it (`engine.net.received`). The player's input is given with LocalSession::setInput(), in a system that
 /// runs before the FixedUpdate.
 class AYLO_REPLICATION_API StandalonePlugin : public ecs::Plugin {
   public:
-    static constexpr std::string_view kName = "rtype.replication.standalone";  ///< The plugin's name.
+    static constexpr std::string_view kName = "aylo.replication.standalone";   ///< The plugin's name.
     static constexpr std::string_view kReceiveSystem = "net.receive";          ///< PreUpdate.
     static constexpr std::string_view kApplyInputsSystem = "net.applyInputs";  ///< FixedUpdate.
 
@@ -46,7 +46,7 @@ class AYLO_REPLICATION_API StandalonePlugin : public ecs::Plugin {
     StandalonePlugin(StandalonePlugin&& other) noexcept = default;
     StandalonePlugin& operator=(StandalonePlugin&& other) noexcept = default;
 
-    /// @return "rtype.replication.standalone".
+    /// @return "aylo.replication.standalone".
     [[nodiscard]] std::string_view getName() const noexcept override;
 
     /// @brief Inserts the LocalSession, adds the ReplicationPlugin, adds the call and the systems.

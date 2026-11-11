@@ -247,5 +247,5 @@ TEST(TextureAssets, LivesInTheWorldAsAResource) {
     const auto id = assets.load("ship.png");
     world.getResources().insert(std::move(assets));
     EXPECT_NE(world.getResources().require<aylo::plugins::graphics::TextureAssets>().get(id), nullptr);
-    EXPECT_TRUE(world.getResources().getRegistry().findByName("rtype.TextureAssets"));
+    EXPECT_TRUE(world.getResources().getRegistry().findByName("aylo.TextureAssets"));
 }

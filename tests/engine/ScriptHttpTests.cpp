@@ -80,8 +80,8 @@ TEST(ScriptHttp, ASystemSendsARequestAndReadsItsResponse) {
             phase = "Update",
             side = "both",
             query = {{}},
-            calls = {{ "rtype.http.request" }},
-            events = {{ read = {{ "rtype.HttpResponse" }} }},
+            calls = {{ "aylo.http.request" }},
+            events = {{ read = {{ "aylo.HttpResponse" }} }},
             run = function(ctx)
                 if sent == nil then
                     sent = engine.http.request(ctx, {{
@@ -91,7 +91,7 @@ TEST(ScriptHttp, ASystemSendsARequestAndReadsItsResponse) {
                         body = string.rep("a", 50000),
                     }})
                 end
-                for response in ctx.events.read("rtype.HttpResponse") do
+                for response in ctx.events.read("aylo.HttpResponse") do
                     assert(response.request == sent, "wrong request")
                     assert(response.status == 200 and response.ok, tostring(response.status))
                     assert(#response.body == 50000, tostring(#response.body))
@@ -117,16 +117,16 @@ TEST(ScriptHttp, AScriptCanSendWhileItLoadsAndUseTheRawCall) {
     ASSERT_EQ(scripts.run(std::format(R"(
         probe.done = false
         local first = engine.http.request(nil, {{ url = "{}" }})
-        local second = engine.call("rtype.http.request", {{ url = "{}", headers = "X-Raw: yes" }})
+        local second = engine.call("aylo.http.request", {{ url = "{}", headers = "X-Raw: yes" }})
         assert(first ~= second)
         local seen = 0
         engine.ecs.system("game.Read", {{
             phase = "Update",
             side = "both",
             query = {{}},
-            events = {{ read = {{ "rtype.HttpResponse" }} }},
+            events = {{ read = {{ "aylo.HttpResponse" }} }},
             run = function(ctx)
-                for response in ctx.events.read("rtype.HttpResponse") do
+                for response in ctx.events.read("aylo.HttpResponse") do
                     assert(response.body == "ok")
                     seen += 1
                 end
@@ -151,6 +151,6 @@ TEST(ScriptHttp, MistakesAreLuauErrorsNamingThem) {
     expectError(R"(engine.http.request(nil, {}))", "engine.http.request: expected a 'url'");
     expectError(R"(engine.http.request(nil, { url = "http://127.0.0.1/", headers = { A = 1 } }))",
                 "header 'A': must be a string");
-    expectError(R"(engine.call("rtype.http.request", { url = "http://127.0.0.1/", method = "BREW" }))",
+    expectError(R"(engine.call("aylo.http.request", { url = "http://127.0.0.1/", method = "BREW" }))",
                 "Unknown HTTP method 'BREW'");
 }

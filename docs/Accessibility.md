@@ -28,7 +28,7 @@ Diagrams are Mermaid source, rendered as SVG, and every diagram is explained in 
 
 In order of value for the cost:
 
-1. **Runtime remapping**: `rtype.input.unbind` and a way to save bindings with the persistence plugin, so a game can
+1. **Runtime remapping**: `aylo.input.unbind` and a way to save bindings with the persistence plugin, so a game can
    offer a controls menu.
 2. **Volumes at run time**: an engine call that sets `AudioVolumes`, for an options menu.
 3. **Colour-blind filter**: a full-screen pass in the renderer with the three common simulations/corrections

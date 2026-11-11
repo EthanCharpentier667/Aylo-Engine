@@ -6,8 +6,8 @@ local GAME_HEIGHT = 600
 
 if engine.isClient then
 	engine.settings.plugins = {
-		"rtype.Input", "rtype.graphics", "rtype.Shader", "rtype.Sprite", "rtype.SpriteDraw", "rtype.Tilemap",
-		"rtype.Text", "rtype.Particle", "rtype.audio",
+		"aylo.Input", "aylo.graphics", "aylo.Shader", "aylo.Sprite", "aylo.SpriteDraw", "aylo.Tilemap",
+		"aylo.Text", "aylo.Particle", "aylo.audio",
 	}
 	engine.settings.platform = "glfw"
 	engine.settings.renderer = "vulkan"

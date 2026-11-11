@@ -1,11 +1,11 @@
 # JSON
 
-The `rtype.Json` plugin (`src/aylo/plugins/json/`, library `plugin-json`) gives scripts a JSON codec: encode a table,
+The `aylo.Json` plugin (`src/aylo/plugins/json/`, library `plugin-json`) gives scripts a JSON codec: encode a table,
 decode a text (an HTTP body, an AI model's reply, a save). It requires no other plugin and runs on every side.
 
 ## Why it looks like this
 
-- **nlohmann::json in C++, behind real engine calls.** `rtype.json.encode` and `rtype.json.decode` ([Luau
+- **nlohmann::json in C++, behind real engine calls.** `aylo.json.encode` and `aylo.json.decode` ([Luau
   bridge](ecs/features/19-luau-bridge.md)) do the actual work: number formatting, string escaping and JSON grammar are
   nlohmann::json's, not a hand-written Luau parser's. An engine call carries reflected struct fields, never a table of
   arbitrary shape, so the value itself cannot be one field: `EncodeArguments` and `DecodeResult` (`JsonCalls.hpp`)
@@ -20,8 +20,8 @@ decode a text (an HTTP body, an AI model's reply, a save). It requires no other 
   `engine.json.map` is the way out when a layout must keep a chosen order.
 - **Mistakes are errors, untrusted input is data.** `encode` and `decode` raise a Luau error (a message starting
   `json:`); `tryDecode` never raises, for text a script does not control.
-- **Bounded nesting, not bounded size.** Nesting is limited to 64 levels, both ways, checked in C++ even when a script calls `rtype.json.encode`
-  or `rtype.json.decode` directly, skipping `JsonForms.luau`: a hostile body cannot exhaust the stack through depth (its size and decoding cost are not limited: cap what you accept, e.g. the HTTP response size), and a table
+- **Bounded nesting, not bounded size.** Nesting is limited to 64 levels, both ways, checked in C++ even when a script calls `aylo.json.encode`
+  or `aylo.json.decode` directly, skipping `JsonForms.luau`: a hostile body cannot exhaust the stack through depth (its size and decoding cost are not limited: cap what you accept, e.g. the HTTP response size), and a table
   that contains itself is an error, not an endless loop.
 - **A Luau string is bytes, not checked UTF-8.** `encode` writes an invalid byte sequence as is, instead of
   nlohmann::json's default of raising on it. `decode`, reading a text a script did not write, does validate UTF-8 (one
@@ -31,7 +31,7 @@ decode a text (an HTTP body, an AI model's reply, a save). It requires no other 
 
 ```luau
 -- project.luau
-engine.settings.plugins = { "rtype.Json", "rtype.Http" }
+engine.settings.plugins = { "aylo.Json", "aylo.Http" }
 ```
 
 ```luau
@@ -39,12 +39,12 @@ engine.settings.plugins = { "rtype.Json", "rtype.Http" }
 engine.ecs.system("game.Ask", {
     phase = "Update",
     query = {},
-    calls = { "rtype.http.request" },
-    events = { read = { "rtype.HttpResponse" } },
+    calls = { "aylo.http.request" },
+    events = { read = { "aylo.HttpResponse" } },
     run = function(ctx)
         local body = engine.json.encode({ question = "where to mine?" })
         -- engine.http.request(ctx, { url = ..., method = "POST", body = body })
-        for response in ctx.events.read("rtype.HttpResponse") do
+        for response in ctx.events.read("aylo.HttpResponse") do
             local value, err = engine.json.tryDecode(response.body)
             if err ~= nil then print("bad reply: " .. err) else print(value) end
         end
@@ -61,8 +61,8 @@ engine.ecs.system("game.Ask", {
 
 | Call | Arguments | Result |
 |---|---|---|
-| `rtype.json.encode` | `kinds`, `numbers`, `counts`, `text`, `textLengths`: a value flattened into a pre-order node stream (`JsonCalls.hpp`) | `text`, the JSON text |
-| `rtype.json.decode` | `text`, the JSON text to parse | `kinds`, `numbers`, `counts`, `strings`, `stringLengths`: the parsed value, flattened the same way |
+| `aylo.json.encode` | `kinds`, `numbers`, `counts`, `text`, `textLengths`: a value flattened into a pre-order node stream (`JsonCalls.hpp`) | `text`, the JSON text |
+| `aylo.json.decode` | `text`, the JSON text to parse | `kinds`, `numbers`, `counts`, `strings`, `stringLengths`: the parsed value, flattened the same way |
 
 `engine.json.encode` and `engine.json.decode` are thin forms over these calls, built with `engine.call` (no `ctx`
 needed: the calls take no system resource, so a system never has to list them under `calls`). Scripts are not expected
@@ -77,7 +77,7 @@ decodes to `{}`, which encodes back as `[]` (use `map({})` for `{}`); control ch
 
 `tests/engine/ScriptJsonTests.cpp` runs scripts on an `App` with the plugin: encoding, the ordered map, round trips,
 every error, the depth limit. `tests/plugins/JsonPluginTests.cpp` checks the plugin's name and that it requires nothing. The script tests also call
-`rtype.json.encode` directly, to check that the 64-level limit holds without `JsonForms.luau`.
+`aylo.json.encode` directly, to check that the 64-level limit holds without `JsonForms.luau`.
 
 ## Later
 

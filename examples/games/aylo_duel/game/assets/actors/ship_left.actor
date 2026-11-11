@@ -5,6 +5,6 @@
 # gives it its owner (scripts/server/players.luau).
 [node path="."]
 game.Ship = { position = (80, 300) }
-rtype.Transform = { position = (80, 300) }
-rtype.Collider = { size = (48, 48), layer = 4, mask = 3 }
-rtype.RigidBody = { type = 1 }
+aylo.Transform = { position = (80, 300) }
+aylo.Collider = { size = (48, 48), layer = 4, mask = 3 }
+aylo.RigidBody = { type = 1 }

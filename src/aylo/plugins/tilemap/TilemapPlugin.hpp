@@ -23,12 +23,12 @@ namespace aylo::plugins::tilemap {
 /// Parallax, and draws the layers.
 ///
 /// @details Three systems:
-/// - Render "rtype.Tilemap.Parallax", on the client, before the GraphicsPlugin's camera: moves every entity with a
+/// - Render "aylo.Tilemap.Parallax", on the client, before the GraphicsPlugin's camera: moves every entity with a
 ///   Parallax by the camera and its scroll (see Parallax). It is a visual effect, applied once gameplay and the
 ///   PostUpdate systems are done with GlobalTransform; the Render systems that draw run after the camera, so after it.
-/// - Render "rtype.Tilemap.Textures", on the client, before the GraphicsPlugin loads the textures: hands the images of
+/// - Render "aylo.Tilemap.Textures", on the client, before the GraphicsPlugin loads the textures: hands the images of
 ///   the maps loaded since the last frame to TextureAssets, so a map loaded during Update is drawn in that frame.
-/// - Render "rtype.Tilemap.Draw", on the client, after the GraphicsPlugin's camera and before its sprites: pushes to
+/// - Render "aylo.Tilemap.Draw", on the client, after the GraphicsPlugin's camera and before its sprites: pushes to
 /// the
 ///   SpriteQueue the tiles of each visible TilemapLayer whose chunk overlaps the VisibleArea, and its image for an
 ///   image layer, once their textures are loaded. They are sorted with the sprites by TilemapLayer::drawLayer.
@@ -36,10 +36,10 @@ namespace aylo::plugins::tilemap {
 /// window (a server) does not add it: it inserts TilemapAssets itself to read maps.
 class AYLO_PLUGIN_TILEMAP_API TilemapPlugin : public ecs::Plugin {
   public:
-    static constexpr std::string_view kName = "rtype.Tilemap";                     ///< The plugin's name.
-    static constexpr std::string_view kParallaxSystem = "rtype.Tilemap.Parallax";  ///< Moves the Parallax entities.
-    static constexpr std::string_view kTexturesSystem = "rtype.Tilemap.Textures";  ///< Queues the map images.
-    static constexpr std::string_view kDrawSystem = "rtype.Tilemap.Draw";          ///< Draws the layers.
+    static constexpr std::string_view kName = "aylo.Tilemap";                     ///< The plugin's name.
+    static constexpr std::string_view kParallaxSystem = "aylo.Tilemap.Parallax";  ///< Moves the Parallax entities.
+    static constexpr std::string_view kTexturesSystem = "aylo.Tilemap.Textures";  ///< Queues the map images.
+    static constexpr std::string_view kDrawSystem = "aylo.Tilemap.Draw";          ///< Draws the layers.
 
     TilemapPlugin() = default;
     ~TilemapPlugin() override = default;
@@ -48,7 +48,7 @@ class AYLO_PLUGIN_TILEMAP_API TilemapPlugin : public ecs::Plugin {
     TilemapPlugin(TilemapPlugin&& other) noexcept = default;
     TilemapPlugin& operator=(TilemapPlugin&& other) noexcept = default;
 
-    /// @return "rtype.Tilemap".
+    /// @return "aylo.Tilemap".
     [[nodiscard]] std::string_view getName() const noexcept override;
 
     /// @return The plugins this one needs.

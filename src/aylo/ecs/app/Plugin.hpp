@@ -34,7 +34,7 @@ class AYLO_ECS_API Plugin {
   public:
     virtual ~Plugin();
 
-    /// @return The plugin's name, unique in an App ("rtype.time", "game").
+    /// @return The plugin's name, unique in an App ("aylo.time", "game").
     [[nodiscard]] virtual std::string_view getName() const noexcept = 0;
 
     /// @return The names of the plugins this one requires (their getName()), none by default. The App builds them

@@ -10,7 +10,7 @@ compile_commands.json
 .vscode/
 .idea/
 
-# Binaries copied to the repository root by the rtype.copy_to_root rule
+# Binaries copied to the repository root by the aylo.copy_to_root rule
 /aylo-runtime
 /aylo-runtime.exe
 /aylo-editor

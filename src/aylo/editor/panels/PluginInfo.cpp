@@ -38,7 +38,7 @@ PluginList collectPlugins(const ecs::App& app, std::string_view filter) {
         }
         PluginRow row;
         row.name = std::string{plugin->getName()};
-        row.isEngine = row.name.starts_with("rtype.");
+        row.isEngine = row.name.starts_with("aylo.");
         for (const std::string_view dependency : plugin->getDependencies()) {
             row.requires_.emplace_back(dependency);
         }

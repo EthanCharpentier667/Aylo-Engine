@@ -39,7 +39,7 @@ engine.ecs.system("game.LoadArena", {
 	phase = "Startup",
 	side = "both",
 	query = {},
-	calls = { "rtype.capsule.load" },
+	calls = { "aylo.capsule.load" },
 	run = function(ctx)
 		engine.capsule.load(ctx, Duel.arena)
 	end,

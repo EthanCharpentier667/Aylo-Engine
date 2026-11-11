@@ -132,7 +132,7 @@ class ClientStateTest : public ::testing::Test {
         _positionId = _world.getComponents().find("test.server.Position").value();
         _followId = _world.getComponents().find("test.server.Follow").value();
         _ownerId = _world.getComponents().find("net.Owner").value();
-        _parentId = _world.getComponents().find("rtype.Parent").value();
+        _parentId = _world.getComponents().find("aylo.Parent").value();
         _cargoId = _world.getComponents().find("test.server.Cargo").value();
     }
 

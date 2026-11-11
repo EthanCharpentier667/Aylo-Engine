@@ -12,16 +12,16 @@ The text format of capsule files: what `format::readCapsule()` reads and `format
 # The boss, with a turret on each side.
 [node path="."]
 game.Health = { value = 50, max = 50 }
-rtype.Transform = {}
+aylo.Transform = {}
 
 [node path="LeftTurret" instance="actors/turret.actor"]
-rtype.Transform = { position = (-40, 0) }
+aylo.Transform = { position = (-40, 0) }
 
 [node path="LeftTurret/Muzzle"]
-rtype.Transform = { position = (0, -12), rotation = 1.5708 }
+aylo.Transform = { position = (0, -12), rotation = 1.5708 }
 
 [node path="Shadow" side=client]
-rtype.SpriteRenderer = { texture = "sprites/boss_shadow.png", layer = -1 }
+aylo.SpriteRenderer = { texture = "sprites/boss_shadow.png", layer = -1 }
 ```
 
 ## Files
@@ -44,7 +44,7 @@ end has no meaning: a component may span several lines, and several may share on
 |---|---|
 | Comment | `#` to the end of the line, anywhere a blank may be (not inside a string) |
 | Punctuation | `[` `]` `{` `}` `(` `)` `=` `,` |
-| Name | a letter or `_`, then letters, digits, `_` and `.`: `rtype.Transform`, `side`, `true` |
+| Name | a letter or `_`, then letters, digits, `_` and `.`: `aylo.Transform`, `side`, `true` |
 | String | `"` ... `"` on one line. Escapes: `\n` (line end), `\t` (tab); any other `\c` stands for `c`, so `\"` and `\\` |
 | Number | starts with a digit, `-` or `+`, then letters, digits, `.`, `-`, `+`: `40`, `-0.25`, `1e-5`, `0x1F`. What it means is checked against the field it fills |
 
@@ -95,7 +95,7 @@ by the names reflection gives them (`AYLO_ECS_COMPONENT`, or the script's declar
   value.
 - `{}` gives the component with all its starting values; it is also how a tag is added.
 - A component given twice on a node, a field given twice, an unknown component or field is an error.
-- `rtype.Parent` and `rtype.Children` cannot be given: the path makes the hierarchy.
+- `aylo.Parent` and `aylo.Children` cannot be given: the path makes the hierarchy.
 - A component marked server-only or client-only is read on every side; the spawn leaves it out where it does not live.
 
 ### Instances
@@ -128,7 +128,7 @@ What a value must look like depends on the type of the field it fills (`ecs::Fie
 | entity | `ecs::Entity` | | not yet: `cannot be set in a capsule file yet` |
 
 A vector holds numbers only. A value of the wrong kind names what the field takes: `field 'position' of
-'rtype.Transform' takes a vector of 2, not 3`.
+'aylo.Transform' takes a vector of 2, not 3`.
 
 ## Errors
 

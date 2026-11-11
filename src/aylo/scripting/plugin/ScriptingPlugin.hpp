@@ -62,7 +62,7 @@ class AYLO_SCRIPTING_API ScriptingPlugin : public ecs::Plugin {
     ScriptingPlugin(ScriptingPlugin&& other) noexcept;
     ScriptingPlugin& operator=(ScriptingPlugin&& other) noexcept;
 
-    /// @return "rtype.scripting".
+    /// @return "aylo.scripting".
     [[nodiscard]] std::string_view getName() const noexcept override;
 
     /// @brief Creates the host and runs the entry scripts.

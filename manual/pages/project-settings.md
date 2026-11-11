@@ -86,33 +86,33 @@ relative to the game folder) or luau-lsp will flag the paths. See [Modules and r
 Plugins add engine features. A game lists the ones it wants by name, and the engine loads each from its library:
 
 ```luau
-engine.settings.plugins = { "rtype.Physics" }
+engine.settings.plugins = { "aylo.Physics" }
 if engine.isClient then
-	engine.settings.plugins = { "rtype.Physics", "rtype.Input", "rtype.graphics", "rtype.Sprite", "rtype.SpriteDraw" }
+	engine.settings.plugins = { "aylo.Physics", "aylo.Input", "aylo.graphics", "aylo.Sprite", "aylo.SpriteDraw" }
 end
 ```
 
 | Name | What it adds | Side |
 |---|---|---|
-| `rtype.Input` | Input actions and the keyboard, mouse and gamepad | client |
-| `rtype.graphics` | The window and the renderer, cameras and textures | client |
-| `rtype.Shader` | Shaders and materials | client |
-| `rtype.Sprite` | Sprites, atlases and animations | both |
-| `rtype.SpriteDraw` | Draws the sprites | client |
-| `rtype.Shape` | Draws filled and outlined shapes | client |
-| `rtype.Tilemap` | Tiled maps and parallax backgrounds | client |
-| `rtype.Text` | Text from font atlases | client |
-| `rtype.Ui`, see [User interface](ui.md) | Menus and HUDs: layout, buttons, sliders, text fields | client |
-| `rtype.Editor`, see [Editor](editor.md) | Your scenes edited in a window of panels, and the game played there. Do not list it: `aylo-editor` adds it | both, in one process |
-| `rtype.Particle`, see [Particles](particles.md) | Particle emitters and effects | client |
-| `rtype.audio` | Sounds, music and the listener | client |
-| `rtype.Physics`, see [Physics](physics.md) | 2D physics | both |
-| `rtype.PhysicsDebug` | Draws the colliders and velocities | client |
-| `rtype.Capsule`, see [Capsules](capsules.md) | Actors and levels from capsule files | both |
-| `rtype.Http`, see [HTTP](http.md) | HTTPS requests to the hosts the game names | server |
+| `aylo.Input` | Input actions and the keyboard, mouse and gamepad | client |
+| `aylo.graphics` | The window and the renderer, cameras and textures | client |
+| `aylo.Shader` | Shaders and materials | client |
+| `aylo.Sprite` | Sprites, atlases and animations | both |
+| `aylo.SpriteDraw` | Draws the sprites | client |
+| `aylo.Shape` | Draws filled and outlined shapes | client |
+| `aylo.Tilemap` | Tiled maps and parallax backgrounds | client |
+| `aylo.Text` | Text from font atlases | client |
+| `aylo.Ui`, see [User interface](ui.md) | Menus and HUDs: layout, buttons, sliders, text fields | client |
+| `aylo.Editor`, see [Editor](editor.md) | Your scenes edited in a window of panels, and the game played there. Do not list it: `aylo-editor` adds it | both, in one process |
+| `aylo.Particle`, see [Particles](particles.md) | Particle emitters and effects | client |
+| `aylo.audio` | Sounds, music and the listener | client |
+| `aylo.Physics`, see [Physics](physics.md) | 2D physics | both |
+| `aylo.PhysicsDebug` | Draws the colliders and velocities | client |
+| `aylo.Capsule`, see [Capsules](capsules.md) | Actors and levels from capsule files | both |
+| `aylo.Http`, see [HTTP](http.md) | HTTPS requests to the hosts the game names | server |
 
 The time, the schedule and the transform are always there. A plugin that needs another brings it: listing
-`rtype.graphics` also loads `rtype.Input`, with a line on the error output, so list what you use and you may leave out
+`aylo.graphics` also loads `aylo.Input`, with a line on the error output, so list what you use and you may leave out
 what it requires. A plugin of the game's own (`demo.Greeter`) is named the same way, see
 [Native plugins](native-plugins.md). A name no library provides stops the start, and the message lists the names that
 exist; the names are case-sensitive.
@@ -122,12 +122,12 @@ is then an error.
 
 ### `http`
 
-Every key is optional and the values are checked when `rtype.Http` is listed. The keys are in [HTTP](http.md#settings):
+Every key is optional and the values are checked when `aylo.Http` is listed. The keys are in [HTTP](http.md#settings):
 `allowedHosts`, `allowHttp`, `maxConcurrent`, `maxQueued`, `timeout`, `maxResponseBytes` and `secrets`.
 
 ### `physics`
 
-Every key is optional and the values are checked when `rtype.Physics` is listed.
+Every key is optional and the values are checked when `aylo.Physics` is listed.
 
 | Key | Meaning |
 |---|---|

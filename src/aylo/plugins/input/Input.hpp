@@ -126,7 +126,7 @@ class AYLO_PLUGIN_INPUT_API Input {
 };
 
 /// @brief Input is a resource of the world, inserted by the InputPlugin.
-AYLO_ECS_RESOURCE(Input, "rtype.Input");
+AYLO_ECS_RESOURCE(Input, "aylo.Input");
 }  // namespace aylo::plugins::input
 
 #include "Input.tpp"

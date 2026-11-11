@@ -84,8 +84,8 @@ class TextPlugin : public aylo::ecs::Plugin {
 | The dependency is | The App |
 |---|---|
 | already added | moves on |
-| registered in the App's `PluginRegistry` | builds it from its factory (default settings) and warns on `std::cerr`: `[App] Plugin 'rtype.Transform' added because 'rtype.Text' requires it` |
-| neither | throws `exceptions::PluginException`: `Plugin 'rtype.Text' requires 'rtype.Tilemap', which was not added and is not registered; registered: ...` |
+| registered in the App's `PluginRegistry` | builds it from its factory (default settings) and warns on `std::cerr`: `[App] Plugin 'aylo.Transform' added because 'aylo.Text' requires it` |
+| neither | throws `exceptions::PluginException`: `Plugin 'aylo.Text' requires 'aylo.Tilemap', which was not added and is not registered; registered: ...` |
 | already being resolved | throws `PluginException` with the cycle: `Plugin dependency cycle: 'a' -> 'b' -> 'a'` |
 
 A factory building a plugin with another name than the one it is registered under is refused the same way.
@@ -134,13 +134,13 @@ return app.run();   // Startup once, then frames until a system sends AppExit; r
 | `runFrame()` | One frame ([scheduler](13-scheduler.md#the-frame-and-its-clock)), adding the default time plugin first if none was added |
 | `run()` | Frames until an `AppExit` is read; returns its code |
 
-`AppExit` (`app/AppExit.hpp`, `"rtype.AppExit"`) is an event: any system sends it (the window plugin on
+`AppExit` (`app/AppExit.hpp`, `"aylo.AppExit"`) is an event: any system sends it (the window plugin on
 `event::Closed`, the server on a signal), several may, and the App stops after the frame it was sent in,
 returning the code of the first one read.
 
 ### Time
 
-**Every App has a `TimePlugin`** (`time/TimePlugin.hpp`, named `"rtype.time"`): it inserts the `Time`
+**Every App has a `TimePlugin`** (`time/TimePlugin.hpp`, named `"aylo.time"`): it inserts the `Time`
 resource and installs the frame clock that runs `FixedUpdate` at a fixed rate
 ([Scheduler](13-scheduler.md#fixed-timestep)). If none was added, the App adds one with the defaults (60 ticks
 per second, at most 5 per frame) before its first frame; `MinimalPlugins` adds the same default. To configure
@@ -154,7 +154,7 @@ app.addPlugin(aylo::ecs::TimePlugin::manual(std::chrono::milliseconds{50}));  //
 
 `TimePlugin` measures `std::chrono::steady_clock`; `manual()` makes every frame last a fixed duration, so tests
 and replays are deterministic. A clock installed directly with `getSchedules().setClock()` is replaced by the
-default plugin's on the first frame: a custom clock comes from a plugin named `"rtype.time"` added in place
+default plugin's on the first frame: a custom clock comes from a plugin named `"aylo.time"` added in place
 of `TimePlugin`.
 
 ### Three ways to start
@@ -227,19 +227,19 @@ sequenceDiagram
     participant BP as GraphicsPlugin
     participant BR as BackendRegistry
     App->>BP: build(app): resources, events, systems
-    App->>BP: Startup: rtype.graphics.create
+    App->>BP: Startup: aylo.graphics.create
     BP->>BR: createBackend(settings)
     BR-->>BP: Backend (platform + renderer)
     loop Every frame
-        App->>BP: PreUpdate: rtype.graphics.events (pollEvents → PlatformEvent in order + typed events, resize, AppExit)
-        App->>BP: Render: rtype.graphics.beginFrame (ClearColor), drawing systems, rtype.graphics.endFrame
+        App->>BP: PreUpdate: aylo.graphics.events (pollEvents → PlatformEvent in order + typed events, resize, AppExit)
+        App->>BP: Render: aylo.graphics.beginFrame (ClearColor), drawing systems, aylo.graphics.endFrame
     end
 ```
 
-Between the two frame systems, `rtype.graphics.camera` shows the world from the entity with a `Camera` (the highest
+Between the two frame systems, `aylo.graphics.camera` shows the world from the entity with a `Camera` (the highest
 `priority`) and a `GlobalTransform`, through `renderer.setView()`; with no camera entity, the renderer keeps its default view. While the window is minimized,
 the events system waits for an event instead of polling, and the render systems skip the frame. A window always comes with input: the `GraphicsPlugin` adds the `InputPlugin` and orders its events system
-before `rtype.Input.Update`, which reads the `PlatformEvent`s in order. The dependency goes one way only: the input
+before `aylo.Input.Update`, which reads the `PlatformEvent`s in order. The dependency goes one way only: the input
 plugin knows nothing of the backend. Named system sets ("send platform events" before "read platform events") will
 later replace the explicit ordering, so other producers (replays, the network) join without knowing the input plugin.
 
@@ -249,7 +249,7 @@ later replace the explicit ordering, so other producers (replays, the network) j
 (see [Luau bridge](19-luau-bridge.md)):
 
 ```luau
-local RtypePlugin = ecs.plugin("rtype.Game")
+local RtypePlugin = ecs.plugin("aylo.Game")
 
 function RtypePlugin:build(app)
     app:load("components/Shield.luau")
@@ -283,7 +283,7 @@ tests and for engines that drive the loop themselves.
   `Startup` systems, so registration stays fast and order-independent.
 - **Plugins reaching into each other.** Plugins communicate through components, resources and events,
   never by calling each other's functions.
-- **Undeclared dependencies.** A plugin ordering its systems against another plugin's (`.after("rtype.Text.Draw")`)
+- **Undeclared dependencies.** A plugin ordering its systems against another plugin's (`.after("aylo.Text.Draw")`)
   requires that plugin: declare it in `getDependencies()`, or the schedule fails to build when the other plugin is
   left out.
 - **Mode-specific game code.** If game code checks "am I the server?", it is in the wrong place; use

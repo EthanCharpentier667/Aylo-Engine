@@ -35,7 +35,7 @@ struct FieldSpan {
     std::string_view name;  ///< Field name, for messages.
 };
 
-/// @return An ErrorKind::kInvalidType error about the named type, e.g. "Component 'rtype.Health': ...".
+/// @return An ErrorKind::kInvalidType error about the named type, e.g. "Component 'aylo.Health': ...".
 [[nodiscard]] tl::unexpected<Error> invalid(std::string_view kind, std::string_view name, std::string_view problem) {
     std::string label{kind};
     if (!label.empty()) {

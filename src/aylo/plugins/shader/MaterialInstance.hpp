@@ -16,7 +16,7 @@
 
 namespace aylo::plugins::shader {
 
-/// @brief An entity's own `instance uniform` values, as the component "rtype.MaterialInstance": its SpriteRenderer is
+/// @brief An entity's own `instance uniform` values, as the component "aylo.MaterialInstance": its SpriteRenderer is
 /// drawn with them instead of its material's shader's defaults. Not reflected.
 ///
 /// @details The values are the 64 bytes of a drawing's contract::renderer::ShaderInstanceValues, laid out by the
@@ -38,6 +38,6 @@ struct AYLO_PLUGIN_SHADER_API MaterialInstance {
     MaterialInstance& set(const contract::renderer::CompiledShader& shader, const std::string& name,
                           const MaterialValue& value);
 };
-AYLO_ECS_COMPONENT(MaterialInstance, "rtype.MaterialInstance");
+AYLO_ECS_COMPONENT(MaterialInstance, "aylo.MaterialInstance");
 
 }  // namespace aylo::plugins::shader

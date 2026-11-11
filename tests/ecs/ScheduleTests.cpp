@@ -234,19 +234,19 @@ TEST(Schedule, RejectsASystemOrderedAfterItself) {
 TEST(Schedule, RejectsATargetOutsideTheSchedule) {
     World world;
     Schedule schedule{world, RunMode::kStandalone, Phase::kUpdate};
-    schedule.addSystem("rtype.collision", &noop).after("rtype.movment");
-    expectBuildError(schedule, {"'rtype.collision' runs after 'rtype.movment', which is not a system of phase Update"});
+    schedule.addSystem("aylo.collision", &noop).after("aylo.movment");
+    expectBuildError(schedule, {"'aylo.collision' runs after 'aylo.movment', which is not a system of phase Update"});
 }
 
 TEST(Schedule, RejectsTwoSystemsWithTheSameName) {
     World world;
     Schedule schedule{world, RunMode::kStandalone, Phase::kUpdate};
-    schedule.addSystem("rtype.movement", &noop);
-    EXPECT_TRUE(schedule.contains("rtype.movement"));
-    EXPECT_FALSE(schedule.contains("rtype.collision"));
-    EXPECT_THROW(schedule.addSystem("rtype.movement", &noop), ScheduleException);
+    schedule.addSystem("aylo.movement", &noop);
+    EXPECT_TRUE(schedule.contains("aylo.movement"));
+    EXPECT_FALSE(schedule.contains("aylo.collision"));
+    EXPECT_THROW(schedule.addSystem("aylo.movement", &noop), ScheduleException);
     schedule.build();
-    EXPECT_EQ(orderOf(schedule), (std::vector<std::string>{"rtype.movement"}));  // the second was not added
+    EXPECT_EQ(orderOf(schedule), (std::vector<std::string>{"aylo.movement"}));  // the second was not added
 }
 
 TEST(Schedule, RunsOnlyTheSystemsOfItsMode) {
@@ -311,10 +311,10 @@ TEST(Schedule, RunThrowsWhenItCannotBeBuilt) {
 TEST(Schedule, RejectsTwoWritersOfAComponentWithNoOrder) {
     World world;
     Schedule schedule{world, RunMode::kStandalone, Phase::kFixedUpdate};
-    schedule.addSystem("rtype.damage", &writeHealth);
-    schedule.addSystem("rtype.regen", &writeHealth);
+    schedule.addSystem("aylo.damage", &writeHealth);
+    schedule.addSystem("aylo.regen", &writeHealth);
     expectBuildError(schedule, {"phase FixedUpdate",
-                                "'rtype.damage' and 'rtype.regen' both use component "
+                                "'aylo.damage' and 'aylo.regen' both use component "
                                 "'test.schedule.Health', one of them writing it"});
 }
 

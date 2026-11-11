@@ -14,19 +14,19 @@ end
 engine.ecs.system("game.MoveShips", {
 	phase = "FixedUpdate",
 	side = "server",
-	query = { write = { "game.Ship", "rtype.Transform" }, with = { "rtype.Collider", "net.PlayerInput" } },
-	calls = { "rtype.replication.readInput", "rtype.physics.moveAndSlide", "rtype.capsule.spawn" },
-	after = { "net.applyInputs", "rtype.Physics.SyncBodies" },
-	before = { "rtype.Physics.SyncToPhysics" },
+	query = { write = { "game.Ship", "aylo.Transform" }, with = { "aylo.Collider", "net.PlayerInput" } },
+	calls = { "aylo.replication.readInput", "aylo.physics.moveAndSlide", "aylo.capsule.spawn" },
+	after = { "net.applyInputs", "aylo.Physics.SyncBodies" },
+	before = { "aylo.Physics.SyncToPhysics" },
 	run = function(ctx)
 		if Match.isOver() then
 			return
 		end
 		for entity, ship, transform in ctx.query do
-			local move = ctx.call("rtype.replication.readInput", { entity = entity, action = "move" }).vector
+			local move = ctx.call("aylo.replication.readInput", { entity = entity, action = "move" }).vector
 			-- Up is +1 in the input, and Y goes down on screen.
 			local step = Duel.shipSpeed * ctx.time.fixedDelta
-			local slid = ctx.call("rtype.physics.moveAndSlide", {
+			local slid = ctx.call("aylo.physics.moveAndSlide", {
 				entity = entity,
 				from = transform.position,
 				delta = { x = move.x * step, y = -move.y * step },
@@ -40,7 +40,7 @@ engine.ecs.system("game.MoveShips", {
 			}
 			transform.position = position
 			ship.position = position
-			if ctx.call("rtype.replication.readInput", { entity = entity, action = "shoot" }).pressed then
+			if ctx.call("aylo.replication.readInput", { entity = entity, action = "shoot" }).pressed then
 				Weapons.fire(ctx, ship.player, position)
 			end
 		end

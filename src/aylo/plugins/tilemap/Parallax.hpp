@@ -14,10 +14,10 @@
 
 namespace aylo::plugins::tilemap {
 
-/// @brief Moves an entity slower or faster than the camera, and scrolls it on its own: the component "rtype.Parallax",
+/// @brief Moves an entity slower or faster than the camera, and scrolls it on its own: the component "aylo.Parallax",
 /// for backgrounds and foregrounds.
 ///
-/// @details The TilemapPlugin's Render system "rtype.Tilemap.Parallax" (client only) sets the entity's GlobalTransform
+/// @details The TilemapPlugin's Render system "aylo.Tilemap.Parallax" (client only) sets the entity's GlobalTransform
 /// to its Transform, moved by `(camera - origin) * (1 - factor)` and by what it scrolled, `scroll` per second, so far.
 /// The camera is the GlobalTransform of the Camera entity with the highest priority. Works on any entity: a tilemap
 /// layer (spawnTilemap() gives each one the parallax factor and scroll Tiled gives it) or a sprite.
@@ -34,6 +34,6 @@ struct Parallax {
     glm::vec2 origin{0.0F};    ///< Where the camera sees the entity at its Transform, in world units.
     glm::vec2 scrolled{0.0F};  ///< How far it scrolled so far: scroll accumulated over time.
 };
-AYLO_ECS_COMPONENT(Parallax, "rtype.Parallax", factor, scroll, origin, scrolled);
+AYLO_ECS_COMPONENT(Parallax, "aylo.Parallax", factor, scroll, origin, scrolled);
 
 }  // namespace aylo::plugins::tilemap

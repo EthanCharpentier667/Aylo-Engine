@@ -16,7 +16,7 @@
 namespace aylo::ecs {
 
 /// @brief The name the App's PluginRegistry is offered under to the libraries.
-inline constexpr std::string_view kPluginRegistryService = "rtype.ecs.plugins";
+inline constexpr std::string_view kPluginRegistryService = "aylo.ecs.plugins";
 
 /// @brief What a plugin library registers, given to its AYLO_PLUGIN_LIBRARY body.
 class AYLO_ECS_API PluginRegistrar {

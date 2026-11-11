@@ -64,11 +64,11 @@ if engine.isClient then
 	engine.settings.network.host = engine.args.host or "127.0.0.1"
 end
 
-engine.settings.plugins = { "rtype.Physics" }
+engine.settings.plugins = { "aylo.Physics" }
 if engine.isClient then
 	engine.settings.plugins = {
-		"rtype.Physics", "rtype.Input", "rtype.graphics", "rtype.Shader", "rtype.Sprite", "rtype.SpriteDraw",
-		"rtype.Shape", "rtype.Tilemap", "rtype.Text", "rtype.Particle", "rtype.audio", "rtype.PhysicsDebug",
+		"aylo.Physics", "aylo.Input", "aylo.graphics", "aylo.Shader", "aylo.Sprite", "aylo.SpriteDraw",
+		"aylo.Shape", "aylo.Tilemap", "aylo.Text", "aylo.Particle", "aylo.audio", "aylo.PhysicsDebug",
 	}
 end
 engine.settings.physics.gravity = { 0, 0 }
@@ -120,20 +120,20 @@ spawns its walls and its rock and replicates them; a client spawns no node of it
 scene names no component of a client's plugin: a dedicated server reads it too, and has none of them.
 
 - **`players.luau`** reads `net.ClientConnected` and, for each of the first two clients, spawns a ship from its actor
-  (`actors/ship_left.actor` or `ship_right.actor`: `game.Ship`, a `rtype.Transform`, a box `rtype.Collider` and a
-  kinematic `rtype.RigidBody`) with `engine.capsule.spawn`, then adds `net.Owner` and `net.PlayerInput` with
+  (`actors/ship_left.actor` or `ship_right.actor`: `game.Ship`, a `aylo.Transform`, a box `aylo.Collider` and a
+  kinematic `aylo.RigidBody`) with `engine.capsule.spawn`, then adds `net.Owner` and `net.PlayerInput` with
   `ctx.commands:add`, as an override only changes what the actor has. A third client finds the game full. It removes the ship when it reads `net.ClientDisconnected`.
   See [Networking](networking.md).
 - **`obstacles.luau`** copies the place of each obstacle the arena spawned into its replicated `game.Obstacle`, in
   `PostUpdate` before `net.snapshot`, for the clients to draw it there.
 - **`ships.luau`** moves the ships in `FixedUpdate`, after `net.applyInputs` and before the physics syncs, reading the
-  player's `move` action with `rtype.replication.readInput` and sliding along the obstacles with
-  `rtype.physics.moveAndSlide`. On `shoot.pressed` it spawns `actors/laser.actor` (a dynamic body with a
-  `rtype.Velocity`, no gravity and continuous collision), with overrides for its place, its shooter, its direction and
+  player's `move` action with `aylo.replication.readInput` and sliding along the obstacles with
+  `aylo.physics.moveAndSlide`. On `shoot.pressed` it spawns `actors/laser.actor` (a dynamic body with a
+  `aylo.Velocity`, no gravity and continuous collision), with overrides for its place, its shooter, its direction and
   the ship it can hit. One shot in ten misfires: a `game.Misfire` replaces the laser so the clients play
   another sound.
 - **`lasers.luau`** copies the laser bodies' positions into the replicated `game.Laser` after the physics, removes
-  those that left the view, and reads `rtype.CollisionStarted` events: a laser that touches something is spent, and
+  those that left the view, and reads `aylo.CollisionStarted` events: a laser that touches something is spent, and
   one that touches a ship spawns a `game.Winner`. See [Physics](physics.md).
 
 ## The client
@@ -143,15 +143,15 @@ scene names no component of a client's plugin: a dedicated server reads it too, 
 - **`assets.luau`** loads everything with the `engine.assets` forms and returns the ids; the files that draw require
   it. See
   [Setup forms](setup-forms.md).
-- **`scene.luau`** spawns the camera (`rtype.Camera` and `rtype.AudioListener`) in a `Startup` system, gives each
-  obstacle a `rtype.ShapeRenderer` (and the `rtype.Transform` the server's `game.Obstacle` says, when it came through
+- **`scene.luau`** spawns the camera (`aylo.Camera` and `aylo.AudioListener`) in a `Startup` system, gives each
+  obstacle a `aylo.ShapeRenderer` (and the `aylo.Transform` the server's `game.Obstacle` says, when it came through
   the network) in `PostUpdate`, which also runs while the editor edits the arena, and spawns the space background map
   and the planets that pass.
 - **`sprites.luau`** finds the new `game.Ship` and `game.Laser` entities with `added = {...}` and gives them a
-  `rtype.SpriteRenderer` and `rtype.SpriteAnimator` from the atlases, and spawns the explosion for the loser.
-- **`sounds.luau`** sends `rtype.PlayMusic` at start and calls `rtype.audio.playSound` for each new laser or misfire.
-- **`hud.luau`** spawns `rtype.TextRenderer` entities for the names, and when `game.Winner` appears says who won, using
-  `rtype.replication.localClient` and `net.Owner` to know whether this client is the winner (with the network only).
+  `aylo.SpriteRenderer` and `aylo.SpriteAnimator` from the atlases, and spawns the explosion for the loser.
+- **`sounds.luau`** sends `aylo.PlayMusic` at start and calls `aylo.audio.playSound` for each new laser or misfire.
+- **`hud.luau`** spawns `aylo.TextRenderer` entities for the names, and when `game.Winner` appears says who won, using
+  `aylo.replication.localClient` and `net.Owner` to know whether this client is the winner (with the network only).
 - **`controls.luau`** adds a local Escape action with engine calls instead of `engine.input.action`, so it is not sent
   to the server.
 

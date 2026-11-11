@@ -80,16 +80,16 @@ void runFrames(EditorApp& editor, int count) {
 }  // namespace
 
 TEST(EditorPlugin, IsNamedLikeTheLibraryEntryRegistersIt) {
-    EXPECT_EQ(aylo::editor::EditorPlugin::kName, "rtype.Editor");
-    EXPECT_EQ(aylo::editor::EditorPlugin{}.getName(), "rtype.Editor");
+    EXPECT_EQ(aylo::editor::EditorPlugin::kName, "aylo.Editor");
+    EXPECT_EQ(aylo::editor::EditorPlugin{}.getName(), "aylo.Editor");
 }
 
 TEST(EditorPlugin, RequiresTheGraphicsAndCapsulePlugins) {
     const aylo::editor::EditorPlugin plugin{aylo::editor::EditorOptions{.layoutFile = std::filesystem::path{}}};
     const auto dependencies = plugin.getDependencies();
     ASSERT_EQ(dependencies.size(), 2U);
-    EXPECT_EQ(dependencies[0], "rtype.graphics");
-    EXPECT_EQ(dependencies[1], "rtype.Capsule");
+    EXPECT_EQ(dependencies[0], "aylo.graphics");
+    EXPECT_EQ(dependencies[1], "aylo.Capsule");
 }
 
 TEST(EditorPlugin, IsRefusedWithoutTheGraphicsPlugin) {

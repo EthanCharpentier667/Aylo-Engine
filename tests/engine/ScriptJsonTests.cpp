@@ -204,7 +204,7 @@ TEST(ScriptJson, TheNativeCallBoundsNestingEvenWhenCalledDirectly) {
         local kinds, counts = {}, {}
         for i = 1, 70 do kinds[i] = 5; counts[i] = 1 end -- 70 arrays, each holding the next
         kinds[71] = 0
-        local ok, message = pcall(engine.call, "rtype.json.encode", { kinds = kinds, counts = counts })
+        local ok, message = pcall(engine.call, "aylo.json.encode", { kinds = kinds, counts = counts })
         assert(not ok and string.find(message, "nested too deeply", 1, true), message)
     )"),
               "");

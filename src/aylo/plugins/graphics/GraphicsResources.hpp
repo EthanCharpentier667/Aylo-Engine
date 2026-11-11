@@ -16,13 +16,13 @@
 
 namespace aylo::plugins::graphics {
 // The started platform and renderer, as a main-thread resource: GLFW and Vulkan must be used from the main thread.
-AYLO_ECS_RESOURCE(Backend, "rtype.Backend");
+AYLO_ECS_RESOURCE(Backend, "aylo.Backend");
 
 /// @brief The colour each frame is cleared with.
 struct ClearColor {
     contract::renderer::Color value{0.05F, 0.05F, 0.15F, 1.0F};  ///< RGBA, each in [0, 1].
 };
-AYLO_ECS_RESOURCE(ClearColor, "rtype.ClearColor");
+AYLO_ECS_RESOURCE(ClearColor, "aylo.ClearColor");
 
 /// @brief What the Startup system needs to create the Backend: the registered platforms and renderers, and the
 /// configuration naming the pair to start. Inserted by GraphicsPlugin::build(), which may not open a window itself.
@@ -30,5 +30,5 @@ struct BackendSetup {
     std::unique_ptr<plugins::graphics::BackendRegistry> registry;  ///< The platforms and renderers by name.
     core::config::Settings settings;                               ///< `platform`, `renderer`, `window`...
 };
-AYLO_ECS_RESOURCE(BackendSetup, "rtype.BackendSetup");
+AYLO_ECS_RESOURCE(BackendSetup, "aylo.BackendSetup");
 }  // namespace aylo::plugins::graphics

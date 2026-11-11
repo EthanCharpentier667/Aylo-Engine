@@ -29,6 +29,6 @@ struct PhysicsDebug {
     bool velocity = true;                                     ///< Draws the Velocity as an arrow.
     contract::renderer::Color color{0.2F, 1.0F, 0.4F, 1.0F};  ///< The outline's and arrow's colour.
 };
-AYLO_ECS_COMPONENT(PhysicsDebug, "rtype.PhysicsDebug", shape, velocity, color);
+AYLO_ECS_COMPONENT(PhysicsDebug, "aylo.PhysicsDebug", shape, velocity, color);
 
 }  // namespace aylo::plugins::physics::debug

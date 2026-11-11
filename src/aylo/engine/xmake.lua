@@ -8,7 +8,7 @@ add_requires("libsodium", {alias = "libsodium", system = false})
 -- The engine: reads a game's project settings (Luau), builds its App (network, scripting, and the plugins the program
 -- adds) and runs it. It names no backend: the executables add the plugins they use.
 target("engine")
-    -- Static, linked into the executable: no plugin links it (rtype.static_modules enforces it).
+    -- Static, linked into the executable: no plugin links it (aylo.static_modules enforces it).
     set_kind("static")
     set_basename("aylo-engine")
     -- Public: Engine.hpp and EngineConfig.hpp expose the App and the settings.

@@ -13,7 +13,7 @@
 
 namespace aylo::plugins::sprite {
 
-/// @brief Plays an animation of an atlas on its entity: the component ("rtype.SpriteAnimator") the SpritePlugin turns
+/// @brief Plays an animation of an atlas on its entity: the component ("aylo.SpriteAnimator") the SpritePlugin turns
 /// into the texture, source and origin of the entity's SpriteRenderer, frame after frame.
 ///
 /// @details Only plain values, all reflected: a server can replicate which animation plays, and each process advances
@@ -33,6 +33,6 @@ struct SpriteAnimator {
     float speed = 1.0F;              ///< Multiplies the time: 2 plays twice as fast, 0 freezes it.
     bool playing = true;             ///< False: the time stands still, the current frame stays.
 };
-AYLO_ECS_COMPONENT(SpriteAnimator, "rtype.SpriteAnimator", atlas, animation, time, speed, playing);
+AYLO_ECS_COMPONENT(SpriteAnimator, "aylo.SpriteAnimator", atlas, animation, time, speed, playing);
 
 }  // namespace aylo::plugins::sprite

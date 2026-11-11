@@ -90,13 +90,13 @@ void spawnEnemy(ecs::ResMut<ShaderAssets> shaders, ecs::ResMut<MaterialAssets> m
 }
 ```
 
-- **`ShaderAssets`** (the resource `rtype.ShaderAssets`) keeps the shaders by `AssetId`. `load()` reads and compiles a
+- **`ShaderAssets`** (the resource `aylo.ShaderAssets`) keeps the shaders by `AssetId`. `load()` reads and compiles a
   file, and `add()` a shader written in code. Both give an id at once. A shader that does not compile is recorded as
   failed: `get()` gives nullptr and `getEntry()` the error, with its line in the file.
 - **`MaterialAssets`** keeps the materials: a shader and the values of its `uniform`s and textures, shared by every
   drawing that uses it. What a material does not set keeps the shader's defaults.
 - **`SpriteRenderer::material`** names the material of a sprite.
-- **`MaterialInstance`** (the component `rtype.MaterialInstance`) holds an entity's own `instance uniform` values.
+- **`MaterialInstance`** (the component `aylo.MaterialInstance`) holds an entity's own `instance uniform` values.
   Without it, the entity gets the declared defaults. Sprites that share a material and a texture stay in one batch,
   whatever their values, so one enemy flashes without a material of its own.
 - **`ShaderHandles`** creates the shaders and materials in the renderer, in the Render phase, before the frame begins.
@@ -138,7 +138,7 @@ relative to the working directory.
 ## Hot reload
 
 With hot reload on, saving a shader changes the running game. The `ShaderPlugin` adds a `ShaderReloadable` to the
-engine's `HotReloader` (the `rtype.HotReload` resource, `engine/design.md`, *Reloading*), which looks at
+engine's `HotReloader` (the `aylo.HotReload` resource, `engine/design.md`, *Reloading*), which looks at
 `<game>/assets/shaders` and its subfolders by the files' modification times and logs each reload:
 `[HotReload] shaders: applied in 4.1 ms (modified assets/shaders/flash.glsl): shader shaders/flash.glsl`.
 

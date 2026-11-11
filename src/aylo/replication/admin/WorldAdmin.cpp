@@ -48,7 +48,7 @@ namespace aylo::replication::admin {
 namespace net = network::admin;
 
 namespace {
-constexpr std::string_view kNameComponent = "rtype.Name";
+constexpr std::string_view kNameComponent = "aylo.Name";
 constexpr std::size_t kMaxListedValues = 32;  ///< Values of an array shown in one field's text.
 constexpr std::size_t kMaxComponentsPerReply = 255;
 

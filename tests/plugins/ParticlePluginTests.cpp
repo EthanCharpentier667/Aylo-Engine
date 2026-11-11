@@ -178,8 +178,8 @@ TEST(ParticlePlugin, ComesWithTheGraphicsPlugin) {
     EXPECT_TRUE(app.app().hasPlugin(aylo::plugins::particle::ParticlePlugin::kName));
     EXPECT_TRUE(app.world().getResources().has<ParticleEffectAssets>());
     EXPECT_TRUE(app.world().getResources().has<ParticleSystems>());
-    EXPECT_TRUE(app.world().getComponents().find("rtype.ParticleEmitter"));
-    EXPECT_TRUE(app.world().getComponents().find("rtype.ParticleOneShot"));
+    EXPECT_TRUE(app.world().getComponents().find("aylo.ParticleEmitter"));
+    EXPECT_TRUE(app.world().getComponents().find("aylo.ParticleOneShot"));
 }
 
 TEST(ParticlePlugin, DrawsACpuEmitterAtItsLayer) {

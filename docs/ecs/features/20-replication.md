@@ -61,12 +61,12 @@ ECS stays single-threaded.
 | Resource (client) | `ClientState` | Connection, latest server tick, `NetworkId → Entity` map, snapshot buffer |
 | Event | `ClientConnected` / `ClientDisconnected` | For the game to spawn or remove ships |
 
-`ReplicationPlugin` (`"rtype.replication"`) registers the components and events above and inserts the `InputLayout`
+`ReplicationPlugin` (`"aylo.replication"`) registers the components and events above and inserts the `InputLayout`
 resource; `ServerPlugin` and `ClientPlugin` both add it, and a standalone game can add it alone. It also registers the
-[engine calls](19-luau-bridge.md#engine-calls) of the inputs (`input/InputCalls.hpp`): `rtype.replication.addInput`
+[engine calls](19-luau-bridge.md#engine-calls) of the inputs (`input/InputCalls.hpp`): `aylo.replication.addInput`
 (`{name, kind}`, kind `"button"`, `"axis"` or `"vector2"`), which `engine.input.action` makes on both sides, and
-`rtype.replication.readInput` (`{entity, action}`), which gives a server script `{held, pressed, released, axis,
-vector}` from an entity's `PlayerInput`, and, in an App that runs the client side, `rtype.replication.localClient`
+`aylo.replication.readInput` (`{entity, action}`), which gives a server script `{held, pressed, released, axis,
+vector}` from an entity's `PlayerInput`, and, in an App that runs the client side, `aylo.replication.localClient`
 (`client/ClientCalls.hpp`), which gives a client script `{connected, client}`: its id once the server gave it one, to
 tell its own entities (their `Owner`) from the others'. It is registered here rather than by `ClientPlugin`, which the
 `Engine` adds after the scripts load. The network I/O
@@ -96,7 +96,7 @@ through `Commands`, applied after the phase, so `ClientPlugin` has no such const
 |---|---|---|
 | PreUpdate | `net.receive` | Apply snapshots: spawn / despawn / write, through `NetworkId → Entity` |
 | Update | `net.interpolate` | Display the state at (latest server tick − ~100 ms) |
-| PostUpdate | `rtype.engine.networkInput` | Input actions → `PlayerInput`. Not in `ClientPlugin`: `replication` never includes `plugins`, so the `Engine` adds it (`engine/NetworkInput`), reading each `InputLayout` action from the `plugins::input::Input` action of the same name; it calls `ClientState::setInput`. A game outside the `Engine` writes its own |
+| PostUpdate | `aylo.engine.networkInput` | Input actions → `PlayerInput`. Not in `ClientPlugin`: `replication` never includes `plugins`, so the `Engine` adds it (`engine/NetworkInput`), reading each `InputLayout` action from the `plugins::input::Input` action of the same name; it calls `ClientState::setInput`. A game outside the `Engine` writes its own |
 | PostUpdate | `net.sendInput` | Send the last 3 inputs (redundancy against loss) |
 | Render | drawing | |
 
@@ -195,7 +195,7 @@ local OnJoin = ecs.system("game.OnJoin", { events = { "net.ClientConnected" } })
 
 function OnJoin:run(ctx)
     for event in ctx.events["net.ClientConnected"] do
-        local ship = ctx.call("rtype.capsule.spawn", { capsule = "actors/ship.actor" })
+        local ship = ctx.call("aylo.capsule.spawn", { capsule = "actors/ship.actor" })
         ctx.commands:add(ship, "net.Owner", { client = event.client })
     end
 end

@@ -54,7 +54,7 @@ TEST(ScriptingPlugin, RunsOnlyTheEntriesAndWhatTheyRequire) {
     aylo::ecs::App app;
     addPlugin(app, scripts.path());
 
-    EXPECT_TRUE(app.hasPlugin("rtype.scripting"));
+    EXPECT_TRUE(app.hasPlugin("aylo.scripting"));
     EXPECT_TRUE(hasComponent(app, "game.B"));
 }
 
@@ -168,7 +168,7 @@ TEST(ScriptingPlugin, MissingDefaultEntryWarns) {
     EXPECT_NO_THROW(addPlugin(app, scripts.path()));
     const std::string warning = testing::internal::GetCapturedStderr();
 
-    EXPECT_TRUE(app.hasPlugin("rtype.scripting"));
+    EXPECT_TRUE(app.hasPlugin("aylo.scripting"));
     EXPECT_NE(warning.find("main"), std::string::npos) << warning;
 }
 
@@ -293,7 +293,7 @@ TEST(ScriptingPlugin, AMissingDirectoryLoadsNothingAndWarns) {
     EXPECT_NO_THROW(addPlugin(app, std::filesystem::temp_directory_path() / "aylo-scripting-plugin-missing"));
     const std::string warning = testing::internal::GetCapturedStderr();
 
-    EXPECT_TRUE(app.hasPlugin("rtype.scripting"));
+    EXPECT_TRUE(app.hasPlugin("aylo.scripting"));
     EXPECT_NE(warning.find("aylo-scripting-plugin-missing"), std::string::npos) << warning;
 }
 

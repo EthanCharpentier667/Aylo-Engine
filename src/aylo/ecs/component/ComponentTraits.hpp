@@ -45,13 +45,13 @@ struct ComponentTraits : TypeTraits<T> {
 ///     std::int32_t value;
 ///     std::int32_t max;
 /// };
-/// AYLO_ECS_COMPONENT(Health, "rtype.Health", value, max);
+/// AYLO_ECS_COMPONENT(Health, "aylo.Health", value, max);
 ///
 /// struct Dead {};
-/// AYLO_ECS_COMPONENT(Dead, "rtype.Dead");
+/// AYLO_ECS_COMPONENT(Dead, "aylo.Dead");
 /// @endcode
 /// @param Type The struct, as named in the current namespace.
-/// @param Name Its stable name, a string literal such as "rtype.Health".
+/// @param Name Its stable name, a string literal such as "aylo.Health".
 /// @param ... The fields to reflect.
 #define AYLO_ECS_COMPONENT(Type, Name, ...)                                                                 \
     AYLO_ECS_DETAIL_DESCRIBE(::aylo::ecs::detail::describeComponent, Type, Name __VA_OPT__(, ) __VA_ARGS__) \

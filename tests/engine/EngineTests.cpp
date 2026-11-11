@@ -237,12 +237,12 @@ TEST(Engine, TheDebugOverrideSetsEngineIsDebugEitherWay) {
 TEST(Engine, AddsThePluginsTheSettingsNameFromTheirLibraries) {
     const GameDirectory game{"aylo-engine-listed", R"(
         engine.settings.network.port = 0
-        engine.settings.plugins = { "test.Loaded", "rtype.Physics" }
+        engine.settings.plugins = { "test.Loaded", "aylo.Physics" }
         engine.settings.physics.gravity = { 0, 0 }
     )"};
     Engine engine{serverConfig(game)};
     EXPECT_TRUE(engine.app().hasPlugin("test.Loaded"));
-    EXPECT_TRUE(engine.app().hasPlugin("rtype.Physics"));
+    EXPECT_TRUE(engine.app().hasPlugin("aylo.Physics"));
 }
 
 TEST(Engine, AddsTheExtraPluginsAfterTheListedOnes) {
@@ -251,21 +251,21 @@ TEST(Engine, AddsTheExtraPluginsAfterTheListedOnes) {
         engine.settings.plugins = { "test.Loaded" }
     )"};
     EngineConfig config = serverConfig(game);
-    config.extraPlugins = {"rtype.Capsule"};
+    config.extraPlugins = {"aylo.Capsule"};
     Engine engine{std::move(config)};
     EXPECT_TRUE(engine.app().hasPlugin("test.Loaded"));
-    EXPECT_TRUE(engine.app().hasPlugin("rtype.Capsule"));
+    EXPECT_TRUE(engine.app().hasPlugin("aylo.Capsule"));
 }
 
 TEST(Engine, DoesNotAddAnExtraPluginTheProjectAlreadyLists) {
     const GameDirectory game{"aylo-engine-extra-listed", R"(
         engine.settings.network.port = 0
-        engine.settings.plugins = { "rtype.Capsule" }
+        engine.settings.plugins = { "aylo.Capsule" }
     )"};
     EngineConfig config = serverConfig(game);
-    config.extraPlugins = {"rtype.Capsule"};
+    config.extraPlugins = {"aylo.Capsule"};
     const Engine engine{std::move(config)};
-    EXPECT_TRUE(engine.app().hasPlugin("rtype.Capsule"));
+    EXPECT_TRUE(engine.app().hasPlugin("aylo.Capsule"));
 }
 
 TEST(Engine, RefusesAnExtraPluginNoLibraryRegisters) {
@@ -285,19 +285,19 @@ TEST(Engine, RefusesAnExtraPluginNoLibraryRegisters) {
 TEST(Engine, AddsTheCapsulePluginFromItsLibrary) {
     const GameDirectory game{"aylo-engine-capsules", R"(
         engine.settings.network.port = 0
-        engine.settings.plugins = { "rtype.Capsule" }
+        engine.settings.plugins = { "aylo.Capsule" }
     )"};
     Engine engine{serverConfig(game)};
-    EXPECT_TRUE(engine.app().hasPlugin("rtype.Capsule"));
-    EXPECT_TRUE(engine.app().getWorld().getResources().find("rtype.Capsules"));
-    EXPECT_TRUE(engine.app().getWorld().getResources().find("rtype.LoadedCapsule"));
-    EXPECT_NE(engine.app().getWorld().getCalls().findByName("rtype.capsule.spawn"), nullptr);
+    EXPECT_TRUE(engine.app().hasPlugin("aylo.Capsule"));
+    EXPECT_TRUE(engine.app().getWorld().getResources().find("aylo.Capsules"));
+    EXPECT_TRUE(engine.app().getWorld().getResources().find("aylo.LoadedCapsule"));
+    EXPECT_NE(engine.app().getWorld().getCalls().findByName("aylo.capsule.spawn"), nullptr);
 }
 
 TEST(Engine, ReadsTheGamesCapsuleFilesAfterItsScripts) {
     const GameDirectory game{"aylo-engine-capsule-files", R"(
         engine.settings.network.port = 0
-        engine.settings.plugins = { "rtype.Capsule" }
+        engine.settings.plugins = { "aylo.Capsule" }
     )"};
     // The file names a component a script declares: it is read once every plugin, scripts included, is built.
     game.write("assets/actors/bydo.actor", "[node path=\".\"]\ngame.Health = { value = 3 }\n");
@@ -307,11 +307,11 @@ TEST(Engine, ReadsTheGamesCapsuleFilesAfterItsScripts) {
         engine.ecs.system("game.Start", {
             phase = "Update",
             query = {},
-            calls = { "rtype.capsule.load" },
+            calls = { "aylo.capsule.load" },
             run = function(ctx)
                 if loaded then return end
                 loaded = true
-                ctx.call("rtype.capsule.load", { capsule = "actors/bydo.actor" })
+                ctx.call("aylo.capsule.load", { capsule = "actors/bydo.actor" })
             end,
         })
     )");
@@ -431,7 +431,7 @@ TEST(Engine, RunsTheSetupBeforeTheScriptsAndTheNetwork) {
     config.setup = [&](Engine& engine) {
         const aylo::ecs::App& app = engine.app();
         replicationBefore = app.hasPlugin(aylo::replication::ReplicationPlugin::kName);
-        scriptingBefore = app.hasPlugin("rtype.scripting");
+        scriptingBefore = app.hasPlugin("aylo.scripting");
         serverBefore = app.hasPlugin(aylo::replication::server::ServerPlugin::kName);
     };
 
@@ -440,7 +440,7 @@ TEST(Engine, RunsTheSetupBeforeTheScriptsAndTheNetwork) {
     EXPECT_TRUE(replicationBefore);  // so the game can declare its inputs
     EXPECT_FALSE(scriptingBefore);   // so the scripts can use what the game registers
     EXPECT_FALSE(serverBefore);      // so the server replicates what the game and the scripts register
-    EXPECT_TRUE(engine.app().hasPlugin("rtype.scripting"));
+    EXPECT_TRUE(engine.app().hasPlugin("aylo.scripting"));
     EXPECT_TRUE(engine.app().hasPlugin(aylo::replication::server::ServerPlugin::kName));
 }
 
@@ -730,9 +730,9 @@ std::string quitScript(const int code) {
     return R"(engine.ecs.system("game.Quit", {
         phase = "Update",
         query = {},
-        events = { send = { "rtype.AppExit" } },
+        events = { send = { "aylo.AppExit" } },
         run = function(ctx) )" +
-           (code == 0 ? std::string{} : "ctx.events.send(\"rtype.AppExit\", { code = " + std::to_string(code) + " })") +
+           (code == 0 ? std::string{} : "ctx.events.send(\"aylo.AppExit\", { code = " + std::to_string(code) + " })") +
            R"( end,
     }))";
 }
@@ -786,9 +786,9 @@ std::string configuredQuitScript(const std::string_view name) {
     return "local config = require('./config')\nengine.ecs.system(\"" + std::string{name} + R"(", {
         phase = "Update",
         query = {},
-        events = { send = { "rtype.AppExit" } },
+        events = { send = { "aylo.AppExit" } },
         run = function(ctx)
-            if config.code ~= 0 then ctx.events.send("rtype.AppExit", { code = config.code }) end
+            if config.code ~= 0 then ctx.events.send("aylo.AppExit", { code = config.code }) end
         end,
     }))";
 }
@@ -889,7 +889,7 @@ TEST(EngineHotReload, BuildsTheGameAgainWhenAScriptCannotBeSwappedInPlace) {
 
 TEST(EngineHotReload, RespawnsWhatACapsuleFileSpawnedWhenItIsSaved) {
     const GameDirectory game{"aylo-engine-hot-capsule",
-                             std::string{kHotProject} + "engine.settings.plugins = { \"rtype.Capsule\" }\n"};
+                             std::string{kHotProject} + "engine.settings.plugins = { \"aylo.Capsule\" }\n"};
     game.write("assets/actors/bydo.actor", "[node path=\".\"]\ngame.Health = { value = 3 }\n");
     game.write("scripts/main.luau", R"(
         engine.ecs.component("game.Health", { fields = { value = "i32" } })
@@ -897,21 +897,21 @@ TEST(EngineHotReload, RespawnsWhatACapsuleFileSpawnedWhenItIsSaved) {
         engine.ecs.system("game.Start", {
             phase = "Update",
             query = {},
-            calls = { "rtype.capsule.load" },
+            calls = { "aylo.capsule.load" },
             run = function(ctx)
                 if loaded then return end
                 loaded = true
-                ctx.call("rtype.capsule.load", { capsule = "actors/bydo.actor" })
+                ctx.call("aylo.capsule.load", { capsule = "actors/bydo.actor" })
             end,
         })
         engine.ecs.system("game.Quit", {
             phase = "Update",
             query = { read = { "game.Health" } },
-            events = { send = { "rtype.AppExit" } },
+            events = { send = { "aylo.AppExit" } },
             run = function(ctx)
                 for _, health in ctx.query do
                     if health.value == 42 then
-                        ctx.events.send("rtype.AppExit", { code = 42 })
+                        ctx.events.send("aylo.AppExit", { code = 42 })
                     end
                 end
             end,

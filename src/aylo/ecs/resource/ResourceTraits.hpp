@@ -46,7 +46,7 @@ struct ResourceTraits : TypeTraits<T> {
 ///     float delta;
 ///     float fixedDelta;
 /// };
-/// AYLO_ECS_RESOURCE(Time, "rtype.Time");
+/// AYLO_ECS_RESOURCE(Time, "aylo.Time");
 ///
 /// struct Score {
 ///     std::int32_t value;
@@ -54,7 +54,7 @@ struct ResourceTraits : TypeTraits<T> {
 /// AYLO_ECS_RESOURCE(Score, "game.Score", value);
 /// @endcode
 /// @param Type The type, as named in the current namespace.
-/// @param Name Its stable name, a string literal such as "rtype.Time".
+/// @param Name Its stable name, a string literal such as "aylo.Time".
 /// @param ... The fields to reflect, if any.
 #define AYLO_ECS_RESOURCE(Type, Name, ...)                                                                 \
     AYLO_ECS_DETAIL_DESCRIBE(::aylo::ecs::detail::describeResource, Type, Name __VA_OPT__(, ) __VA_ARGS__) \

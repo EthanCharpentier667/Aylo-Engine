@@ -43,7 +43,7 @@ void movement(aylo::ecs::Query<Transform, const Velocity> query, aylo::ecs::Res<
     }
 }
 
-app.addSystem(aylo::ecs::Phase::kFixedUpdate, "rtype.movement", &movement)
+app.addSystem(aylo::ecs::Phase::kFixedUpdate, "aylo.movement", &movement)
     .setSide(aylo::ecs::Side::kBoth);
 ```
 
@@ -51,7 +51,7 @@ app.addSystem(aylo::ecs::Phase::kFixedUpdate, "rtype.movement", &movement)
 of each phase. Without an App, a system can also be made from a world and run by hand:
 
 ```c++
-aylo::ecs::System system{world, "rtype.movement", &movement};   // a function, or a lambda without captures
+aylo::ecs::System system{world, "aylo.movement", &movement};   // a function, or a lambda without captures
 system.setSide(aylo::ecs::Side::kBoth);                          // kServer by default
 system.run();             // builds the parameters, calls the function, advances the change tick
 system.flushCommands();   // applies its Commands& (the scheduler: after each phase)
@@ -167,13 +167,13 @@ struct LoadSound {
     aylo::core::asset::AssetId path;
     bool stream = false;
 };
-AYLO_ECS_CALL_DATA(LoadSound, "rtype.audio.LoadSound", path, stream);   // arguments and results: call data
+AYLO_ECS_CALL_DATA(LoadSound, "aylo.audio.LoadSound", path, stream);   // arguments and results: call data
 struct Loaded {
     aylo::core::asset::AssetId id;
 };
-AYLO_ECS_CALL_DATA(Loaded, "rtype.audio.Loaded", id);
+AYLO_ECS_CALL_DATA(Loaded, "aylo.audio.Loaded", id);
 
-app.addCall("rtype.audio.loadSound", [](aylo::ecs::ResMut<AudioAssets> sounds, const LoadSound& args) {
+app.addCall("aylo.audio.loadSound", [](aylo::ecs::ResMut<AudioAssets> sounds, const LoadSound& args) {
     return Loaded{.id = sounds->load(args.path, {.stream = args.stream})};
 });
 ```
@@ -256,8 +256,8 @@ tick counts system runs, not frames, and every run has its own number:
 local ShieldRegen = ecs.system("game.ShieldRegen", {
     phase = "FixedUpdate",                                   -- default
     side = "server",                                         -- default
-    query = { write = { "game.Shield" }, without = { "rtype.Dead" } },
-    after = { "rtype.movement" },
+    query = { write = { "game.Shield" }, without = { "aylo.Dead" } },
+    after = { "aylo.movement" },
 })
 
 function ShieldRegen:run(ctx)

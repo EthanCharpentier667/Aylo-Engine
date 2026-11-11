@@ -23,7 +23,7 @@ struct aylo::ecs::FieldTypeOf<aylo::contract::renderer::ParticleSimulation>
     : std::integral_constant<aylo::ecs::FieldType, aylo::ecs::FieldType::kU8> {};
 
 namespace aylo::plugins::particle {
-/// @brief Plays an effect at its entity's GlobalTransform, as the component "rtype.ParticleEmitter". Client-side.
+/// @brief Plays an effect at its entity's GlobalTransform, as the component "aylo.ParticleEmitter". Client-side.
 struct ParticleEmitter {
     core::asset::AssetId effect;     ///< From ParticleEffectAssets::load() or add().
     bool playing{true};              ///< false stops emitting; living particles finish their life.
@@ -37,13 +37,13 @@ struct ParticleEmitter {
                                     ///< from the entity's MaterialInstance, shared by the emitter's particles.
 };
 
-AYLO_ECS_COMPONENT(ParticleEmitter, "rtype.ParticleEmitter", effect, playing, layer, rateScale, overrideSimulation,
+AYLO_ECS_COMPONENT(ParticleEmitter, "aylo.ParticleEmitter", effect, playing, layer, rateScale, overrideSimulation,
                    simulation, seed, material);
 
 /// @brief Despawns its entity once its ParticleEmitter has finished (ParticlesFinished), as the component
-/// "rtype.ParticleOneShot": for fire-and-forget effects, such as the ones SpawnParticles plays. Its effect must not
+/// "aylo.ParticleOneShot": for fire-and-forget effects, such as the ones SpawnParticles plays. Its effect must not
 /// loop, or the entity stays. An entity whose effect cannot be read is despawned too.
 struct ParticleOneShot {};
-AYLO_ECS_COMPONENT(ParticleOneShot, "rtype.ParticleOneShot");
+AYLO_ECS_COMPONENT(ParticleOneShot, "aylo.ParticleOneShot");
 
 }  // namespace aylo::plugins::particle

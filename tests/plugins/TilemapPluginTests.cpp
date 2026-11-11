@@ -140,8 +140,8 @@ TEST(TilemapPlugin, ComesWithTheGraphicsPlugin) {
     EXPECT_TRUE(app.world().getResources().has<TilemapAssets>());
     EXPECT_TRUE(app.world().getResources().has<aylo::plugins::graphics::SpriteQueue>());
     EXPECT_TRUE(app.world().getResources().has<aylo::plugins::graphics::VisibleArea>());
-    EXPECT_TRUE(app.world().getComponents().find("rtype.TilemapLayer"));
-    EXPECT_TRUE(app.world().getComponents().find("rtype.Parallax"));
+    EXPECT_TRUE(app.world().getComponents().find("aylo.TilemapLayer"));
+    EXPECT_TRUE(app.world().getComponents().find("aylo.Parallax"));
 }
 
 TEST(TilemapPlugin, SpawnsOneEntityPerLayer) {

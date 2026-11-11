@@ -2,7 +2,7 @@
 -- scripts) runs in tests and on a machine without a display. Name them in project.luau: platform = "null",
 -- renderer = "null".
 target("backend-null")
-    add_rules("rtype.plugin_library", {folder = "plugins/backends"})
+    add_rules("aylo.plugin_library", {folder = "plugins/backends"})
     set_kind("shared")
     set_basename("aylo-backend-null")
     add_deps("core", "contract-platform", "contract-renderer", {public = true})

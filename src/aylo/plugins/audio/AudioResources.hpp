@@ -30,7 +30,7 @@ struct SourceVoice {
     core::asset::AssetId sound;            ///< The sound it was started with: another one restarts the voice.
 };
 
-/// @brief The started audio device and what the audio plugin plays on it, as the main-thread resource "rtype.Audio":
+/// @brief The started audio device and what the audio plugin plays on it, as the main-thread resource "aylo.Audio":
 /// the backends' libraries must be called from one thread.
 /// @details Null until the Startup system created the device, and on a server, which never does. Its moves are declared
 /// noexcept: MSVC's std::unordered_map may throw when moved (it allocates a sentinel node), and a resource must not.
@@ -49,7 +49,7 @@ struct Audio {
     std::optional<PlayMusic> pendingMusic;                        ///< A PlayMusic waiting for its sound to load.
     std::optional<plugins::audio::AudioVolumes> appliedVolumes;  ///< The volumes the device has; none before the first.
 };
-AYLO_ECS_RESOURCE(Audio, "rtype.Audio");
+AYLO_ECS_RESOURCE(Audio, "aylo.Audio");
 
 /// @brief What the Startup system needs to create the device: the registered backends, and the configuration naming
 /// the one to start. Inserted by AudioPlugin::build(), which opens nothing itself.
@@ -57,5 +57,5 @@ struct AudioSetup {
     std::unique_ptr<plugins::audio::AudioRegistry> registry;  ///< The backends by name.
     core::config::Settings settings;                          ///< `audio`, and a section per backend.
 };
-AYLO_ECS_RESOURCE(AudioSetup, "rtype.AudioSetup");
+AYLO_ECS_RESOURCE(AudioSetup, "aylo.AudioSetup");
 }  // namespace aylo::plugins::audio

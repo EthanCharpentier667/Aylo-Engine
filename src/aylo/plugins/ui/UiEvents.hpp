@@ -18,7 +18,7 @@ struct UiClicked {
     ecs::Entity entity;  ///< The button.
     ecs::String action;  ///< Its UiButton::action.
 };
-AYLO_ECS_EVENT(UiClicked, "rtype.UiClicked", entity, action);
+AYLO_ECS_EVENT(UiClicked, "aylo.UiClicked", entity, action);
 
 /// @brief The value of a UiSlider or a UiToggle (0 or 1) changed.
 struct UiValueChanged {
@@ -26,20 +26,20 @@ struct UiValueChanged {
     ecs::String action;  ///< Its action.
     float value = 0.0F;  ///< Its new value.
 };
-AYLO_ECS_EVENT(UiValueChanged, "rtype.UiValueChanged", entity, action, value);
+AYLO_ECS_EVENT(UiValueChanged, "aylo.UiValueChanged", entity, action, value);
 
 /// @brief The text of a UiTextInput changed: read it from its UiText.
 struct UiTextChanged {
     ecs::Entity entity;  ///< The input.
     ecs::String action;  ///< Its action.
 };
-AYLO_ECS_EVENT(UiTextChanged, "rtype.UiTextChanged", entity, action);
+AYLO_ECS_EVENT(UiTextChanged, "aylo.UiTextChanged", entity, action);
 
 /// @brief Enter was pressed in a UiTextInput.
 struct UiTextSubmitted {
     ecs::Entity entity;  ///< The input.
     ecs::String action;  ///< Its action.
 };
-AYLO_ECS_EVENT(UiTextSubmitted, "rtype.UiTextSubmitted", entity, action);
+AYLO_ECS_EVENT(UiTextSubmitted, "aylo.UiTextSubmitted", entity, action);
 
 }  // namespace aylo::plugins::ui

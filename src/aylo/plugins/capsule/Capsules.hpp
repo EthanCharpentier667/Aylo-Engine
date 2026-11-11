@@ -21,7 +21,7 @@
 #include "plugins/capsule/Export.hpp"
 
 namespace aylo::plugins::capsule {
-/// @brief The capsules of one world, by id, and the side they are spawned on: the "rtype.Capsules" resource the
+/// @brief The capsules of one world, by id, and the side they are spawned on: the "aylo.Capsules" resource the
 /// CapsulePlugin inserts.
 /// @details A capsule is built (Capsule::addNode(), Capsule::editNode()), in code or from its file, then defined
 /// (define()). Defining it again replaces its nodes and bumps its version, keeping its id and address, so the capsules
@@ -80,5 +80,5 @@ class AYLO_PLUGIN_CAPSULE_API Capsules {
     ecs::RunMode _mode{ecs::RunMode::kStandalone};                      ///< The side spawns happen on.
 };
 
-AYLO_ECS_RESOURCE(Capsules, "rtype.Capsules");
+AYLO_ECS_RESOURCE(Capsules, "aylo.Capsules");
 }  // namespace aylo::plugins::capsule

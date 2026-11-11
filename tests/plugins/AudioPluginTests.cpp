@@ -94,8 +94,8 @@ TEST(AudioPlugin, RegistersItsTypesAndBringsTheTransformPlugin) {
     AudioApp app;
     EXPECT_TRUE(app.world().getResources().has<aylo::plugins::audio::AudioAssets>());
     EXPECT_TRUE(app.world().getResources().has<aylo::plugins::audio::AudioVolumes>());
-    EXPECT_TRUE(app.world().getComponents().find("rtype.AudioSource"));
-    EXPECT_TRUE(app.world().getComponents().find("rtype.AudioListener"));
+    EXPECT_TRUE(app.world().getComponents().find("aylo.AudioSource"));
+    EXPECT_TRUE(app.world().getComponents().find("aylo.AudioListener"));
     EXPECT_TRUE(app.app().hasPlugin(aylo::plugins::transform::TransformPlugin::kName));
 }
 

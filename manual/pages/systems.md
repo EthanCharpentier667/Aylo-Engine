@@ -7,12 +7,12 @@ A system is a function that runs on a schedule, on the entities that match a que
 engine.ecs.system("game.MoveShips", {
 	phase = "FixedUpdate",
 	side = "server",
-	query = { write = { "game.Ship", "rtype.Transform" }, with = { "net.PlayerInput" } },
-	calls = { "rtype.replication.readInput" },
+	query = { write = { "game.Ship", "aylo.Transform" }, with = { "net.PlayerInput" } },
+	calls = { "aylo.replication.readInput" },
 	after = { "net.applyInputs" },
 	run = function(ctx)
 		for entity, ship, transform in ctx.query do
-			local move = ctx.call("rtype.replication.readInput", { entity = entity, action = "move" }).vector
+			local move = ctx.call("aylo.replication.readInput", { entity = entity, action = "move" }).vector
 			transform.position = { x = transform.position.x + move.x * 4, y = transform.position.y - move.y * 4 }
 		end
 	end,
@@ -55,7 +55,7 @@ systems of the same phase, including the engine's (the physics names are in [Phy
 
 ```luau
 query = {
-	read = { "rtype.Transform" },
+	read = { "aylo.Transform" },
 	write = { "game.Ship" },
 	optionalRead = {}, optionalWrite = {},
 	with = { "net.Owner" }, without = { "game.Dead" },
@@ -83,7 +83,7 @@ optionalRead, optionalWrite (inside each, in the order you listed them). The vie
 | `ctx.side` | The side the system runs on: `"server"` (the default), `"client"` or `"both"`. |
 | `ctx.time` | `delta` (seconds of the frame), `fixedDelta` (the fixed step), `elapsed`, `tick` and `alpha` (progress between two fixed steps). `ctx.delta` and `ctx.fixedDelta` also exist. |
 | `ctx.commands` | Deferred changes to the world, see below. |
-| `ctx.resources` | The resources the system declared: `ctx.resources["rtype.Input"]` is a view (read-only unless declared in `write`). |
+| `ctx.resources` | The resources the system declared: `ctx.resources["aylo.Input"]` is a view (read-only unless declared in `write`). |
 | `ctx.events` | `ctx.events.read(name)` loops over the events not read yet; `ctx.events.send(name, fields)` sends one. Both need the name in `events`. |
 | `ctx.call(name, args)` | Makes an engine call the system listed in `calls`. |
 
@@ -94,9 +94,9 @@ Changes to the world are recorded and applied after the system, not during the l
 ```luau
 local ship = ctx.commands:spawn({
 	["game.Ship"] = { position = position, player = 0 },
-	["rtype.Transform"] = { position = position },
+	["aylo.Transform"] = { position = position },
 })
-ctx.commands:add(ship, "rtype.RigidBody", { type = 1 })
+ctx.commands:add(ship, "aylo.RigidBody", { type = 1 })
 ctx.commands:patch(ship, "game.Ship", { player = 1 })
 ctx.commands:setParent(child, parent)
 ctx.commands:removeParent(child)
@@ -104,7 +104,7 @@ ctx.commands:despawn(ship)
 ```
 
 `spawn` takes a table of component name to fields (fields left out keep their defaults) and returns the entity. It also
-builds the engine's components, such as `rtype.Collider` or `rtype.TextRenderer`. A command that names an unknown
+builds the engine's components, such as `aylo.Collider` or `aylo.TextRenderer`. A command that names an unknown
 component, or that a client system may not write, is an error and records nothing.
 
 `add` and `patch` differ in what they keep:
@@ -118,12 +118,12 @@ Use `patch` to change one field of something you did not build yourself, such as
 [capsule](capsules.md) you just spawned:
 
 ```luau
-local bydo = ctx.call("rtype.capsule.spawn", { capsule = "actors/bydo.actor" })
-ctx.commands:patch(bydo, "rtype.Transform", { position = { x = 820, y = 140 } })   -- its rotation and scale stay
+local bydo = ctx.call("aylo.capsule.spawn", { capsule = "actors/bydo.actor" })
+ctx.commands:patch(bydo, "aylo.Transform", { position = { x = 820, y = 140 } })   -- its rotation and scale stay
 ```
 
 A patch sees the commands recorded before it in the same system, like that spawn. A field is written whole: a
-`position` takes both `x` and `y`, and a list is replaced by the one you give. `rtype.Parent` and `rtype.Children`
+`position` takes both `x` and `y`, and a list is replaced by the one you give. `aylo.Parent` and `aylo.Children`
 cannot be patched; use `setParent` and `removeParent`.
 
 ### Events
@@ -131,18 +131,18 @@ cannot be patched; use `setParent` and `removeParent`.
 An event is a message between systems. Declare the ones you use under `events`, then:
 
 ```luau
-events = { read = { "rtype.CollisionStarted" }, send = { "rtype.PlayMusic" } },
+events = { read = { "aylo.CollisionStarted" }, send = { "aylo.PlayMusic" } },
 run = function(ctx)
-	for collision in ctx.events.read("rtype.CollisionStarted") do
+	for collision in ctx.events.read("aylo.CollisionStarted") do
 		print(collision.first, collision.second)
 	end
-	ctx.events.send("rtype.PlayMusic", { sound = music, crossfade = 1 })
+	ctx.events.send("aylo.PlayMusic", { sound = music, crossfade = 1 })
 end
 ```
 
 Events are local to one machine and are not replicated: to tell the other side something, put it in a replicated
 component. Declaring your own event types from Luau is not available yet (*planned*); you use the engine's, such as
-`rtype.CollisionStarted`, `rtype.PlayMusic`, and the network ones in [Networking](networking.md).
+`aylo.CollisionStarted`, `aylo.PlayMusic`, and the network ones in [Networking](networking.md).
 
 ## Where a system runs
 

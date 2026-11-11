@@ -35,7 +35,7 @@ namespace aylo::editor {
 /// It requires the GraphicsPlugin, and runs on the client side only, as the graphics plugin does.
 class AYLO_EDITOR_API EditorPlugin : public ecs::Plugin {
   public:
-    static constexpr std::string_view kName = "rtype.Editor";  ///< The plugin's name.
+    static constexpr std::string_view kName = "aylo.Editor";  ///< The plugin's name.
 
     /// @param options How the editor is set up: the defaults keep the layout in the user's cache, open no scene, open
     /// files in Visual Studio Code and show the program's output in the Console.
@@ -46,7 +46,7 @@ class AYLO_EDITOR_API EditorPlugin : public ecs::Plugin {
     EditorPlugin(EditorPlugin&& other) noexcept = default;
     EditorPlugin& operator=(EditorPlugin&& other) noexcept = default;
 
-    /// @return "rtype.Editor".
+    /// @return "aylo.Editor".
     [[nodiscard]] std::string_view getName() const noexcept override;
 
     /// @return The GraphicsPlugin, which it draws through, and the CapsulePlugin, whose capsules are its scenes.

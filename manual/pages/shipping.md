@@ -72,14 +72,14 @@ Export your game with `tools/aylo-export`: the folder of your game first, then w
 ```
 Exported to exports/my_game (10.4 MB)
   libaylo-plugin-graphics.so: named in plugins (client)
-  libaylo-plugin-input.so: linked by libaylo-plugin-graphics.so; required by rtype.graphics
+  libaylo-plugin-input.so: linked by libaylo-plugin-graphics.so; required by aylo.graphics
   libaylo-plugin-transform.so: every game; linked by libaylo-plugin-graphics.so
   libaylo-platform-glfw.so: backend 'glfw' (platform)
   libaylo-render-vulkan.so: backend 'vulkan' (renderer)
 ```
 
 It reads your `project.luau` the way the engine does, once for the server and once for a player, and keeps only the
-plugins and backends it names, the ones those plugins need, and `rtype.Transform`, which every game has.
+plugins and backends it names, the ones those plugins need, and `aylo.Transform`, which every game has.
 Each line says why a library is kept. The template game above ships five of the engine's libraries instead of all of
 them.
 
@@ -132,7 +132,7 @@ The export checks everything before it writes anything, and leaves nothing behin
 | Message | Cause |
 |---|---|
 | `Invalid setting 'plugins' (client): unknown plugin 'game.Bos' (known: ...)` | `project.luau` names a plugin no library brings: a typo, or a native plugin you did not build |
-| `Plugin 'rtype.Sprite' requires 'rtype.graphics', which no library registers (known: ...)` | the runtime is missing a library: export with the whole `runtime/` of a release |
+| `Plugin 'aylo.Sprite' requires 'aylo.graphics', which no library registers (known: ...)` | the runtime is missing a library: export with the whole `runtime/` of a release |
 | `Invalid setting 'platform' (client): no backend library registers 'glfx' (known: ...)` | a backend name with a typo (`platform`, `renderer`, `audio.backend`) |
 | `Cannot export: scripts/player.luau does not compile: ...` | a script with a syntax error: the message gives its line |
 | `'exports/my_game' already exists and is not empty: remove it, or export elsewhere` | an export is never written over another one |

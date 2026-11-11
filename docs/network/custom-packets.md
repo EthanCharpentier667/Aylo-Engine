@@ -45,7 +45,7 @@ identifiers (letters, digits, `_`), unique, and not `sender`. `fields` must be a
 ```luau
 -- client system: lists the call it makes
 engine.ecs.system("game.Commands", {
-    phase = "Update", side = "client", query = {}, calls = { "rtype.net.sendToServer" },
+    phase = "Update", side = "client", query = {}, calls = { "aylo.net.sendToServer" },
     run = function(ctx)
         engine.net.sendToServer(ctx, "game.Buy", { item = "laser", qty = 2 })   -- returns false when not connected
     end,
@@ -59,7 +59,7 @@ engine.net.packet("game.Ack", {
 
 -- server system: reads what arrived, validates what it MEANS, answers
 engine.ecs.system("game.Rules", {
-    phase = "Update", side = "server", query = {}, calls = { "rtype.net.sendToClients" },
+    phase = "Update", side = "server", query = {}, calls = { "aylo.net.sendToClients" },
     events = { read = { "net.PacketReceived" } },
     run = function(ctx)
         for _, packet in engine.net.received(ctx) do      -- { name, sender (client id), values (a table) }
@@ -98,7 +98,7 @@ A running example, with the packets `game.Buy`, `game.SetDirective` and `game.Ac
 | Receiving | A packet that fails the schema is dropped before it takes a place in the server's queue, so garbage never uses a client's quota | Counted too: `ServerState::droppedPacketCount()`, `ClientState::droppedCount()` |
 
 Packets declared in C++ (`PacketRegistry::declare`, before the scripts load) are available to scripts too: the forms read their
-fields once through `rtype.net.listPackets`, so `engine.net.sendToServer`, `sendToClients` and `received` work on them.
+fields once through `aylo.net.listPackets`, so `engine.net.sendToServer`, `sendToClients` and `received` work on them.
 
 The engine checks **shape**. Whether a command is allowed (the player owns that ship, has the gold, the tool exists)
 is the game's rule: the server script decides, using `sender`. Nothing a client sends changes state by itself.
@@ -120,6 +120,6 @@ packing: the engine parses and checks it again, so a script cannot send anything
 - **No C++ `AYLO_REPLICATION_PACKET` macro and no ECS event per packet**: all packets arrive as one event,
   `net.PacketReceived { name, sender, values }`, which `engine.net.received` turns into tables. `Entity` fields are not
   supported.
-- **`PacketRegistry`** (`net.PacketRegistry`) holds the declarations; `rtype.net.declarePacket`,
-  `rtype.net.sendToServer` (client side) and `rtype.net.sendToClients` (server side) are the engine calls behind the
+- **`PacketRegistry`** (`net.PacketRegistry`) holds the declarations; `aylo.net.declarePacket`,
+  `aylo.net.sendToServer` (client side) and `aylo.net.sendToClients` (server side) are the engine calls behind the
   forms.

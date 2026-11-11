@@ -73,7 +73,7 @@ class SpriteApp {
 
 TEST(SpriteAnimator, ReflectsEveryField) {
     using Traits = aylo::ecs::ComponentTraits<SpriteAnimator>;
-    EXPECT_EQ(Traits::kName, "rtype.SpriteAnimator");
+    EXPECT_EQ(Traits::kName, "aylo.SpriteAnimator");
     ASSERT_EQ(Traits::kFields.size(), 5U);
     EXPECT_EQ(Traits::kFields[0].type, aylo::ecs::FieldType::kAssetId);
     EXPECT_EQ(Traits::kFields[1].type, aylo::ecs::FieldType::kAssetId);

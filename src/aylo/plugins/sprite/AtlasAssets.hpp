@@ -25,7 +25,7 @@
 
 namespace aylo::plugins::sprite {
 
-/// @brief The sprite atlases, as the ECS resource "rtype.AtlasAssets" the SpritePlugin inserts: systems ask for an
+/// @brief The sprite atlases, as the ECS resource "aylo.AtlasAssets" the SpritePlugin inserts: systems ask for an
 /// atlas and get its AssetId at once, SpriteAnimator components keep that id.
 ///
 /// @details An atlas is read when it is asked for, on every side (a server gets the same frames and animations), so its
@@ -99,7 +99,7 @@ class AYLO_PLUGIN_SPRITE_API AtlasAssets {
     [[nodiscard]] const SpriteAtlas* get(core::asset::AssetId id) const;
 
     /// @brief Gives the atlas @p id names to add frames and animations to it after add() (as the
-    /// `rtype.sprite.addFrame` and `rtype.sprite.addAnimation` engine calls do). Its texture was requested when it was
+    /// `aylo.sprite.addFrame` and `aylo.sprite.addAnimation` engine calls do). Its texture was requested when it was
     /// added: replacing the whole atlas does not request another one.
     /// @return The atlas, or nullptr if it is unknown or failed.
     [[nodiscard]] SpriteAtlas* edit(core::asset::AssetId id);
@@ -121,6 +121,6 @@ class AYLO_PLUGIN_SPRITE_API AtlasAssets {
     core::asset::AssetStore<SpriteAtlas> _atlases{"Atlas"};  ///< Every atlas asked for, by id.
     std::vector<TextureRequest> _textureRequests;            ///< Textures to hand to TextureAssets.
 };
-AYLO_ECS_RESOURCE(AtlasAssets, "rtype.AtlasAssets");
+AYLO_ECS_RESOURCE(AtlasAssets, "aylo.AtlasAssets");
 
 }  // namespace aylo::plugins::sprite

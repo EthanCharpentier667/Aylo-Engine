@@ -46,19 +46,19 @@ struct ScriptApp {
 TEST(ScriptEngineCalls, AScriptBuildsAtlasesFromTheSpritePlugin) {
     ScriptApp script;
     ASSERT_EQ(script.run(R"(
-        local ship = engine.call("rtype.sprite.createAtlas", {
+        local ship = engine.call("aylo.sprite.createAtlas", {
             name = "game.ship", texture = "ship.png", frameSize = { x = 48, y = 48 }, count = 5,
             spacing = { x = 17, y = 0 },
         })
-        engine.call("rtype.sprite.addAnimation", { atlas = ship, name = "fly", direction = "pingPong" })
+        engine.call("aylo.sprite.addAnimation", { atlas = ship, name = "fly", direction = "pingPong" })
 
-        engine.call("rtype.sprite.createAtlas", { name = "game.laser", texture = "laser.png" })
+        engine.call("aylo.sprite.createAtlas", { name = "game.laser", texture = "laser.png" })
         for _, x in { 108, 189 } do
-            engine.call("rtype.sprite.addFrame", {
+            engine.call("aylo.sprite.addFrame", {
                 atlas = "game.laser", position = { x = x, y = 151 }, size = { x = 80, y = 16 },
             })
         end
-        assert(engine.call("rtype.sprite.addFrame", { atlas = "game.laser", name = "end" }) == 2)
+        assert(engine.call("aylo.sprite.addFrame", { atlas = "game.laser", name = "end" }) == 2)
     )"),
               "");
 
@@ -78,17 +78,17 @@ TEST(ScriptEngineCalls, AScriptBuildsAtlasesFromTheSpritePlugin) {
 TEST(ScriptEngineCalls, AScriptDeclaresInputActionsAndReadsThem) {
     ScriptApp script;
     ASSERT_EQ(script.run(R"(
-        engine.call("rtype.input.addAction", { name = "move", type = "vector2" })
-        engine.call("rtype.input.bindVector", { action = "move", up = "W", down = "S", left = "A", right = "D" })
-        engine.call("rtype.input.addAction", { name = "shoot" })
-        engine.call("rtype.input.bind", { action = "shoot", control = "MouseLeft" })
+        engine.call("aylo.input.addAction", { name = "move", type = "vector2" })
+        engine.call("aylo.input.bindVector", { action = "move", up = "W", down = "S", left = "A", right = "D" })
+        engine.call("aylo.input.addAction", { name = "shoot" })
+        engine.call("aylo.input.bind", { action = "shoot", control = "MouseLeft" })
 
-        local state = engine.call("rtype.input.read", { action = "shoot" })
+        local state = engine.call("aylo.input.read", { action = "shoot" })
         assert(state.held == false and state.value.x == 0, "nothing is pressed yet")
 
-        local ok, message = pcall(engine.call, "rtype.input.bind", { action = "shoot", control = "Jump" })
+        local ok, message = pcall(engine.call, "aylo.input.bind", { action = "shoot", control = "Jump" })
         assert(not ok, "an unknown control should fail")
-        assert(string.find(message, "engine call 'rtype.input.bind': Unknown control 'Jump'", 1, true), message)
+        assert(string.find(message, "engine call 'aylo.input.bind': Unknown control 'Jump'", 1, true), message)
     )"),
               "");
 

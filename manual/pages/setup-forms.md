@@ -51,7 +51,7 @@ or TexturePacker JSON), or from a `texture` with a `grid` or a list of `frames`.
   `{ first, count }`, plus `frameDuration`, `direction` (for example `"pingPong"`) and `plays` (`0`: forever).
 - `grid`, `frames` and `name` make an atlas from a `texture`, not from a `path`.
 
-An atlas gives an entity its look through the `rtype.SpriteRenderer` component; an `rtype.SpriteAnimator` plays an
+An atlas gives an entity its look through the `aylo.SpriteRenderer` component; an `aylo.SpriteAnimator` plays an
 animation:
 
 | Field | Type | Default | Meaning |
@@ -63,7 +63,7 @@ animation:
 | `playing` | boolean | `true` | `false`: the time stands still and the current frame stays |
 
 ```luau
-ctx.commands:add(entity, "rtype.SpriteAnimator", { atlas = assets.cyclist, animation = "ride", speed = 1.5 })
+ctx.commands:add(entity, "aylo.SpriteAnimator", { atlas = assets.cyclist, animation = "ride", speed = 1.5 })
 ```
 
 An animation that plays a finite number of times stops on its last frame: `playing` turns `false`.

@@ -49,7 +49,7 @@ struct HttpResult {
                              ///< the queue was full (kQueueFull), "timeout" when it ran out of time while queued.
 };
 
-/// @brief The HTTP client of the HttpPlugin, as the ECS resource "rtype.HttpClient": requests are sent at once and
+/// @brief The HTTP client of the HttpPlugin, as the ECS resource "aylo.HttpClient": requests are sent at once and
 /// never wait; poll() advances them and gives the ones that ended.
 ///
 /// @details It sends at most HttpSettings::maxConcurrent requests at a time and queues the others (at most
@@ -87,6 +87,6 @@ class AYLO_PLUGIN_HTTP_API HttpClient {
   private:
     std::unique_ptr<detail::CurlClient> _client;  ///< The curl transfers; private to the plugin.
 };
-AYLO_ECS_RESOURCE(HttpClient, "rtype.HttpClient");
+AYLO_ECS_RESOURCE(HttpClient, "aylo.HttpClient");
 
 }  // namespace aylo::plugins::http

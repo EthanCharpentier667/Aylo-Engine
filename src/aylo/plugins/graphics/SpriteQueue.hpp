@@ -21,10 +21,10 @@
 namespace aylo::plugins::graphics {
 
 /// @brief The sprites, texts and particles to draw this frame (the sprite entities, the tiles of a tilemap, the texts
-/// of the text plugin, the emitters of the particle plugin), as the ECS resource "rtype.SpriteQueue".
+/// of the text plugin, the emitters of the particle plugin), as the ECS resource "aylo.SpriteQueue".
 ///
-/// @details Render systems push what they draw, after the GraphicsPlugin's "rtype.graphics.camera" and before its
-/// "rtype.graphics.sprites", which draws it sorted by layer then by texture, and empties the queue. They take it as a
+/// @details Render systems push what they draw, after the GraphicsPlugin's "aylo.graphics.camera" and before its
+/// "aylo.graphics.sprites", which draws it sorted by layer then by texture, and empties the queue. They take it as a
 /// ResAppend, so they need no order between them: among items of the same layer and texture, the order is the one the
 /// systems ran in.
 /// @code
@@ -61,7 +61,7 @@ class AYLO_PLUGIN_GRAPHICS_API SpriteQueue {
     void push(std::int32_t layer, contract::renderer::Text text);
 
     /// @brief Adds the particles of one emitter to the frame, sorted by @p layer. CPU instances are not copied: they
-    /// must stay valid until the GraphicsPlugin's "rtype.graphics.sprites" has drawn the queue.
+    /// must stay valid until the GraphicsPlugin's "aylo.graphics.sprites" has drawn the queue.
     void push(std::int32_t layer, const contract::renderer::ParticleDraw& particles);
 
     /// @return The items pushed since the last call, in order, leaving the queue empty.
@@ -70,6 +70,6 @@ class AYLO_PLUGIN_GRAPHICS_API SpriteQueue {
   private:
     std::vector<Item> _items;  ///< In the order they were pushed.
 };
-AYLO_ECS_RESOURCE(SpriteQueue, "rtype.SpriteQueue");
+AYLO_ECS_RESOURCE(SpriteQueue, "aylo.SpriteQueue");
 
 }  // namespace aylo::plugins::graphics

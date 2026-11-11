@@ -90,17 +90,17 @@ TEST(ScriptCapsule, ASystemSpawnsLoadsAndReloadsCapsules) {
         engine.ecs.system("game.Levels", {
             phase = "Update",
             query = {},
-            calls = { "rtype.capsule.spawn", "rtype.capsule.load", "rtype.capsule.reload" },
+            calls = { "aylo.capsule.spawn", "aylo.capsule.load", "aylo.capsule.reload" },
             run = function(ctx)
                 frame += 1
                 if frame == 1 then
-                    bydo = ctx.call("rtype.capsule.spawn", { capsule = "actors/bydo.actor" })
+                    bydo = ctx.call("aylo.capsule.spawn", { capsule = "actors/bydo.actor" })
                     ctx.commands:add(bydo, "test.scriptcapsule.Health", { value = 10 })   -- over the capsule's
-                    probe.first = ctx.call("rtype.capsule.load", { capsule = "scenes/one.scene" })
+                    probe.first = ctx.call("aylo.capsule.load", { capsule = "scenes/one.scene" })
                 elseif frame == 2 then
-                    probe.second = ctx.call("rtype.capsule.load", { capsule = "scenes/two.scene" })
+                    probe.second = ctx.call("aylo.capsule.load", { capsule = "scenes/two.scene" })
                 elseif frame == 3 then
-                    probe.reloaded = ctx.call("rtype.capsule.reload", { root = bydo })
+                    probe.reloaded = ctx.call("aylo.capsule.reload", { root = bydo })
                 end
             end,
         })
@@ -126,10 +126,10 @@ TEST(ScriptCapsule, AnOverrideAddedAfterTheSpawnReplacesTheCapsulesValue) {
         engine.ecs.system("game.Spawn", {
             phase = "Update",
             query = {},
-            calls = { "rtype.capsule.spawn" },
+            calls = { "aylo.capsule.spawn" },
             run = function(ctx)
                 if bydo then return end
-                bydo = ctx.call("rtype.capsule.spawn", { capsule = "actors/bydo.actor" })
+                bydo = ctx.call("aylo.capsule.spawn", { capsule = "actors/bydo.actor" })
                 ctx.commands:add(bydo, "test.scriptcapsule.Health", { value = 10 })
             end,
         })
@@ -149,8 +149,8 @@ TEST(ScriptCapsule, AnOverrideAddedAfterTheSpawnReplacesTheCapsulesValue) {
 
 TEST(ScriptCapsule, ACallOnAnUnknownCapsuleFailsNamingIt) {
     ScriptApp script;
-    const std::string error = script.run(R"(engine.call("rtype.capsule.spawn", { capsule = "actors/nothing.actor" }))");
-    EXPECT_TRUE(error.contains("rtype.capsule.spawn")) << error;
+    const std::string error = script.run(R"(engine.call("aylo.capsule.spawn", { capsule = "actors/nothing.actor" }))");
+    EXPECT_TRUE(error.contains("aylo.capsule.spawn")) << error;
     EXPECT_TRUE(error.contains("No capsule has the id")) << error;
 }
 
@@ -161,7 +161,7 @@ TEST(ScriptCapsule, TheFormsSpawnLoadAndReloadInOneCallEach) {
         engine.ecs.system("game.Levels", {
             phase = "Update",
             query = {},
-            calls = { "rtype.capsule.spawn", "rtype.capsule.load", "rtype.capsule.reload" },
+            calls = { "aylo.capsule.spawn", "aylo.capsule.load", "aylo.capsule.reload" },
             run = function(ctx)
                 frame += 1
                 if frame == 1 then
@@ -208,7 +208,7 @@ TEST(ScriptCapsule, TheFormsCheckWhatTheyAreGiven) {
         engine.ecs.system("game.Mistakes", {
             phase = "Update",
             query = {},
-            calls = { "rtype.capsule.spawn" },
+            calls = { "aylo.capsule.spawn" },
             run = function(ctx)
                 if #probe.errors > 0 then return end
                 try(engine.capsule.spawn, "actors/bydo.actor")

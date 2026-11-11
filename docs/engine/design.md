@@ -71,7 +71,7 @@ the token protects against other users' programs reaching the port, not against 
 |------------|------|-----------|-----------|
 | `aylo-runtime --server` (`src/aylo/runtime/`) | `kServer` | nothing (headless) | `game/` only |
 | `aylo-runtime` (`src/aylo/runtime/`) | `kClient` | the backends `project.luau` names (`platform`, `renderer`, `audio.backend`) | `game/` only |
-| `aylo-editor` (`src/aylo/editor/app/`) | `kStandalone`, `EngineConfig::debug` true | as the client, plus `rtype.Editor` (`EngineConfig::addPlugins`) | `game/` only, both sides in one world, with a local client 1 (`docs/Editor.md`) |
+| `aylo-editor` (`src/aylo/editor/app/`) | `kStandalone`, `EngineConfig::debug` true | as the client, plus `aylo.Editor` (`EngineConfig::addPlugins`) | `game/` only, both sides in one world, with a local client 1 (`docs/Editor.md`) |
 | `aylo-export` (`src/aylo/tools/export/`) | none: it runs no game | nothing: it loads the libraries to read what they bring (`exporting::selectLibraries()`) | copies `game/` into an export (`exporting::exportGame()`, `../release/export.md`) |
 | `aylo_duel` (example) | `server` or `client`, the first argument | as the client, on the client side | its `game/` only (Luau) |
 | `ethan_game(bestoftheworld)` (example) | `kStandalone` | as the client | `setup` |
@@ -82,7 +82,7 @@ the side from its first argument, to show that one binary can run both sides, an
 `ethan_game` shows the step before: its gameplay is still C++, given to the `Engine` as `EngineConfig::setup`.
 
 The runtime takes `--server` for itself (it is not in `engine.args`); every other flag goes to the game. The build copies
-`aylo-runtime` to the repository root (rule `rtype.copy_to_root` in the root `xmake.lua`). The repository root also holds
+`aylo-runtime` to the repository root (rule `aylo.copy_to_root` in the root `xmake.lua`). The repository root also holds
 two committed `sh` wrappers, `aylo-server` (`aylo-runtime --server "$@"`) and `aylo-client`, the names the subject
 asks for, and their Windows twins `aylo-server.bat` and `aylo-client.bat` (`.gitattributes` keeps them CRLF). The copy finds the project's shared libraries in the build folder through a relative rpath on Linux and
 macOS. On Windows, the rule copies the build folder's DLLs next to them.
@@ -93,14 +93,14 @@ macOS. On Windows, the rule copies the build folder's DLLs next to them.
 |---|------|------|----------|
 | 1 | `project.luau`, read with `isClient`, `isServer`, `isDebug` and `args` | always | everything below reads the settings |
 | 2 | the network settings, checked (`network.host`, `network.port`) | always | a wrong address fails before a window opens |
-| 3 | `MinimalPlugins`, `rtype.Transform` (from its library, an error naming the folders when none provides it) | always | time, the schedule and the positions, which every game has |
+| 3 | `MinimalPlugins`, `aylo.Transform` (from its library, an error naming the folders when none provides it) | always | time, the schedule and the positions, which every game has |
 | 4 | `EngineConfig::addPlugins` | if given | plugins a program adds in code rather than through its libraries; a client adds its window and what it draws |
 | 5 | `ReplicationPlugin` | network modes (`kClient`, `kServer`) | registers `Owner`, `PlayerInput`, the connection events and `InputLayout`, so the setup can declare its inputs |
 | 6 | the plugins named under `plugins`, then `EngineConfig::extraPlugins` (those not already listed), from their libraries | if listed | the setup and the scripts can use their components and calls |
 | 7 | `EngineConfig::setup` | if given | the game's native components, resources, systems and plugins |
 | 8 | `ScriptingPlugin`, on `<game>/scripts` | always | the scripts can use what the setup registered |
 | 9 | `ServerPlugin` or `ClientPlugin` | network modes | **last**: it reads every replicated component when it is built, the game's and the scripts' |
-| 10 | `rtype.engine.networkInput` (`addNetworkInput()`) | `kClient` | fills the `PlayerInput` sent to the server from the `Input` actions named like the `InputLayout` ones, read through the `rtype.input.read` engine call (no system when the input plugin is not loaded), so a game needs no input code of its own |
+| 10 | `aylo.engine.networkInput` (`addNetworkInput()`) | `kClient` | fills the `PlayerInput` sent to the server from the `Input` actions named like the `InputLayout` ones, read through the `aylo.input.read` engine call (no system when the input plugin is not loaded), so a game needs no input code of its own |
 
 The network reads the `network` section of the settings and refuses unknown keys:
 
@@ -125,7 +125,7 @@ does not read that file.
 libraries (`plugin::PluginLoader`), lets them register, then adds the plugins named under `plugins`, by their real name:
 
 ```lua
-engine.settings.plugins = { "rtype.Physics", "rtype.PhysicsDebug" }
+engine.settings.plugins = { "aylo.Physics", "aylo.PhysicsDebug" }
 engine.settings.physics.gravity = { 0, 0 }
 engine.settings.physicsDebug.drawAll = true
 ```
@@ -143,13 +143,13 @@ libraries of each side as `registerLibraries()` does. It registers them one at a
 (`PluginLoader::registerInto(registrar, registered)`) and compares the plugin names and the backend names
 (`LibraryRegistrar::listNames()`) before and after each one, so it knows which library brings what. It keeps:
 
-- the libraries of the plugins a side names, of `rtype.Transform`, and of what they require (each plugin is created from
+- the libraries of the plugins a side names, of `aylo.Transform`, and of what they require (each plugin is created from
   its factory to read `getDependencies()`, never built);
 - on a client, the libraries of the backends the settings of `Engine::kBackendSettings` name;
 - every library of `<game>/plugins/`, checked with `plugin::gamePluginVerifier()` as the `Engine` checks them;
 - then what those link, from their `.links` files ([`../Plugins.md`](../Plugins.md#what-a-library-links)).
 
-Each library comes with its reasons (`named in plugins (client)`, `required by rtype.Shader`, `backend 'glfw'
+Each library comes with its reasons (`named in plugins (client)`, `required by aylo.Shader`, `backend 'glfw'
 (platform)`, `linked by libaylo-plugin-sprite.dylib`). A name no library brings is an error naming it and those that
 exist.
 

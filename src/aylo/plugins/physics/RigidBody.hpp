@@ -53,7 +53,7 @@ struct RigidBody {
     bool fixedRotation = false;          ///< Never rotates (a ship that must not spin on impact).
     bool continuousCollision = false;    ///< Never tunnels through thin colliders when fast (bullets), at a cost.
 };
-AYLO_ECS_COMPONENT(RigidBody, "rtype.RigidBody", type, mass, linearDamping, angularDamping, gravityScale, fixedRotation,
+AYLO_ECS_COMPONENT(RigidBody, "aylo.RigidBody", type, mass, linearDamping, angularDamping, gravityScale, fixedRotation,
                    continuousCollision);
 
 }  // namespace aylo::plugins::physics

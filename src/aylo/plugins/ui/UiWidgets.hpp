@@ -31,7 +31,7 @@ struct UiInteraction {
     bool focused = false;   ///< It has the focus.
     bool clicked = false;   ///< It was activated in this frame.
 };
-AYLO_ECS_COMPONENT(UiInteraction, "rtype.UiInteraction", disabled, focusable, hovered, pressed, focused, clicked);
+AYLO_ECS_COMPONENT(UiInteraction, "aylo.UiInteraction", disabled, focusable, hovered, pressed, focused, clicked);
 
 /// @brief A button: colours the node's UiBackground or UiImage by state, and sends UiClicked with its action.
 ///
@@ -44,7 +44,7 @@ struct UiButton {
     contract::renderer::Color pressedColor{0.7F, 0.7F, 0.7F, 1.0F};     ///< Held down.
     contract::renderer::Color disabledColor{0.5F, 0.5F, 0.5F, 0.5F};    ///< Disabled.
 };
-AYLO_ECS_COMPONENT(UiButton, "rtype.UiButton", action, normalColor, hoveredColor, pressedColor, disabledColor);
+AYLO_ECS_COMPONENT(UiButton, "aylo.UiButton", action, normalColor, hoveredColor, pressedColor, disabledColor);
 
 /// @brief A check box or a switch: draws a mark in the node when it is on, and sends UiValueChanged with 0 or 1.
 struct UiToggle {
@@ -53,7 +53,7 @@ struct UiToggle {
     contract::renderer::Color markColor{1.0F};  ///< The mark drawn when it is on.
     float markInset = 4.0F;                     ///< Space around the mark, in view pixels.
 };
-AYLO_ECS_COMPONENT(UiToggle, "rtype.UiToggle", action, checked, markColor, markInset);
+AYLO_ECS_COMPONENT(UiToggle, "aylo.UiToggle", action, checked, markColor, markInset);
 
 /// @brief A horizontal slider over the width of the node, driven by the pointer, the keyboard or a gamepad.
 struct UiSlider {
@@ -68,7 +68,7 @@ struct UiSlider {
     contract::renderer::Color fillColor{0.2F, 0.6F, 1.0F, 1.0F};   ///< The part left of the handle.
     contract::renderer::Color handleColor{1.0F};                   ///< The handle.
 };
-AYLO_ECS_COMPONENT(UiSlider, "rtype.UiSlider", action, min, max, value, step, trackHeight, handleRadius, trackColor,
+AYLO_ECS_COMPONENT(UiSlider, "aylo.UiSlider", action, min, max, value, step, trackHeight, handleRadius, trackColor,
                    fillColor, handleColor);
 
 /// @brief Scrolls the content of a node whose overflow is UiOverflow::kScroll, with the wheel.
@@ -76,7 +76,7 @@ struct UiScroll {
     glm::vec2 offset{0.0F};  ///< How far the content moved, in view pixels, from (0, 0).
     float speed = 40.0F;     ///< View pixels per wheel step.
 };
-AYLO_ECS_COMPONENT(UiScroll, "rtype.UiScroll", offset, speed);
+AYLO_ECS_COMPONENT(UiScroll, "aylo.UiScroll", offset, speed);
 
 /// @brief A single line of text to edit, on a node with a UiText, which shows it.
 ///
@@ -89,6 +89,6 @@ struct UiTextInput {
     std::uint32_t caret = 0;                     ///< Where typing goes, in bytes from the start.
     contract::renderer::Color caretColor{1.0F};  ///< The caret, drawn while it has the focus.
 };
-AYLO_ECS_COMPONENT(UiTextInput, "rtype.UiTextInput", action, placeholder, maxLength, caret, caretColor);
+AYLO_ECS_COMPONENT(UiTextInput, "aylo.UiTextInput", action, placeholder, maxLength, caret, caretColor);
 
 }  // namespace aylo::plugins::ui

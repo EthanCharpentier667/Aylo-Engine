@@ -24,8 +24,8 @@ namespace aylo::luau::detail {
 namespace {
 constexpr int kLoaderUpvalue = 1;
 constexpr int kKeyUpvalue = 2;
-constexpr const char* kLoadersSlot = "rtype.luau.loaders";  ///< Registry table: token to loader, and `next`.
-constexpr int kWhereLevel = 1;                              ///< The function that called `require`.
+constexpr const char* kLoadersSlot = "aylo.luau.loaders";  ///< Registry table: token to loader, and `next`.
+constexpr int kWhereLevel = 1;                             ///< The function that called `require`.
 
 /// @brief Reads the string at a stack index.
 std::string toString(lua_State* state, const int index) {

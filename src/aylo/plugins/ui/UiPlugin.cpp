@@ -75,14 +75,14 @@ void UiPlugin::build(ecs::App& app) {
             .after(std::string{after})
             .setSide(ecs::Side::kClient);
     };
-    preUpdate("rtype.ui.pick", &detail::pickNodes, input::InputPlugin::kUpdateSystem);
-    preUpdate("rtype.ui.navigate", &detail::navigateFocus, "rtype.ui.pick");
-    preUpdate("rtype.ui.interact", &detail::applyInteraction, "rtype.ui.navigate");
-    preUpdate("rtype.ui.buttons", &detail::updateButtons, "rtype.ui.interact");
-    preUpdate("rtype.ui.toggles", &detail::updateToggles, "rtype.ui.buttons");
-    preUpdate("rtype.ui.sliders", &detail::updateSliders, "rtype.ui.toggles");
-    preUpdate("rtype.ui.scrolls", &detail::updateScrolls, "rtype.ui.sliders");
-    preUpdate("rtype.ui.inputs", &detail::updateTextInputs, "rtype.ui.scrolls");
+    preUpdate("aylo.ui.pick", &detail::pickNodes, input::InputPlugin::kUpdateSystem);
+    preUpdate("aylo.ui.navigate", &detail::navigateFocus, "aylo.ui.pick");
+    preUpdate("aylo.ui.interact", &detail::applyInteraction, "aylo.ui.navigate");
+    preUpdate("aylo.ui.buttons", &detail::updateButtons, "aylo.ui.interact");
+    preUpdate("aylo.ui.toggles", &detail::updateToggles, "aylo.ui.buttons");
+    preUpdate("aylo.ui.sliders", &detail::updateSliders, "aylo.ui.toggles");
+    preUpdate("aylo.ui.scrolls", &detail::updateScrolls, "aylo.ui.sliders");
+    preUpdate("aylo.ui.inputs", &detail::updateTextInputs, "aylo.ui.scrolls");
     app.addSystem(ecs::Phase::kRender, std::string{kLayoutSystem}, &detail::layoutUi)
         .after(std::string{graphics::GraphicsPlugin::kCameraSystem})
         .setSide(ecs::Side::kClient);

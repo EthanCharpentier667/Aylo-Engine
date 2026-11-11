@@ -199,10 +199,10 @@ std::span<const std::byte> DefaultValue::getBytes() const noexcept {
 }
 
 bool isHiddenComponent(std::string_view name, bool inScene) noexcept {
-    if (name == "rtype.Parent" || name == "rtype.Children" || name == "rtype.CapsuleInstance") {
+    if (name == "aylo.Parent" || name == "aylo.Children" || name == "aylo.CapsuleInstance") {
         return true;
     }
-    return inScene && (name == "rtype.Name" || name == "rtype.GlobalTransform");
+    return inScene && (name == "aylo.Name" || name == "aylo.GlobalTransform");
 }
 
 bool editFields(ecs::World& world, const ecs::TypeInfo& type, std::span<std::byte> value) {

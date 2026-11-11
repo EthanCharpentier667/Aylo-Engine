@@ -16,11 +16,11 @@ void spawnTitle(ecs::ResMut<FontAssets> fonts, ecs::Commands& commands) {
 }
 ```
 
-- **`FontAssets`** (the resource `rtype.FontAssets`) keeps the fonts by `AssetId`, as `TextureAssets` keeps the
+- **`FontAssets`** (the resource `aylo.FontAssets`) keeps the fonts by `AssetId`, as `TextureAssets` keeps the
   textures. `load()` reads a font's metrics at once, on every side (a server can measure texts); one that cannot be read
   is recorded as failed, with the reason, which is printed. Its atlas image is handed to `TextureAssets` by the client,
   with linear filtering and `TextureEncoding::kLinear`.
-- **`TextRenderer`** (the component `rtype.TextRenderer`) is what to write: the UTF-8 text (`\n` starts a line), the
+- **`TextRenderer`** (the component `aylo.TextRenderer`) is what to write: the UTF-8 text (`\n` starts a line), the
   font, its size (world units per em, before the entity's scale), its colour, how its lines line up (`TextAlign`), its
   anchor (which point of the text sits on the entity's position, and turns: `{0, 0}` the top-left corner, `{0.5, 0.5}`
   the centre), its layer among the sprites and its blend mode. Where it is drawn comes from the entity's
@@ -39,7 +39,7 @@ right-aligned lines are placed in.
 
 ## Drawing
 
-Render "rtype.Text.Draw", on the client, between the backend's camera and its sprites, lays out every `TextRenderer`
+Render "aylo.Text.Draw", on the client, between the backend's camera and its sprites, lays out every `TextRenderer`
 whose font and atlas are loaded and pushes a `graphics::Text` to the `SpriteQueue`: the `GraphicsPlugin` sorts it with
 the sprites by layer and calls `IRenderer::draw(Text)`.
 
@@ -53,14 +53,14 @@ wide at any size. The atlas is created `R8G8B8A8_UNORM`: an sRGB image would ben
 
 ## From scripts
 
-The TextPlugin registers the [engine call](ecs/features/19-luau-bridge.md#engine-calls) `rtype.text.loadFont { path }`,
+The TextPlugin registers the [engine call](ecs/features/19-luau-bridge.md#engine-calls) `aylo.text.loadFont { path }`,
 which returns the font's id for a `TextRenderer`. Scripts spawn texts like any component, the `text` field as a Luau
 string (`engine.assets.font` in a setup gives the same id):
 
 ```lua
 ctx.commands:spawn({
-	["rtype.Transform"] = { position = { x = 400, y = 12 } },
-	["rtype.TextRenderer"] = { text = "Player 1", font = Duel.assets.font, size = 22, anchor = { x = 0.5, y = 0 } },
+	["aylo.Transform"] = { position = { x = 400, y = 12 } },
+	["aylo.TextRenderer"] = { text = "Player 1", font = Duel.assets.font, size = 22, anchor = { x = 0.5, y = 0 } },
 })
 ```
 

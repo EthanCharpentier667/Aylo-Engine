@@ -21,7 +21,7 @@
 namespace aylo::contract::platform {
 
 /// @brief The name a PlatformRegistry is offered under to the libraries.
-inline constexpr std::string_view kPlatformRegistryService = "rtype.contract.platforms";
+inline constexpr std::string_view kPlatformRegistryService = "aylo.contract.platforms";
 
 /// @brief Platforms by name, so the configuration picks one instead of the code.
 ///

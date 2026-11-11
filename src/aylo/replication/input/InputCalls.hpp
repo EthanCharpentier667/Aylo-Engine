@@ -35,24 +35,24 @@ static_assert(sizeof(aylo::replication::input::InputVector) == 8 && alignof(aylo
               "InputVector must match FieldType::kVec2");
 
 namespace aylo::replication::input {
-inline constexpr std::string_view kAddInputCall = "rtype.replication.addInput";    ///< InputLayout::add().
-inline constexpr std::string_view kReadInputCall = "rtype.replication.readInput";  ///< Reads a PlayerInput by name.
+inline constexpr std::string_view kAddInputCall = "aylo.replication.addInput";    ///< InputLayout::add().
+inline constexpr std::string_view kReadInputCall = "aylo.replication.readInput";  ///< Reads a PlayerInput by name.
 
-/// @brief The arguments of `rtype.replication.addInput`: declares an action of the network InputLayout.
+/// @brief The arguments of `aylo.replication.addInput`: declares an action of the network InputLayout.
 struct AddInputArguments {
     ecs::String name;            ///< The action's name, 1 to 255 bytes, not declared yet.
     ecs::String kind{"button"};  ///< What it carries: "button", "axis" or "vector2".
 };
-AYLO_ECS_CALL_DATA(AddInputArguments, "rtype.replication.AddInputArguments", name, kind);
+AYLO_ECS_CALL_DATA(AddInputArguments, "aylo.replication.AddInputArguments", name, kind);
 
-/// @brief The arguments of `rtype.replication.readInput`: an action of an entity's PlayerInput.
+/// @brief The arguments of `aylo.replication.readInput`: an action of an entity's PlayerInput.
 struct ReadInputArguments {
     ecs::Entity entity;  ///< The entity, with a PlayerInput (the server's ships, filled from their client's inputs).
     ecs::String action;  ///< The action's name, as declared in the InputLayout.
 };
-AYLO_ECS_CALL_DATA(ReadInputArguments, "rtype.replication.ReadInputArguments", entity, action);
+AYLO_ECS_CALL_DATA(ReadInputArguments, "aylo.replication.ReadInputArguments", entity, action);
 
-/// @brief The result of `rtype.replication.readInput`: the fields of the action's kind are set, the others are zero.
+/// @brief The result of `aylo.replication.readInput`: the fields of the action's kind are set, the others are zero.
 struct InputState {
     bool held{false};      ///< A button: held now (InputLayout::isHeld()).
     bool pressed{false};   ///< A button: held now and not at the input before (InputLayout::isPressed()).
@@ -60,11 +60,11 @@ struct InputState {
     float axis{0.0F};      ///< An axis: its value, in [-1, 1] (InputLayout::readAxis()).
     InputVector vector;    ///< A vector: its value (InputLayout::readVector()).
 };
-AYLO_ECS_CALL_DATA(InputState, "rtype.replication.InputState", held, pressed, released, axis, vector);
+AYLO_ECS_CALL_DATA(InputState, "aylo.replication.InputState", held, pressed, released, axis, vector);
 
 /// @brief Registers the input engine calls on @p app, for scripts, on the `net.InputLayout` resource:
-/// `rtype.replication.addInput`, which declares an action while the layout is not frozen (scripts declare them while
-/// they load, through `engine.input.action`), and `rtype.replication.readInput`, which reads an action of an entity's
+/// `aylo.replication.addInput`, which declares an action while the layout is not frozen (scripts declare them while
+/// they load, through `engine.input.action`), and `aylo.replication.readInput`, which reads an action of an entity's
 /// PlayerInput. Both throw an exceptions::InputLayoutException on an unknown action or kind, a frozen layout, or an
 /// entity without a PlayerInput. Called by the ReplicationPlugin.
 AYLO_REPLICATION_API void addInputCalls(ecs::App& app);

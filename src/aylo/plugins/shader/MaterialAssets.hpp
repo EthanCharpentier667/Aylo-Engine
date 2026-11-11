@@ -19,7 +19,7 @@
 
 namespace aylo::plugins::shader {
 
-/// @brief The game's materials, as the ECS resource "rtype.MaterialAssets" the ShaderPlugin inserts: SpriteRenderer
+/// @brief The game's materials, as the ECS resource "aylo.MaterialAssets" the ShaderPlugin inserts: SpriteRenderer
 /// and the other drawings keep the AssetId of the one they are drawn with.
 ///
 /// @details Built in code for now (a loader for material files can come as for particle effects). The ShaderPlugin
@@ -82,6 +82,6 @@ class AYLO_PLUGIN_SHADER_API MaterialAssets {
     std::vector<core::asset::AssetId> _changed;                ///< Added or changed since the last takeChanged().
     std::vector<core::asset::AssetId> _unloaded;               ///< Unloaded since the last takeUnloaded().
 };
-AYLO_ECS_RESOURCE(MaterialAssets, "rtype.MaterialAssets");
+AYLO_ECS_RESOURCE(MaterialAssets, "aylo.MaterialAssets");
 
 }  // namespace aylo::plugins::shader

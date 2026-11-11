@@ -1,7 +1,7 @@
 local json = {}
 engine.json = json
 
--- JSON for scripts (docs/Json.md): a thin Luau layer over the engine calls rtype.json.encode / rtype.json.decode
+-- JSON for scripts (docs/Json.md): a thin Luau layer over the engine calls aylo.json.encode / aylo.json.decode
 -- (JsonCalls.hpp), which do the real work in C++ with nlohmann::json. This file only inspects a Luau value's shape
 -- (is a table an array, a plain object, or a json.map() ordered object?) on the way in, and rebuilds a Luau value
 -- from the flattened node stream the calls take and return on the way out; it has no JSON grammar, no string
@@ -13,7 +13,7 @@ engine.json = json
 
 local MAX_DEPTH = 64
 
--- Node kinds of the flattened stream rtype.json.encode takes and rtype.json.decode returns: aylo::plugins::json::NodeKind
+-- Node kinds of the flattened stream aylo.json.encode takes and aylo.json.decode returns: aylo::plugins::json::NodeKind
 -- (JsonCalls.hpp). Keep in the same order.
 local NULL, FALSE, TRUE, NUMBER, STRING, ARRAY, OBJECT, ORDERED_OBJECT = 0, 1, 2, 3, 4, 5, 6, 7
 
@@ -123,7 +123,7 @@ end
 function json.encode(value)
 	local stream = { kinds = {}, numbers = {}, counts = {}, text = {}, lengths = {} }
 	flattenValue(value, 0, stream)
-	local ok, result = pcall(engine.call, "rtype.json.encode", {
+	local ok, result = pcall(engine.call, "aylo.json.encode", {
 		kinds = stream.kinds,
 		numbers = stream.numbers,
 		counts = stream.counts,
@@ -145,7 +145,7 @@ function json.map(entries)
 	return entries
 end
 
--- Reads the result of rtype.json.decode one node at a time, in the same order flattenValue wrote it.
+-- Reads the result of aylo.json.decode one node at a time, in the same order flattenValue wrote it.
 local function makeReader(result)
 	local cursors = { kind = 1, number = 1, count = 1, length = 1, text = 1 }
 
@@ -214,7 +214,7 @@ function json.decode(text)
 	if type(text) ~= "string" then
 		error("json: expected a string, got a " .. type(text), 0)
 	end
-	local ok, result = pcall(engine.call, "rtype.json.decode", { text = text })
+	local ok, result = pcall(engine.call, "aylo.json.decode", { text = text })
 	if not ok then
 		error(callError(result), 0)
 	end

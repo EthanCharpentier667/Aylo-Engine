@@ -46,7 +46,7 @@ namespace aylo::replication::server {
 /// @endcode
 class AYLO_REPLICATION_API ServerPlugin : public ecs::Plugin {
   public:
-    static constexpr std::string_view kName = "rtype.replication.server";      ///< The plugin's name.
+    static constexpr std::string_view kName = "aylo.replication.server";       ///< The plugin's name.
     static constexpr std::string_view kStartSystem = "net.start";              ///< Startup: opens the server.
     static constexpr std::string_view kReceiveSystem = "net.receive";          ///< PreUpdate: receives.
     static constexpr std::string_view kApplyInputsSystem = "net.applyInputs";  ///< FixedUpdate: game systems run after.
@@ -66,7 +66,7 @@ class AYLO_REPLICATION_API ServerPlugin : public ecs::Plugin {
     /// @param settings The port and the secret; an empty token keeps the channel off.
     void setAdmin(network::admin::AdminSettings settings);
 
-    /// @return "rtype.replication.server".
+    /// @return "aylo.replication.server".
     [[nodiscard]] std::string_view getName() const noexcept override;
 
     /// @brief Adds the ReplicationPlugin, inserts the ServerState and adds the systems.

@@ -1,6 +1,6 @@
 -- The Luau bridge: turns what scripts declare into ECS data.
 target("scripting")
-    -- Static, linked into the executable: no plugin links it (rtype.static_modules enforces it).
+    -- Static, linked into the executable: no plugin links it (aylo.static_modules enforces it).
     set_kind("static")
     set_basename("aylo-scripting")
     add_files("**.cpp")

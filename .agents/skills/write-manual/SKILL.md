@@ -17,7 +17,7 @@ Any change that alters what a script can observe:
 - a component, resource or event of a plugin: a field, a type, a default, the side it lives on;
 - a setup form (`engine.assets`, `engine.input`...) or an `engine.*` helper;
 - a `project.luau` setting or a plugin name;
-- a system phase, ordering name (`rtype.Physics.SyncBodies`...) or a rule of the scripting bridge;
+- a system phase, ordering name (`aylo.Physics.SyncBodies`...) or a rule of the scripting bridge;
 - a new plugin; networking or replication behavior a game sees.
 
 Pure internals (a refactor, a private class) need no manual change, but say so in the pull request.
@@ -61,7 +61,7 @@ than none.
 
 - Units and axes are stated once and the same everywhere (world units, Y down, seconds).
 - Say the side of every piece of data: server, client, both. A client never writes replicated data.
-- Use the names the engine uses (`rtype.Collider`, `rtype.physics.raycast`), in code font; link a first mention to its
+- Use the names the engine uses (`aylo.Collider`, `aylo.physics.raycast`), in code font; link a first mention to its
   page.
 - Admonitions (`!!! note`, `!!! warning`) for the one thing the reader must not miss; not more than one or two a page.
 - Tables for facts, prose for reasons, code for how.

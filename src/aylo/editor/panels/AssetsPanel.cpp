@@ -77,7 +77,7 @@ void forget(EditorState& state, capsule::CapsuleId id) {
 bool ensureLoaded(EditorState& state, const std::string& path) {
     const auto* capsules = state.world->getResources().get<capsule::Capsules>();
     if (capsules == nullptr) {
-        state.status = "The game has no capsules: list rtype.Capsule in its plugins";
+        state.status = "The game has no capsules: list aylo.Capsule in its plugins";
         return false;
     }
     if (capsules->find(capsule::CapsuleId::fromPath(path)) != nullptr) {

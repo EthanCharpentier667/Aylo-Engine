@@ -1,5 +1,5 @@
 target("replication")
-    -- Static, linked into the executable: no plugin links it (rtype.static_modules enforces it).
+    -- Static, linked into the executable: no plugin links it (aylo.static_modules enforces it).
     set_kind("static")
     set_basename("aylo-replication")
     add_files("**.cpp")

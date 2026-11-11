@@ -31,7 +31,7 @@
 
 namespace aylo::ecs {
 App::App(RunMode mode) : _schedules{_world, mode} {
-    // Registered up front, so a script can name "rtype.AppExit" in its events before any system sends one.
+    // Registered up front, so a script can name "aylo.AppExit" in its events before any system sends one.
     static_cast<void>(_world.getEvents().registerType<AppExit>());
 }
 

@@ -17,10 +17,10 @@
 
 namespace aylo::plugins::graphics {
 
-/// @brief What the frame draws over everything else, in view pixels, as the ECS resource "rtype.OverlayQueue": the
+/// @brief What the frame draws over everything else, in view pixels, as the ECS resource "aylo.OverlayQueue": the
 /// GraphicsPlugin hands it to IRenderer::drawOverlay() just before it ends the frame.
 ///
-/// @details Render systems push to it after "rtype.graphics.camera" and before "rtype.graphics.endFrame". They take it
+/// @details Render systems push to it after "aylo.graphics.camera" and before "aylo.graphics.endFrame". They take it
 /// as a ResAppend and never touch the renderer, so they need no order with the other plugins that draw. Items stay in
 /// the order pushed.
 class OverlayQueue {
@@ -41,15 +41,15 @@ class OverlayQueue {
   private:
     std::vector<contract::renderer::OverlayItem> _items;  ///< In draw order.
 };
-AYLO_ECS_RESOURCE(OverlayQueue, "rtype.OverlayQueue");
+AYLO_ECS_RESOURCE(OverlayQueue, "aylo.OverlayQueue");
 
-/// @brief The sizes of the frame, as the ECS resource "rtype.ViewInfo", written each frame before the Render systems
+/// @brief The sizes of the frame, as the ECS resource "aylo.ViewInfo", written each frame before the Render systems
 /// that draw: what a plugin needs to place things on screen without touching the backend.
 struct ViewInfo {
     glm::vec2 viewSize{0.0F};   ///< The view: what overlay items are placed in, in view pixels.
     glm::uvec2 framebuffer{0};  ///< The framebuffer, in pixels; 0x0 while minimized.
     glm::uvec2 window{0};       ///< The window, in the units of the mouse events.
 };
-AYLO_ECS_RESOURCE(ViewInfo, "rtype.ViewInfo");
+AYLO_ECS_RESOURCE(ViewInfo, "aylo.ViewInfo");
 
 }  // namespace aylo::plugins::graphics

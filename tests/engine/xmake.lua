@@ -6,7 +6,7 @@ target("engine-test-plugin")
     set_basename("aylo-test-plugin")
     add_deps("core", "ecs")
     add_files("fixtures/TestPlugin.cpp")
-    add_rules("rtype.plugin_library")
+    add_rules("aylo.plugin_library")
 
 target("engine-tests")
     set_kind("binary")

@@ -115,9 +115,9 @@ TEST(ScriptContext, AScriptReadsTheTimeResource) {
         engine.ecs.system("game.ReadTime", {
             phase = "Update",
             query = {},
-            resources = { read = { "rtype.Time" }, write = { "test.ctx.Score" } },
+            resources = { read = { "aylo.Time" }, write = { "test.ctx.Score" } },
             run = function(ctx)
-                local time = ctx.resources["rtype.Time"]
+                local time = ctx.resources["aylo.Time"]
                 ctx.resources["test.ctx.Score"].value = time.delta + time.fixedDelta
             end,
         })
@@ -135,9 +135,9 @@ TEST(ScriptContext, WritingAResourceDeclaredReadRaisesAnError) {
         engine.ecs.system("game.WriteTime", {
             phase = "Update",
             query = {},
-            resources = { read = { "rtype.Time" }, write = { "test.ctx.Score" } },
+            resources = { read = { "aylo.Time" }, write = { "test.ctx.Score" } },
             run = function(ctx)
-                local ok, message = pcall(function() ctx.resources["rtype.Time"].delta = 5 end)
+                local ok, message = pcall(function() ctx.resources["aylo.Time"].delta = 5 end)
                 assert(not ok and string.find(message, "read%-only"), message)
                 ctx.resources["test.ctx.Score"].count = 1
             end,
@@ -199,7 +199,7 @@ TEST(ScriptContext, AResourceThatWasNotDeclaredRaisesAnError) {
             query = {},
             resources = { write = { "test.ctx.Score" } },
             run = function(ctx)
-                local ok, message = pcall(function() return ctx.resources["rtype.Time"] end)
+                local ok, message = pcall(function() return ctx.resources["aylo.Time"] end)
                 assert(not ok and string.find(message, "not declared"), message)
                 ctx.resources["test.ctx.Score"].count = 1
             end,
@@ -322,7 +322,7 @@ TEST(ScriptContext, BadResourceAndEventDeclarationsNameTheSystem) {
     Fixture fixture;
     EXPECT_NE(fixture
                   .run(R"(
-        engine.ecs.system("game.C", { phase = "Update", query = {}, resources = { send = { "rtype.Time" } },
+        engine.ecs.system("game.C", { phase = "Update", query = {}, resources = { send = { "aylo.Time" } },
                                       run = function(ctx) end })
     )")
                   .find("System 'game.C': unknown key 'send' in 'resources' (expected 'read' or 'write')"),
@@ -486,7 +486,7 @@ TEST(ScriptContext, TheSchedulerSeesTheResourceAndEventAccessOfAScriptSystem) {
         engine.ecs.system("game.Access", {
             phase = "Update",
             query = {},
-            resources = { read = { "rtype.Time" }, write = { "test.ctx.Score" } },
+            resources = { read = { "aylo.Time" }, write = { "test.ctx.Score" } },
             events = { read = { "test.ctx.Boom" }, send = { "test.ctx.Boom" } },
             run = function(ctx) end,
         })
@@ -506,7 +506,7 @@ TEST(ScriptContext, TheSchedulerSeesTheResourceAndEventAccessOfAScriptSystem) {
         }
         return 0;
     };
-    EXPECT_EQ(find(registry.findByName("rtype.Time")->type.id), 1);
+    EXPECT_EQ(find(registry.findByName("aylo.Time")->type.id), 1);
     EXPECT_EQ(find(registry.findByName("test.ctx.Score")->type.id), 2);
     EXPECT_EQ(find(registry.findByName("test.ctx.Empty")->type.id), 0);
     const auto events = system->getAccess().getEvents();

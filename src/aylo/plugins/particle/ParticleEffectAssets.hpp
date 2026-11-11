@@ -27,7 +27,7 @@
 
 namespace aylo::plugins::particle {
 
-/// @brief The particle effects, as the ECS resource "rtype.ParticleEffectAssets" the ParticlePlugin inserts: effects
+/// @brief The particle effects, as the ECS resource "aylo.ParticleEffectAssets" the ParticlePlugin inserts: effects
 /// built in C++ are added under a name, effect files are read by the loader registered for their extension, and
 /// ParticleEmitter components keep the id either gives.
 ///
@@ -112,6 +112,6 @@ class AYLO_PLUGIN_PARTICLE_API ParticleEffectAssets {
     std::unordered_map<core::asset::AssetId, std::uint32_t> _versions;   ///< replace() calls, by id; none: 0.
     std::map<std::string, std::unique_ptr<IParticleEffectLoader>, std::less<>> _loaders;  ///< By extension.
 };
-AYLO_ECS_RESOURCE(ParticleEffectAssets, "rtype.ParticleEffectAssets");
+AYLO_ECS_RESOURCE(ParticleEffectAssets, "aylo.ParticleEffectAssets");
 
 }  // namespace aylo::plugins::particle

@@ -25,13 +25,13 @@ struct TermDeclaration {
 
 /// @brief A resource a script system uses, named as the script wrote it.
 struct ResourceDeclaration {
-    std::string name;   ///< Name of the resource, "rtype.Time".
+    std::string name;   ///< Name of the resource, "aylo.Time".
     bool write{false};  ///< Whether the system may write it (`resources.write`), false when it only reads it.
 };
 
 /// @brief An event type a script system uses, named as the script wrote it.
 struct EventDeclaration {
-    std::string name;  ///< Name of the event, "rtype.Collision".
+    std::string name;  ///< Name of the event, "aylo.Collision".
     bool read{false};  ///< Whether the system reads the events (`events.read`).
     bool send{false};  ///< Whether the system sends events of this type (`events.send`).
 };

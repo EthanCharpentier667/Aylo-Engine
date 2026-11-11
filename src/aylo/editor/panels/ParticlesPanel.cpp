@@ -201,7 +201,7 @@ void drawParticlesPanel(EditorState& state) {
     }
     auto effects = state.world->getResources().getMut<particle::ParticleEffectAssets>();
     if (!effects) {
-        ImGui::TextUnformatted("The game has no particles: list rtype.Particle in its plugins.");
+        ImGui::TextUnformatted("The game has no particles: list aylo.Particle in its plugins.");
         ImGui::End();
         return;
     }

@@ -62,6 +62,6 @@ struct ShapeRenderer {
     std::int32_t layer{0};                         ///< Draw order among the shapes: higher layers are drawn on top.
     contract::renderer::BlendMode blend{contract::renderer::BlendMode::kAlpha};  ///< kAlpha or kAdditive.
 };
-AYLO_ECS_COMPONENT(ShapeRenderer, "rtype.ShapeRenderer", kind, size, end, radius, halfHeight, cornerRadius, fillColor,
+AYLO_ECS_COMPONENT(ShapeRenderer, "aylo.ShapeRenderer", kind, size, end, radius, halfHeight, cornerRadius, fillColor,
                    outlineColor, outlineThickness, layer, blend);
 }  // namespace aylo::plugins::shape

@@ -13,10 +13,10 @@
 
 namespace aylo::plugins::graphics {
 
-/// @brief The part of the world the frame shows, as the ECS resource "rtype.VisibleArea": systems that draw many
+/// @brief The part of the world the frame shows, as the ECS resource "aylo.VisibleArea": systems that draw many
 /// things (the tiles of a tilemap, particles) skip what is outside it.
 ///
-/// @details The GraphicsPlugin's Render system "rtype.graphics.camera" updates it each frame from the camera shown, the
+/// @details The GraphicsPlugin's Render system "aylo.graphics.camera" updates it each frame from the camera shown, the
 /// renderer's view size and the framebuffer: it is the box around what the viewport shows, so a rotated view gives a
 /// bigger box. Systems that read it run after that system. It is empty before the first frame, on a server and while
 /// the window is minimized.
@@ -32,6 +32,6 @@ struct VisibleArea {
         return boxMin.x < max.x && boxMax.x > min.x && boxMin.y < max.y && boxMax.y > min.y;
     }
 };
-AYLO_ECS_RESOURCE(VisibleArea, "rtype.VisibleArea");
+AYLO_ECS_RESOURCE(VisibleArea, "aylo.VisibleArea");
 
 }  // namespace aylo::plugins::graphics

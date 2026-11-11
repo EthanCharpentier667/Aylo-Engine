@@ -33,7 +33,7 @@ enum class SoundState : std::uint8_t {
     kFailed,  ///< Could not be loaded; the entry says why.
 };
 
-/// @brief The sounds, as the ECS resource "rtype.AudioAssets": systems ask for a sound by path and get its AssetId at
+/// @brief The sounds, as the ECS resource "aylo.AudioAssets": systems ask for a sound by path and get its AssetId at
 /// once, components and events keep that id, and the audio plugin loads the queued sounds.
 ///
 /// @details load() records the sound as queued and returns its id, without touching the audio device: gameplay systems
@@ -137,7 +137,7 @@ class AYLO_PLUGIN_AUDIO_API AudioAssets {
     std::vector<core::asset::AssetId> _queued;              ///< The queued sounds, in the order they were asked for.
     std::vector<contract::audiodevice::SoundId> _unloaded;  ///< Sounds to destroy, from unload().
 };
-AYLO_ECS_RESOURCE(AudioAssets, "rtype.AudioAssets");
+AYLO_ECS_RESOURCE(AudioAssets, "aylo.AudioAssets");
 
 /// @brief Destroys the sounds unloaded since the last call, then loads the queued ones in @p device: from their file,
 /// or from the bytes given to load(). Called by the audio plugin each frame, on the main thread.

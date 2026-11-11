@@ -41,15 +41,15 @@ concept CallData = Described<T> && TypeTraits<T>::kKind == TypeKind::kCallData;
 ///     aylo::core::asset::AssetId path;
 ///     bool stream = false;
 /// };
-/// AYLO_ECS_CALL_DATA(LoadSound, "rtype.audio.LoadSound", path, stream);
+/// AYLO_ECS_CALL_DATA(LoadSound, "aylo.audio.LoadSound", path, stream);
 ///
 /// struct Ask {
 ///     std::string prompt;  // a text of any length
 /// };
-/// AYLO_ECS_CALL_DATA(Ask, "rtype.agent.Ask", prompt);
+/// AYLO_ECS_CALL_DATA(Ask, "aylo.agent.Ask", prompt);
 /// @endcode
 /// @param Type The type, as named in the current namespace.
-/// @param Name Its stable name, a string literal such as "rtype.audio.LoadSound".
+/// @param Name Its stable name, a string literal such as "aylo.audio.LoadSound".
 /// @param ... The fields to reflect, if any.
 #define AYLO_ECS_CALL_DATA(Type, Name, ...)                                                                \
     AYLO_ECS_DETAIL_DESCRIBE(::aylo::ecs::detail::describeCallData, Type, Name __VA_OPT__(, ) __VA_ARGS__) \

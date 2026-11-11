@@ -23,7 +23,7 @@
 
 namespace aylo::plugins::tilemap {
 
-/// @brief The tilemaps, as the ECS resource "rtype.TilemapAssets" the TilemapPlugin inserts: systems ask for a map and
+/// @brief The tilemaps, as the ECS resource "aylo.TilemapAssets" the TilemapPlugin inserts: systems ask for a map and
 /// get its AssetId at once, then spawn its layers with spawnTilemap().
 ///
 /// @details A map is read when it is asked for, on every side (a server gets the same tiles, for gameplay). Its images
@@ -96,6 +96,6 @@ class AYLO_PLUGIN_TILEMAP_API TilemapAssets {
     core::asset::AssetStore<Tilemap> _maps{"Tilemap"};  ///< Every map asked for, by id.
     std::vector<TextureRequest> _textureRequests;       ///< Images to hand to TextureAssets.
 };
-AYLO_ECS_RESOURCE(TilemapAssets, "rtype.TilemapAssets");
+AYLO_ECS_RESOURCE(TilemapAssets, "aylo.TilemapAssets");
 
 }  // namespace aylo::plugins::tilemap

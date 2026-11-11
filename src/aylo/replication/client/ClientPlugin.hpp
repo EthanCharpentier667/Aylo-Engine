@@ -41,9 +41,9 @@ namespace aylo::replication::client {
 /// @endcode
 class AYLO_REPLICATION_API ClientPlugin : public ecs::Plugin {
   public:
-    static constexpr std::string_view kName = "rtype.replication.client";  ///< The plugin's name.
-    static constexpr std::string_view kConnectSystem = "net.connect";      ///< Startup: connects.
-    static constexpr std::string_view kReceiveSystem = "net.receive";      ///< PreUpdate: receives.
+    static constexpr std::string_view kName = "aylo.replication.client";  ///< The plugin's name.
+    static constexpr std::string_view kConnectSystem = "net.connect";     ///< Startup: connects.
+    static constexpr std::string_view kReceiveSystem = "net.receive";     ///< PreUpdate: receives.
     static constexpr std::string_view kSendInputSystem =
         "net.sendInput";  ///< PostUpdate: the game's input runs before.
 
@@ -56,7 +56,7 @@ class AYLO_REPLICATION_API ClientPlugin : public ecs::Plugin {
     ClientPlugin(ClientPlugin&& other) noexcept = default;
     ClientPlugin& operator=(ClientPlugin&& other) noexcept = default;
 
-    /// @return "rtype.replication.client".
+    /// @return "aylo.replication.client".
     [[nodiscard]] std::string_view getName() const noexcept override;
 
     /// @brief Adds the ReplicationPlugin, inserts the ClientState and adds the systems.

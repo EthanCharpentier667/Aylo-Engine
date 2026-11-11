@@ -26,6 +26,6 @@ struct AnimationFinished {
     ecs::Entity entity;              ///< The entity whose SpriteAnimator played it.
     core::asset::AssetId animation;  ///< animationId() of its name.
 };
-AYLO_ECS_EVENT(AnimationFinished, "rtype.AnimationFinished", entity, animation);
+AYLO_ECS_EVENT(AnimationFinished, "aylo.AnimationFinished", entity, animation);
 
 }  // namespace aylo::plugins::sprite

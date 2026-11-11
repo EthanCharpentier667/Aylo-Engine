@@ -190,7 +190,7 @@ TEST(WorldAdmin, SetsAStringField) {
     Fixture fixture;
     const ecs::Entity ship = fixture.spawnShip("Ship");
     static_cast<void>(fixture.ask(net::SetFieldRequest{
-        .entity = ship.getBits(), .component = "rtype.Name", .field = "value", .value = "Flagship"}));
+        .entity = ship.getBits(), .component = "aylo.Name", .field = "value", .value = "Flagship"}));
     EXPECT_EQ(std::string{fixture.world.getComponents().get<ecs::Name>(ship)->value.view()}, "Flagship");
 }
 

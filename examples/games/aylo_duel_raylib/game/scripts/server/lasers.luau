@@ -11,8 +11,8 @@ local lasers: { [number]: number } = {}
 engine.ecs.system("game.FollowLaserBodies", {
 	phase = "FixedUpdate",
 	side = "server",
-	query = { read = { "rtype.Transform" }, write = { "game.Laser" } },
-	after = { "rtype.Physics.SyncFromPhysics" },
+	query = { read = { "aylo.Transform" }, write = { "game.Laser" } },
+	after = { "aylo.Physics.SyncFromPhysics" },
 	run = function(ctx)
 		lasers = {}
 		for entity, transform, laser in ctx.query do
@@ -32,15 +32,15 @@ engine.ecs.system("game.DetectHits", {
 	phase = "FixedUpdate",
 	side = "server",
 	query = { read = { "game.Ship" } },
-	events = { read = { "rtype.CollisionStarted" } },
-	after = { "rtype.Physics.Events", "game.FollowLaserBodies" },
+	events = { read = { "aylo.CollisionStarted" } },
+	after = { "aylo.Physics.Events", "game.FollowLaserBodies" },
 	run = function(ctx)
 		local ships = {}
 		for entity in ctx.query do
 			ships[entity.bits] = true
 		end
 		local spent = {}
-		for collision in ctx.events.read("rtype.CollisionStarted") do
+		for collision in ctx.events.read("aylo.CollisionStarted") do
 			for _, pair in { { collision.first, collision.second }, { collision.second, collision.first } } do
 				local laser, other = pair[1], pair[2]
 				local shooter = lasers[laser.bits]

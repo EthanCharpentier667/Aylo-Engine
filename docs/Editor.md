@@ -1,7 +1,7 @@
 # Editor
 
 The editor is the program `aylo-editor`: a static library, `aylo-editor` (`src/aylo/editor/`, target `editor`), whose
-plugin `rtype.Editor` the program adds to the engine, and a `main` (`editor/app/main.cpp`). It runs the game inside the "Game" panel of a window of docked panels made with Dear ImGui (the docking
+plugin `aylo.Editor` the program adds to the engine, and a `main` (`editor/app/main.cpp`). It runs the game inside the "Game" panel of a window of docked panels made with Dear ImGui (the docking
 branch), and edits its scenes the way Unity does: while editing, the gameplay is paused and the panels change the
 scene's capsule, saved to its file; while playing, they change the running world, and Stop puts the scene back. For what
 a game developer does with it, see `manual/pages/editor.md`.
@@ -30,7 +30,7 @@ A program of its own, not a feature of a game and not a mode of the runtime. Gam
   the server's gameplay) as a server with one local client, client 1 (`StandalonePlugin`: `net.ClientConnected` once, the
   keyboard is its input, packets loop back in the world, see `docs/network/design.md`), so a networked game loads and
   plays unchanged. "Play online" rebuilds it as `RunMode::kClient` against a child server (see
-  [Playing online](#playing-online)). `--server` is refused. The program adds `rtype.Editor` through `EngineConfig::addPlugins`, reads
+  [Playing online](#playing-online)). `--server` is refused. The program adds `aylo.Editor` through `EngineConfig::addPlugins`, reads
   its `editor` settings with `readEditorOptions()`, and gives `engine.args.editor` (true) to the project.
 - **Dear ImGui is private to it.** It is the only module that includes `imgui.h` (no header of the editor does). The
   package is `imgui v1.92.9+b-docking`, with none of its backends: the editor does their work through the contracts.
@@ -74,10 +74,10 @@ The editor adds no system. It sets two resources the graphics plugin inserted, s
 that draw (the scheduler refuses two Render systems that touch the `Backend` without an order, and the graphics plugin
 owns it):
 
-- **`PlatformEventFilter`** (`plugins/graphics/PlatformEventFilter.hpp`): `rtype.graphics.events` calls it for each event
+- **`PlatformEventFilter`** (`plugins/graphics/PlatformEventFilter.hpp`): `aylo.graphics.events` calls it for each event
   before it becomes an ECS event. It may change the event, or return false to hide it from the game. The renderer is
   resized by the real `Resized` events whatever it decides.
-- **`ToolFrame`** (`plugins/graphics/ToolFrame.hpp`): `rtype.graphics.endFrame` calls it after the overlay, just before
+- **`ToolFrame`** (`plugins/graphics/ToolFrame.hpp`): `aylo.graphics.endFrame` calls it after the overlay, just before
   the renderer ends the frame, with the platform and the renderer. It is not called while the window is minimized.
 
 The editor reads and writes the world from that callback, which is not a system with declared access: it runs on the
@@ -157,7 +157,7 @@ editor edits is the capsule, the data the file holds, and the world only shows i
   nested instances through their outermost capsule. That system and its queue are there with or without hot reload.
 - **Save.** `scene::save()` writes `format::writeCapsule()` to the file (comments are lost, see the format). With hot
   reload on, the engine reads the saved file again, which changes nothing.
-- **Names.** A capsule's spawn gives each entity a `rtype.Name` (`ecs/entity/Name.hpp`), the name of its node, the
+- **Names.** A capsule's spawn gives each entity a `aylo.Name` (`ecs/entity/Name.hpp`), the name of its node, the
   file's name for the root, unless the node gives one. In a scene the name *is* the node's: renaming changes the node.
 
 ## Prefab mode

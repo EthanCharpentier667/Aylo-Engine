@@ -108,11 +108,11 @@ app.addPlugins(aylo::ecs::MinimalPlugins{})  // Time: the fixed tick the physics
 
 | System | Side | Does |
 |---|---|---|
-| `rtype.Physics.SyncBodies` | every side | one body per entity with a `Collider` and a `Transform`: creates, rebuilds (when `Collider` or `RigidBody` changed), destroys (despawned, component removed); keeps `PhysicsHandle` |
-| `rtype.Physics.SyncToPhysics` | every side | server: kinematic bodies move to their `Transform`, others follow a `Transform` gameplay moved (teleport), changed `Velocity`s reach the bodies. Client mode: every body is teleported to its `Transform` |
-| `rtype.Physics.Step` | server | applies the queued forces and impulses, steps the world by `Time::fixedDelta` |
-| `rtype.Physics.SyncFromPhysics` | server | writes the pose of the bodies that moved to `Transform`, the velocity of dynamic bodies to `Velocity` |
-| `rtype.Physics.Events` | server | sends the contacts of the step as ECS events |
+| `aylo.Physics.SyncBodies` | every side | one body per entity with a `Collider` and a `Transform`: creates, rebuilds (when `Collider` or `RigidBody` changed), destroys (despawned, component removed); keeps `PhysicsHandle` |
+| `aylo.Physics.SyncToPhysics` | every side | server: kinematic bodies move to their `Transform`, others follow a `Transform` gameplay moved (teleport), changed `Velocity`s reach the bodies. Client mode: every body is teleported to its `Transform` |
+| `aylo.Physics.Step` | server | applies the queued forces and impulses, steps the world by `Time::fixedDelta` |
+| `aylo.Physics.SyncFromPhysics` | server | writes the pose of the bodies that moved to `Transform`, the velocity of dynamic bodies to `Velocity` |
+| `aylo.Physics.Events` | server | sends the contacts of the step as ECS events |
 
 "Server" means `Side::kServer`, so standalone runs it too. Game systems place themselves by these names, which are
 public constants of `PhysicsPlugin`:
@@ -128,7 +128,7 @@ A game run by the `Engine` can add it from `project.luau` instead of C++ (see `.
 plugins*): `PhysicsSettings::fromSettings()` reads the `physics` section, every field but none required.
 
 ```lua
-engine.settings.plugins = { "rtype.Physics" }
+engine.settings.plugins = { "aylo.Physics" }
 engine.settings.physics.gravity = { 0, 0 }     -- { x, y }, world units per second squared, Y down
 engine.settings.physics.unitsPerMeter = 32
 -- maxBodies, maxBodyPairs, maxContactConstraints, tempAllocatorBytes: positive integers
@@ -182,7 +182,7 @@ picks the broad-phase tree, so static bodies never cost a pair test against each
 - **One start and one end per pair of bodies**, whatever the number of contact points or sub-shapes
   (`detail::ContactCollector` counts them).
 - **Collected during the step, sent after it.** Jolt calls its `ContactListener` inside the step; the collector buffers
-  the pairs and `rtype.Physics.Events` sends them on the room's thread, in the ECS.
+  the pairs and `aylo.Physics.Events` sends them on the room's thread, in the ECS.
 - **Sleep is not a separation.** Jolt removes the contacts of bodies that fall asleep; the collector waits until after
   the step (`settle()`) to tell a real separation from a pair that merely went to sleep, so resting bodies do not send
   false `CollisionEnded`.
@@ -218,34 +218,34 @@ Queries and `moveAndSlide` sweep shapes without rotation.
 
 ### From scripts
 
-The components (`rtype.Collider`, `rtype.RigidBody`, `rtype.Velocity`, with their enums as numbers: `shape` 0 box, 1
+The components (`aylo.Collider`, `aylo.RigidBody`, `aylo.Velocity`, with their enums as numbers: `shape` 0 box, 1
 circle, 2 capsule) are plain data: scripts query them and spawn them with `ctx.commands`, and read the contact events
-(`rtype.CollisionStarted`...) declared under `events`. A body's velocity and position are set by writing its
+(`aylo.CollisionStarted`...) declared under `events`. A body's velocity and position are set by writing its
 `Velocity` and `Transform`. The rest is [engine calls](../ecs/features/19-luau-bridge.md#engine-calls) the plugin
 registers (`PhysicsCalls.hpp`), on every side:
 
 | Call | Arguments | Result |
 |---|---|---|
-| `rtype.physics.raycast` | `origin`, `direction`, `maxDistance`, `mask`, `ignore`, `includeSensors` | `{hit, entity, point, normal, distance}` |
-| `rtype.physics.shapeCast` | the shape fields of a `Collider` (`shape`, `size`, `radius`, `halfHeight`, `offset`), `from`, `direction`, `maxDistance`, the filter | as `raycast` |
-| `rtype.physics.overlap` | the shape fields, `at`, the filter | `{count, first}`: call data holds no list |
-| `rtype.physics.moveAndSlide` | `entity` (its `Collider` is the shape, its mask the filter), `from`, `delta`, `skin`, `maxSlides` | the position it ends at |
-| `rtype.physics.applyForce`, `applyImpulse` | `entity`, `value` | nothing |
-| `rtype.physics.applyTorque` | `entity`, `torque` | nothing |
-| `rtype.physics.setGravity` | `gravity` | nothing |
+| `aylo.physics.raycast` | `origin`, `direction`, `maxDistance`, `mask`, `ignore`, `includeSensors` | `{hit, entity, point, normal, distance}` |
+| `aylo.physics.shapeCast` | the shape fields of a `Collider` (`shape`, `size`, `radius`, `halfHeight`, `offset`), `from`, `direction`, `maxDistance`, the filter | as `raycast` |
+| `aylo.physics.overlap` | the shape fields, `at`, the filter | `{count, first}`: call data holds no list |
+| `aylo.physics.moveAndSlide` | `entity` (its `Collider` is the shape, its mask the filter), `from`, `delta`, `skin`, `maxSlides` | the position it ends at |
+| `aylo.physics.applyForce`, `applyImpulse` | `entity`, `value` | nothing |
+| `aylo.physics.applyTorque` | `entity`, `torque` | nothing |
+| `aylo.physics.setGravity` | `gravity` | nothing |
 
 A null `ignore` (the default) skips no entity. `raycastAll` has no call yet, for the same reason as `overlap`.
 
 ```luau
 engine.ecs.system("game.Ships", {
     phase = "FixedUpdate",
-    query = { write = { "rtype.Transform" }, with = { "game.Ship" } },
-    calls = { "rtype.physics.moveAndSlide" },
-    after = { "rtype.Physics.SyncBodies" },
-    before = { "rtype.Physics.SyncToPhysics" },
+    query = { write = { "aylo.Transform" }, with = { "game.Ship" } },
+    calls = { "aylo.physics.moveAndSlide" },
+    after = { "aylo.Physics.SyncBodies" },
+    before = { "aylo.Physics.SyncToPhysics" },
     run = function(ctx)
         for ship, transform in ctx.query do
-            transform.position = ctx.call("rtype.physics.moveAndSlide", {
+            transform.position = ctx.call("aylo.physics.moveAndSlide", {
                 entity = ship, from = transform.position, delta = { x = 4, y = 0 },
             })
         end

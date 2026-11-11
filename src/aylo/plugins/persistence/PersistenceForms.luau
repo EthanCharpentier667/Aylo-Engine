@@ -30,7 +30,7 @@ end
 engine.persistence.read = function(...)
 	forms.arguments("engine.persistence.read", 2, ...)
 	local ctx, given = ...
-	return invoke("engine.persistence.read", ctx, "rtype.persistence.read", { name = nameOf("engine.persistence.read", given) })
+	return invoke("engine.persistence.read", ctx, "aylo.persistence.read", { name = nameOf("engine.persistence.read", given) })
 end
 
 -- engine.persistence.write(ctx, { name, data }) -> { ok, error }. Atomic: a failure leaves the old save intact.
@@ -43,19 +43,19 @@ engine.persistence.write = function(...)
 	if data == nil then
 		forms.fail(form, "expected a 'data' string")
 	end
-	return invoke(form, ctx, "rtype.persistence.write", { name = nameOf(form, given, { "name", "data" }), data = data })
+	return invoke(form, ctx, "aylo.persistence.write", { name = nameOf(form, given, { "name", "data" }), data = data })
 end
 
 -- engine.persistence.delete(ctx, { name }) -> { ok, error }. Deleting a save that does not exist succeeds.
 engine.persistence.delete = function(...)
 	forms.arguments("engine.persistence.delete", 2, ...)
 	local ctx, given = ...
-	return invoke("engine.persistence.delete", ctx, "rtype.persistence.delete", { name = nameOf("engine.persistence.delete", given) })
+	return invoke("engine.persistence.delete", ctx, "aylo.persistence.delete", { name = nameOf("engine.persistence.delete", given) })
 end
 
 -- engine.persistence.exists(ctx, { name }) -> { exists }.
 engine.persistence.exists = function(...)
 	forms.arguments("engine.persistence.exists", 2, ...)
 	local ctx, given = ...
-	return invoke("engine.persistence.exists", ctx, "rtype.persistence.exists", { name = nameOf("engine.persistence.exists", given) })
+	return invoke("engine.persistence.exists", ctx, "aylo.persistence.exists", { name = nameOf("engine.persistence.exists", given) })
 end

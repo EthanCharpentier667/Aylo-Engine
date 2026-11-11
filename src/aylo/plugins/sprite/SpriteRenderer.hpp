@@ -44,5 +44,5 @@ struct SpriteRenderer {
     core::asset::AssetId
         material;  ///< Its material, from MaterialAssets::add(); the default one if unset or not ready.
 };
-AYLO_ECS_COMPONENT(SpriteRenderer, "rtype.SpriteRenderer", texture, source, color, origin, layer, blend, material);
+AYLO_ECS_COMPONENT(SpriteRenderer, "aylo.SpriteRenderer", texture, source, color, origin, layer, blend, material);
 }  // namespace aylo::plugins::sprite

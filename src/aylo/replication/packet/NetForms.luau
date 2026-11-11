@@ -7,8 +7,8 @@ local schemas = {}
 
 -- Packets declared natively (PacketRegistry::declare in C++) have no engine.net.packet call: read their fields from the
 -- engine once, so scripts can send and receive them too.
-if engine.hasCall("rtype.net.listPackets") then
-	local listed = forms.call("engine.net", "rtype.net.listPackets", { prefix = "" })
+if engine.hasCall("aylo.net.listPackets") then
+	local listed = forms.call("engine.net", "aylo.net.listPackets", { prefix = "" })
 	for line in string.gmatch(listed, "[^\n]+") do
 		local name, rest = string.match(line, "^(%S+)(.*)$")
 		local list = {}
@@ -66,7 +66,7 @@ engine.net.packet = function(...)
 		table.insert(lines, fieldName .. ":" .. fieldType .. (maxLength and (":" .. string.format("%d", maxLength)) or ""))
 		table.insert(list, { name = fieldName, type = fieldType })
 	end
-	forms.call(form, "rtype.net.declarePacket", {
+	forms.call(form, "aylo.net.declarePacket", {
 		name = name,
 		direction = direction,
 		channel = channel,
@@ -132,10 +132,10 @@ local function decode(name, text)
 end
 
 -- engine.net.sendToServer(ctx, name, values): a client sends a `toServer` packet. `ctx` is a system's, which lists
--- "rtype.net.sendToServer" under `calls`. Returns whether it was sent.
+-- "aylo.net.sendToServer" under `calls`. Returns whether it was sent.
 engine.net.sendToServer = function(ctx, name, values)
 	local form = "engine.net.sendToServer"
-	local ok, result = pcall(ctx.call, "rtype.net.sendToServer", { name = name, values = encode(form, name, values) })
+	local ok, result = pcall(ctx.call, "aylo.net.sendToServer", { name = name, values = encode(form, name, values) })
 	if not ok then
 		forms.fail(form, tostring(result))
 	end
@@ -143,10 +143,10 @@ engine.net.sendToServer = function(ctx, name, values)
 end
 
 -- engine.net.sendToClients(ctx, name, values, client?): the server sends a `toClients` packet to every client, or to
--- `client`. `ctx` lists "rtype.net.sendToClients" under `calls`.
+-- `client`. `ctx` lists "aylo.net.sendToClients" under `calls`.
 engine.net.sendToClients = function(ctx, name, values, client)
 	local form = "engine.net.sendToClients"
-	local ok, result = pcall(ctx.call, "rtype.net.sendToClients", {
+	local ok, result = pcall(ctx.call, "aylo.net.sendToClients", {
 		name = name,
 		client = client or 0,
 		values = encode(form, name, values),

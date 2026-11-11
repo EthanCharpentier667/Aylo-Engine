@@ -33,10 +33,10 @@ class Capsules;
 /// game.Health = { value = 50 }
 ///
 /// [node path="LeftTurret" instance="actors/turret.actor"]
-/// rtype.Transform = { position = (-40, 0) }
+/// aylo.Transform = { position = (-40, 0) }
 ///
 /// [node path="Background" side=client]
-/// rtype.SpriteRenderer = { texture = "sprites/bg.png", layer = -10 }
+/// aylo.SpriteRenderer = { texture = "sprites/bg.png", layer = -10 }
 /// @endcode
 /// The root (`path="."`) comes first, a parent before its children; a node's path names its parent. Values: numbers
 /// (`0x` for an asset id with no path), `true` / `false`, `"text"` (strings, text, asset paths), `(x, y)` vectors, and

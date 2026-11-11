@@ -174,24 +174,24 @@ engine.assets.particle = function(...)
 	local colorKeys = readKeys(spec, "colorOverLife", true)
 	local curves = { size = readKeys(spec, "sizeOverLife", false), speed = readKeys(spec, "speedOverLife", false) }
 
-	if not engine.hasCall("rtype.particle.addEffect") then
+	if not engine.hasCall("aylo.particle.addEffect") then
 		return engine.assetId(name)
 	end
-	forms.call(form, "rtype.particle.beginEffect", fields)
+	forms.call(form, "aylo.particle.beginEffect", fields)
 	for _, burst in bursts do
 		burst.name = name
-		forms.call(form, "rtype.particle.addBurst", burst)
+		forms.call(form, "aylo.particle.addBurst", burst)
 	end
 	for _, key in colorKeys do
 		key.name = name
-		forms.call(form, "rtype.particle.addColorKey", key)
+		forms.call(form, "aylo.particle.addColorKey", key)
 	end
 	for _, curve in { "size", "speed" } do
 		for _, key in curves[curve] do
 			key.name = name
 			key.curve = curve
-			forms.call(form, "rtype.particle.addCurveKey", key)
+			forms.call(form, "aylo.particle.addCurveKey", key)
 		end
 	end
-	return forms.call(form, "rtype.particle.addEffect", { name = name })
+	return forms.call(form, "aylo.particle.addEffect", { name = name })
 end

@@ -30,7 +30,7 @@ local function plugin(name, deps)
         add_packages("glm", {public = true})
         -- Plain x/y/z/w members instead of unions (cppcoreguidelines-pro-type-union-access).
         add_defines("GLM_FORCE_XYZW_ONLY", {public = true})
-        add_rules("rtype.plugin_library")
+        add_rules("aylo.plugin_library")
         -- Embeds the plugin's setup forms (<Name>Forms.luau) as byte arrays, included as "<file>.luau.h".
         add_rules("utils.bin2c", {extensions = {".luau", ".glsl"}})
 end
@@ -135,7 +135,7 @@ plugin("json", {})
     add_files("json/**.cpp")
     add_files("json/JsonForms.luau")
     add_headerfiles("json/**.hpp")
-    -- Encodes and decodes JSON for scripts (rtype.json.encode / decode). Private: only json/detail/ includes it.
+    -- Encodes and decodes JSON for scripts (aylo.json.encode / decode). Private: only json/detail/ includes it.
     add_packages("nlohmann_json")
 
 plugin("persistence", {})

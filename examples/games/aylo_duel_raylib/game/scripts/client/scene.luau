@@ -12,7 +12,7 @@ local firstPlanetDelay = 8 -- seconds before the first planet passes
 local planetDelayMin, planetDelayMax = 25, 50 -- seconds between two planets
 local planetScaleMin = 0.6 -- the size of the farthest planet, from 1 for the closest...
 local planetSpeedMin, planetSpeedMax = 22, 34 -- ... and its speed, in background pixels per second
-local rectShape, circleShape = 0, 1 -- rtype.ShapeRenderer kind
+local rectShape, circleShape = 0, 1 -- aylo.ShapeRenderer kind
 
 engine.ecs.component("game.BackgroundPlanet", {
 	fields = { width = "f32" }, -- on screen, in world units
@@ -26,9 +26,9 @@ engine.ecs.system("game.SpawnCamera", {
 	query = {},
 	run = function(ctx)
 		ctx.commands:spawn({
-			["rtype.Transform"] = { position = { x = Duel.viewWidth / 2, y = Duel.viewHeight / 2 } },
-			["rtype.Camera"] = {},
-			["rtype.AudioListener"] = {},
+			["aylo.Transform"] = { position = { x = Duel.viewWidth / 2, y = Duel.viewHeight / 2 } },
+			["aylo.Camera"] = {},
+			["aylo.AudioListener"] = {},
 		})
 	end,
 })
@@ -39,16 +39,16 @@ engine.ecs.system("game.PlaceObstacles", {
 	phase = "PostUpdate",
 	side = "client",
 	query = {
-		read = { "game.Obstacle", "rtype.Collider" },
-		optionalRead = { "rtype.Transform" },
-		without = { "rtype.ShapeRenderer" },
+		read = { "game.Obstacle", "aylo.Collider" },
+		optionalRead = { "aylo.Transform" },
+		without = { "aylo.ShapeRenderer" },
 	},
 	run = function(ctx)
 		for entity, obstacle, collider, transform in ctx.query do
 			if transform == nil then -- replicated: the server sends where it is, not its Transform
-				ctx.commands:add(entity, "rtype.Transform", { position = obstacle.position })
+				ctx.commands:add(entity, "aylo.Transform", { position = obstacle.position })
 			end
-			ctx.commands:add(entity, "rtype.ShapeRenderer", {
+			ctx.commands:add(entity, "aylo.ShapeRenderer", {
 				kind = if collider.shape == Duel.circle then circleShape else rectShape,
 				size = collider.size,
 				radius = collider.radius,
@@ -66,9 +66,9 @@ engine.ecs.system("game.SpawnBackground", {
 	phase = "Startup",
 	side = "client",
 	query = {},
-	calls = { "rtype.tilemap.spawn" },
+	calls = { "aylo.tilemap.spawn" },
 	run = function(ctx)
-		ctx.call("rtype.tilemap.spawn", {
+		ctx.call("aylo.tilemap.spawn", {
 			map = assets.background,
 			position = {
 				x = (Duel.viewWidth - backgroundSize.x * backgroundScale) / 2,
@@ -99,16 +99,16 @@ engine.ecs.system("game.SpawnPlanets", {
 		local speed = backgroundScale * math.lerp(planetSpeedMin, planetSpeedMax, closeness)
 		local width, height = planet.size.x * scale, planet.size.y * scale
 		ctx.commands:spawn({
-			["rtype.Transform"] = {
+			["aylo.Transform"] = {
 				position = { x = Duel.viewWidth, y = math.random() * (Duel.viewHeight - height) },
 				scale = { x = scale, y = scale },
 			},
-			["rtype.SpriteRenderer"] = {
+			["aylo.SpriteRenderer"] = {
 				texture = planet.texture,
 				source = { x = 0, y = 0, z = planet.size.x, w = planet.size.y }, -- the whole image
 				layer = planetDrawLayer,
 			},
-			["rtype.Parallax"] = { scroll = { x = -speed, y = 0 } },
+			["aylo.Parallax"] = { scroll = { x = -speed, y = 0 } },
 			["game.BackgroundPlanet"] = { width = width },
 		})
 	end,
@@ -118,7 +118,7 @@ engine.ecs.system("game.SpawnPlanets", {
 engine.ecs.system("game.RemovePlanets", {
 	phase = "Update",
 	side = "client",
-	query = { read = { "rtype.Transform", "rtype.Parallax", "game.BackgroundPlanet" } },
+	query = { read = { "aylo.Transform", "aylo.Parallax", "game.BackgroundPlanet" } },
 	after = { "game.FollowLasers" },
 	run = function(ctx)
 		for entity, transform, parallax, planet in ctx.query do

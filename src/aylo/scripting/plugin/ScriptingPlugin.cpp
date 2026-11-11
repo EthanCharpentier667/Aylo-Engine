@@ -41,7 +41,7 @@ ScriptingPlugin::ScriptingPlugin(ScriptingPlugin&& other) noexcept = default;
 
 ScriptingPlugin& ScriptingPlugin::operator=(ScriptingPlugin&& other) noexcept = default;
 
-std::string_view ScriptingPlugin::getName() const noexcept { return "rtype.scripting"; }
+std::string_view ScriptingPlugin::getName() const noexcept { return "aylo.scripting"; }
 
 void ScriptingPlugin::build(ecs::App& app) {
     const modules::ScriptResolver resolver = _config.source

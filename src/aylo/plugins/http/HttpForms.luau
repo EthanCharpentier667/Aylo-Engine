@@ -19,7 +19,7 @@ local function readHeaders(value)
 end
 
 -- engine.http.request(ctx, { url, method, headers, body, timeout, priority }): sends a request and returns its id, which the
--- rtype.HttpResponse event carries. `ctx` is a system's (which lists "rtype.http.request" under `calls`), or nil
+-- aylo.HttpResponse event carries. `ctx` is a system's (which lists "aylo.http.request" under `calls`), or nil
 -- while the script loads.
 engine.http.request = function(...)
 	forms.arguments(form, 2, ...)
@@ -41,9 +41,9 @@ engine.http.request = function(...)
 		priority = forms.number(form, spec, "priority"),
 	}
 	if ctx == nil then
-		return forms.call(form, "rtype.http.request", fields)
+		return forms.call(form, "aylo.http.request", fields)
 	end
-	local results = table.pack(pcall(ctx.call, "rtype.http.request", fields))
+	local results = table.pack(pcall(ctx.call, "aylo.http.request", fields))
 	if not results[1] then
 		forms.fail(form, tostring(results[2]))
 	end

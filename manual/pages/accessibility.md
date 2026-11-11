@@ -22,7 +22,7 @@ engine.input.action("shoot", "button", { bind = { "Space", "MouseLeft", "Gamepad
 
 A player who can use one hand, or only a gamepad, can then play without any setting.
 
-**Read held states, not presses.** Your systems read `held` from `rtype.input.read`, so a player who cannot press
+**Read held states, not presses.** Your systems read `held` from `aylo.input.read`, so a player who cannot press
 quickly can hold the button down. Prefer "hold to fire" to "tap to fire" in your design, and avoid actions that need
 two buttons at once.
 
@@ -45,7 +45,7 @@ resource or a setting, so a game option can lower them for an easier mode.
 - **Every important sound has a visual cue.** When a sound warns of something (a boss arrives, a shot hits the
   player), show it too: a flash, an icon, a text line.
 - **Separate music from effects.** Play music on the `"music"` bus and effects on the `"effects"` bus
-  (`rtype.audio.playSound`, argument `bus`), and set their starting levels in `project.luau`:
+  (`aylo.audio.playSound`, argument `bus`), and set their starting levels in `project.luau`:
 
 ```luau
 engine.settings.audio.volume.music = 0.6
@@ -72,5 +72,5 @@ engine.settings.audio.volume.effects = 1.0
 ## See also
 
 - [Project settings](project-settings.md): window, audio volumes, virtual resolution.
-- [Engine calls](engine-calls.md): `rtype.input.*` and `rtype.audio.*`.
+- [Engine calls](engine-calls.md): `aylo.input.*` and `aylo.audio.*`.
 - [User interface](ui.md): text, buttons, layout.

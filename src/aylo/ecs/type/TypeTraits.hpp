@@ -66,7 +66,7 @@ struct TypeTraits {
     /// @brief The name, kind and fields recorded by the macro.
     static constexpr auto kDescription = ayloEcsDescribe(detail::TypeTag<T>{});
 
-    /// @brief Stable name, e.g. "rtype.Health".
+    /// @brief Stable name, e.g. "aylo.Health".
     static constexpr std::string_view kName = kDescription.name;
 
     /// @brief Which macro declared it.

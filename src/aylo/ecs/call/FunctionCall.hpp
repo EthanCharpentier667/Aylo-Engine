@@ -74,18 +74,18 @@ class FunctionCall<Function, Arguments, Result, std::tuple<Params...>> final : p
 /// struct LoadSound {
 ///     aylo::core::asset::AssetId path;
 /// };
-/// AYLO_ECS_CALL_DATA(LoadSound, "rtype.audio.LoadSound", path);
+/// AYLO_ECS_CALL_DATA(LoadSound, "aylo.audio.LoadSound", path);
 /// struct Loaded {
 ///     aylo::core::asset::AssetId id;
 /// };
-/// AYLO_ECS_CALL_DATA(Loaded, "rtype.audio.Loaded", id);
+/// AYLO_ECS_CALL_DATA(Loaded, "aylo.audio.Loaded", id);
 ///
-/// app.addCall("rtype.audio.loadSound", [](aylo::ecs::ResMut<AudioAssets> sounds, const LoadSound& args) {
+/// app.addCall("aylo.audio.loadSound", [](aylo::ecs::ResMut<AudioAssets> sounds, const LoadSound& args) {
 ///     return Loaded{.id = sounds->load(args.path)};
 /// });
 /// @endcode
 /// @param world The world it is registered in: its parameters register what they need there.
-/// @param name Its stable name, such as "rtype.audio.loadSound".
+/// @param name Its stable name, such as "aylo.audio.loadSound".
 /// @param function The function.
 /// @return The call's description, with its body and its access; the id is left for Calls::add().
 template <typename Function>

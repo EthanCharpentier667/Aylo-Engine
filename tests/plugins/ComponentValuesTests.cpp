@@ -172,7 +172,7 @@ TEST(ComponentValues, RefusesTheHierarchyComponents) {
         FAIL() << "no CapsuleException";
     } catch (const aylo::plugins::capsule::exceptions::CapsuleException& error) {
         EXPECT_EQ(std::string{error.what()},
-                  "Component 'rtype.Parent' cannot be a capsule value: a capsule's nodes set the hierarchy");
+                  "Component 'aylo.Parent' cannot be a capsule value: a capsule's nodes set the hierarchy");
     }
     const aylo::ecs::Children list{};
     EXPECT_THROW(values.set(world.getComponents(), children, bytesOf(list)),

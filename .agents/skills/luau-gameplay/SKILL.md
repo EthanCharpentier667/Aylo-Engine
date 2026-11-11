@@ -28,7 +28,7 @@ Run it: `./aylo-runtime --server my_game/game` and `./aylo-runtime my_game/game`
 
 Plain Luau that sets `engine.settings`; `engine.isClient`, `engine.isServer` and `engine.isDebug` say where it runs.
 It chooses everything about the engine: `network.port`/`network.host`, `plugins` (the names the plugins give
-themselves, such as `{ "rtype.Physics", "rtype.PhysicsDebug" }`; a client lists `rtype.graphics`, `rtype.Sprite`... too)
+themselves, such as `{ "aylo.Physics", "aylo.PhysicsDebug" }`; a client lists `aylo.graphics`, `aylo.Sprite`... too)
 and their sections (`physics.gravity`...), on clients `platform`, `renderer`, `window.title`/`size`, `audio`... Unknown
 keys are errors: a typo fails at start. Never change engine code to change a setting.
 
@@ -60,7 +60,7 @@ engine.ecs.system("game.MoveShips", {
 	phase = "FixedUpdate",                -- required: Startup, PreUpdate, FixedUpdate, Update, PostUpdate, Render
 	side = "server",                      -- "server" (default), "client" or "both"
 	query = { read = { "game.Ship" }, write = {}, with = {}, without = {} },   -- required, {} for none
-	resources = {}, events = {}, calls = { "rtype.replication.readInput" },
+	resources = {}, events = {}, calls = { "aylo.replication.readInput" },
 	run = function(ctx)
 		for entity, ship in ctx.query do ... end
 	end,
@@ -76,7 +76,7 @@ A system must declare every call, resource and event it uses. A file runs only w
 
 Declarative setup at load time, the same code on both sides (a server gets ids without loading anything):
 `engine.assets.texture/atlas/sound/font/tilemap(...)` return the asset's id; `engine.input.action(name, type, {bind})`
-declares inputs the clients send. Anything else a plugin offers is an engine call: `engine.call("rtype.x.y", {args})`
+declares inputs the clients send. Anything else a plugin offers is an engine call: `engine.call("aylo.x.y", {args})`
 at load, `ctx.call` in a declared system. The list of calls is in the manual (and in
 `docs/ecs/features/19-luau-bridge.md`).
 

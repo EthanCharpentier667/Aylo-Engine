@@ -4,7 +4,7 @@
 add_requires("libsdl3", {alias = "sdl3", system = false})
 
 target("platform-sdl")
-    add_rules("rtype.plugin_library", {folder = "plugins/backends"})
+    add_rules("aylo.plugin_library", {folder = "plugins/backends"})
     set_kind("shared")
     set_basename("aylo-platform-sdl")
     add_defines("AYLO_PLATFORM_SDL_BUILD", {public = false})

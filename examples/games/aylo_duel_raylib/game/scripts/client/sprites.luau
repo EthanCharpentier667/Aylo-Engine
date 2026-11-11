@@ -19,12 +19,12 @@ end
 engine.ecs.system("game.DressShips", {
 	phase = "PostUpdate",
 	side = "client",
-	query = { read = { "game.Ship" }, without = { "rtype.SpriteRenderer" } },
+	query = { read = { "game.Ship" }, without = { "aylo.SpriteRenderer" } },
 	run = function(ctx)
 		for entity, ship in ctx.query do
-			ctx.commands:add(entity, "rtype.Transform", { position = ship.position })
-			ctx.commands:add(entity, "rtype.SpriteRenderer", { layer = 1 })
-			ctx.commands:add(entity, "rtype.SpriteAnimator", {
+			ctx.commands:add(entity, "aylo.Transform", { position = ship.position })
+			ctx.commands:add(entity, "aylo.SpriteRenderer", { layer = 1 })
+			ctx.commands:add(entity, "aylo.SpriteAnimator", {
 				atlas = if ship.player == 0 then assets.leftShip else assets.rightShip,
 				animation = "fly",
 			})
@@ -36,12 +36,12 @@ engine.ecs.system("game.DressShips", {
 engine.ecs.system("game.DressLasers", {
 	phase = "PostUpdate",
 	side = "client",
-	query = { read = { "game.Laser" }, without = { "rtype.SpriteRenderer" } },
+	query = { read = { "game.Laser" }, without = { "aylo.SpriteRenderer" } },
 	run = function(ctx)
 		for entity, laser in ctx.query do
-			ctx.commands:add(entity, "rtype.Transform", { position = laser.position })
-			ctx.commands:add(entity, "rtype.SpriteRenderer", { layer = 2 })
-			ctx.commands:add(entity, "rtype.SpriteAnimator", {
+			ctx.commands:add(entity, "aylo.Transform", { position = laser.position })
+			ctx.commands:add(entity, "aylo.SpriteRenderer", { layer = 2 })
+			ctx.commands:add(entity, "aylo.SpriteAnimator", {
 				atlas = assets.laser,
 				animation = if laser.shooter == 0 then "right" else "left",
 			})
@@ -53,7 +53,7 @@ engine.ecs.system("game.DressLasers", {
 engine.ecs.system("game.FollowShips", {
 	phase = "Update",
 	side = "client",
-	query = { read = { "game.Ship" }, write = { "rtype.Transform" } },
+	query = { read = { "game.Ship" }, write = { "aylo.Transform" } },
 	run = function(ctx)
 		for _, ship, transform in ctx.query do
 			transform.position = ship.position
@@ -65,7 +65,7 @@ engine.ecs.system("game.FollowShips", {
 engine.ecs.system("game.FollowLasers", {
 	phase = "Update",
 	side = "client",
-	query = { read = { "game.Laser" }, write = { "rtype.Transform" } },
+	query = { read = { "game.Laser" }, write = { "aylo.Transform" } },
 	after = { "game.FollowShips" },
 	run = function(ctx)
 		for _, laser, transform in ctx.query do
@@ -93,7 +93,7 @@ engine.ecs.system("game.NoticeWinner", {
 engine.ecs.system("game.ExplodeLoser", {
 	phase = "Update",
 	side = "client",
-	query = { read = { "game.Ship" }, write = { "rtype.SpriteRenderer" } },
+	query = { read = { "game.Ship" }, write = { "aylo.SpriteRenderer" } },
 	after = { "game.NoticeWinner" },
 	run = function(ctx)
 		if newWinner == nil then
@@ -104,12 +104,12 @@ engine.ecs.system("game.ExplodeLoser", {
 				local color = sprite.color
 				sprite.color = { x = color.x, y = color.y, z = color.z, w = 0 } -- its alpha: the ship is gone
 				ctx.commands:spawn({
-					["rtype.Transform"] = {
+					["aylo.Transform"] = {
 						position = ship.position,
 						scale = { x = explosionScale, y = explosionScale },
 					},
-					["rtype.SpriteRenderer"] = { layer = 3, blend = Duel.additive },
-					["rtype.SpriteAnimator"] = { atlas = assets.explosion, animation = "explode" },
+					["aylo.SpriteRenderer"] = { layer = 3, blend = Duel.additive },
+					["aylo.SpriteAnimator"] = { atlas = assets.explosion, animation = "explode" },
 					["game.Explosion"] = {},
 				})
 			end
@@ -123,10 +123,10 @@ engine.ecs.system("game.RemoveExplosions", {
 	phase = "Update",
 	side = "client",
 	query = { with = { "game.Explosion" } },
-	events = { read = { "rtype.AnimationFinished" } },
+	events = { read = { "aylo.AnimationFinished" } },
 	run = function(ctx)
 		local finished = {}
-		for event in ctx.events.read("rtype.AnimationFinished") do
+		for event in ctx.events.read("aylo.AnimationFinished") do
 			finished[event.entity.bits] = true
 		end
 		for entity in ctx.query do

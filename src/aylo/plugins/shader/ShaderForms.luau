@@ -2,7 +2,7 @@ local forms = engine.forms
 local form = "engine.assets.material"
 local vectorKeys = { "x", "y", "z", "w" }
 
-engine.assets.shader = forms.file("engine.assets.shader", "rtype.shader.load", {})
+engine.assets.shader = forms.file("engine.assets.shader", "aylo.shader.load", {})
 
 local function readValue(uniform, value)
 	if type(value) == "number" then
@@ -50,17 +50,17 @@ engine.assets.material = function(...)
 			table.insert(textures, { name = entry[1], texture = entry[2] })
 		end
 	end
-	if not engine.hasCall("rtype.shader.addMaterial") then
+	if not engine.hasCall("aylo.shader.addMaterial") then
 		return engine.assetId(name)
 	end
-	local material = forms.call(form, "rtype.shader.addMaterial", { name = name, shader = spec.shader })
+	local material = forms.call(form, "aylo.shader.addMaterial", { name = name, shader = spec.shader })
 	for _, fields in values do
 		fields.material = material
-		forms.call(form, "rtype.shader.setMaterialValue", fields)
+		forms.call(form, "aylo.shader.setMaterialValue", fields)
 	end
 	for _, fields in textures do
 		fields.material = material
-		forms.call(form, "rtype.shader.setMaterialTexture", fields)
+		forms.call(form, "aylo.shader.setMaterialTexture", fields)
 	end
 	return material
 end

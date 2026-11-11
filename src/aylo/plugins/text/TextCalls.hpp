@@ -18,21 +18,21 @@
 
 namespace aylo::plugins::text {
 
-inline constexpr std::string_view kLoadFontCall = "rtype.text.loadFont";  ///< FontAssets::load().
+inline constexpr std::string_view kLoadFontCall = "aylo.text.loadFont";  ///< FontAssets::load().
 
-/// @brief The arguments of `rtype.text.loadFont`: reads an msdf-atlas-gen JSON file.
+/// @brief The arguments of `aylo.text.loadFont`: reads an msdf-atlas-gen JSON file.
 struct LoadFontArguments {
     ecs::String path;  ///< The JSON file, next to its atlas image.
 };
-AYLO_ECS_CALL_DATA(LoadFontArguments, "rtype.text.LoadFontArguments", path);
+AYLO_ECS_CALL_DATA(LoadFontArguments, "aylo.text.LoadFontArguments", path);
 
-/// @brief The result of `rtype.text.loadFont`.
+/// @brief The result of `aylo.text.loadFont`.
 struct FontResult {
     core::asset::AssetId font;  ///< The font's id, for a TextRenderer.
 };
-AYLO_ECS_CALL_DATA(FontResult, "rtype.text.FontResult", font);
+AYLO_ECS_CALL_DATA(FontResult, "aylo.text.FontResult", font);
 
-/// @brief Registers the text engine call on @p app, for scripts: `rtype.text.loadFont`, on the `rtype.FontAssets`
+/// @brief Registers the text engine call on @p app, for scripts: `aylo.text.loadFont`, on the `aylo.FontAssets`
 /// resource. Called by the TextPlugin.
 void addTextCalls(ecs::App& app);
 

@@ -25,7 +25,7 @@
 
 namespace aylo::plugins::shader {
 
-/// @brief The game's shaders, compiled, as the ECS resource "rtype.ShaderAssets" the ShaderPlugin inserts: systems ask
+/// @brief The game's shaders, compiled, as the ECS resource "aylo.ShaderAssets" the ShaderPlugin inserts: systems ask
 /// for a shader and get its AssetId at once, materials keep that id.
 ///
 /// @details A shader is read and compiled when it is asked for (detail::compileShader()), on every side; the
@@ -110,6 +110,6 @@ class AYLO_PLUGIN_SHADER_API ShaderAssets {
     std::vector<core::asset::AssetId> _reloaded;      ///< Replaced since the last takeReloaded().
     std::vector<core::asset::AssetId> _unloaded;      ///< Unloaded since the last takeUnloaded().
 };
-AYLO_ECS_RESOURCE(ShaderAssets, "rtype.ShaderAssets");
+AYLO_ECS_RESOURCE(ShaderAssets, "aylo.ShaderAssets");
 
 }  // namespace aylo::plugins::shader

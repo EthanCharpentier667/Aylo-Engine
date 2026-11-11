@@ -45,7 +45,7 @@ struct Time {
     float delta;
     float fixedDelta;
 };
-AYLO_ECS_RESOURCE(Time, "rtype.Time");
+AYLO_ECS_RESOURCE(Time, "aylo.Time");
 
 struct Score {
     std::int32_t value;
@@ -160,7 +160,7 @@ replicated resource is sent like a component of a hidden singleton entity.
   systems only add to: two appending systems need no order, but each is still ordered against whatever reads or
   writes it. Use it only when the order of the additions cannot change the result.
 - **Missing resource.** `require<T>()` throws `MissingResourceException` naming the resource
-  ("Resource 'rtype.Time' is not in the world: insert it (or add the plugin that does) before using it");
+  ("Resource 'aylo.Time' is not in the world: insert it (or add the plugin that does) before using it");
   with #120, a system asking for `Res<T>` reports it the same way. `get<T>()` returns `nullptr` for
   resources that are genuinely optional.
 

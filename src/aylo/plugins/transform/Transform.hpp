@@ -23,7 +23,7 @@ struct Transform {
     float rotation = 0.0F;     ///< In radians, clockwise on screen.
     glm::vec2 scale{1.0F};     ///< 1: natural size; negative flips.
 };
-AYLO_ECS_COMPONENT(Transform, "rtype.Transform", position, rotation, scale);
+AYLO_ECS_COMPONENT(Transform, "aylo.Transform", position, rotation, scale);
 
 /// @brief Where an entity is in the world: what rendering and collisions read, never written by gameplay.
 /// @details Computed from Transform in PostUpdate by the TransformPlugin, which adds it to every entity with a
@@ -34,6 +34,6 @@ struct GlobalTransform {
     float rotation = 0.0F;     ///< In radians, clockwise on screen.
     glm::vec2 scale{1.0F};     ///< Combined scale.
 };
-AYLO_ECS_COMPONENT(GlobalTransform, "rtype.GlobalTransform", position, rotation, scale);
+AYLO_ECS_COMPONENT(GlobalTransform, "aylo.GlobalTransform", position, rotation, scale);
 
 }  // namespace aylo::plugins::transform

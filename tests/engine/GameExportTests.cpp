@@ -72,7 +72,7 @@ class GameExportTest : public ::testing::Test {
   protected:
     void SetUp() override {
         std::filesystem::create_directories(_game / "scripts");
-        write("project.luau", R"(engine.settings.plugins = { "rtype.Physics" })");
+        write("project.luau", R"(engine.settings.plugins = { "aylo.Physics" })");
         write("scripts/main.luau", "return {}");
     }
 
@@ -137,7 +137,7 @@ TEST_F(GameExportTest, PacksTheGameWithItsScriptsPrecompiled) {
     static_cast<void>(exportGame(request()));
     const aylo::core::vfs::PackSource pack{_output / "MyGame" / Engine::kPackFile};
 
-    EXPECT_EQ(pack.read("project.luau"), R"(engine.settings.plugins = { "rtype.Physics" })");
+    EXPECT_EQ(pack.read("project.luau"), R"(engine.settings.plugins = { "aylo.Physics" })");
     EXPECT_EQ(pack.read("assets/levels/a.txt"), "a level");
     EXPECT_TRUE(std::string_view{pack.read("scripts/main.luau")}.starts_with(aylo::luau::Runtime::kBytecodeHeader));
     EXPECT_EQ(readText(_output / "MyGame" / "play.sh").find("game.pak") == std::string::npos,
@@ -179,7 +179,7 @@ TEST_F(GameExportTest, KeepsTheGameFolderWithoutAPack) {
     const std::filesystem::path game = _output / "MyGame" / "game";
 
     EXPECT_FALSE(std::filesystem::exists(_output / "MyGame" / Engine::kPackFile));
-    EXPECT_EQ(readText(game / Engine::kProjectFile), R"(engine.settings.plugins = { "rtype.Physics" })");
+    EXPECT_EQ(readText(game / Engine::kProjectFile), R"(engine.settings.plugins = { "aylo.Physics" })");
     EXPECT_EQ(readText(game / "scripts" / "main.luau"), "return {}");
     EXPECT_FALSE(std::filesystem::exists(game / ".luaurc"));
     EXPECT_FALSE(std::filesystem::exists(game / "plugins" / "boss"));

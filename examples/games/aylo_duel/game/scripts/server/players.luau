@@ -16,7 +16,7 @@ engine.ecs.system("game.SpawnPlayers", {
 	side = "server",
 	query = { read = { "game.Ship" } },
 	events = { read = { "net.ClientConnected" } },
-	calls = { "rtype.capsule.spawn" },
+	calls = { "aylo.capsule.spawn" },
 	run = function(ctx)
 		local taken = 0
 		local leftTaken = false

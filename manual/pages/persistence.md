@@ -1,6 +1,6 @@
 # Persistence (saves)
 
-The `rtype.Persistence` plugin saves named texts in a per-user folder. It does not look inside them: the game
+The `aylo.Persistence` plugin saves named texts in a per-user folder. It does not look inside them: the game
 serialises its table, checks its own `schema_version` and migrates.
 
 ## Setup
@@ -19,10 +19,10 @@ A name is 1 to 64 letters, digits, `_`, `-` or `.`, not starting with a dot.
 
 | Helper                                       | Call                      | Result                                  |
 | -------------------------------------------- | ------------------------- | --------------------------------------- |
-| `engine.persistence.read(ctx, { name })`     | `rtype.persistence.read`  | `{ ok, data, error }`                   |
-| `engine.persistence.write(ctx, { name, data })` | `rtype.persistence.write` | `{ ok, error }`                      |
-| `engine.persistence.delete(ctx, { name })`   | `rtype.persistence.delete`| `{ ok, error }`                         |
-| `engine.persistence.exists(ctx, { name })`   | `rtype.persistence.exists`| `{ exists }`                            |
+| `engine.persistence.read(ctx, { name })`     | `aylo.persistence.read`  | `{ ok, data, error }`                   |
+| `engine.persistence.write(ctx, { name, data })` | `aylo.persistence.write` | `{ ok, error }`                      |
+| `engine.persistence.delete(ctx, { name })`   | `aylo.persistence.delete`| `{ ok, error }`                         |
+| `engine.persistence.exists(ctx, { name })`   | `aylo.persistence.exists`| `{ exists }`                            |
 
 Failures are values, never script errors: `error` is `invalid_name`, `not_found`, `corrupt` (truncated or damaged
 file) or `io: ...`. A write is atomic (temporary file, then rename): if it fails or the game crashes, the previous

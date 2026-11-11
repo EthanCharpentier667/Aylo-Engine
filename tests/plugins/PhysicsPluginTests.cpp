@@ -32,15 +32,15 @@ PhysicsSettings smallSettings() {
 }
 }  // namespace
 
-TEST(PhysicsPlugin, IsNamedRtypePhysics) { EXPECT_EQ(PhysicsPlugin{}.getName(), "rtype.Physics"); }
+TEST(PhysicsPlugin, IsNamedRtypePhysics) { EXPECT_EQ(PhysicsPlugin{}.getName(), "aylo.Physics"); }
 
 TEST(PhysicsPlugin, RegistersTheComponents) {
     aylo::ecs::App app;
     app.addPlugin(aylo::plugins::transform::TransformPlugin{});
     app.addPlugin(PhysicsPlugin{smallSettings()});
-    EXPECT_TRUE(app.getWorld().getComponents().find("rtype.RigidBody"));
-    EXPECT_TRUE(app.getWorld().getComponents().find("rtype.Collider"));
-    EXPECT_TRUE(app.getWorld().getComponents().find("rtype.Velocity"));
+    EXPECT_TRUE(app.getWorld().getComponents().find("aylo.RigidBody"));
+    EXPECT_TRUE(app.getWorld().getComponents().find("aylo.Collider"));
+    EXPECT_TRUE(app.getWorld().getComponents().find("aylo.Velocity"));
 }
 
 TEST(PhysicsPlugin, InsertsTheWorldFromItsSettings) {

@@ -39,6 +39,6 @@ target("aylo-editor")
     -- Built first, not linked: the Engine loads them.
     add_deps("plugin-libraries", "backend-libraries", {inherit = false})
     add_files("app/**.cpp")
-    add_rules("rtype.copy_to_root")
+    add_rules("aylo.copy_to_root")
     -- What `--version` prints: the version (with the nightly stamp) and the commit (aylo/build/BuildInfo.hpp).
     add_deps("build-info")

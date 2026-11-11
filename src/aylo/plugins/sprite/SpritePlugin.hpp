@@ -23,18 +23,18 @@ namespace aylo::plugins::sprite {
 ///
 /// @details Two PostUpdate systems, so gameplay switches animations in Update and the frame drawn is already the new
 /// one:
-/// - "rtype.Sprite.Animate", on every side: advances each playing SpriteAnimator by its speed, stops the finite ones on
+/// - "aylo.Sprite.Animate", on every side: advances each playing SpriteAnimator by its speed, stops the finite ones on
 ///   their last frame (sending AnimationFinished), and writes the frame's texture, source and origin into the entity's
 ///   SpriteRenderer, if it has one, only when they change. Atlases and animations that do not exist (yet) are skipped.
-/// - "rtype.Sprite.Textures", on the client, after it: hands the textures of the atlases added since the last frame to
+/// - "aylo.Sprite.Textures", on the client, after it: hands the textures of the atlases added since the last frame to
 ///   TextureAssets, which the GraphicsPlugin loads before drawing.
 /// It requires no other plugin, so a server adds it alone to keep its animators' time. The SpriteDrawPlugin draws the
 /// entities on a client.
 class AYLO_PLUGIN_SPRITE_API SpritePlugin : public ecs::Plugin {
   public:
-    static constexpr std::string_view kName = "rtype.Sprite";                     ///< The plugin's name.
-    static constexpr std::string_view kAnimateSystem = "rtype.Sprite.Animate";    ///< Plays the animations.
-    static constexpr std::string_view kTexturesSystem = "rtype.Sprite.Textures";  ///< Queues the atlas textures.
+    static constexpr std::string_view kName = "aylo.Sprite";                     ///< The plugin's name.
+    static constexpr std::string_view kAnimateSystem = "aylo.Sprite.Animate";    ///< Plays the animations.
+    static constexpr std::string_view kTexturesSystem = "aylo.Sprite.Textures";  ///< Queues the atlas textures.
 
     SpritePlugin() = default;
     ~SpritePlugin() override = default;
@@ -43,7 +43,7 @@ class AYLO_PLUGIN_SPRITE_API SpritePlugin : public ecs::Plugin {
     SpritePlugin(SpritePlugin&& other) noexcept = default;
     SpritePlugin& operator=(SpritePlugin&& other) noexcept = default;
 
-    /// @return "rtype.Sprite".
+    /// @return "aylo.Sprite".
     [[nodiscard]] std::string_view getName() const noexcept override;
 
     /// @brief Inserts the resources, registers the component and the event, and adds the PostUpdate systems.

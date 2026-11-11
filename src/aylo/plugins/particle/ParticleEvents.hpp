@@ -25,13 +25,13 @@ struct SpawnParticles {
     glm::vec2 position{0.0F, 0.0F};  ///< In world units.
     std::int32_t layer{0};           ///< Draw order among the sprites.
 };
-AYLO_ECS_EVENT(SpawnParticles, "rtype.SpawnParticles", effect, position, layer);
+AYLO_ECS_EVENT(SpawnParticles, "aylo.SpawnParticles", effect, position, layer);
 
 /// @brief Sent when a one-shot emitter (loop false) has emitted everything and its last particle died. On the GPU,
 /// once its duration plus the longest lifetime has passed, without reading anything back.
 struct ParticlesFinished {
     ecs::Entity entity;  ///< The emitter's entity.
 };
-AYLO_ECS_EVENT(ParticlesFinished, "rtype.ParticlesFinished", entity);
+AYLO_ECS_EVENT(ParticlesFinished, "aylo.ParticlesFinished", entity);
 
 }  // namespace aylo::plugins::particle

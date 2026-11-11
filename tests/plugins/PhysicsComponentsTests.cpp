@@ -40,7 +40,7 @@ void expectFields(const std::array<std::pair<std::string_view, FieldType>, N>& e
 }  // namespace
 
 TEST(RigidBody, ReflectsItsFields) {
-    EXPECT_EQ(aylo::ecs::ComponentTraits<RigidBody>::kName, "rtype.RigidBody");
+    EXPECT_EQ(aylo::ecs::ComponentTraits<RigidBody>::kName, "aylo.RigidBody");
     expectFields<RigidBody, 7>({{{"type", FieldType::kU8},
                                  {"mass", FieldType::kF32},
                                  {"linearDamping", FieldType::kF32},
@@ -60,7 +60,7 @@ TEST(RigidBody, DefaultsToADynamicBodyUnderGravity) {
 }
 
 TEST(Collider, ReflectsItsFields) {
-    EXPECT_EQ(aylo::ecs::ComponentTraits<Collider>::kName, "rtype.Collider");
+    EXPECT_EQ(aylo::ecs::ComponentTraits<Collider>::kName, "aylo.Collider");
     expectFields<Collider, 10>({{{"shape", FieldType::kU8},
                                  {"size", FieldType::kVec2},
                                  {"radius", FieldType::kF32},
@@ -89,7 +89,7 @@ TEST(Collider, DefaultsToTheFirstCategoryCollidingWithAll) {
 }
 
 TEST(Velocity, ReflectsItsFields) {
-    EXPECT_EQ(aylo::ecs::ComponentTraits<Velocity>::kName, "rtype.Velocity");
+    EXPECT_EQ(aylo::ecs::ComponentTraits<Velocity>::kName, "aylo.Velocity");
     expectFields<Velocity, 2>({{{"linear", FieldType::kVec2}, {"angular", FieldType::kF32}}});
 }
 

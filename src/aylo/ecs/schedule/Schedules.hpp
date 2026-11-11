@@ -33,8 +33,8 @@ namespace aylo::ecs {
 /// every schedule. It keeps a pointer to the world: the world must outlive it.
 /// @code
 /// aylo::ecs::Schedules schedules{world, aylo::ecs::RunMode::kStandalone};
-/// schedules.addSystem(aylo::ecs::Phase::kFixedUpdate, "rtype.movement", &movement);
-/// schedules.addSystem(aylo::ecs::Phase::kFixedUpdate, "rtype.collision", &detect).after("rtype.movement");
+/// schedules.addSystem(aylo::ecs::Phase::kFixedUpdate, "aylo.movement", &movement);
+/// schedules.addSystem(aylo::ecs::Phase::kFixedUpdate, "aylo.collision", &detect).after("aylo.movement");
 /// schedules.setClock(std::move(clock));
 /// schedules.runFrame();
 /// @endcode

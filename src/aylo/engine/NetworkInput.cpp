@@ -38,21 +38,21 @@
 namespace aylo::engine {
 namespace {
 namespace input_call {
-/// @brief The arguments of `rtype.input.read`, as the Engine builds them. It names the same data as the input
+/// @brief The arguments of `aylo.input.read`, as the Engine builds them. It names the same data as the input
 /// plugin's `ReadActionArguments`: addNetworkInput() checks that the plugin's layout is this one.
 struct ReadActionArguments {
     ecs::String action;  ///< The action.
 };
-AYLO_ECS_CALL_DATA(ReadActionArguments, "rtype.input.ReadActionArguments", action);
+AYLO_ECS_CALL_DATA(ReadActionArguments, "aylo.input.ReadActionArguments", action);
 
-/// @brief The result of `rtype.input.read`, as the Engine reads it (the input plugin's `ActionState`).
+/// @brief The result of `aylo.input.read`, as the Engine reads it (the input plugin's `ActionState`).
 struct ActionState {
     glm::vec2 value{0.0F};  ///< Its value: the X alone for a button or an axis.
     bool held{false};       ///< Down this frame.
     bool pressed{false};    ///< Went down this frame.
     bool released{false};   ///< Went up this frame.
 };
-AYLO_ECS_CALL_DATA(ActionState, "rtype.input.ActionState", value, held, pressed, released);
+AYLO_ECS_CALL_DATA(ActionState, "aylo.input.ActionState", value, held, pressed, released);
 }  // namespace input_call
 
 /// @brief Reads one input action through the call at index 0 of @p calls.

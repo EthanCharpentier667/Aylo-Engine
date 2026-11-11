@@ -25,8 +25,8 @@ namespace aylo::ecs {
 /// the plugins it knows, from linked code or loaded libraries, and gives it the project's settings: a factory reads its
 /// own section from them, and one that takes no argument builds a plugin with its default settings.
 /// @code
-/// app.getPluginRegistry().add("rtype.Transform", [] { return std::make_unique<TransformPlugin>(); });
-/// app.getPluginRegistry().add("rtype.Shader", [](const aylo::core::config::Settings& settings) {
+/// app.getPluginRegistry().add("aylo.Transform", [] { return std::make_unique<TransformPlugin>(); });
+/// app.getPluginRegistry().add("aylo.Shader", [](const aylo::core::config::Settings& settings) {
 ///     return std::make_unique<ShaderPlugin>(settings);
 /// });
 /// @endcode

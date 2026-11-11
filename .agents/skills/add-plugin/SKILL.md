@@ -19,7 +19,7 @@ earlier example of splitting plugins into libraries, see pull request #414.
 2. **Create the folder** `src/aylo/plugins/<name>/`, namespace `aylo::plugins::<name>`, one feature folder inside only
    when files go in it, an export header for `AYLO_PLUGIN_<NAME>_API`, exceptions in `exceptions/`.
 3. **Declare the target** in `src/aylo/plugins/xmake.lua` with the `plugin("<name>", {<deps>})` helper: its sources and
-   headers by glob, and its private packages with `add_packages`. The helper applies the `rtype.plugin_library` rule,
+   headers by glob, and its private packages with `add_packages`. The helper applies the `aylo.plugin_library` rule,
    which puts the library where the engine loads it. A new third-party package is added with
    `add_requires` (in that file, or the root one if several modules use it) and stays private: no public header
    includes it.

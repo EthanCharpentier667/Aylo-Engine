@@ -35,7 +35,7 @@ TEST(ResourceInfo, DefaultsAreUsableFromAnyThread) {
 TEST(ResourceInfo, AcceptsAReplicatedResourceWithFields) { EXPECT_TRUE(aylo::ecs::validate(makeScore())); }
 
 TEST(ResourceInfo, AcceptsAMoveOnlyResource) {
-    aylo::ecs::ResourceInfo backend{.type = {.name = "rtype.Backend", .size = 8, .alignment = 8, .copyable = false},
+    aylo::ecs::ResourceInfo backend{.type = {.name = "aylo.Backend", .size = 8, .alignment = 8, .copyable = false},
                                     .nonSend = true};
     EXPECT_TRUE(aylo::ecs::validate(backend));
 }

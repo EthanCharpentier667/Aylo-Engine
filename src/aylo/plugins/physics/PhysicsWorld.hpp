@@ -248,6 +248,6 @@ class AYLO_PLUGIN_PHYSICS_API PhysicsWorld {
     std::shared_ptr<const detail::JoltRuntime> _runtime;  ///< Keeps Jolt set up while the world lives.
     std::unique_ptr<Impl> _impl;                          ///< The Jolt objects, at a stable address.
 };
-AYLO_ECS_RESOURCE(PhysicsWorld, "rtype.PhysicsWorld");
+AYLO_ECS_RESOURCE(PhysicsWorld, "aylo.PhysicsWorld");
 
 }  // namespace aylo::plugins::physics

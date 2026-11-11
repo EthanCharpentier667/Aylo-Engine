@@ -106,9 +106,9 @@ class CapsuleCallsTest : public ::testing::Test {
 }  // namespace
 
 TEST_F(CapsuleCallsTest, RegistersTheThreeCalls) {
-    EXPECT_NE(app.getWorld().getCalls().findByName("rtype.capsule.spawn"), nullptr);
-    EXPECT_NE(app.getWorld().getCalls().findByName("rtype.capsule.load"), nullptr);
-    EXPECT_NE(app.getWorld().getCalls().findByName("rtype.capsule.reload"), nullptr);
+    EXPECT_NE(app.getWorld().getCalls().findByName("aylo.capsule.spawn"), nullptr);
+    EXPECT_NE(app.getWorld().getCalls().findByName("aylo.capsule.load"), nullptr);
+    EXPECT_NE(app.getWorld().getCalls().findByName("aylo.capsule.reload"), nullptr);
 }
 
 TEST_F(CapsuleCallsTest, SpawnsACapsule) {
@@ -175,8 +175,8 @@ TEST_F(CapsuleCallsTest, GivesTheSystemTheAccessOfTheCalls) {
     aylo::ecs::ScriptCallable callable{[](const aylo::ecs::DynamicCalls /*calls*/) {}};
     const aylo::ecs::System system{app.getWorld(), "test.load", std::move(callable),
                                    aylo::ecs::CallList{{callId(capsule::kLoadCall)}}};
-    const auto capsules = app.getWorld().getResources().find("rtype.Capsules");
-    const auto loaded = app.getWorld().getResources().find("rtype.LoadedCapsule");
+    const auto capsules = app.getWorld().getResources().find("aylo.Capsules");
+    const auto loaded = app.getWorld().getResources().find("aylo.LoadedCapsule");
     ASSERT_TRUE(capsules && loaded);
     bool readsCapsules = false;
     bool writesLoaded = false;

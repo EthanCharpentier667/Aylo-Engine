@@ -130,7 +130,7 @@ TEST(ScriptSetupForms, AnAtlasFormReportsTheSpritePluginsErrors) {
     const std::string error = script.run(R"(
         engine.assets.atlas({ texture = "ship.png", animations = { fly = { direction = "sideways" } } })
     )");
-    EXPECT_NE(error.find("engine.assets.atlas: engine call 'rtype.sprite.addAnimation': Unknown animation direction"),
+    EXPECT_NE(error.find("engine.assets.atlas: engine call 'aylo.sprite.addAnimation': Unknown animation direction"),
               std::string::npos)
         << error;
 }
@@ -166,7 +166,7 @@ TEST(ScriptSetupForms, AnInputFormReportsUnknownControls) {
     ScriptApp script;
     script.app.addPlugin(aylo::plugins::input::InputPlugin{});
     const std::string error = script.run(R"(engine.input.action("jump", "button", { bind = { "Jump" } }))");
-    EXPECT_NE(error.find("engine.input.action: engine call 'rtype.input.bind': Unknown control 'Jump'"),
+    EXPECT_NE(error.find("engine.input.action: engine call 'aylo.input.bind': Unknown control 'Jump'"),
               std::string::npos)
         << error;
 }

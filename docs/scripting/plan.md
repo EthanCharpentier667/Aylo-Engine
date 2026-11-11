@@ -51,8 +51,8 @@ local ecs = engine.ecs
 
 ecs.system("game.ShieldRegen", {
 	phase = "FixedUpdate",
-	query = { write = { "game.Shield" }, without = { "rtype.Dead" } },
-	after = { "rtype.movement" },
+	query = { write = { "game.Shield" }, without = { "aylo.Dead" } },
+	after = { "aylo.movement" },
 	run = function(ctx)
 		for entity, shield in ctx.query do
 			shield.strength = math.min(shield.strength + shield.regen * ctx.fixedDelta, 100)
@@ -90,7 +90,7 @@ Supported in the first version:
 - Scripts can read components declared in C++ (they are in the registry), as long as their fields use the types above.
   A `std::vector` field of a C++ component reads as a table, a copy, and is replaced from an array; a `std::string`
   field reads and writes as a string of any length. Components declared in Luau have neither: they hold no memory of
-  their own. `rtype.Parent` and `rtype.Children` cannot be `write` terms: `commands:setParent()` changes a hierarchy.
+  their own. `aylo.Parent` and `aylo.Children` cannot be `write` terms: `commands:setParent()` changes a hierarchy.
 
 ## 3. Starting point
 
@@ -285,7 +285,7 @@ Each task is one issue and one pull request. Ids `LUA-xx`. Tests go in `tests/sc
 **Done when**
 
 - [ ] The `ShieldRegen` example above raises `strength` on every FixedUpdate tick, in a test.
-- [ ] An entity with `rtype.Dead` is skipped by the `without` term.
+- [ ] An entity with `aylo.Dead` is skipped by the `without` term.
 - [ ] An error in `run` is logged once per tick and the other systems keep running.
 
 #### LUA-07: `ctx.commands`
@@ -300,8 +300,8 @@ Each task is one issue and one pull request. Ids `LUA-xx`. Tests go in `tests/sc
 **What to build**
 
 - `commands:spawn({ ["game.Shield"] = { strength = 10 }, ... })`: returns the reserved `Entity`. (Since SCR-10 a
-  component may also be a C++ one, such as `rtype.Collider`, built from its C++ defaults; one that owns memory, such as
-  `rtype.TextRenderer`, is constructed, filled and copied into the command buffer.)
+  component may also be a C++ one, such as `aylo.Collider`, built from its C++ defaults; one that owns memory, such as
+  `aylo.TextRenderer`, is constructed, filled and copied into the command buffer.)
 - `commands:add(entity, "game.Shield", {...})`.
 - `commands:despawn(entity)`, which despawns its children too.
 - `commands:setParent(child, parent)` and `commands:removeParent(child)`.
@@ -345,7 +345,7 @@ Checked against the code on 2026-11-03. What the ECS already offers, and what it
 | Events and resources from scripts                               | By bytes and id: `Events::send(EventId, span)`, `RawEventRange`, `Resources::find/get/getMut(ResourceId)`. `ScriptCallable` receives `DynamicQueries` and `Commands` only, so it needs access to them. |
 | Systems by side                                                 | `Side`, `System::setSide`, `RunMode`. Done.                                                                                                                                                            |
 | Client systems write only `kClientOnly` components              | **Not enforced.** `Presence` exists on types, but nothing reads it when a system is added.                                                                                                             |
-| Capsules (feature 18) | **Implemented** in `plugin-capsule`: files describe them, scripts spawn, load and reload them through `rtype.capsule.*` calls. |
+| Capsules (feature 18) | **Implemented** in `plugin-capsule`: files describe them, scripts spawn, load and reload them through `aylo.capsule.*` calls. |
 | States and run conditions (feature 13 v2) | **Not implemented.** Only described in the docs.                                                                                                                                                       |
 | Replication of script components                                | The manifest carries `layoutHash`; whether it accepts components registered at runtime is **not checked**.                                                                                             |
 
@@ -371,7 +371,7 @@ Ids follow the order the tasks are best done in. Weights are set when the issues
 - **Enums and bitmasks.** The ECS reflects an enum field (`Collider::shape`, `TextRenderer::align`) as its underlying
   integer (`FieldTypeOf`), so a script already sees a number; a bitmask (`Collider::layer`, `mask`) is a plain `u32`.
   What is missing is names: let a plugin expose the enumerators of a reflected enum (ECS side: the field description
-  would carry them), and give scripts `engine.ecs.enum("rtype.ShapeType").kBox` or a string accepted on write
+  would carry them), and give scripts `engine.ecs.enum("aylo.ShapeType").kBox` or a string accepted on write
   (`shape = "box"`). Bit operations are `bit32` (Luau has it).
 - **Strings.** The ECS can *store* a component that holds a `std::string` (the type hooks construct, move and destroy
   it), but it cannot *reflect* one: there is no `FieldType` for it, and `AYLO_ECS_COMPONENT(TextRenderer, ...)` stops
@@ -459,16 +459,16 @@ Ids follow the order the tasks are best done in. Weights are set when the issues
   writes, so the access set stays truthful for the scheduler. Done as the `DynamicResources` and `DynamicEvents`
   parameters (`docs/ecs/features/12-systems.md`), configured with a `ResourceList` and an `EventList`; the script
   declares them with `resources = { read, write }` and `events = { read, send }`.
-- `ctx.resources["rtype.Input"]`: a `ComponentView` over the resource bytes (read-only unless declared as written),
+- `ctx.resources["aylo.Input"]`: a `ComponentView` over the resource bytes (read-only unless declared as written),
   with the same generation check as component views.
 - A system that only uses resources and events may declare an empty `query`: it has no query, and `ctx.query` ends
   at once.
-- `ctx.events.send("game.Explosion", {...})` and `for event in ctx.events.read("rtype.Collision")`.
+- `ctx.events.send("game.Explosion", {...})` and `for event in ctx.events.read("aylo.Collision")`.
 - Resources that are not plain data (main-thread, non-standard-layout) are refused with an error, not skipped.
 
 **Done when**
 
-- [x] A script reads `rtype.Time` in a test. (`rtype.Input` holds maps, so it is refused as not plain data: it
+- [x] A script reads `aylo.Time` in a test. (`aylo.Input` holds maps, so it is refused as not plain data: it
   needs a dedicated engine call, see SCR-10.)
 - [x] A script sends an event that a C++ system reads, and the reverse.
 - [x] Writing a resource declared as read raises an error.
@@ -483,11 +483,11 @@ Ids follow the order the tasks are best done in. Weights are set when the issues
 
 **Goal.** One place for the time values (`ctx.time.delta`, `fixedDelta`, `elapsed`, `tick`).
 
-Small: it can be folded into SCR-04 if the `rtype.Time` view is enough. Keep `ctx.delta` and `ctx.fixedDelta` working.
+Small: it can be folded into SCR-04 if the `aylo.Time` view is enough. Keep `ctx.delta` and `ctx.fixedDelta` working.
 
 **Done when**
 
-- [x] `ctx.time` gives the values of `rtype.Time` and the old fields still work.
+- [x] `ctx.time` gives the values of `aylo.Time` and the old fields still work.
 
 #### SCR-06: `side` and `presence` in declarations
 
@@ -643,8 +643,8 @@ this plan is A: it exists in the design, and it needs no change to the ECS rule.
 
 **Goal.** Scripts use capsules. *Done differently than first planned:* actors and scenes became one concept,
 capsules, described by files (`.actor`, `.scene`, `.capsule` under `assets/`, read by the plugin and reloaded when
-saved) rather than declared from Luau, so scripts declare nothing: they call `rtype.capsule.spawn`,
-`rtype.capsule.load` and `rtype.capsule.reload` (see [Capsules](../ecs/features/18-capsules.md)).
+saved) rather than declared from Luau, so scripts declare nothing: they call `aylo.capsule.spawn`,
+`aylo.capsule.load` and `aylo.capsule.reload` (see [Capsules](../ecs/features/18-capsules.md)).
 
 Not startable: the ECS part has to exist first. Create it as an `ecs` issue (feature 18, v2) and block this one on it.
 
@@ -682,8 +682,8 @@ for these (`GameAtlases`, `GameSounds`, `declareInputs`, `registerGame`).
 *Done:* `aylo_duel` is written in Luau (`examples/games/aylo_duel/game/scripts/`: `shared/` for what both sides require, `server/` and
 `client/`, each with a `main.luau` entry), and `aylo-runtime` runs it with `--game`. What it needed on the way: the backend plugin
 draws a `ShapeRenderer` component (its obstacles) and reflects `SpriteRenderer::source` (its planets), and the
-replication plugin registers `rtype.replication.localClient` on clients (who won), and `ctx.commands` builds the C++
-components that own memory, such as the `rtype.TextRenderer` of its texts (the players' names, the winner).
+replication plugin registers `aylo.replication.localClient` on clients (who won), and `ctx.commands` builds the C++
+components that own memory, such as the `aylo.TextRenderer` of its texts (the players' names, the winner).
 
 **Why M2 alone is not enough.** SCR-04 gives scripts the *bytes* of a plain-data resource. The setup of the duel is
 *calls*: `AtlasAssets::load()` / `grid()`, `TextureAssets::load()`, `FontAssets`, `AudioAssets`, `InputLayout::add()`,
@@ -692,7 +692,7 @@ their bytes would be wrong anyway.
 
 **What to build**
 
-- **A registry of named engine calls, in `ecs`.** A plugin registers `("rtype.AtlasAssets.load", signature, function)`
+- **A registry of named engine calls, in `ecs`.** A plugin registers `("aylo.AtlasAssets.load", signature, function)`
   on the `App`; the signature is made of `FieldType`s, so `ecs` stays free of Luau, and `plugins` never depends on
   `luau` (dependency rules). `scripting` exposes each call under `engine`, converting arguments with the SCR-01
   conversions (an `assetId` takes a path). A call runs where it is declared (`side`, SCR-06) and on the thread that
@@ -703,8 +703,8 @@ their bytes would be wrong anyway.
   load, and with `ctx.call(name, {...})` in a system that lists it under `calls = {...}`; the system takes the call's
   access (and its main-thread need), so the scheduler orders it like any other. A call the system does not list is a
   Luau error; an unknown call is refused when the script loads, unless the system does not run in that `App`'s mode.
-  The asset, input and audio plugins register their calls (`rtype.sprite.createAtlas`, `rtype.input.bindVector`,
-  `rtype.audio.playSound`...; see the list in `docs/ecs/features/19-luau-bridge.md`). Controls are named with text
+  The asset, input and audio plugins register their calls (`aylo.sprite.createAtlas`, `aylo.input.bindVector`,
+  `aylo.audio.playSound`...; see the list in `docs/ecs/features/19-luau-bridge.md`). Controls are named with text
   (`plugins/input/ControlNames.hpp`).
 - **Declarative forms for the common setup**, written in `scripting` on top of the calls, so scripts do not juggle
   handles: `engine.input.action("move", "vector2")`, `engine.assets.atlas{ path = ..., grid = {...}, animations =
@@ -720,19 +720,19 @@ their bytes would be wrong anyway.
   `PhysicsDebugSettings::fromSettings()`); see "Generic plugins" in `docs/engine/design.md`.
 - **Physics.** Expose `Collider`, `RigidBody` and `Velocity` (SCR-01 covers their enums), the collision events
   (SCR-04) and the scene queries as engine calls.
-  *Done:* `ctx.commands` spawns and adds the plain-data C++ components of the world (`rtype.Collider`,
-  `rtype.Transform`...) from their C++ defaults, not only script ones, with the same client rule (and, since the
-  duel's texts, those that own memory, such as `rtype.TextRenderer`). The physics plugin
-  registers `rtype.physics.raycast`, `shapeCast`, `overlap` (a count and one entity: call data holds no list),
+  *Done:* `ctx.commands` spawns and adds the plain-data C++ components of the world (`aylo.Collider`,
+  `aylo.Transform`...) from their C++ defaults, not only script ones, with the same client rule (and, since the
+  duel's texts, those that own memory, such as `aylo.TextRenderer`). The physics plugin
+  registers `aylo.physics.raycast`, `shapeCast`, `overlap` (a count and one entity: call data holds no list),
   `moveAndSlide` (an entity's `Collider`), `applyForce`, `applyImpulse`, `applyTorque` and `setGravity`
   (`plugins/physics/PhysicsCalls.hpp`, see "From scripts" in `docs/physics/design.md`); velocity and position are
   component writes.
 - Replication components (`Owner`, `PlayerInput`) and `ClientConnected`: readable and writable like any component and
   event; check their layouts are plain data.
   *Done:* they are plain data; the `axes` array of `PlayerInput` is not script-readable, so the replication plugin
-  registers `rtype.replication.readInput` (`{held, pressed, released, axis, vector}` of an action, by name) and
-  `rtype.replication.addInput`, which `engine.input.action` makes on both sides so the network `InputLayout` comes
-  from the scripts. On clients the `Engine` adds `rtype.engine.networkInput` (`engine/NetworkInput`), which fills the
+  registers `aylo.replication.readInput` (`{held, pressed, released, axis, vector}` of an action, by name) and
+  `aylo.replication.addInput`, which `engine.input.action` makes on both sides so the network `InputLayout` comes
+  from the scripts. On clients the `Engine` adds `aylo.engine.networkInput` (`engine/NetworkInput`), which fills the
   sent `PlayerInput` from the `Input` actions of the same names, so a game needs no `ClientState::setInput` of its own.
 
 **Open point for the team (blocks the start).** Bound calls (above) or only declarative forms? The first is general and

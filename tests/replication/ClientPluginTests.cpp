@@ -107,7 +107,7 @@ void moveShips(Query<Position> positions) {
     }
 }
 
-/// @brief Makes the `rtype.replication.localClient` call of @p app, as a script does.
+/// @brief Makes the `aylo.replication.localClient` call of @p app, as a script does.
 aylo::replication::client::LocalClient localClientOf(App& app) {
     aylo::ecs::Calls& calls = app.getWorld().getCalls();
     const aylo::ecs::CallInfo* info = calls.findByName(aylo::replication::client::kLocalClientCall);
@@ -196,16 +196,16 @@ bool runUntil(Server& server, Client& client, const std::function<bool()>& done)
 
 TEST(ClientPlugin, IsNamed) {
     const auto address = network::io::Address::resolve("127.0.0.1", 9).value();
-    EXPECT_EQ((ClientPlugin{address, network::NetworkSettings{}}.getName()), "rtype.replication.client");
-    EXPECT_EQ(ClientPlugin::kName, "rtype.replication.client");
+    EXPECT_EQ((ClientPlugin{address, network::NetworkSettings{}}.getName()), "aylo.replication.client");
+    EXPECT_EQ(ClientPlugin::kName, "aylo.replication.client");
     EXPECT_EQ(ClientPlugin::kSendInputSystem, "net.sendInput");
 }
 
 TEST(ClientPlugin, AddsTheReplicationPluginAndTheState) {
     Server server;
     Client client{server.address()};
-    EXPECT_TRUE(client.app().hasPlugin("rtype.replication"));
-    EXPECT_TRUE(client.app().hasPlugin("rtype.replication.client"));
+    EXPECT_TRUE(client.app().hasPlugin("aylo.replication"));
+    EXPECT_TRUE(client.app().hasPlugin("aylo.replication.client"));
     EXPECT_TRUE(client.app().getWorld().getResources().has<ClientState>());
 }
 

@@ -14,7 +14,7 @@
 
 namespace aylo::plugins::graphics {
 
-/// @brief The component ("rtype.Camera") that makes an entity a point of view: the graphics plugin shows the world from
+/// @brief The component ("aylo.Camera") that makes an entity a point of view: the graphics plugin shows the world from
 /// the GlobalTransform of the camera entity with the highest priority.
 /// @details Where the camera is comes from the entity's Transform, as for any other entity: an entity with a Camera but
 /// no Transform is never shown.
@@ -31,5 +31,5 @@ struct Camera {
     std::int32_t priority = 0;                    ///< Among several camera entities, the highest one is shown.
 };
 
-AYLO_ECS_COMPONENT(Camera, "rtype.Camera", priority);
+AYLO_ECS_COMPONENT(Camera, "aylo.Camera", priority);
 }  // namespace aylo::plugins::graphics

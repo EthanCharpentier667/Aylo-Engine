@@ -59,7 +59,7 @@ What the network can rely on as of **2026-10-19** (`main` at `2649ee9`):
 | `core`: `hash/NameHash.hpp` (FNV-1a 64) | Done | Manifest and schema hashes |
 | `ecs`: queries (typed and dynamic), commands, systems, scheduler and phases, fixed timestep, `App`, `Plugin`, `RunMode` / `Side` | Done | The replication is written as plugins from the start: resources, systems on phases and sides, `Commands` (spawn, add by `ComponentId`, remove, despawn), queries |
 | `ecs`: prefabs, Luau bridge, field network options (quantization) | **Not started** | Needed by NET-35, NET-41, NET-42 |
-| `plugins/input`: `InputPlugin`, the `rtype.Input` resource, `Control` | Done | Client side: a system of the executable fills a `PlayerInput` from it |
+| `plugins/input`: `InputPlugin`, the `aylo.Input` resource, `Control` | Done | Client side: a system of the executable fills a `PlayerInput` from it |
 | `plugins/backend`: `GraphicsPlugin` (window, platform events, frame systems) and `platform-glfw` | Done | The prototype client is an `App` with a window, like `engine/main.cpp` |
 | `render-vulkan`: `draw(Shape)`, `draw(Sprite)`, `setView` | Done (`draw(Shape)`: SDF shapes, drawn after the sprites) | The prototype client can draw its bodies as shapes; it printed the world until then ([NET-18](#net-18--prototype-game)) |
 
@@ -191,7 +191,7 @@ src/aylo/replication/            aylo::replication — aylo-replication (shared)
 ├── xmake.lua, Export.hpp         AYLO_REPLICATION_API
 ├── ReplicationSettings.hpp
 ├── MessageType.hpp               0x20–0xFF
-├── ReplicationPlugin.hpp/.cpp    ReplicationPlugin "rtype.replication": registers every component and event below,
+├── ReplicationPlugin.hpp/.cpp    ReplicationPlugin "aylo.replication": registers every component and event below,
 │                                 inserts the InputLayout resource; added by the server and client plugins
 ├── component/                    aylo::replication::component
 │   └── NetworkId, Owner, PlayerInput
@@ -209,9 +209,9 @@ src/aylo/replication/            aylo::replication — aylo-replication (shared)
 ├── snapshot/                     aylo::replication::snapshot
 │   └── Snapshot (encode / decode), later SnapshotHistory, KnownEntities (M2)
 ├── server/                       aylo::replication::server
-│   └── ServerPlugin "rtype.replication.server", ServerState (resource), later Room, RoomManager (NET-25)
+│   └── ServerPlugin "aylo.replication.server", ServerState (resource), later Room, RoomManager (NET-25)
 ├── client/                       aylo::replication::client
-│   └── ClientPlugin "rtype.replication.client", ClientState (resource), later Interpolator (NET-22),
+│   └── ClientPlugin "aylo.replication.client", ClientState (resource), later Interpolator (NET-22),
 │       Predictor (NET-36, NET-37)
 ├── packet/                       aylo::replication::packet  (M5)
 │   └── PacketDescriptor, PacketRegistry, AYLO_REPLICATION_PACKET
@@ -246,7 +246,7 @@ These apply to every task; the acceptance criteria below do not repeat them.
   (resources, events, systems, other plugins); opening a socket, building the manifest or connecting happens in a
   `Startup` system, when every plugin of the game has registered its types. A system parameter is built when the system
   is added, so a plugin whose parameters depend on registered types (`ServerPlugin`, through `ReplicatedRead`) is added
-  after the plugins that register them. A plugin name is `rtype.replication...`;
+  after the plugins that register them. A plugin name is `aylo.replication...`;
   each plugin exposes its system names as `static constexpr std::string_view` constants (as `GraphicsPlugin` does), so
   that game systems can order themselves with `.after(...)` / `.before(...)`. Server systems are `Side::kServer`,
   client systems `Side::kClient`.
@@ -430,7 +430,7 @@ This task creates the empty shells and the vocabulary they share:
    (as GLFW never leaves `platform/glfw/`).
 2. `replication` builds as a static library `aylo-replication` that depends on `ecs` and `network`, both public
    (its headers use their types). Both are linked into the executable: no plugin links them, and the build refuses
-   a shared library that does (`rtype.static_modules`).
+   a shared library that does (`aylo.static_modules`).
 3. Exported symbols use `AYLO_NETWORK_API` / `AYLO_REPLICATION_API`, defined like `AYLO_ECS_API` (empty for the
    static build, through `AYLO_NETWORK_STATIC` / `AYLO_REPLICATION_STATIC`).
 4. `Types.hpp` defines:
@@ -1895,7 +1895,7 @@ and works with ordinary ECS data. These few types are the meeting point:
 - **`ClientConnected` / `ClientDisconnected`** are ECS events: the game reacts to them with ordinary code (spawn a
   ship for the new player, remove it when they leave), with no network code.
 
-`ReplicationPlugin` (named `"rtype.replication"`) registers all of them. `ServerPlugin` (NET-16) and `ClientPlugin`
+`ReplicationPlugin` (named `"aylo.replication"`) registers all of them. `ServerPlugin` (NET-16) and `ClientPlugin`
 (NET-17) both add it from their `build()`; the ECS skips a plugin already added, so the types are registered once
 whichever is added first. They must be registered on both sides, because the manifest (NET-14) compares the
 replicated types of both worlds. The plugin also inserts the `InputLayout` resource (NET-15), so the game declares its
@@ -1947,7 +1947,7 @@ namespace aylo::replication {
 /// local input; see the design, "Standalone").
 class AYLO_REPLICATION_API ReplicationPlugin : public ecs::Plugin {
   public:
-    static constexpr std::string_view kName = "rtype.replication";
+    static constexpr std::string_view kName = "aylo.replication";
     [[nodiscard]] std::string_view getName() const noexcept override;
     void build(ecs::App& app) override;  // plus the rule of five, like every Plugin
 };
@@ -2348,7 +2348,7 @@ own pace.
 
 *Plugin and setup.*
 
-1. `ServerPlugin(network::NetworkSettings, ReplicationSettings)`, named `"rtype.replication.server"`. `build()` adds
+1. `ServerPlugin(network::NetworkSettings, ReplicationSettings)`, named `"aylo.replication.server"`. `build()` adds
    `ReplicationPlugin` (NET-12), inserts the `ServerState` resource and adds the systems above, each with its
    `static constexpr` name constant (`kReceiveSystem`, `kApplyInputsSystem`, `kAssignIdsSystem`, `kSnapshotSystem`).
 2. The `net.start` system (Startup) creates the `NetServer` (a socket that cannot be bound is an exception: setup
@@ -2441,7 +2441,7 @@ namespace aylo::replication::server {
 /// @brief The server's replication: opens the NetServer, hands out NetworkIds, applies inputs, sends snapshots.
 class AYLO_REPLICATION_API ServerPlugin : public ecs::Plugin {
   public:
-    static constexpr std::string_view kName = "rtype.replication.server";
+    static constexpr std::string_view kName = "aylo.replication.server";
     static constexpr std::string_view kApplyInputsSystem = "net.applyInputs";  // game systems run .after() it
     ServerPlugin(network::NetworkSettings network, ReplicationSettings settings);
     [[nodiscard]] std::string_view getName() const noexcept override;
@@ -2541,7 +2541,7 @@ Like the server side, the logic is not in the systems: they call helpers and a `
 
 *Plugin and setup.*
 
-1. `ClientPlugin(network::io::Address server, network::NetworkSettings)`, named `"rtype.replication.client"`.
+1. `ClientPlugin(network::io::Address server, network::NetworkSettings)`, named `"aylo.replication.client"`.
    `build()` adds `ReplicationPlugin`, inserts the `ClientState` resource and adds the systems above, each with its
    `static constexpr` name constant. The `net.connect` system (Startup) creates the `NetClient` and calls `connect`.
 2. As on the server, the transport time comes from a replaceable function, so tests drive it.
@@ -2610,7 +2610,7 @@ enum class ManifestStatus : std::uint8_t { kWaiting, kAccepted, kMismatch };
 /// @brief The client's replication: connects, checks the manifest, applies snapshots, sends inputs.
 class AYLO_REPLICATION_API ClientPlugin : public ecs::Plugin {
   public:
-    static constexpr std::string_view kName = "rtype.replication.client";
+    static constexpr std::string_view kName = "aylo.replication.client";
     static constexpr std::string_view kSendInputSystem = "net.sendInput";  // the game's input system runs .before() it
     ClientPlugin(network::io::Address server, network::NetworkSettings settings);
     [[nodiscard]] std::string_view getName() const noexcept override;

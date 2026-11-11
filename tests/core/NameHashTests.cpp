@@ -11,7 +11,7 @@
 
 #include "core/hash/NameHash.hpp"
 
-static_assert(aylo::core::hash::hashName("rtype.Health") != aylo::core::hash::hashName("rtype.Position"));
+static_assert(aylo::core::hash::hashName("aylo.Health") != aylo::core::hash::hashName("aylo.Position"));
 
 TEST(NameHash, MatchesTheFnv1aReferenceValues) {
     EXPECT_EQ(aylo::core::hash::hashName(""), 0xcbf29ce484222325ULL);
@@ -19,14 +19,14 @@ TEST(NameHash, MatchesTheFnv1aReferenceValues) {
 }
 
 TEST(NameHash, DependsOnEveryCharacter) {
-    EXPECT_NE(aylo::core::hash::hashName("rtype.Health"), aylo::core::hash::hashName("rtype.health"));
+    EXPECT_NE(aylo::core::hash::hashName("aylo.Health"), aylo::core::hash::hashName("aylo.health"));
     EXPECT_NE(aylo::core::hash::hashName("ab"), aylo::core::hash::hashName("ba"));
-    EXPECT_EQ(aylo::core::hash::hashName("rtype.Health"), aylo::core::hash::hashName("rtype.Health"));
+    EXPECT_EQ(aylo::core::hash::hashName("aylo.Health"), aylo::core::hash::hashName("aylo.Health"));
 }
 
 TEST(NameHash, IsTheStringStepFromTheOffsetBasis) {
-    EXPECT_EQ(aylo::core::hash::hashName("rtype.Health"),
-              aylo::core::hash::hashString(aylo::core::hash::kNameHashOffsetBasis, "rtype.Health"));
+    EXPECT_EQ(aylo::core::hash::hashName("aylo.Health"),
+              aylo::core::hash::hashString(aylo::core::hash::kNameHashOffsetBasis, "aylo.Health"));
 }
 
 TEST(NameHash, IntegerStepDependsOnEveryByte) {

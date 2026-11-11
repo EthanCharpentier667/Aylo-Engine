@@ -71,11 +71,11 @@ TEST(NetworkInput, AddsNoSystemWithoutTheInputCall) {
 
 namespace {
 namespace fake_input {
-/// @brief The arguments and the result of `rtype.input.read`, named and laid out as the Engine reads them.
+/// @brief The arguments and the result of `aylo.input.read`, named and laid out as the Engine reads them.
 struct ReadActionArguments {
     aylo::ecs::String action;
 };
-AYLO_ECS_CALL_DATA(ReadActionArguments, "rtype.input.ReadActionArguments", action);
+AYLO_ECS_CALL_DATA(ReadActionArguments, "aylo.input.ReadActionArguments", action);
 
 struct ActionState {
     glm::vec2 value{0.0F};
@@ -83,7 +83,7 @@ struct ActionState {
     bool pressed{false};
     bool released{false};
 };
-AYLO_ECS_CALL_DATA(ActionState, "rtype.input.ActionState", value, held, pressed, released);
+AYLO_ECS_CALL_DATA(ActionState, "aylo.input.ActionState", value, held, pressed, released);
 
 ActionState read(const ReadActionArguments& /*arguments*/) { return ActionState{.value = {1.0F, 0.0F}, .held = true}; }
 }  // namespace fake_input
@@ -92,7 +92,7 @@ ActionState read(const ReadActionArguments& /*arguments*/) { return ActionState{
 TEST(NetworkInput, AStandaloneWorldGivesTheInputToTheEntityOfTheLocalClient) {
     aylo::ecs::App app{aylo::ecs::RunMode::kStandalone};
     app.addPlugin(aylo::ecs::TimePlugin::manual(std::chrono::milliseconds{20}, aylo::ecs::FixedTimestep{50, 5}));
-    app.addCall("rtype.input.read", &fake_input::read);
+    app.addCall("aylo.input.read", &fake_input::read);
     app.addPlugin(aylo::replication::standalone::StandalonePlugin{});
     app.getWorld().getResources().getMut<aylo::replication::input::InputLayout>()->add("fire", InputKind::kButton);
     aylo::engine::addNetworkInput(app);

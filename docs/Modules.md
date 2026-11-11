@@ -67,8 +67,8 @@ architecture rules, and this file keeps the detail, which changes with every fea
   knows both the ECS and the network; it turns a `World` into messages and back (`aylo::replication`).
   Exported symbols are marked `AYLO_REPLICATION_API`. Feature folders and sub-namespaces as in `network`:
   `component/`, `event/`, `serialization/`, `manifest/`, `input/`, `snapshot/`, `server/`, `client/`,
-  `packet/`, `admin/` (the world messages of the admin channel), `exceptions/`. `input/InputCalls.hpp` holds its engine calls (`rtype.replication.addInput`, `readInput`),
-  `client/ClientCalls.hpp` the client's (`rtype.replication.localClient`), both registered by `ReplicationPlugin`.
+  `packet/`, `admin/` (the world messages of the admin channel), `exceptions/`. `input/InputCalls.hpp` holds its engine calls (`aylo.replication.addInput`, `readInput`),
+  `client/ClientCalls.hpp` the client's (`aylo.replication.localClient`), both registered by `ReplicationPlugin`.
 - `src/aylo/engine/` — `engine` target, static library (`aylo-engine`): `Engine` runs a game directory (`game/` by
   default, `<dir>`): it reads its `project.luau` through Luau (`scripting/SettingsLoader`, which also exposes
   the command line as `engine.args`), builds the `App` with the program's plugins, `EngineConfig::addPlugins`, and the engine's (transform, replication,
@@ -92,7 +92,7 @@ architecture rules, and this file keeps the detail, which changes with every fea
   branch) is a private package: no header of the editor includes it. Design in `docs/Editor.md`.
 - `src/aylo/runtime/` — the generic executable `aylo-runtime`: a `main` that runs an `Engine` on `game/` as a client, or
   as the server with `--server`, which loads the plugins and backends from their libraries (the executables link none). The build copies them to the repository root
-  (rule `rtype.copy_to_root`). Games whose gameplay is still C++ (`ethan_game(bestoftheworld)`) keep their own `main`
+  (rule `aylo.copy_to_root`). Games whose gameplay is still C++ (`ethan_game(bestoftheworld)`) keep their own `main`
   and give it to the `Engine` as `EngineConfig::setup`. `aylo_duel` is written in Luau (`game/scripts/`); its own `main`
   only picks the side from its first argument.
 - `src/aylo/contract/` — the contracts, one shared library per interface (`contract-platform`, `contract-renderer`,
@@ -122,7 +122,7 @@ architecture rules, and this file keeps the detail, which changes with every fea
   (`AYLO_ECS_CALL_DATA`). A plugin names what it requires in `getDependencies()`; the program adds it
   first, and no plugin adds another one. See `docs/Plugins.md`.
     - `plugins/graphics/` (`aylo::plugins::graphics`) — `GraphicsPlugin`: starts the platform and the renderer from a
-      `BackendRegistry` the executable fills (so it depends on no backend), with the `rtype.Backend` main-thread resource, the
+      `BackendRegistry` the executable fills (so it depends on no backend), with the `aylo.Backend` main-thread resource, the
       window events and the PreUpdate / Render systems that poll the window, frame the drawing and draw the `SpriteQueue`
       by layer. Also the `Camera` component (projection and priority, placed by its entity's `Transform`), the
       `TextureAssets` resource (the textures by `AssetId`, queued by `load()` and decoded with stb), the `SpriteQueue`
@@ -132,17 +132,17 @@ architecture rules, and this file keeps the detail, which changes with every fea
       requires the `InputPlugin` and the `TransformPlugin`.
     - `plugins/input/` (`aylo::plugins::input`) — `InputPlugin`: `Control` (named with text by `controlFromName()`,
       `ControlNames.hpp`, over `contract/platform/input/KeyNames.hpp`), `Input`, `InputAction`, `ButtonStates`,
-      the `rtype.Input` resource, fed by a `PreUpdate` system from the `PlatformEvent`s in order, and the typed input
+      the `aylo.Input` resource, fed by a `PreUpdate` system from the `PlatformEvent`s in order, and the typed input
       events (`InputEvents.hpp`) for gameplay code. It knows nothing of the graphics plugin, which requires it.
     - `plugins/capsule/` (`aylo::plugins::capsule`) — `CapsulePlugin`: capsules, entities described once and spawned
       by copy, actors and levels alike. `Capsule` (a flat list of nodes: name, parent, side, the capsule it instances,
       `ComponentValues`), the `Capsules` resource (by the `AssetId` of their path, `define()` again for hot reload),
       `spawnCapsule()`, `loadCapsule()` (switches levels, with the `LoadedCapsule` resource) and `reloadCapsule()`,
       each recorded in a `Commands` buffer (`CapsuleSpawn.hpp`), the `CapsuleInstance` component on
-      every spawned root, and the `rtype.capsule.spawn` / `load` / `reload` calls (`CapsuleCalls.hpp`).
+      every spawned root, and the `aylo.capsule.spawn` / `load` / `reload` calls (`CapsuleCalls.hpp`).
       `format/CapsuleText.hpp` (`aylo::plugins::capsule::format`) reads and writes the capsule file format
       (`docs/CapsuleFormat.md`);
-      `CapsuleFiles` (the `rtype.CapsuleFiles` resource) reads a game's `.capsule` / `.scene` / `.actor` files from the
+      `CapsuleFiles` (the `aylo.CapsuleFiles` resource) reads a game's `.capsule` / `.scene` / `.actor` files from the
       plugin's `finish()` and reads saved files again for `CapsuleReloadable`, the plugin's hot reload source, which
       fills `ReloadedCapsules` for the system that reloads what they spawned.
       `detail/CapsuleSpawner` checks a capsule and records its walk. It requires no plugin. See
@@ -163,10 +163,10 @@ architecture rules, and this file keeps the detail, which changes with every fea
       `StopMusic` events, played by client-side PostUpdate systems. `AudioReflection.hpp` reflects the contract's `Bus`. Design in `docs/audio/design.md`.
     - `plugins/http/` (`aylo::plugins::http`) — `HttpPlugin`: HTTPS requests for scripts. `HttpSettings` (the `http`
       section: allowed hosts, limits, secrets), the `HttpClient` resource (libcurl, private in `detail/CurlClient`,
-      polled without waiting by `rtype.Http.Poll`), the `HttpResponse` event, the `rtype.http.request` and
-      `rtype.http.cancel` calls and the `engine.http.request` helper (`HttpForms.luau`). Design in `docs/Http.md`.
-    - `plugins/json/` (`aylo::plugins::json`) — `JsonPlugin`: JSON for scripts. The `rtype.json.encode` and
-      `rtype.json.decode` calls (`JsonCalls.hpp`) do the real work with nlohmann::json, private in `detail/JsonCodec`,
+      polled without waiting by `aylo.Http.Poll`), the `HttpResponse` event, the `aylo.http.request` and
+      `aylo.http.cancel` calls and the `engine.http.request` helper (`HttpForms.luau`). Design in `docs/Http.md`.
+    - `plugins/json/` (`aylo::plugins::json`) — `JsonPlugin`: JSON for scripts. The `aylo.json.encode` and
+      `aylo.json.decode` calls (`JsonCalls.hpp`) do the real work with nlohmann::json, private in `detail/JsonCodec`,
       on a value flattened into a pre-order node stream (an engine call carries reflected fields, never a table of any
       shape); the `engine.json` helpers (`JsonForms.luau`: `encode`, `decode`, `tryDecode`, `map`) only walk a Luau
       table's shape and rebuild a value from the stream. No component or event. Design in `docs/Json.md`.
@@ -287,7 +287,7 @@ scripting, replication, plugin-transform, plugin-input  ←  engine  ←  execut
   so a copy in each binary is harmless.
 - `luau`, `network`, `replication`, `scripting` and `engine` are static libraries, linked into the executable, because
   no plugin, backend or contract links them. They may keep state (the Luau VM, sockets), which would be duplicated by a
-  shared library linking them: the build refuses it (rule `rtype.static_modules` in the root `xmake.lua`). `ecs` and
+  shared library linking them: the build refuses it (rule `aylo.static_modules` in the root `xmake.lua`). `ecs` and
   the contracts stay shared: they hold the registries and the type information plugins and backends share, so every
   binary must see one copy. A static module marks its exports with `AYLO_<LIB>_API`, which expands to nothing
   through the public define `AYLO_<LIB>_STATIC`.

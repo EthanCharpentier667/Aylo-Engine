@@ -81,7 +81,7 @@ if (const Position* position = components.get<Position>(ship); position != nullp
 }
 
 // Type-erased (what the Luau bridge and the replication plugin use)
-const std::optional<aylo::ecs::ComponentId> id = components.find("rtype.Position");
+const std::optional<aylo::ecs::ComponentId> id = components.find("aylo.Position");
 const bool added = components.add(ship, *id, bytes);          // false if the entity is dead, the id unknown or the size wrong
 std::span<const std::byte> raw = components.get(ship, *id);  // empty if absent
 ```

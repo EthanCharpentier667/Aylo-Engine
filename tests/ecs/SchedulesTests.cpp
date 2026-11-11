@@ -116,10 +116,10 @@ TEST(Schedules, AddsSystemsToTheirPhase) {
 TEST(Schedules, RejectsANameUsedInAnotherPhase) {
     World world;
     Schedules schedules{world, RunMode::kStandalone};
-    schedules.addSystem(Phase::kUpdate, "rtype.movement", &noop);
-    expectScheduleError([&] { schedules.addSystem(Phase::kRender, "rtype.movement", &noop); },
-                        "Two systems are named 'rtype.movement' (phases Update and Render)");
-    EXPECT_FALSE(schedules.getSchedule(Phase::kRender).contains("rtype.movement"));
+    schedules.addSystem(Phase::kUpdate, "aylo.movement", &noop);
+    expectScheduleError([&] { schedules.addSystem(Phase::kRender, "aylo.movement", &noop); },
+                        "Two systems are named 'aylo.movement' (phases Update and Render)");
+    EXPECT_FALSE(schedules.getSchedule(Phase::kRender).contains("aylo.movement"));
 }
 
 TEST(Schedules, ReplacesTheSystemsOfOnePhase) {
@@ -165,10 +165,10 @@ TEST(Schedules, RejectsANameUsedTwiceInOnePhase) {
 TEST(Schedules, RejectsATargetInAnotherPhase) {
     World world;
     Schedules schedules{world, RunMode::kStandalone};
-    schedules.addSystem(Phase::kPreUpdate, "rtype.input", &noop);
-    schedules.addSystem(Phase::kFixedUpdate, "rtype.movement", &noop).before("rtype.input");
+    schedules.addSystem(Phase::kPreUpdate, "aylo.input", &noop);
+    schedules.addSystem(Phase::kFixedUpdate, "aylo.movement", &noop).before("aylo.input");
     expectScheduleError([&] { schedules.build(); },
-                        "'rtype.movement' runs before 'rtype.input', which is not a system of phase FixedUpdate");
+                        "'aylo.movement' runs before 'aylo.input', which is not a system of phase FixedUpdate");
 }
 
 TEST(Schedules, AcceptsConflictingSystemsOfDifferentPhases) {

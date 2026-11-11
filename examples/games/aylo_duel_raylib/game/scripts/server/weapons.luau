@@ -21,9 +21,9 @@ function Weapons.fire(ctx, player: number, position)
 	-- The laser's actor (assets/actors/laser.actor) is the body; the shot gives where, who, which way and whom it hits.
 	engine.capsule.spawn(ctx, Duel.laser, {
 		["game.Laser"] = { position = muzzle, shooter = player },
-		["rtype.Transform"] = { position = muzzle },
-		["rtype.Collider"] = { mask = bit32.bor(Duel.obstacleLayer, Duel.shipLayerOf(1 - player)) },
-		["rtype.Velocity"] = { linear = { x = direction * Duel.laserSpeed, y = 0 } },
+		["aylo.Transform"] = { position = muzzle },
+		["aylo.Collider"] = { mask = bit32.bor(Duel.obstacleLayer, Duel.shipLayerOf(1 - player)) },
+		["aylo.Velocity"] = { linear = { x = direction * Duel.laserSpeed, y = 0 } },
 	})
 end
 

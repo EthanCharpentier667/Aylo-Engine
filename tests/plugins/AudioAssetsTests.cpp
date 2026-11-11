@@ -32,7 +32,7 @@ struct AudioAssetsFixture {
 constexpr std::array<std::byte, 3> kBytes{std::byte{1}, std::byte{2}, std::byte{3}};
 }  // namespace
 
-static_assert(aylo::ecs::ResourceTraits<aylo::plugins::audio::AudioAssets>::kName == "rtype.AudioAssets");
+static_assert(aylo::ecs::ResourceTraits<aylo::plugins::audio::AudioAssets>::kName == "aylo.AudioAssets");
 
 TEST(AudioAssets, QueuesASoundAndReturnsTheIdOfItsPath) {
     AudioAssetsFixture fixture;

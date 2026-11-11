@@ -24,8 +24,8 @@ engine.ecs.system("game.SpawnNames", {
 	run = function(ctx)
 		for player = 0, Duel.playerCount - 1 do
 			ctx.commands:spawn({
-				["rtype.Transform"] = { position = { x = Duel.viewWidth / 4 * (2 * player + 1), y = nameTop } },
-				["rtype.TextRenderer"] = {
+				["aylo.Transform"] = { position = { x = Duel.viewWidth / 4 * (2 * player + 1), y = nameTop } },
+				["aylo.TextRenderer"] = {
 					text = `Player {player + 1}`,
 					font = assets.font,
 					size = nameSize,
@@ -62,10 +62,10 @@ engine.ecs.system("game.AnnounceWinner", {
 	phase = "Update",
 	side = "client",
 	query = { read = { "game.Winner" }, added = { "game.Winner" } },
-	calls = { "rtype.replication.localClient" },
+	calls = { "aylo.replication.localClient" },
 	run = function(ctx)
 		for _, winner in ctx.query do
-			local me = ctx.call("rtype.replication.localClient", {})
+			local me = ctx.call("aylo.replication.localClient", {})
 			local mine = me.connected and playerOf[me.client] == winner.player
 			local lines = {
 				{ text = `Player {winner.player + 1} wins!`, y = winnerY },
@@ -73,8 +73,8 @@ engine.ecs.system("game.AnnounceWinner", {
 			}
 			for _, line in lines do
 				ctx.commands:spawn({
-					["rtype.Transform"] = { position = { x = Duel.viewWidth / 2, y = line.y } },
-					["rtype.TextRenderer"] = {
+					["aylo.Transform"] = { position = { x = Duel.viewWidth / 2, y = line.y } },
+					["aylo.TextRenderer"] = {
 						text = line.text,
 						font = assets.font,
 						size = winnerSize,

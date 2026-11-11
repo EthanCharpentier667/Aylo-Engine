@@ -181,7 +181,7 @@ void run() {
         .addPlugins(MinimalPlugins{})                                 // its TimePlugin is skipped: already added
         .addPlugins(GamePlugins{})
         .addPlugin(GamePlugin{});  // already added through the group: ignored
-    std::cout << std::format("  has example.game? {}; has rtype.time? {}\n", app.hasPlugin("example.game"),
+    std::cout << std::format("  has example.game? {}; has aylo.time? {}\n", app.hasPlugin("example.game"),
                              app.hasPlugin(TimePlugin::kName));
 
     std::cout << "\n== Dependencies: example.hud requires example.game (added) and example.text (registered) ==\n";

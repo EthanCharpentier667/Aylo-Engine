@@ -52,6 +52,6 @@ class AYLO_PLUGIN_PERSISTENCE_API SaveStore {
     std::filesystem::path _directory;
 };
 
-AYLO_ECS_RESOURCE(SaveStore, "rtype.SaveStore");
+AYLO_ECS_RESOURCE(SaveStore, "aylo.SaveStore");
 
 }  // namespace aylo::plugins::persistence

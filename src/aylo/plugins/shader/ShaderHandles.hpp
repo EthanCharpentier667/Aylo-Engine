@@ -25,7 +25,7 @@ namespace aylo::plugins::shader {
 class MaterialAssets;
 class ShaderAssets;
 
-/// @brief The renderer's side of the shaders and materials, as the client resource "rtype.ShaderHandles" the
+/// @brief The renderer's side of the shaders and materials, as the client resource "aylo.ShaderHandles" the
 /// ShaderPlugin inserts: what each ShaderAssets and MaterialAssets entry was created as, for the drawing systems.
 ///
 /// @details update() follows the two asset resources each frame: it creates the shaders compiled since the last frame,
@@ -88,6 +88,6 @@ class AYLO_PLUGIN_SHADER_API ShaderHandles {
     std::vector<core::asset::AssetId> _waiting;  ///< Materials to create or update, once their shader is ready.
     std::unordered_map<core::asset::AssetId, core::asset::AssetId> _rejected;  ///< Reported materials: their shader.
 };
-AYLO_ECS_RESOURCE(ShaderHandles, "rtype.ShaderHandles");
+AYLO_ECS_RESOURCE(ShaderHandles, "aylo.ShaderHandles");
 
 }  // namespace aylo::plugins::shader

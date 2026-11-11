@@ -99,7 +99,7 @@ TEST(TextPlugin, ComesWithTheGraphicsPlugin) {
     TextApp app;
     EXPECT_TRUE(app.app().hasPlugin(aylo::plugins::text::TextPlugin::kName));
     EXPECT_TRUE(app.world().getResources().has<FontAssets>());
-    EXPECT_TRUE(app.world().getComponents().find("rtype.TextRenderer"));
+    EXPECT_TRUE(app.world().getComponents().find("aylo.TextRenderer"));
 }
 
 TEST(TextPlugin, DrawsATextAtItsEntity) {

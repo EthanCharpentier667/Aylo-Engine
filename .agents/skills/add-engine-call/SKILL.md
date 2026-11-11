@@ -6,7 +6,7 @@ description: Add an engine call, a named function a plugin gives to Luau scripts
 # Add an engine call
 
 An engine call is a named function registered by a plugin that scripts invoke by name with a table of arguments
-(`engine.call("rtype.audio.loadSound", {...})` while loading, `ctx.call(...)` in a system that declared it). It is how a
+(`engine.call("aylo.audio.loadSound", {...})` while loading, `ctx.call(...)` in a system that declared it). It is how a
 game reaches what plain data cannot do: load an asset, bind an input, play a sound, query physics. Read
 `docs/ecs/features/19-luau-bridge.md` (*Engine calls*, *Setup forms*), `docs/ecs/features/12-systems.md` (engine calls),
 `docs/scripting/plan.md`, and one existing example: the audio, input or sprite plugin's calls file (pull requests
@@ -16,7 +16,7 @@ game reaches what plain data cannot do: load an asset, bind an input, play a sou
 
 ## Checklist
 
-1. **Name it** `aylo.<plugin>.<verb>` (camelCase verb: `rtype.audio.loadSound`). One call does one thing.
+1. **Name it** `aylo.<plugin>.<verb>` (camelCase verb: `aylo.audio.loadSound`). One call does one thing.
 2. **Define the data.** An argument struct and, if the call returns something, a result struct, each declared with the
    call-data macro and a stable `aylo.<plugin>.<Name>` name, in the plugin's calls header (`<Name>Calls.hpp`). Missing
    argument fields keep their defaults, so give every field a sensible default. Use asset-id fields for assets (a script

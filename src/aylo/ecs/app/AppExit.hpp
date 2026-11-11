@@ -21,5 +21,5 @@ namespace aylo::ecs {
 struct AppExit {
     int code;  ///< What App::run() returns: 0 for success.
 };
-AYLO_ECS_EVENT(AppExit, "rtype.AppExit", code);
+AYLO_ECS_EVENT(AppExit, "aylo.AppExit", code);
 }  // namespace aylo::ecs

@@ -19,5 +19,5 @@ namespace aylo::plugins::input {
 struct PlatformEvent {
     contract::platform::Event event;  ///< The platform's event.
 };
-AYLO_ECS_EVENT(PlatformEvent, "rtype.PlatformEvent");
+AYLO_ECS_EVENT(PlatformEvent, "aylo.PlatformEvent");
 }  // namespace aylo::plugins::input

@@ -65,7 +65,7 @@ class CallBody {
 /// call (DynamicCalls) gets it added to its own, so the scheduler orders it as if it had those parameters.
 struct CallInfo {
     CallId id{kInvalidCallId};               ///< Dense id, assigned by Calls.
-    std::string name;                        ///< Stable, unique key: "rtype.audio.loadSound".
+    std::string name;                        ///< Stable, unique key: "aylo.audio.loadSound".
     std::optional<TypeInfo> arguments;       ///< What it takes; empty when it takes nothing.
     std::optional<TypeInfo> result;          ///< What it returns; empty when it returns nothing.
     SystemAccess access;                     ///< What it reads and writes.

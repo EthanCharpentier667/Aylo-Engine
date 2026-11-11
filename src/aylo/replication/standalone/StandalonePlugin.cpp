@@ -27,7 +27,7 @@
 
 namespace aylo::replication::standalone {
 namespace {
-/// @brief `rtype.replication.localClient`: the local client is always connected.
+/// @brief `aylo.replication.localClient`: the local client is always connected.
 client::LocalClient localClient() { return client::LocalClient{.connected = true, .client = LocalSession::kClient}; }
 
 /// @brief PreUpdate: announces the local client once and delivers the packets sent since the last frame.

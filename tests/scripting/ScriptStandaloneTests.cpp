@@ -62,13 +62,13 @@ engine.net.packet("t.Down", { direction = "toClients", channel = "reliable", fie
 
 engine.ecs.system("t.Client", {
     phase = "Update", side = "client", query = {},
-    calls = { "rtype.net.sendToServer", "rtype.replication.localClient" },
+    calls = { "aylo.net.sendToServer", "aylo.replication.localClient" },
     events = { read = { "net.PacketReceived" }, send = { "test.standalone.Checked" } },
     run = function(ctx)
         for _, packet in engine.net.received(ctx) do
             ctx.events.send("test.standalone.Checked", { what = "client:" .. packet.name .. ":" .. packet.sender })
         end
-        local me = ctx.call("rtype.replication.localClient", {})
+        local me = ctx.call("aylo.replication.localClient", {})
         if not Sent then
             Sent = true
             ctx.events.send("test.standalone.Checked", { what = "local:" .. tostring(me.connected) .. ":" .. me.client .. ":" .. ctx.side })
@@ -79,7 +79,7 @@ engine.ecs.system("t.Client", {
 
 engine.ecs.system("t.Server", {
     phase = "Update", side = "server", query = {}, after = { "t.Client" },
-    calls = { "rtype.net.sendToClients" },
+    calls = { "aylo.net.sendToClients" },
     events = { read = { "net.PacketReceived", "net.ClientConnected" }, send = { "test.standalone.Checked" } },
     run = function(ctx)
         for joined in ctx.events.read("net.ClientConnected") do
@@ -107,11 +107,11 @@ engine.ecs.system("t.Both", {
 
 engine.ecs.system("t.Input", {
     phase = "Update", side = "server", query = { read = { "net.Owner" } }, after = { "t.Both" },
-    calls = { "rtype.replication.readInput" },
+    calls = { "aylo.replication.readInput" },
     events = { send = { "test.standalone.Checked" } },
     run = function(ctx)
         for entity, owner in ctx.query do
-            local state = ctx.call("rtype.replication.readInput", { entity = entity, action = "fire" })
+            local state = ctx.call("aylo.replication.readInput", { entity = entity, action = "fire" })
             ctx.events.send("test.standalone.Checked", {
                 what = "input:" .. owner.client .. ":" .. tostring(state.held) .. ":" .. tostring(state.pressed) })
         end
@@ -212,7 +212,7 @@ TEST(ScriptStandalone, ABadPacketIsAScriptErrorNotACrash) {
     StandaloneWorld world{R"(
 engine.net.packet("t.Up", { direction = "toServer", channel = "reliable", fields = { { "n", "u8" } } })
 engine.ecs.system("t.Bad", {
-    phase = "Update", side = "client", query = {}, calls = { "rtype.net.sendToServer" },
+    phase = "Update", side = "client", query = {}, calls = { "aylo.net.sendToServer" },
     run = function(ctx)
         engine.net.sendToServer(ctx, "t.Up", { n = 300 })
         engine.net.sendToServer(ctx, "t.Unknown", {})

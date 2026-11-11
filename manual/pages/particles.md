@@ -5,10 +5,10 @@ effect once, as a table, then play it from an emitter on an entity, or once at a
 `project.luau`:
 
 ```luau
-engine.settings.plugins = { "rtype.SpriteDraw", "rtype.Particle" }
+engine.settings.plugins = { "aylo.SpriteDraw", "aylo.Particle" }
 ```
 
-`rtype.Particle` lives on the **client** only: particles are something you see, not gameplay. The server has no
+`aylo.Particle` lives on the **client** only: particles are something you see, not gameplay. The server has no
 particles, so the files that build and play effects are required by the client entry only. Systems that play effects are
 client systems (`side = "client"`).
 
@@ -48,12 +48,12 @@ local effects = require("@scripts/client/effects_assets")
 engine.ecs.system("game.MuzzleSparks", {
 	phase = "Update",
 	side = "client",
-	query = { read = { "rtype.Transform" }, added = { "game.Laser" } },
-	events = { send = { "rtype.SpawnParticles" } },
+	query = { read = { "aylo.Transform" }, added = { "game.Laser" } },
+	events = { send = { "aylo.SpawnParticles" } },
 	run = function(ctx)
 		for _, transform in ctx.query do
 			local at = transform.position
-			ctx.events.send("rtype.SpawnParticles", { effect = effects.sparks, position = { x = at.x, y = at.y } })
+			ctx.events.send("aylo.SpawnParticles", { effect = effects.sparks, position = { x = at.x, y = at.y } })
 		end
 	end,
 })
@@ -133,7 +133,7 @@ straight line; before the first and after the last it stays. Two keys at the sam
 
 ### Once, at a point
 
-Send `rtype.SpawnParticles`: the plugin spawns an emitter there, plays its effect once and removes it.
+Send `aylo.SpawnParticles`: the plugin spawns an emitter there, plays its effect once and removes it.
 
 | Field | Type | Default | Meaning |
 |---|---|---|---|
@@ -145,7 +145,7 @@ Use an effect with `loop = false` here. A looping one never ends, so it would st
 
 ### On an entity
 
-Give the entity an `rtype.ParticleEmitter` and an `rtype.Transform`. It plays while the component is there and moves
+Give the entity an `aylo.ParticleEmitter` and an `aylo.Transform`. It plays while the component is there and moves
 with the entity.
 
 | Field | Type | Default | Meaning |
@@ -164,22 +164,22 @@ local effects = require("@scripts/client/effects_assets")
 engine.ecs.system("game.ShipTrail", {
 	phase = "Update",
 	side = "client",
-	query = { with = { "game.Ship" }, without = { "rtype.ParticleEmitter" } },
+	query = { with = { "game.Ship" }, without = { "aylo.ParticleEmitter" } },
 	run = function(ctx)
 		for ship in ctx.query do
-			ctx.commands:add(ship, "rtype.ParticleEmitter", { effect = effects.trail, layer = -1 })
+			ctx.commands:add(ship, "aylo.ParticleEmitter", { effect = effects.trail, layer = -1 })
 		end
 	end,
 })
 ```
 
-The ship entity is replicated from the server, but `rtype.ParticleEmitter` is the client's own: a client system may
+The ship entity is replicated from the server, but `aylo.ParticleEmitter` is the client's own: a client system may
 add it. Remove it, or set `playing = false`, to stop the trail.
 
 ### Knowing when it is over
 
-`rtype.ParticlesFinished` (`entity`) is sent once an emitter whose effect does not loop has emitted everything and its
-last particle has died. Read it under `events = { read = { "rtype.ParticlesFinished" } }`.
+`aylo.ParticlesFinished` (`entity`) is sent once an emitter whose effect does not loop has emitted everything and its
+last particle has died. Read it under `events = { read = { "aylo.ParticlesFinished" } }`.
 
 ## Errors
 
@@ -199,7 +199,7 @@ The form checks its whole table and names the part that is wrong:
 Building an effect twice with the same `name` keeps the first one.
 
 !!! warning "Only on the client"
-    `rtype.ParticleEmitter`, `rtype.SpawnParticles` and `rtype.ParticlesFinished` exist only where `rtype.Particle`
+    `aylo.ParticleEmitter`, `aylo.SpawnParticles` and `aylo.ParticlesFinished` exist only where `aylo.Particle`
     is, on the client. Declare the systems that name them with `side = "client"`, in files only the client entry requires (see
     [Systems](systems.md#where-a-system-runs)).
 

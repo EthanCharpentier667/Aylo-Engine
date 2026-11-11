@@ -128,9 +128,9 @@ flowchart LR
 | [`aylo/contract/platform/event/Event.hpp`](../src/aylo/contract/platform/event/Event.hpp) | Every event type and the `contract::platform::Event` variant |
 | [`plugins/input/Control.hpp`](../src/aylo/plugins/input/Control.hpp) | One physical control read as a float |
 | [`plugins/input/InputAction.hpp`](../src/aylo/plugins/input/InputAction.hpp) | A named action and its bindings |
-| [`plugins/input/Input.hpp`](../src/aylo/plugins/input/Input.hpp) | Input state and the action registry; the `rtype.Input` ECS resource |
+| [`plugins/input/Input.hpp`](../src/aylo/plugins/input/Input.hpp) | Input state and the action registry; the `aylo.Input` ECS resource |
 | [`plugins/input/ButtonStates.hpp`](../src/aylo/plugins/input/ButtonStates.hpp) | Held / tapped / snapshot state of a family of buttons |
-| [`plugins/input/InputEvents.hpp`](../src/aylo/plugins/input/InputEvents.hpp) | The input events of `contract::platform::Event` declared as typed ECS events (`rtype.KeyPressed`...), for gameplay code |
+| [`plugins/input/InputEvents.hpp`](../src/aylo/plugins/input/InputEvents.hpp) | The input events of `contract::platform::Event` declared as typed ECS events (`aylo.KeyPressed`...), for gameplay code |
 | [`plugins/input/InputPlugin.hpp`](../src/aylo/plugins/input/InputPlugin.hpp) | Inserts `Input` and updates it in `PreUpdate` from the input events |
 | [`platform/glfw/GlfwPlatform.hpp`](../src/aylo/platform/glfw/GlfwPlatform.hpp) | The window, source of every event |
 | [`platform/glfw/GlfwPlatformCallbacks.cpp`](../src/aylo/platform/glfw/GlfwPlatformCallbacks.cpp) | GLFW callbacks → events |
@@ -141,7 +141,7 @@ flowchart LR
 
 `InputPlugin` (`plugins/input/`) makes `Input` a resource of the world. It registers the `PlatformEvent` ECS event
 (`plugins/input/PlatformEvent.hpp`: any `contract::platform::Event`, one per event polled) and adds the client
-system `rtype.Input.Update` in `PreUpdate`: it feeds the frame's platform events to `Input` **in the order they
+system `aylo.Input.Update` in `PreUpdate`: it feeds the frame's platform events to `Input` **in the order they
 happened**, then calls `update()`. The `GraphicsPlugin` sends them after polling the platform, and adds the
 `InputPlugin` itself; in tests they are sent by hand. The input plugin knows nothing of the graphics plugin.
 
@@ -267,15 +267,15 @@ read by `controlFromName()` (`plugins/input/ControlNames.hpp`): a key by its enu
 from `contract/platform/input/KeyNames.hpp`.
 
 ```luau
-engine.call("rtype.input.addAction", { name = "move", type = "vector2" })
-engine.call("rtype.input.bindVector", { action = "move", up = "W", down = "S", left = "A", right = "D" })
-engine.call("rtype.input.bindVector", { action = "move", x = "GamepadLeftX", y = "GamepadLeftY" })
-engine.call("rtype.input.addAction", { name = "shoot" })                 -- a button
-engine.call("rtype.input.bind", { action = "shoot", control = "MouseLeft" })
-local shoot = engine.call("rtype.input.read", { action = "shoot" })     -- { value, held, pressed, released }
+engine.call("aylo.input.addAction", { name = "move", type = "vector2" })
+engine.call("aylo.input.bindVector", { action = "move", up = "W", down = "S", left = "A", right = "D" })
+engine.call("aylo.input.bindVector", { action = "move", x = "GamepadLeftX", y = "GamepadLeftY" })
+engine.call("aylo.input.addAction", { name = "shoot" })                 -- a button
+engine.call("aylo.input.bind", { action = "shoot", control = "MouseLeft" })
+local shoot = engine.call("aylo.input.read", { action = "shoot" })     -- { value, held, pressed, released }
 ```
 
-`rtype.input.bindAxis` takes `negative` and `positive`, `rtype.input.bind` a `scale`. An unknown action, control or
+`aylo.input.bindAxis` takes `negative` and `positive`, `aylo.input.bind` a `scale`. An unknown action, control or
 type is an error naming it.
 
 The [`engine.input.action` form](ecs/features/19-luau-bridge.md#setup-forms) declares an action and its bindings in one

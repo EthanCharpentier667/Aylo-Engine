@@ -26,7 +26,7 @@ struct PlaySound {
     float pitch{1.0F};                                                     ///< Playback speed, 1 = unchanged.
     std::optional<glm::vec2> position;  ///< World position to pan from; none: centred.
 };
-AYLO_ECS_EVENT(PlaySound, "rtype.PlaySound");
+AYLO_ECS_EVENT(PlaySound, "aylo.PlaySound");
 
 /// @brief Replaces the music: the current track fades out while this one fades in, looping on the music bus. Waits for
 /// its sound if it is not loaded yet; a later PlayMusic or StopMusic replaces it.
@@ -34,11 +34,11 @@ struct PlayMusic {
     core::asset::AssetId sound;  ///< The track, best loaded with SoundDesc::stream.
     float crossfade{1.0F};       ///< Seconds.
 };
-AYLO_ECS_EVENT(PlayMusic, "rtype.PlayMusic", sound, crossfade);
+AYLO_ECS_EVENT(PlayMusic, "aylo.PlayMusic", sound, crossfade);
 
 /// @brief Fades the music out.
 struct StopMusic {
     float fadeOut{1.0F};  ///< Seconds.
 };
-AYLO_ECS_EVENT(StopMusic, "rtype.StopMusic", fadeOut);
+AYLO_ECS_EVENT(StopMusic, "aylo.StopMusic", fadeOut);
 }  // namespace aylo::plugins::audio

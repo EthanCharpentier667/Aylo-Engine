@@ -68,7 +68,7 @@ struct Collider {
     std::uint32_t layer = 1U << 0;      ///< The collision categories it belongs to, usually one bit.
     std::uint32_t mask = kAllLayers;    ///< The collision categories it collides with.
 };
-AYLO_ECS_COMPONENT(Collider, "rtype.Collider", shape, size, radius, halfHeight, offset, sensor, friction, restitution,
+AYLO_ECS_COMPONENT(Collider, "aylo.Collider", shape, size, radius, halfHeight, offset, sensor, friction, restitution,
                    layer, mask);
 
 }  // namespace aylo::plugins::physics

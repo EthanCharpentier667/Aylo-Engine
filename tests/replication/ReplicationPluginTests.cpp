@@ -75,15 +75,15 @@ std::vector<std::string_view> replicatedNames(const App& app) {
 }  // namespace
 
 TEST(ReplicationPlugin, IsNamedRtypeReplication) {
-    EXPECT_EQ(ReplicationPlugin{}.getName(), "rtype.replication");
-    EXPECT_EQ(ReplicationPlugin::kName, "rtype.replication");
+    EXPECT_EQ(ReplicationPlugin{}.getName(), "aylo.replication");
+    EXPECT_EQ(ReplicationPlugin::kName, "aylo.replication");
 }
 
 TEST(ReplicationPlugin, RegistersEveryTypeInAFreshApp) {
     App app;
     app.addPlugin(ReplicationPlugin{});
 
-    EXPECT_TRUE(app.hasPlugin("rtype.replication"));
+    EXPECT_TRUE(app.hasPlugin("aylo.replication"));
     EXPECT_NE(findComponent(app, "net.NetworkId"), nullptr);
     EXPECT_NE(findComponent(app, "net.Owner"), nullptr);
     EXPECT_NE(findComponent(app, "net.PlayerInput"), nullptr);
@@ -138,17 +138,17 @@ TEST(ReplicationPlugin, GivesEachComponentItsPresenceAndReplication) {
     EXPECT_EQ(input->type.presence, Presence::kBoth);
     EXPECT_EQ(input->type.replication, ReplicationMode::kNone);
 
-    EXPECT_EQ(replicatedNames(app), (std::vector<std::string_view>{"net.Owner", "rtype.Parent"}));
+    EXPECT_EQ(replicatedNames(app), (std::vector<std::string_view>{"net.Owner", "aylo.Parent"}));
 }
 
 TEST(ReplicationPlugin, ReplicatesParentButNotChildren) {
     aylo::ecs::App app;
     app.addPlugin(aylo::replication::ReplicationPlugin{});
-    const ComponentInfo* parent = findComponent(app, "rtype.Parent");
+    const ComponentInfo* parent = findComponent(app, "aylo.Parent");
     ASSERT_NE(parent, nullptr);
     EXPECT_EQ(parent->type.presence, aylo::ecs::Presence::kBoth);
     EXPECT_EQ(parent->type.replication, aylo::ecs::ReplicationMode::kEveryChange);
-    EXPECT_EQ(findComponent(app, "rtype.Children"), nullptr);
+    EXPECT_EQ(findComponent(app, "aylo.Children"), nullptr);
 }
 
 TEST(ReplicationPlugin, RegistersTheEventsOnTheServerOnly) {

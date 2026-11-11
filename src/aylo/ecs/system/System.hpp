@@ -87,7 +87,7 @@ class FunctionSystem final : public SystemBody {
 ///     }
 /// }
 ///
-/// aylo::ecs::System system{world, "rtype.movement", &movement};
+/// aylo::ecs::System system{world, "aylo.movement", &movement};
 /// system.setSide(aylo::ecs::Side::kBoth);
 /// system.run();
 /// system.flushCommands();
@@ -100,7 +100,7 @@ class AYLO_ECS_API System {
     /// `EventWriter<T>`, or a configured parameter. Also fails to compile, with a message, if a configured parameter
     /// has no configuration in `configs`, or a configuration is the `Config` of no parameter or of two.
     /// @param world The world it runs on; it must outlive the system.
-    /// @param name Its stable name, such as "rtype.movement".
+    /// @param name Its stable name, such as "aylo.movement".
     /// @param configs The configurations of the configured parameters, one per parameter, in any order.
     template <typename... Params, typename... Configs>
     System(World& world, std::string name, void (*function)(Params...), Configs... configs);

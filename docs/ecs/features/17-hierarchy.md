@@ -104,7 +104,7 @@ an entity that is not replicated stays a root on the client, its relative `Trans
 ### From scripts
 
 `ctx.commands:setParent(child, parent)` and `removeParent(child)` change a hierarchy. A system reads it with
-`read = { "rtype.Parent" }` (`parent.entity`) and `read = { "rtype.Children" }` (`children.entities`, a copy). Both are
+`read = { "aylo.Parent" }` (`parent.entity`) and `read = { "aylo.Children" }` (`children.entities`, a copy). Both are
 refused as `write` terms, which would bypass the `World`. They are registered by the `TransformPlugin`.
 
 ## Connections

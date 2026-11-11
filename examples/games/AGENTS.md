@@ -12,7 +12,7 @@ the assets of a `game/` folder. It is not for engine work (that is `src/`).
 - Learn the API from the game developer manual in `manual/`. Until it covers a topic, `docs/scripting/plan.md` and
   `docs/engine/design.md` hold the details, and `docs/luau/type-definitions.md` the Luau types. Never guess an API: if
   neither says it exists, it does not.
-- Choose plugins (by name, such as `rtype.Physics`), window, renderer, audio, network and physics in `project.luau`,
+- Choose plugins (by name, such as `aylo.Physics`), window, renderer, audio, network and physics in `project.luau`,
   never by changing code.
 - If the engine lacks something the game needs, do not work around it: file an engine issue (title
   `[Area] <summary>`, say which script wants what, with the Luau you would write) and tell the user. Use the

@@ -31,7 +31,7 @@ namespace aylo::replication {
 /// @endcode
 class AYLO_REPLICATION_API ReplicationPlugin : public ecs::Plugin {
   public:
-    static constexpr std::string_view kName = "rtype.replication";  ///< The plugin's name.
+    static constexpr std::string_view kName = "aylo.replication";  ///< The plugin's name.
 
     ReplicationPlugin() = default;
     ~ReplicationPlugin() override;
@@ -40,7 +40,7 @@ class AYLO_REPLICATION_API ReplicationPlugin : public ecs::Plugin {
     ReplicationPlugin(ReplicationPlugin&& other) noexcept = default;
     ReplicationPlugin& operator=(ReplicationPlugin&& other) noexcept = default;
 
-    /// @return "rtype.replication".
+    /// @return "aylo.replication".
     [[nodiscard]] std::string_view getName() const noexcept override;
 
     /// @brief Registers every replication component and event.

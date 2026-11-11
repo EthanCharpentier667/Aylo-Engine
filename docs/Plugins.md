@@ -42,8 +42,8 @@ and the materials are in `plugin-shader`.
 | `physics` | Jolt, `Collider`, `RigidBody` | `transform` |
 | `physics-debug` | Draws the colliders | `graphics`, `input`, `transform` |
 | `ui` | The user interface, laid out by Yoga: nodes, widgets, focus | `graphics`, `input`, `text` |
-| `http` | HTTPS requests for scripts: `HttpClient`, `HttpResponse`, `rtype.http.request` (libcurl) | |
-| `json` | JSON for scripts: `rtype.json.encode`, `rtype.json.decode` (nlohmann::json), `engine.json.encode`, `decode`, `tryDecode`, `map` | |
+| `http` | HTTPS requests for scripts: `HttpClient`, `HttpResponse`, `aylo.http.request` (libcurl) | |
+| `json` | JSON for scripts: `aylo.json.encode`, `aylo.json.decode` (nlohmann::json), `engine.json.encode`, `decode`, `tryDecode`, `map` | |
 | `Editor` | The editor (`aylo-editor`, in `src/aylo/editor/`, not a feature of a game): the game in a panel, its entities and their components, the frame rate, scenes and particles edited. Added by the `aylo-editor` program, see [`Editor.md`](Editor.md) | `graphics`, `capsule` |
 
 A plugin states what it requires in `getDependencies()`. The `App` refuses a plugin whose requirement was not added
@@ -86,7 +86,7 @@ A game names its plugins in `project.luau`, by the name `getName()` gives. The e
 `Engine` loads them from their libraries, so adding or removing a plugin rebuilds nothing.
 
 ```lua
-engine.settings.plugins = { "rtype.graphics", "rtype.Sprite", "game.Boss" }
+engine.settings.plugins = { "aylo.graphics", "aylo.Sprite", "game.Boss" }
 ```
 
 The plugins a listed plugin requires come with it, with a line on the error output. A name no library registers stops the
@@ -99,7 +99,7 @@ start, and the message lists those that exist.
 | `<game>/plugins/` | the game's own plugins | every side |
 | `lib/`, next to the executable | the libraries that are not plugins (`ecs`, the contracts, the C++ runtime...) | nothing: it is not scanned |
 
-The build makes this layout (rule `rtype.plugin_library` for `plugins/`, rule `rtype.layout` for `lib/`), and the release
+The build makes this layout (rule `aylo.plugin_library` for `plugins/`, rule `aylo.layout` for `lib/`), and the release
 zip holds the same one: every library is one real file, in one folder. A plugin finds the plugins it links beside it
 and the other libraries in `lib/` (a relative rpath: `$ORIGIN` and `$ORIGIN/../lib`; a backend, one folder deeper,
 `$ORIGIN/../../lib`), so a plugin library is never opened from two places and loaded twice. `plugins/` holds plugins
@@ -136,7 +136,7 @@ the backends a game names.
 ### What a library links
 
 Next to each plugin library, the build writes `<library>.links` (`xmake/modules/plugin_links.lua`, from the rules
-`rtype.plugin_library` and `rtype.game_plugin`): the file names of the plugin libraries it links, one per line, empty if
+`aylo.plugin_library` and `aylo.game_plugin`): the file names of the plugin libraries it links, one per line, empty if
 none. The system loads them with it, so an export that keeps a library keeps them too, even when its plugins do not
 require theirs (the sprite library links `graphics` and `shader`, see [Linking](#linking)). The release zip holds them;
 the `Engine` never reads them.
@@ -161,7 +161,7 @@ Three steps, and no file of the engine changes:
        set_kind("shared")
        add_deps("core", "ecs")
        add_files("*.cpp")
-       add_rules("rtype.game_plugin")
+       add_rules("aylo.game_plugin")
    ```
 
 2. Its name in `engine.settings.plugins`.

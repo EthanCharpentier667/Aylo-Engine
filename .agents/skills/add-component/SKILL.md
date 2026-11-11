@@ -19,7 +19,7 @@ and `docs/CodeStyle.md`.
    asset ids (the asset-id reflection header), and strings of the ECS. For another type, add a reflection like the
    existing ones (`plugins/GraphicsReflection.hpp`, the audio reflection) instead of exposing it unreflected.
 3. **Declare it** right after the struct, in the same namespace, with the macro of its kind and a stable name in the
-   `aylo.` namespace for engine data: `AYLO_ECS_COMPONENT(Type, "rtype.Name", fields...)`, `AYLO_ECS_RESOURCE(...)`
+   `aylo.` namespace for engine data: `AYLO_ECS_COMPONENT(Type, "aylo.Name", fields...)`, `AYLO_ECS_RESOURCE(...)`
    or `AYLO_ECS_EVENT(...)`. Fields that are not listed are stored but invisible to scripts, serialization and
    replication. A struct with no field is a tag.
 4. **Say where it lives.** Server only, client only or both, and whether and how it is replicated (never, on every

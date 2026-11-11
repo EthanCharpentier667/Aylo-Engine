@@ -170,7 +170,7 @@ task runs it. The output is committed.
 
 ### What it types
 
-Game data is addressed by name: `ctx.resources["rtype.Input"]`, `ctx.events.read("rtype.Collision")`,
+Game data is addressed by name: `ctx.resources["aylo.Input"]`, `ctx.events.read("aylo.Collision")`,
 `ctx.commands:add(entity, "game.Shield", {...})`. `game.d.luau` maps each name to its type:
 
 - Components, script and C++ alike, since scripts see both through `ComponentView`: one type per component, built
@@ -185,9 +185,9 @@ Game data is addressed by name: `ctx.resources["rtype.Input"]`, `ctx.events.read
 type GameShield = { strength: number, regen: number, owner: Entity }
 type RtypeTransform = { position: vector, rotation: number, scale: vector }
 
-type GameResources = { ["rtype.Input"]: RtypeInput, ["rtype.Time"]: RtypeTime }
+type GameResources = { ["aylo.Input"]: RtypeInput, ["aylo.Time"]: RtypeTime }
 type GameEvents = {
-    read: ((name: "rtype.Collision") -> () -> RtypeCollision?) & ((name: "game.Hello") -> () -> GameHello?),
+    read: ((name: "aylo.Collision") -> () -> RtypeCollision?) & ((name: "game.Hello") -> () -> GameHello?),
     send: ((name: "game.Hello", data: GameHello) -> ()) & ...,
 }
 type GameShieldRegenContext = Context & {

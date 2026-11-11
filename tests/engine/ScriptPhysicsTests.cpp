@@ -89,14 +89,14 @@ TEST(ScriptPhysics, AScriptSpawnsBodiesAndReadsTheirCollision) {
                 if spawned then return end
                 spawned = true
                 ctx.commands:spawn({
-                    ["rtype.Transform"] = { position = { x = 0, y = 0 } },
-                    ["rtype.Collider"] = { size = { x = 20, y = 20 } },
-                    ["rtype.RigidBody"] = { gravityScale = 0, fixedRotation = true },
-                    ["rtype.Velocity"] = { linear = { x = 600, y = 0 } },
+                    ["aylo.Transform"] = { position = { x = 0, y = 0 } },
+                    ["aylo.Collider"] = { size = { x = 20, y = 20 } },
+                    ["aylo.RigidBody"] = { gravityScale = 0, fixedRotation = true },
+                    ["aylo.Velocity"] = { linear = { x = 600, y = 0 } },
                 })
                 ctx.commands:spawn({
-                    ["rtype.Transform"] = { position = { x = 40, y = 0 } },
-                    ["rtype.Collider"] = { size = { x = 20, y = 20 } },
+                    ["aylo.Transform"] = { position = { x = 40, y = 0 } },
+                    ["aylo.Collider"] = { size = { x = 20, y = 20 } },
                 })
             end,
         })
@@ -104,9 +104,9 @@ TEST(ScriptPhysics, AScriptSpawnsBodiesAndReadsTheirCollision) {
         engine.ecs.system("game.Hits", {
             phase = "Update",
             query = {},
-            events = { read = { "rtype.CollisionStarted" } },
+            events = { read = { "aylo.CollisionStarted" } },
             run = function(ctx)
-                for collision in ctx.events.read("rtype.CollisionStarted") do
+                for collision in ctx.events.read("aylo.CollisionStarted") do
                     probe.hits += 1
                 end
             end,
@@ -131,28 +131,28 @@ TEST(ScriptPhysics, AScriptMovesAShipAndCastsARayThroughTheCalls) {
                 if spawned then return end
                 spawned = true
                 ctx.commands:spawn({
-                    ["rtype.Transform"] = { position = { x = 100, y = 0 } },
-                    ["rtype.Collider"] = { size = { x = 20, y = 200 } },
+                    ["aylo.Transform"] = { position = { x = 100, y = 0 } },
+                    ["aylo.Collider"] = { size = { x = 20, y = 200 } },
                 })
                 ctx.commands:spawn({
                     ["game.Ship"] = {},
-                    ["rtype.Transform"] = { position = { x = 0, y = 0 } },
-                    ["rtype.Collider"] = { shape = 1, radius = 10 },
+                    ["aylo.Transform"] = { position = { x = 0, y = 0 } },
+                    ["aylo.Collider"] = { shape = 1, radius = 10 },
                 })
             end,
         })
         engine.ecs.system("game.Move", {
             phase = "FixedUpdate",
-            query = { write = { "rtype.Transform" }, with = { "game.Ship" } },
-            calls = { "rtype.physics.moveAndSlide", "rtype.physics.raycast" },
-            after = { "rtype.Physics.SyncBodies" },
-            before = { "rtype.Physics.SyncToPhysics" },
+            query = { write = { "aylo.Transform" }, with = { "game.Ship" } },
+            calls = { "aylo.physics.moveAndSlide", "aylo.physics.raycast" },
+            after = { "aylo.Physics.SyncBodies" },
+            before = { "aylo.Physics.SyncToPhysics" },
             run = function(ctx)
                 for entity, transform in ctx.query do
-                    transform.position = ctx.call("rtype.physics.moveAndSlide", {
+                    transform.position = ctx.call("aylo.physics.moveAndSlide", {
                         entity = entity, from = transform.position, delta = { x = 50, y = 0 },
                     })
-                    local hit = ctx.call("rtype.physics.raycast", {
+                    local hit = ctx.call("aylo.physics.raycast", {
                         origin = transform.position, direction = { x = 1, y = 0 }, maxDistance = 500, ignore = entity,
                     })
                     probe.shipX = transform.position.x
@@ -188,12 +188,12 @@ TEST(ScriptPhysics, AServerScriptSpawnsAShipForEachClientAndReadsItsInput) {
         engine.ecs.system("game.Steer", {
             phase = "PostUpdate",
             query = { read = { "net.Owner" }, with = { "net.PlayerInput" } },
-            calls = { "rtype.replication.readInput" },
+            calls = { "aylo.replication.readInput" },
             run = function(ctx)
                 for entity, owner in ctx.query do
                     probe.seenOwner = owner.client
-                    probe.seenShoot = ctx.call("rtype.replication.readInput", { entity = entity, action = "shoot" }).held
-                    probe.seenMove = ctx.call("rtype.replication.readInput", { entity = entity, action = "move" }).vector
+                    probe.seenShoot = ctx.call("aylo.replication.readInput", { entity = entity, action = "shoot" }).held
+                    probe.seenMove = ctx.call("aylo.replication.readInput", { entity = entity, action = "move" }).vector
                 end
             end,
         })

@@ -84,7 +84,7 @@ scripting, replication  <-  engine  <-  executables, examples
 - `core` depends on no project target; `ecs` on `core` only. `core` is static and keeps no state, so any library may
   link it. `luau`, `network`, `replication`, `scripting` and `engine` are static too, linked into the executable: no
   plugin, backend or contract may link them, since a shared library would get its own copy of their state. The build
-  refuses it (rule `rtype.static_modules`). `ecs` and the contracts stay shared: they hold what plugins and backends
+  refuses it (rule `aylo.static_modules`). `ecs` and the contracts stay shared: they hold what plugins and backends
   share (registries, type information).
 - `network` depends on Asio only (private); `replication` is the only module that knows ECS and network; renderers,
   platforms and `luau` never include its headers.

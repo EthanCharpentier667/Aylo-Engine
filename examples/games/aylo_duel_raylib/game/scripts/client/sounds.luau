@@ -7,7 +7,7 @@ local shotVolumeMin, shotVolumeMax = 0.8, 1.0
 
 --- Plays @p sound at @p position, its pitch and volume drawn at random.
 local function playShot(ctx, sound, position)
-	ctx.call("rtype.audio.playSound", {
+	ctx.call("aylo.audio.playSound", {
 		sound = sound,
 		volume = math.lerp(shotVolumeMin, shotVolumeMax, math.random()),
 		pitch = math.lerp(shotPitchMin, shotPitchMax, math.random()),
@@ -20,9 +20,9 @@ engine.ecs.system("game.PlayMusic", {
 	phase = "Startup",
 	side = "client",
 	query = {},
-	events = { send = { "rtype.PlayMusic" } },
+	events = { send = { "aylo.PlayMusic" } },
 	run = function(ctx)
-		ctx.events.send("rtype.PlayMusic", { sound = assets.music, crossfade = 1 })
+		ctx.events.send("aylo.PlayMusic", { sound = assets.music, crossfade = 1 })
 	end,
 })
 
@@ -31,7 +31,7 @@ engine.ecs.system("game.PlayLasers", {
 	phase = "Update",
 	side = "client",
 	query = { read = { "game.Laser" }, added = { "game.Laser" } },
-	calls = { "rtype.audio.playSound" },
+	calls = { "aylo.audio.playSound" },
 	run = function(ctx)
 		for _, laser in ctx.query do
 			playShot(ctx, assets.laserSound, laser.position)
@@ -45,7 +45,7 @@ engine.ecs.system("game.PlayMisfires", {
 	side = "client",
 	query = { read = { "game.Misfire" }, added = { "game.Misfire" } },
 	after = { "game.PlayLasers" },
-	calls = { "rtype.audio.playSound" },
+	calls = { "aylo.audio.playSound" },
 	run = function(ctx)
 		for _, misfire in ctx.query do
 			playShot(ctx, assets.misfireSound, misfire.position)

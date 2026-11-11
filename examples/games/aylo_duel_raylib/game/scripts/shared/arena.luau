@@ -30,10 +30,10 @@ local Duel = {
 }
 
 -- The enums of the engine's components, as their reflected numbers.
-Duel.box = 0 -- rtype.Collider shape
+Duel.box = 0 -- aylo.Collider shape
 Duel.circle = 1
-Duel.kinematic = 1 -- rtype.RigidBody type
-Duel.additive = 1 -- rtype.SpriteRenderer blend
+Duel.kinematic = 1 -- aylo.RigidBody type
+Duel.additive = 1 -- aylo.SpriteRenderer blend
 
 --- +1 for the left player (0), who fires right; -1 for the right one (1).
 function Duel.directionOf(player: number): number

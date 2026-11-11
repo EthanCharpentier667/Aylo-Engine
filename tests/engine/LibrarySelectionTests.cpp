@@ -87,7 +87,7 @@ TEST_F(LibrarySelectionTest, KeepsTheTransformPluginOfEveryGame) {
 }
 
 TEST_F(LibrarySelectionTest, KeepsTheNamedPluginsAndWhatTheyRequire) {
-    writeProject(R"(engine.settings.plugins = { "rtype.Shader" })");
+    writeProject(R"(engine.settings.plugins = { "aylo.Shader" })");
     const std::vector<SelectedLibrary> selected = select();
 
     const SelectedLibrary* shader = find(selected, "aylo-plugin-shader");
@@ -96,7 +96,7 @@ TEST_F(LibrarySelectionTest, KeepsTheNamedPluginsAndWhatTheyRequire) {
     ASSERT_NE(graphics, nullptr);
     EXPECT_TRUE(hasReason(*shader, "named in plugins (client)"));
     EXPECT_TRUE(hasReason(*shader, "named in plugins (server)"));
-    EXPECT_TRUE(hasReason(*graphics, "required by rtype.Shader"));
+    EXPECT_TRUE(hasReason(*graphics, "required by aylo.Shader"));
     EXPECT_NE(find(selected, "aylo-plugin-input"), nullptr);  // the graphics plugin requires it
     EXPECT_EQ(find(selected, "aylo-plugin-physics"), nullptr);
     EXPECT_EQ(find(selected, "aylo-plugin-sprite"), nullptr);
@@ -105,7 +105,7 @@ TEST_F(LibrarySelectionTest, KeepsTheNamedPluginsAndWhatTheyRequire) {
 }
 
 TEST_F(LibrarySelectionTest, KeepsThePluginsOfEachSide) {
-    writeProject(R"(engine.settings.plugins = engine.isServer and { "rtype.Physics" } or {})");
+    writeProject(R"(engine.settings.plugins = engine.isServer and { "aylo.Physics" } or {})");
     const std::vector<SelectedLibrary> selected = select();
 
     const SelectedLibrary* physics = find(selected, "aylo-plugin-physics");
@@ -116,7 +116,7 @@ TEST_F(LibrarySelectionTest, KeepsThePluginsOfEachSide) {
 
 TEST_F(LibrarySelectionTest, KeepsOnlyTheBackendsTheClientNames) {
     writeProject(R"(
-        engine.settings.plugins = { "rtype.graphics" }
+        engine.settings.plugins = { "aylo.graphics" }
         if engine.isClient then
             engine.settings.platform = "null"
             engine.settings.renderer = "null"

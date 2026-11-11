@@ -26,16 +26,16 @@ namespace aylo::plugins::audio {
 ///
 /// @details The registry comes filled by the executable (the only place that knows miniaudio), so this plugin depends
 /// on no backend. It adds client systems only, so a dedicated server opens no device:
-/// - Startup "rtype.audio.create": creates the device (AudioRegistry::createDevice()) into the main-thread resource
-///   "rtype.Audio", and sets the AudioVolumes resource from the config.
-/// - PostUpdate "rtype.audio.sounds": destroys the unloaded sounds and loads the queued ones of the AudioAssets
+/// - Startup "aylo.audio.create": creates the device (AudioRegistry::createDevice()) into the main-thread resource
+///   "aylo.Audio", and sets the AudioVolumes resource from the config.
+/// - PostUpdate "aylo.audio.sounds": destroys the unloaded sounds and loads the queued ones of the AudioAssets
 ///   resource (updateSounds()), so a sound asked for during this frame's Update plays in this frame.
-/// - PostUpdate "rtype.audio.play", after it: plays the PlaySound events, then handles StopMusic and PlayMusic (a
+/// - PostUpdate "aylo.audio.play", after it: plays the PlaySound events, then handles StopMusic and PlayMusic (a
 ///   PlayMusic sent in the same frame as a StopMusic wins).
-/// - PostUpdate "rtype.audio.sources", after it and after the transform propagation: starts the AudioSources whose
+/// - PostUpdate "aylo.audio.sources", after it and after the transform propagation: starts the AudioSources whose
 ///   sound is loaded, restarts those whose sound changed, stops those removed or despawned, and updates the volume,
 ///   pitch and pan of the others.
-/// - PostUpdate "rtype.audio.update", last: applies the AudioVolumes if they changed, then IAudioDevice::update().
+/// - PostUpdate "aylo.audio.update", last: applies the AudioVolumes if they changed, then IAudioDevice::update().
 ///
 /// Panning: pan = (x - listener x) / panDistance, clamped to [-1, 1], from the GlobalTransforms of the source and of
 /// the AudioListener (their Transform in the frame they spawn, before they get a GlobalTransform); no listener, no
@@ -48,12 +48,12 @@ namespace aylo::plugins::audio {
 /// @endcode
 class AYLO_PLUGIN_AUDIO_API AudioPlugin : public ecs::Plugin {
   public:
-    static constexpr std::string_view kName = "rtype.audio";                   ///< The plugin's name.
-    static constexpr std::string_view kCreateSystem = "rtype.audio.create";    ///< Startup: creates the device.
-    static constexpr std::string_view kSoundsSystem = "rtype.audio.sounds";    ///< PostUpdate: loads the sounds.
-    static constexpr std::string_view kPlaySystem = "rtype.audio.play";        ///< PostUpdate: plays the events.
-    static constexpr std::string_view kSourcesSystem = "rtype.audio.sources";  ///< PostUpdate: follows the sources.
-    static constexpr std::string_view kUpdateSystem = "rtype.audio.update";    ///< PostUpdate: updates the device.
+    static constexpr std::string_view kName = "aylo.audio";                   ///< The plugin's name.
+    static constexpr std::string_view kCreateSystem = "aylo.audio.create";    ///< Startup: creates the device.
+    static constexpr std::string_view kSoundsSystem = "aylo.audio.sounds";    ///< PostUpdate: loads the sounds.
+    static constexpr std::string_view kPlaySystem = "aylo.audio.play";        ///< PostUpdate: plays the events.
+    static constexpr std::string_view kSourcesSystem = "aylo.audio.sources";  ///< PostUpdate: follows the sources.
+    static constexpr std::string_view kUpdateSystem = "aylo.audio.update";    ///< PostUpdate: updates the device.
 
     /// @param registry The audio backends, registered by the executable.
     /// @param settings The configuration: `audio` and a section per backend.
@@ -64,7 +64,7 @@ class AYLO_PLUGIN_AUDIO_API AudioPlugin : public ecs::Plugin {
     AudioPlugin(AudioPlugin&& other) noexcept = default;
     AudioPlugin& operator=(AudioPlugin&& other) noexcept = default;
 
-    /// @return "rtype.audio".
+    /// @return "aylo.audio".
     [[nodiscard]] std::string_view getName() const noexcept override;
 
     /// @return The TransformPlugin.

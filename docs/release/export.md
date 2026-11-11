@@ -27,7 +27,7 @@ A shipped game today is the engine's `runtime/` folder as it came, next to the g
 |----|----------|-----|
 | E1 | **The model is the one of Godot and Unity: a runtime built by the engine's CI, the game as data next to it.** No game is compiled. An export copies and packs; it never needs a compiler or an `xmake.lua`. | A game is Luau only (`AGENTS.md`, rule 1 and 2). A binary per game (the Unreal model) would ask every game developer for a C++ toolchain. |
 | E2 | **One export code, two front ends**: the tool `aylo-export` (in the release zip, next to `aylo-sign`) and an *Export* menu of the editor, which calls the same code. | A game's CI uses the tool, a developer the editor; both give the same result. |
-| E3 | **The export keeps only the plugins and backends the game needs**: those `project.luau` names (`plugins`, `platform`, `renderer`, `audio`...), the plugins they require (`Plugin::getDependencies()`, transitively), and the ones every game has (`rtype.Transform`, `MinimalPlugins`). `lib/` is copied whole. | The plugins and backends are most of the size; `lib/` (`ecs`, the contracts, the C++ runtime) is small and needed by any plugin. |
+| E3 | **The export keeps only the plugins and backends the game needs**: those `project.luau` names (`plugins`, `platform`, `renderer`, `audio`...), the plugins they require (`Plugin::getDependencies()`, transitively), and the ones every game has (`aylo.Transform`, `MinimalPlugins`). `lib/` is copied whole. | The plugins and backends are most of the size; `lib/` (`ecs`, the contracts, the C++ runtime) is small and needed by any plugin. |
 | E4 | **Both sides are resolved**: the client's and the server's plugins (`project.luau` read once per side). An export makes one folder that runs as a client and with `--server` as a server, like `aylo-runtime`. | The same download is a player's game and a dedicated server. A server-only export can come later. |
 | E5 | **The game is one pack file, `game.pak`**: `project.luau`, the scripts compiled to Luau bytecode, the assets. The engine reads through a **file source** (`core::vfs`): a folder in development, the pack in an exported game. | One file to ship, no script source handed out, and the path checks of the assets become checks on a closed list of entries. |
 | E6 | **Hot reload is off in a pack.** A packed game has no files to watch; `hotReload = true` is ignored with a log line. | A pack is a shipped build. |
@@ -56,7 +56,7 @@ aylo-export <game> <out> [--name MyGame] [--runtime <dir>] [--no-pack]
   export.json             the engine version, the plugins and backends kept and why, the sha256 of every file
 ```
 
-`export.json` says, for each plugin kept, what asked for it (`project.luau`, `required by rtype.Sprite`, `every game`),
+`export.json` says, for each plugin kept, what asked for it (`project.luau`, `required by aylo.Sprite`, `every game`),
 so a developer can see why a library is in their game.
 
 The program starts the pack next to it when no game folder is given, so the launcher becomes optional.

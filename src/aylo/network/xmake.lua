@@ -1,7 +1,7 @@
 add_requires("asio 1.36.x", {alias = "asio"})
 
 target("network")
-    -- Static, linked into the executable: no plugin links it (rtype.static_modules enforces it).
+    -- Static, linked into the executable: no plugin links it (aylo.static_modules enforces it).
     set_kind("static")
     set_basename("aylo-network")
     add_files("**.cpp")

@@ -153,7 +153,7 @@ TEST(PhysicsDebugShapes, AStillBodyHasNoArrow) {
 
 TEST(PhysicsDebugPlugin, RegistersItsComponentAndSettings) {
     DebugApp fixture;
-    EXPECT_TRUE(fixture.components().find("rtype.PhysicsDebug"));
+    EXPECT_TRUE(fixture.components().find("aylo.PhysicsDebug"));
     EXPECT_TRUE(fixture.app.getWorld().getResources().has<PhysicsDebugSettings>());
 }
 

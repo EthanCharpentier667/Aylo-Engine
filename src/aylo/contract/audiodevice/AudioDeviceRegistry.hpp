@@ -21,7 +21,7 @@
 
 namespace aylo::contract::audiodevice {
 /// @brief The name an AudioDeviceRegistry is offered under to the libraries.
-inline constexpr std::string_view kAudioDeviceRegistryService = "rtype.contract.audiodevices";
+inline constexpr std::string_view kAudioDeviceRegistryService = "aylo.contract.audiodevices";
 
 /// @brief Audio devices by name, so the configuration picks one instead of the code.
 ///
