@@ -7,11 +7,8 @@ target("aylo-export")
     -- here: with one (add_deps(..., {inherit = false})), xmake dropped the `@loader_path` search path of every library
     -- of the build.
     add_files("main.cpp")
-    -- The version written in export.json.
-    on_load(function (target)
-        import("engine_version")
-        target:add("defines", 'RTYPE_ENGINE_VERSION="' .. engine_version.full() .. '"')
-    end)
+    -- The version written in export.json (rtype/build/BuildInfo.hpp).
+    add_deps("build-info")
     -- In the release zip it is in `tools/`, next to `runtime/`, which holds the libraries it links. On Windows the
     -- packaging copies the DLLs next to it, as there is no rpath there.
     if not is_plat("windows") then

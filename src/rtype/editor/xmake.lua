@@ -40,9 +40,5 @@ target("aylo-editor")
     add_deps("plugin-libraries", "backend-libraries", {inherit = false})
     add_files("app/**.cpp")
     add_rules("rtype.copy_to_root")
-    -- What `--version` prints: the version (with the nightly stamp) and the commit.
-    on_load(function (target)
-        import("engine_version")
-        target:add("defines", 'RTYPE_ENGINE_VERSION="' .. engine_version.full() .. '"')
-        target:add("defines", 'RTYPE_ENGINE_COMMIT="' .. engine_version.commit() .. '"')
-    end)
+    -- What `--version` prints: the version (with the nightly stamp) and the commit (rtype/build/BuildInfo.hpp).
+    add_deps("build-info")

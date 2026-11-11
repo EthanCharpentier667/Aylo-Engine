@@ -20,19 +20,14 @@
 #include <string_view>
 #include <vector>
 
+#include "core/layout/Layout.hpp"
 #include "core/system/ExecutablePath.hpp"
+#include "rtype/build/BuildInfo.hpp"
 #include "rtype/engine/exporting/GameExport.hpp"
 #include "rtype/engine/exporting/LibrarySelection.hpp"
 
 namespace {
 constexpr int kErrorCode = 84;  ///< What the program returns when it cannot export.
-
-// The version the build gives (xmake/modules/engine_version.lua), as for aylo-runtime.
-// NOLINTBEGIN(cppcoreguidelines-macro-usage): the build passes it as a macro; this is the default without it.
-#ifndef RTYPE_ENGINE_VERSION
-#define RTYPE_ENGINE_VERSION "0.0.0"
-#endif
-// NOLINTEND(cppcoreguidelines-macro-usage)
 
 #ifdef NDEBUG
 constexpr bool kIsDebug = false;
@@ -102,7 +97,7 @@ std::optional<Options> parse(const std::vector<std::string>& args) {
 /// folder of the tool (a build folder).
 std::filesystem::path defaultRuntime() {
     std::filesystem::path here = rtype::core::system::getExecutableDirectory();
-    std::filesystem::path zip = here.parent_path() / "runtime";
+    std::filesystem::path zip = here.parent_path() / rtype::core::layout::kRuntimeFolder;
     if (std::filesystem::is_regular_file(zip / rtype::engine::exporting::runtimeProgramName())) {
         return zip;
     }
@@ -132,7 +127,7 @@ int main(const int argc, char** argv) {
             .runtime = options->runtime.value_or(defaultRuntime()),
             .output = options->output,
             .name = options->name,
-            .engineVersion = RTYPE_ENGINE_VERSION,
+            .engineVersion = std::string{rtype::build::kEngineVersion},
             .debug = kIsDebug,
             .pack = options->pack,
         });

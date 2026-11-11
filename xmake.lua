@@ -222,6 +222,18 @@ includes("src/rtype/runtime")
 includes("src/rtype/tools/sign")
 includes("src/rtype/tools/export")
 
+-- The version and the commit of the build, as a header the executables include (rtype/build/BuildInfo.hpp): generated
+-- once per configuration, rewritten only when they change (xmake/modules/engine_version.lua).
+target("build-info")
+    set_kind("headeronly")
+    on_config(function (target)
+        import("core.project.config")
+        import("engine_version")
+        local dir = path.join(config.builddir(), "generated")
+        engine_version.writeHeader(dir)
+        target:add("includedirs", dir, {public = true})
+    end)
+
 -- Every backend library, for what loads them without linking them.
 target("backend-libraries")
     set_kind("phony")

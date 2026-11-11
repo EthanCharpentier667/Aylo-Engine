@@ -27,6 +27,7 @@
 #include <vector>
 
 #include "core/config/Settings.hpp"
+#include "core/layout/Layout.hpp"
 #include "core/library/LibraryEntry.hpp"
 #include "core/system/ExecutablePath.hpp"
 #include "core/version/Version.hpp"
@@ -36,6 +37,7 @@
 #include "editor/EditorState.hpp"
 #include "editor/console/ScriptPrompt.hpp"
 #include "editor/shipping/GameExport.hpp"
+#include "rtype/build/BuildInfo.hpp"
 #include "rtype/ecs/app/App.hpp"
 #include "rtype/ecs/schedule/RunMode.hpp"
 #include "rtype/engine/Engine.hpp"
@@ -48,16 +50,6 @@ constexpr std::string_view kServerFlag = "--server";    ///< Refused: the editor
 constexpr std::string_view kVersionFlag = "--version";  ///< Prints the version of the engine and stops.
 constexpr std::string_view kEditorFlag = "--editor";    ///< Given to the project, so it can tell it runs in the editor.
 
-// What the build says about itself: xmake gives the version and the commit (xmake/modules/engine_version.lua).
-// NOLINTBEGIN(cppcoreguidelines-macro-usage): the build passes them as macros; these are the defaults without it.
-#ifndef RTYPE_ENGINE_VERSION
-#define RTYPE_ENGINE_VERSION "0.0.0"
-#endif
-#ifndef RTYPE_ENGINE_COMMIT
-#define RTYPE_ENGINE_COMMIT ""
-#endif
-// NOLINTEND(cppcoreguidelines-macro-usage)
-
 #ifdef NDEBUG
 constexpr bool kIsRuntimeDebug = false;  ///< `engine.isDebug` of an export: the runtime is built as the editor is.
 #else
@@ -68,7 +60,7 @@ constexpr bool kIsRuntimeDebug = true;  ///< `engine.isDebug` of an export: the 
 /// folder (a build folder, where aylo-runtime sits next to it).
 std::filesystem::path exportRuntime() {
     std::filesystem::path here = rtype::core::system::getExecutableDirectory();
-    std::filesystem::path zip = here.parent_path() / "runtime";
+    std::filesystem::path zip = here.parent_path() / rtype::core::layout::kRuntimeFolder;
     if (std::filesystem::is_regular_file(zip / rtype::engine::exporting::runtimeProgramName())) {
         return zip;
     }
@@ -78,8 +70,8 @@ std::filesystem::path exportRuntime() {
 /// @brief Prints what `--version` says: the version, the commit, the toolchain and the library ABI version.
 void printVersion() {
     const rtype::core::version::VersionInfo info{
-        .version = RTYPE_ENGINE_VERSION,
-        .commit = RTYPE_ENGINE_COMMIT,
+        .version = rtype::build::kEngineVersion,
+        .commit = rtype::build::kEngineCommit,
         .toolchain = RTYPE_LIBRARY_TOOLCHAIN,
         .libraryAbiVersion = rtype::core::library::kLibraryAbiVersion,
     };
@@ -145,7 +137,7 @@ int main(const int argc, char** argv) {
                 .runtime = exportRuntime(),
                 .output = choice.output,
                 .name = choice.name,
-                .engineVersion = RTYPE_ENGINE_VERSION,
+                .engineVersion = std::string{rtype::build::kEngineVersion},
                 .debug = kIsRuntimeDebug,
                 .pack = choice.pack,
             });
