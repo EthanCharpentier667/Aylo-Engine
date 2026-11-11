@@ -28,6 +28,7 @@
 #include "rtype/ecs/entity/Entity.hpp"
 #include "rtype/ecs/schedule/RunMode.hpp"
 #include "rtype/engine/plugin/PluginLoader.hpp"
+#include "core/layout/Layout.hpp"
 
 namespace rtype::scripting {
 class ScriptHost;
@@ -68,15 +69,16 @@ namespace rtype::engine {
 /// @endcode
 class RTYPE_ENGINE_API Engine {
   public:
-    static constexpr std::string_view kProjectFile = "project.luau";  ///< The settings, in the game directory.
+    // The names of the game's files and of the runtime's folders (core::layout, where they are all written).
+    static constexpr std::string_view kProjectFile = core::layout::kProjectFile;  ///< The settings, in the game folder.
     /// @brief The pack the program runs when it is given no game and finds no `game/` folder: next to the program.
-    static constexpr std::string_view kPackFile = "game.pak";
-    static constexpr std::string_view kScriptsDirectory = "scripts";  ///< The scripts, in the game directory.
-    static constexpr std::string_view kAssetsDirectory = "assets";    ///< The assets, in the game directory.
-    static constexpr std::string_view kPluginsDirectory =
-        "plugins";  ///< The libraries, by the executable and the game.
-    static constexpr std::string_view kBackendsDirectory =
-        "backends";                                                 ///< The backends, in the plugins by the executable.
+    static constexpr std::string_view kPackFile = core::layout::kPackFile;
+    static constexpr std::string_view kScriptsDirectory = core::layout::kScriptsFolder;  ///< The scripts, in the game.
+    static constexpr std::string_view kAssetsDirectory = core::layout::kAssetsFolder;    ///< The assets, in the game.
+    /// @brief The libraries, by the executable and in the game.
+    static constexpr std::string_view kPluginsDirectory = core::layout::kPluginsFolder;
+    /// @brief The backends, in the plugins by the executable.
+    static constexpr std::string_view kBackendsDirectory = core::layout::kBackendsFolder;
     static constexpr std::string_view kPluginsSetting = "plugins";  ///< The setting naming the plugins to add.
     /// @brief The plugin every game has (TransformPlugin::kName, which the Engine does not include; a test checks
     /// they are the same).

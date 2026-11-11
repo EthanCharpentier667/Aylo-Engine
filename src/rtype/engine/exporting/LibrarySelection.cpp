@@ -39,11 +39,12 @@
 #include "rtype/engine/plugin/PluginLoader.hpp"
 #include "rtype/engine/plugin/SharedLibrary.hpp"
 #include "rtype/engine/scripting/SettingsLoader.hpp"
+#include "core/layout/Layout.hpp"
 
 namespace rtype::engine::exporting {
 namespace {
 /// @brief The extension of the file that lists what a plugin library links (xmake/modules/plugin_links.lua).
-constexpr std::string_view kLinksExtension = ".links";
+constexpr std::string_view kLinksExtension = core::layout::kLinksExtension;
 
 /// @brief A side of the game, as `project.luau` is read for it.
 struct Side {

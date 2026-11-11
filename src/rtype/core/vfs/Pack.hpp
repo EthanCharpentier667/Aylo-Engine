@@ -20,10 +20,11 @@
 
 #include "core/Export.hpp"
 #include "core/vfs/FileSource.hpp"
+#include "core/layout/Layout.hpp"
 
 namespace rtype::core::vfs {
 /// @brief The extension of a game's pack: `game.pak`.
-inline constexpr std::string_view kPackExtension = ".pak";
+inline constexpr std::string_view kPackExtension = layout::kPackExtension;
 
 /// @brief The version of the pack format packs are written in; a reader refuses another.
 inline constexpr std::uint32_t kPackVersion = 1;

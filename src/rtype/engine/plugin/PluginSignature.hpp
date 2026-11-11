@@ -16,6 +16,7 @@
 #include <string_view>
 
 #include "rtype/engine/Export.hpp"
+#include "core/layout/Layout.hpp"
 
 namespace rtype::engine::plugin {
 inline constexpr std::size_t kPublicKeySize = 32;  ///< Bytes of an Ed25519 public key.
@@ -23,7 +24,7 @@ inline constexpr std::size_t kSecretKeySize = 64;  ///< Bytes of an Ed25519 secr
 inline constexpr std::size_t kSignatureSize = 64;  ///< Bytes of an Ed25519 signature.
 
 /// @brief The extension of a library's signature, added after its own: `boss.so.sig`.
-inline constexpr std::string_view kSignatureExtension = ".sig";
+inline constexpr std::string_view kSignatureExtension = core::layout::kSignatureExtension;
 
 /// @brief An Ed25519 public key.
 using PublicKey = std::array<std::uint8_t, kPublicKeySize>;

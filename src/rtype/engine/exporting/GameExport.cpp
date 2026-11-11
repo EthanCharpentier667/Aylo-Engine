@@ -35,22 +35,22 @@
 #include "rtype/luau/Result.hpp"
 #include "rtype/luau/Runtime.hpp"
 #include "rtype/luau/RuntimeConfig.hpp"
+#include "core/layout/Layout.hpp"
 
 namespace rtype::engine::exporting {
 namespace {
 #ifdef _WIN32
 constexpr bool kWindows = true;
-constexpr std::string_view kProgramExtension = ".exe";
 #else
 constexpr bool kWindows = false;
-constexpr std::string_view kProgramExtension;
 #endif
 
-constexpr std::string_view kGameFolder = "game";          ///< The game, in the export.
-constexpr std::string_view kLicensesFolder = "licenses";  ///< The notices, in the runtime and in the export.
-constexpr std::string_view kNoticesFile = "THIRD_PARTY_NOTICES.md";
-constexpr std::string_view kByLibraryFolder = "by-library";  ///< The notices of each binary, in the runtime.
-constexpr std::string_view kExportFile = "export.json";
+using core::layout::kExportManifest;
+using core::layout::kGameFolder;
+using core::layout::kLicensesFolder;
+using core::layout::kNoticesByLibraryFolder;
+using core::layout::kNoticesFile;
+using core::layout::kProgramExtension;
 
 /// @return The name of the game when the request gives none: `MyGame` for `MyGame/game`, else the folder's own name.
 std::string defaultName(const std::filesystem::path& game) {
@@ -154,7 +154,7 @@ std::vector<core::vfs::PackEntry> packEntries(const std::filesystem::path& game,
 /// @return The table rows of the notices of @p file (a binary of the runtime); none if the runtime has none for it.
 std::vector<std::string> noticesOf(const std::filesystem::path& runtime, const std::filesystem::path& file,
                                    bool& found) {
-    std::ifstream in{runtime / kLicensesFolder / kByLibraryFolder / std::format("{}.md", file.filename().string())};
+    std::ifstream in{runtime / kLicensesFolder / kNoticesByLibraryFolder / std::format("{}.md", file.filename().string())};
     found = static_cast<bool>(in);
     std::vector<std::string> rows;
     for (std::string line; std::getline(in, line);) {
@@ -287,7 +287,7 @@ class Exporter {
                 }
             }
         }
-        for (const std::string_view folder : {std::string_view{"lib"}, std::string_view{"vulkan"}}) {
+        for (const std::string_view folder : {core::layout::kLibFolder, core::layout::kVulkanFolder}) {
             const std::filesystem::path from = _request->runtime / folder;
             std::error_code error;
             for (auto entry = std::filesystem::recursive_directory_iterator{from, error};
@@ -400,10 +400,10 @@ class Exporter {
                                 jsonString(sha256(files.at(i))));
         }
         json += "\n  }\n}\n";
-        std::ofstream out{_folder / kExportFile};
+        std::ofstream out{_folder / kExportManifest};
         out << json;
         out.close();
-        _report->bytes += std::filesystem::file_size(_folder / kExportFile);
+        _report->bytes += std::filesystem::file_size(_folder / kExportManifest);
     }
 
     const ExportRequest* _request;            ///< What to export; outlives the exporter.
@@ -417,7 +417,7 @@ class Exporter {
 };
 }  // namespace
 
-std::string runtimeProgramName() { return std::format("aylo-runtime{}", kProgramExtension); }
+std::string runtimeProgramName() { return std::format("{}{}", core::layout::kRuntimeProgram, kProgramExtension); }
 
 ExportReport exportGame(const ExportRequest& request) {
     ExportRequest absolute = request;

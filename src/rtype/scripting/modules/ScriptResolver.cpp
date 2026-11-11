@@ -34,13 +34,14 @@
 #include "rtype/scripting/Result.hpp"
 #include "rtype/scripting/exceptions/ScriptLoadException.hpp"
 #include "rtype/scripting/modules/ScriptPath.hpp"
+#include "core/layout/Layout.hpp"
 
 namespace rtype::scripting::modules {
 namespace {
 using Segments = std::vector<std::string>;
 
 constexpr std::string_view kInit = "init.luau";
-constexpr std::string_view kScripts = "scripts";
+constexpr std::string_view kScripts = core::layout::kScriptsFolder;
 constexpr std::string_view kSelf = "self";
 
 [[nodiscard]] char lower(const char c) noexcept {
