@@ -26,6 +26,7 @@
 #include <utility>
 #include <vector>
 
+#include "core/layout/Layout.hpp"
 #include "core/library/LibraryEntry.hpp"
 #include "rtype/core/config/Settings.hpp"
 #include "rtype/ecs/app/Plugin.hpp"
@@ -39,7 +40,6 @@
 #include "rtype/engine/plugin/PluginLoader.hpp"
 #include "rtype/engine/plugin/SharedLibrary.hpp"
 #include "rtype/engine/scripting/SettingsLoader.hpp"
-#include "core/layout/Layout.hpp"
 
 namespace rtype::engine::exporting {
 namespace {

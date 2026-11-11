@@ -21,6 +21,7 @@
 #include "CommandLine.hpp"
 #include "EngineConfig.hpp"
 #include "Export.hpp"
+#include "core/layout/Layout.hpp"
 #include "core/vfs/FileSource.hpp"
 #include "rtype/core/config/Settings.hpp"
 #include "rtype/core/reload/HotReloader.hpp"
@@ -28,7 +29,6 @@
 #include "rtype/ecs/entity/Entity.hpp"
 #include "rtype/ecs/schedule/RunMode.hpp"
 #include "rtype/engine/plugin/PluginLoader.hpp"
-#include "core/layout/Layout.hpp"
 
 namespace rtype::scripting {
 class ScriptHost;

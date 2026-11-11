@@ -14,9 +14,9 @@
 #include <vector>
 
 #include "core/config/Settings.hpp"
+#include "core/layout/Layout.hpp"
 #include "rtype/ecs/app/App.hpp"
 #include "rtype/ecs/schedule/RunMode.hpp"
-#include "core/layout/Layout.hpp"
 
 namespace rtype::engine {
 class Engine;

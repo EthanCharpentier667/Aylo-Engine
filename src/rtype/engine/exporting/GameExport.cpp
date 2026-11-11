@@ -25,6 +25,7 @@
 #include <utility>
 #include <vector>
 
+#include "core/layout/Layout.hpp"
 #include "core/vfs/Pack.hpp"
 #include "core/vfs/exceptions/PackException.hpp"
 #include "rtype/engine/Engine.hpp"
@@ -35,7 +36,6 @@
 #include "rtype/luau/Result.hpp"
 #include "rtype/luau/Runtime.hpp"
 #include "rtype/luau/RuntimeConfig.hpp"
-#include "core/layout/Layout.hpp"
 
 namespace rtype::engine::exporting {
 namespace {
@@ -154,7 +154,8 @@ std::vector<core::vfs::PackEntry> packEntries(const std::filesystem::path& game,
 /// @return The table rows of the notices of @p file (a binary of the runtime); none if the runtime has none for it.
 std::vector<std::string> noticesOf(const std::filesystem::path& runtime, const std::filesystem::path& file,
                                    bool& found) {
-    std::ifstream in{runtime / kLicensesFolder / kNoticesByLibraryFolder / std::format("{}.md", file.filename().string())};
+    std::ifstream in{runtime / kLicensesFolder / kNoticesByLibraryFolder /
+                     std::format("{}.md", file.filename().string())};
     found = static_cast<bool>(in);
     std::vector<std::string> rows;
     for (std::string line; std::getline(in, line);) {

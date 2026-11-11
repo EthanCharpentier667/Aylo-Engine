@@ -15,8 +15,8 @@
 #include <optional>
 #include <string_view>
 
-#include "rtype/engine/Export.hpp"
 #include "core/layout/Layout.hpp"
+#include "rtype/engine/Export.hpp"
 
 namespace rtype::engine::plugin {
 inline constexpr std::size_t kPublicKeySize = 32;  ///< Bytes of an Ed25519 public key.

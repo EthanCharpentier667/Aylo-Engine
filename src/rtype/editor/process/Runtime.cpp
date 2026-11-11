@@ -14,8 +14,8 @@
 #include <utility>
 #include <vector>
 
-#include "core/system/ExecutablePath.hpp"
 #include "core/layout/Layout.hpp"
+#include "core/system/ExecutablePath.hpp"
 
 namespace rtype::editor::process {
 

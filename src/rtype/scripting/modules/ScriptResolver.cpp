@@ -24,6 +24,7 @@
 
 #include "core/asset/AssetFiles.hpp"
 #include "core/asset/exceptions/AssetExceptions.hpp"
+#include "core/layout/Layout.hpp"
 #include "core/vfs/FileSource.hpp"
 #include "rtype/luau/ErrorKind.hpp"
 #include "rtype/luau/Failure.hpp"
@@ -34,7 +35,6 @@
 #include "rtype/scripting/Result.hpp"
 #include "rtype/scripting/exceptions/ScriptLoadException.hpp"
 #include "rtype/scripting/modules/ScriptPath.hpp"
-#include "core/layout/Layout.hpp"
 
 namespace rtype::scripting::modules {
 namespace {

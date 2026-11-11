@@ -19,8 +19,8 @@
 #include <vector>
 
 #include "core/Export.hpp"
-#include "core/vfs/FileSource.hpp"
 #include "core/layout/Layout.hpp"
+#include "core/vfs/FileSource.hpp"
 
 namespace rtype::core::vfs {
 /// @brief The extension of a game's pack: `game.pak`.
