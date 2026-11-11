@@ -5,6 +5,7 @@
 -- Writes the `.links` file of the plugin library `target` (a target with the rule rtype.plugin_library or
 -- rtype.game_plugin).
 function write(target)
+    local layout = import("layout").names()
     local names = {}
     for _, dep in ipairs(target:orderdeps()) do
         if dep:kind() == "shared" and dep:rule("rtype.plugin_library") then
@@ -13,5 +14,5 @@ function write(target)
     end
     table.sort(names)
     local text = #names > 0 and (table.concat(names, "\n") .. "\n") or ""
-    io.writefile(target:targetfile() .. ".links", text)
+    io.writefile(target:targetfile() .. layout.linksExtension, text)
 end

@@ -23,6 +23,7 @@ task("package-release")
         import("utils.archive")
         import("engine_version")
         import("third_party_notices")
+        local layout = import("layout").names()
 
         config.load()
         local plat = config.plat()
@@ -38,7 +39,7 @@ task("package-release")
         end
         if not option.get("no-build") then
             -- One target per call: `xmake build` takes a single target.
-            for _, name in ipairs({"aylo-runtime", "aylo-sign", "aylo-export"}) do
+            for _, name in ipairs({layout.runtimeProgram, "aylo-sign", "aylo-export"}) do
                 os.execv(os.programfile(), {"build", "-y", "-P", rootdir, name})
             end
         end
@@ -48,7 +49,7 @@ task("package-release")
         local name = format("aylo-engine-%s-%s-%s", version, osname, arch)
         local packagedir = path.join(path.absolute(config.builddir()), "package")
         local stage = path.join(packagedir, name)
-        local runtime = path.join(stage, "runtime")
+        local runtime = path.join(stage, layout.runtimeFolder)
         local symbols = path.join(packagedir, name .. "-symbols")
         local zipfile = path.join(packagedir, name .. ".zip")
         local symbolszip = path.join(packagedir, name .. "-symbols.zip")
@@ -68,11 +69,11 @@ task("package-release")
                 os.vrunv("chmod", {"755", to})
             end
         end
-        copyExecutable(path.join(builddir, "aylo-runtime" .. exeext), path.join(runtime, "aylo-runtime" .. exeext))
+        copyExecutable(path.join(builddir, layout.runtimeProgram .. exeext), path.join(runtime, layout.runtimeProgram .. exeext))
         -- The tools: aylo-sign signs the game plugins, aylo-export exports a game with the zip's runtime/.
         local tools = {"aylo-sign", "aylo-export"}
         for _, tool in ipairs(tools) do
-            copyExecutable(path.join(builddir, tool .. exeext), path.join(stage, "tools", tool .. exeext))
+            copyExecutable(path.join(builddir, tool .. exeext), path.join(stage, layout.toolsFolder, tool .. exeext))
         end
 
         -- The libraries, as the build made them: `lib/` holds the ones that are not plugins, `plugins/` the plugins (real
@@ -84,22 +85,22 @@ task("package-release")
         -- found there by the plugins too). The transform and input plugins are linked by the engine until it loads them,
         -- so they are there as well as in `plugins/`: a module of the same name is shared, so the plugin folder's copy is
         -- the one already loaded.
-        local libdir = windows and runtime or path.join(runtime, "lib")
+        local libdir = windows and runtime or path.join(runtime, layout.libFolder)
         os.mkdir(libdir)
-        for _, file in ipairs(os.files(path.join(builddir, "lib", "*" .. libext))) do
+        for _, file in ipairs(os.files(path.join(builddir, layout.libFolder, "*" .. libext))) do
             if not isTestLibrary(file) then
                 os.cp(file, path.join(libdir, path.filename(file)))
             end
         end
-        local pluginsdir = path.join(builddir, "plugins")
+        local pluginsdir = path.join(builddir, layout.pluginsFolder)
         for _, file in ipairs(os.files(path.join(pluginsdir, "**" .. libext))) do
             if not isTestLibrary(file) then
-                local to = path.join(runtime, "plugins", path.relative(file, pluginsdir))
+                local to = path.join(runtime, layout.pluginsFolder, path.relative(file, pluginsdir))
                 os.mkdir(path.directory(to))
                 os.cp(file, to)
                 -- What the library links, for the game export (xmake/modules/plugin_links.lua).
-                if os.isfile(file .. ".links") then
-                    os.cp(file .. ".links", to .. ".links")
+                if os.isfile(file .. layout.linksExtension) then
+                    os.cp(file .. layout.linksExtension, to .. layout.linksExtension)
                 end
                 local filename = path.filename(file)
                 if windows and (filename == "rtype-plugin-transform.dll" or filename == "rtype-plugin-input.dll") then
@@ -146,7 +147,7 @@ task("package-release")
         -- The tool finds the engine's DLLs next to itself.
         if windows then
             for _, file in ipairs(os.files(path.join(runtime, "*" .. libext))) do
-                os.cp(file, path.join(stage, "tools", path.filename(file)))
+                os.cp(file, path.join(stage, layout.toolsFolder, path.filename(file)))
             end
         end
         -- The C++ runtime of the machine that built it, in `lib/`: the zip must run where none is installed. They are the
@@ -155,7 +156,7 @@ task("package-release")
         -- folder, which does not exist here).
         if plat == "linux" then
             local patchelf = find_tool("patchelf")
-            local resolved = os.iorunv("ldd", {path.join(runtime, "aylo-runtime")})
+            local resolved = os.iorunv("ldd", {path.join(runtime, layout.runtimeProgram)})
             for _, soname in ipairs({"libstdc++.so.6", "libgcc_s.so.1"}) do
                 local found = resolved:match(soname:gsub("%p", "%%%0") .. " => (%S+)")
                 if found and os.isfile(found) then
@@ -170,10 +171,11 @@ task("package-release")
                 end
             end
             if patchelf then
-                os.vrunv(patchelf.program, {"--set-rpath", "$ORIGIN/lib:$ORIGIN/plugins", path.join(runtime, "aylo-runtime")})
+                os.vrunv(patchelf.program, {"--set-rpath", "$ORIGIN/" .. layout.libFolder .. ":$ORIGIN/" .. layout.pluginsFolder,
+                                        path.join(runtime, layout.runtimeProgram)})
                 for _, tool in ipairs(tools) do
                     os.vrunv(patchelf.program, {"--set-rpath", "$ORIGIN/../runtime/lib:$ORIGIN/../runtime/plugins",
-                                                path.join(stage, "tools", tool)})
+                                                path.join(stage, layout.toolsFolder, tool)})
                 end
             else
                 cprint("${yellow}warning: patchelf is missing: the executables keep the search paths of the build")
@@ -193,7 +195,7 @@ task("package-release")
                 end
                 return prefix
             end
-            local libdir = path.join(runtime, "lib")
+            local libdir = path.join(runtime, layout.libFolder)
             local bundled = {}
             local function bundle(from, filename)
                 local to = path.join(libdir, filename)
@@ -205,7 +207,7 @@ task("package-release")
             end
             bundle(path.join(brewprefix("vulkan-loader"), "lib", "libvulkan.1.dylib"), "libvulkan.1.dylib")
             bundle(path.join(brewprefix("molten-vk"), "lib", "libMoltenVK.dylib"), "libMoltenVK.dylib")
-            local icddir = path.join(runtime, "vulkan", "icd.d")
+            local icddir = path.join(runtime, layout.vulkanFolder, "icd.d")
             os.mkdir(icddir)
             json.savefile(path.join(icddir, "MoltenVK_icd.json"), {
                 file_format_version = "1.0.0",
@@ -213,8 +215,8 @@ task("package-release")
             })
 
             local binaries = table.join(os.files(path.join(runtime, "**.dylib")),
-                                        {path.join(runtime, "aylo-runtime"), path.join(stage, "tools", "aylo-sign"),
-                                         path.join(stage, "tools", "aylo-export")})
+                                        {path.join(runtime, layout.runtimeProgram), path.join(stage, layout.toolsFolder, "aylo-sign"),
+                                         path.join(stage, layout.toolsFolder, "aylo-export")})
             for _, file in ipairs(binaries) do
                 local args = {}
                 -- otool -L: the first line is the file, then one dependency per line (the first of a library is its id).
@@ -239,8 +241,8 @@ task("package-release")
 
         -- Licenses of what the runtime carries: the third-party code of each binary in `licenses/by-library/<file>.md`
         -- (what the game export keeps of them), and all of them in THIRD_PARTY_NOTICES.md.
-        local licenses = path.join(runtime, "licenses")
-        local bylibrary = path.join(licenses, "by-library")
+        local licenses = path.join(runtime, layout.licensesFolder)
+        local bylibrary = path.join(licenses, layout.noticesByLibraryFolder)
         os.mkdir(bylibrary)
         local allrows = {}
         for _, file in ipairs(os.files(path.join(runtime, "**"))) do
@@ -255,7 +257,7 @@ task("package-release")
                 table.join2(allrows, rows)
             end
         end
-        third_party_notices.writeNotices(path.join(licenses, "THIRD_PARTY_NOTICES.md"), allrows)
+        third_party_notices.writeNotices(path.join(licenses, layout.noticesFile), allrows)
 
         -- The starting game.
         os.cp(path.join(rootdir, "examples", "games", "template", "game"), path.join(stage, "templates", "game"))
@@ -306,10 +308,10 @@ task("package-release")
                 end
             end
         end
-        for _, file in ipairs(table.join(os.files(path.join(stage, "runtime", "**" .. libext)),
-                                          os.files(path.join(runtime, "aylo-runtime" .. exeext)),
-                                          os.files(path.join(stage, "tools", "aylo-sign" .. exeext)),
-                                          os.files(path.join(stage, "tools", "aylo-export" .. exeext)))) do
+        for _, file in ipairs(table.join(os.files(path.join(stage, layout.runtimeFolder, "**" .. libext)),
+                                          os.files(path.join(runtime, layout.runtimeProgram .. exeext)),
+                                          os.files(path.join(stage, layout.toolsFolder, "aylo-sign" .. exeext)),
+                                          os.files(path.join(stage, layout.toolsFolder, "aylo-export" .. exeext)))) do
             keepSymbols(file)
         end
         if windows then
@@ -340,7 +342,7 @@ task("package-release")
         end
 
         -- The manifest: what the runtime says about itself, which must be the version of this package, and a hash of every file.
-        local report = os.iorunv(path.join(runtime, "aylo-runtime" .. exeext), {"--version"})
+        local report = os.iorunv(path.join(runtime, layout.runtimeProgram .. exeext), {"--version"})
         local function field(key)
             local value = report:match(key .. ": ([^\r\n]+)")
             return value and value:trim()
