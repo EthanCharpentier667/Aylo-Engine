@@ -1,8 +1,8 @@
 # AYLO Engine
 
-[![CI](https://github.com/Charles-Mahoudeau/aylo/actions/workflows/ci.yml/badge.svg)](https://github.com/Charles-Mahoudeau/aylo/actions/workflows/ci.yml)
-[![Manual](https://img.shields.io/badge/manual-online-blue)](https://charles-mahoudeau.github.io/aylo/)
-[![Developer docs](https://img.shields.io/badge/developer%20docs-online-blue)](https://charles-mahoudeau.github.io/aylo/engine/)
+[![CI](https://github.com/EthanCharpentier667/Aylo-Engine/actions/workflows/ci.yml/badge.svg)](https://github.com/EthanCharpentier667/Aylo-Engine/actions/workflows/ci.yml)
+[![Manual](https://img.shields.io/badge/manual-online-blue)](https://ethancharpentier667.github.io/Aylo-Engine/)
+[![Developer docs](https://img.shields.io/badge/developer%20docs-online-blue)](https://ethancharpentier667.github.io/Aylo-Engine/engine/)
 
 **AYLO** (*Another Yet Lightweight Optimized Engine*) is a C++23 game engine made for the Epitech R-Type project:
 a Vulkan renderer, Luau scripting, physics, audio and an authoritative client/server network model over UDP. It does
@@ -59,8 +59,8 @@ Tests: `xmake f -y --Tests=y && xmake build -y && xmake test -v`.
 
 | | For | Link |
 |---|---|---|
-| **Game developer manual** | Making a game in Luau | <https://charles-mahoudeau.github.io/aylo/> |
-| **Developer documentation** | Working on the engine: architecture, modules, network protocol, technical study | <https://charles-mahoudeau.github.io/aylo/engine/> ([`docs/`](docs/index.md)) |
+| **Game developer manual** | Making a game in Luau | <https://ethancharpentier667.github.io/Aylo-Engine/> |
+| **Developer documentation** | Working on the engine: architecture, modules, network protocol, technical study | <https://ethancharpentier667.github.io/Aylo-Engine/engine/> ([`docs/`](docs/index.md)) |
 | **Network protocol** | Writing another client | [`docs/network/protocol.md`](docs/network/protocol.md) |
 | **Contributing** | Workflow, conventions, definition of done | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
 
@@ -71,7 +71,7 @@ Tests: `xmake f -y --Tests=y && xmake build -y && xmake test -v`.
 - Noé Caillaud
 - Jhong Amos Almacin
 
-Questions and bugs: [GitHub issues](https://github.com/Charles-Mahoudeau/aylo/issues).
+Questions and bugs: [GitHub issues](https://github.com/EthanCharpentier667/Aylo-Engine/issues).
 
 ## License
 

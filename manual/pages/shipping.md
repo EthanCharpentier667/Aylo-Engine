@@ -6,7 +6,7 @@ is in it, how to export, and what your players will see the first time they run 
 
 ## Download the engine
 
-Releases are on [GitHub](https://github.com/Charles-Mahoudeau/aylo/releases). Each one holds one `.zip` per platform:
+Releases are on [GitHub](https://github.com/EthanCharpentier667/Aylo-Engine/releases). Each one holds one `.zip` per platform:
 
 ```
 aylo-engine-<version>-<os>-<arch>.zip
@@ -194,7 +194,7 @@ Every zip also has a GitHub **attestation**: a statement signed by GitHub that t
 workflow from a given commit. With the [GitHub CLI](https://cli.github.com):
 
 ```sh
-gh attestation verify aylo-engine-0.3.0-linux-x86_64.zip --repo Charles-Mahoudeau/aylo
+gh attestation verify aylo-engine-0.3.0-linux-x86_64.zip --repo EthanCharpentier667/Aylo-Engine
 ```
 
 It prints the commit and the workflow, or fails if the file is not what the project built.

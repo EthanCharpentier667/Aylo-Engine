@@ -362,7 +362,7 @@ sample per tick and repeats the last one when none arrived.
 ## 11. CustomPacket (both ways)
 
 Packets the game declares in Luau (`net.packet`, see the manual's
-[Networking](https://charles-mahoudeau.github.io/aylo/networking/) page), for what is not state: a chat line, a "ready"
+[Networking](https://ethancharpentier667.github.io/Aylo-Engine/networking/) page), for what is not state: a chat line, a "ready"
 button, a kill feed.
 
 | Size | Field |

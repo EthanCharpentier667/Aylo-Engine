@@ -54,7 +54,7 @@ number is written, so what the CI checks is what ships. macOS (Apple Clang) and 
 3. Wait for the workflow. It ends with a **draft** release, `v0.2.0`, holding the three zips and `SHA256SUMS`. A tag with
    a `-` (`v0.2.0-rc.1`) makes a prerelease.
 4. Review the draft: the notes (pull requests grouped by label, see `.github/release.yml`; edit them freely), and the
-   zips: download one, check it against `SHA256SUMS` and `gh attestation verify <zip> --repo Charles-Mahoudeau/aylo`.
+   zips: download one, check it against `SHA256SUMS` and `gh attestation verify <zip> --repo EthanCharpentier667/Aylo-Engine`.
 5. Publish the release. This is the only manual step, and it is a human decision.
 
 To redo a failed release: delete the draft and the tag (`git push --delete origin v0.2.0`), fix, tag again.

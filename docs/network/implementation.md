@@ -3140,7 +3140,7 @@ left to do once the engine is split.
 
 | Milestone | Size | Blocked by | Design |
 |---|---|---|---|
-| M7 | S | NET-20, NET-39, **ECS `StandalonePlugin`** ([#128](https://github.com/Charles-Mahoudeau/aylo/issues/128)) | [7](design.md#7-replication-aylo-replication), [ECS 20](../ecs/features/20-replication.md#one-server-tick-one-client-frame) |
+| M7 | S | NET-20, NET-39, **ECS `StandalonePlugin`** ([#128](https://github.com/Charles-Mahoudeau/rtype/issues/128)) | [7](design.md#7-replication-aylo-replication), [ECS 20](../ecs/features/20-replication.md#one-server-tick-one-client-frame) |
 
 **Tasks.**
 - [ ] The input glue of the prototype (reads `plugins::input::Input`, fills `PlayerInput` through the `InputLayout`)
@@ -3237,7 +3237,7 @@ check.
 
 | Blocker | Owner | Blocks |
 |---|---|---|
-| ECS `StandalonePlugin` ([#128](https://github.com/Charles-Mahoudeau/aylo/issues/128)) | ECS | NET-38 |
+| ECS `StandalonePlugin` ([#128](https://github.com/Charles-Mahoudeau/rtype/issues/128)) | ECS | NET-38 |
 | ECS hook to finish a plugin's setup once every plugin was built (optional) | ECS | Nothing: `ReplicatedRead` is built when `ServerPlugin` adds its systems, so it is added last, checked by `net.start` |
 | Capsules (`plugin-capsule`, done) | plugins | NET-41 |
 | ECS field network options (quantization) | ECS | NET-42 |

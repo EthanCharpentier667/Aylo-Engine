@@ -7,7 +7,7 @@ Thank you for helping. This page is the short version of how the team works; the
 | You change | You read first | Language |
 |---|---|---|
 | The engine (`src/`, `tests/`) | [`docs/`](docs/index.md), [`docs/CodeStyle.md`](docs/CodeStyle.md), the `AGENTS.md` of the folder | C++23 |
-| A game (`examples/games/<game>/game/`) | The [game developer manual](https://charles-mahoudeau.github.io/aylo/) | Luau only |
+| A game (`examples/games/<game>/game/`) | The [game developer manual](https://ethancharpentier667.github.io/Aylo-Engine/) | Luau only |
 
 A game never needs C++. If the engine lacks something, open an engine issue instead of working around it.
 
@@ -74,8 +74,8 @@ The full list, with reasons, is in [`AGENTS.md`](AGENTS.md#architecture-rules).
 | [`docs/`](docs/index.md) | Engine developers (C++) | `uvx zensical build -f docs/mkdocs.yml` |
 
 Both are published on GitHub Pages when `main` changes: the manual at
-<https://charles-mahoudeau.github.io/aylo/>, the developer documentation under
-<https://charles-mahoudeau.github.io/aylo/engine/>. Write in English, short sentences, tables for facts.
+<https://ethancharpentier667.github.io/Aylo-Engine/>, the developer documentation under
+<https://ethancharpentier667.github.io/Aylo-Engine/engine/>. Write in English, short sentences, tables for facts.
 
 ## AI agents
 
