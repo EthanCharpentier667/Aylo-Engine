@@ -29,7 +29,16 @@ architecture rules, and this file keeps the detail, which changes with every fea
     - `core/system/` (`rtype::core::system`) — `CacheDirectory.hpp`, `ExecutablePath.hpp`: where the system keeps a
       user's cache and the running executable.
     - `core/version/` (`rtype::core::version`) — `Version.hpp`: `VersionInfo` and `describe()`, the text of
-      `aylo-runtime --version`. The version itself is set once in the root `xmake.lua` (`docs/release/package.md`).
+      `aylo-runtime --version`. The version itself is set once in the root `xmake.lua` (`docs/release/package.md`);
+      the executables read it, and the commit, from `rtype/build/BuildInfo.hpp` (`rtype::build::kEngineVersion`,
+      `kEngineCommit`), which the target `build-info` generates (`xmake/modules/engine_version.lua`), rewritten only
+      when they change.
+    - `core/layout/` (`rtype::core::layout`) — `Layout.hpp`: the names of the folders and files the engine, its tools
+      and its release agree on (`game`, `project.luau`, `scripts`, `assets`, `plugins`, `game.pak`, `runtime`, `lib`,
+      `backends`, `licenses`, `.links`, `.sig`, `export.json`...), written once in C++; the constants of `Engine` and
+      of the export are aliases of them. The build and the release write the same names in Lua,
+      `xmake/modules/layout.lua`: change both together. The format versions stay with their format
+      (`kLibraryAbiVersion` in `LibraryEntry.hpp`, `kPackVersion` in `vfs/Pack.hpp`).
 - `src/rtype/ecs/` — `ecs` target, shared library (`rtype-ecs`): the Entity Component System and,
   later, the App and its plugins (`rtype::ecs`). Design in `docs/ecs/design.md`. It depends on `core` only.
   Exported classes and functions are marked `RTYPE_ECS_API`, and the library keeps no

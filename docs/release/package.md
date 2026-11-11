@@ -40,6 +40,9 @@ of them. A package the table does not know stops the release, so the notices can
 export keeps the files of the binaries it keeps ([`export.md`](export.md)); the smoke test checks that every binary it
 may keep has one.
 
+The names of the layout are written once per language: `src/rtype/core/layout/Layout.hpp` for the engine and its
+tools, `xmake/modules/layout.lua` for the build and this task. The smoke test checks them end to end.
+
 `manifest.json` holds the `version` (a nightly build is `<version>-nightly.<commit>`), the `commit`, the `platform` and
 `arch`, the `toolchain`, the `library_abi` and the `sha256` of every other file of the zip. Its version, commit,
 toolchain and ABI are read from `aylo-runtime --version`, so it cannot disagree with the binary.
