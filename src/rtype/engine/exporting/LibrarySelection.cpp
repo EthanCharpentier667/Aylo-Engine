@@ -32,6 +32,7 @@
 #include "rtype/ecs/app/PluginEntry.hpp"
 #include "rtype/ecs/app/PluginRegistry.hpp"
 #include "rtype/ecs/schedule/RunMode.hpp"
+#include "rtype/ecs/system/Side.hpp"
 #include "rtype/engine/CommandLine.hpp"
 #include "rtype/engine/Engine.hpp"
 #include "rtype/engine/Exceptions.hpp"
@@ -113,26 +114,26 @@ std::vector<std::filesystem::path> librariesIn(const std::filesystem::path& dire
 class SideSelection {
   public:
     SideSelection(const SelectionRequest& request, const Side& side, Reasons& reasons)
-        : _request{request}, _side{side}, _reasons{reasons} {}
+        : _request{&request}, _side{&side}, _reasons{&reasons} {}
 
     /// @brief Reads the side's settings, registers its libraries and keeps what it needs.
     void run() {
-        const std::vector<std::string> args = _request.args;
+        const std::vector<std::string> args = _request->args;
         const CommandLine commandLine = CommandLine::parse(std::span<const std::string>{args});
-        const core::config::Settings settings = scripting::loadProjectSettings(_request.game / Engine::kProjectFile,
-                                                                               _side.mode, commandLine, _request.debug);
-        const bool client = ecs::runsIn(ecs::Side::kClient, _side.mode);
+        const core::config::Settings settings = scripting::loadProjectSettings(
+            _request->game / Engine::kProjectFile, _side->mode, commandLine, _request->debug);
+        const bool client = ecs::runsIn(ecs::Side::kClient, _side->mode);
         const bool backends = client && std::ranges::any_of(Engine::kBackendSettings,
                                                             [&settings](const auto key) { return settings.has(key); });
 
         plugin::PluginLoader loader;
-        const std::filesystem::path plugins = _request.runtime / Engine::kPluginsDirectory;
+        const std::filesystem::path plugins = _request->runtime / Engine::kPluginsDirectory;
         loader.load(plugins);
         if (backends) {
             loader.load(plugins / Engine::kBackendsDirectory);
         }
-        const std::filesystem::path gamePlugins = _request.game / Engine::kPluginsDirectory;
-        loader.load(gamePlugins, _request.verifyGamePlugin);
+        const std::filesystem::path gamePlugins = _request->game / Engine::kPluginsDirectory;
+        loader.load(gamePlugins, _request->verifyGamePlugin);
 
         ecs::PluginRegistry registry;
         registry.setSettings(settings);
@@ -145,7 +146,7 @@ class SideSelection {
             keepBackends(settings);
         }
         for (const std::filesystem::path& file : librariesIn(gamePlugins)) {
-            _reasons[file].insert("a plugin of the game");
+            (*_reasons)[file].insert("a plugin of the game");
         }
     }
 
@@ -178,7 +179,7 @@ class SideSelection {
         // A plugin, why it is wanted, and the plugin that requires it (empty: named by the game).
         std::deque<std::tuple<std::string, std::string, std::string>> queue;
         for (std::string& name : settings.getStringList(Engine::kPluginsSetting, {})) {
-            queue.emplace_back(std::move(name), std::format("named in {} ({})", Engine::kPluginsSetting, _side.name),
+            queue.emplace_back(std::move(name), std::format("named in {} ({})", Engine::kPluginsSetting, _side->name),
                                "");
         }
         queue.emplace_back(std::string{Engine::kTransformPlugin}, "every game", "");
@@ -193,7 +194,7 @@ class SideSelection {
             if (owner == _registered.plugins.end()) {
                 throw exceptions::RuntimeError{unknownPlugin(name, requiredBy)};
             }
-            _reasons[owner->second].insert(reason);
+            (*_reasons)[owner->second].insert(reason);
             const std::unique_ptr<ecs::Plugin> created = registry.create(name);
             for (const std::string_view dependency : created->getDependencies()) {
                 queue.emplace_back(std::string{dependency}, std::format("required by {}", name), name);
@@ -211,15 +212,16 @@ class SideSelection {
             const auto owners = _registered.backends.find(name);
             if (owners == _registered.backends.end()) {
                 std::vector<std::string> known;
+                known.reserve(_registered.backends.size());
                 for (const auto& [backend, files] : _registered.backends) {
                     known.push_back(backend);
                 }
                 throw exceptions::RuntimeError{
                     std::format("Invalid setting '{}' ({}): no backend library registers '{}' (known: {})", key,
-                                _side.name, name, quoteNames(known))};
+                                _side->name, name, quoteNames(known))};
             }
             for (const std::filesystem::path& file : owners->second) {
-                _reasons[file].insert(std::format("backend '{}' ({})", name, key));
+                (*_reasons)[file].insert(std::format("backend '{}' ({})", name, key));
             }
         }
     }
@@ -227,20 +229,21 @@ class SideSelection {
     /// @return Why the plugin @p name cannot be kept: no library registers it.
     [[nodiscard]] std::string unknownPlugin(const std::string& name, const std::string& requiredBy) const {
         std::vector<std::string> known;
+        known.reserve(_registered.plugins.size());
         for (const auto& [plugin, file] : _registered.plugins) {
             known.push_back(plugin);
         }
         if (requiredBy.empty()) {
             return std::format("Invalid setting '{}' ({}): unknown plugin '{}' (known: {})", Engine::kPluginsSetting,
-                               _side.name, name, quoteNames(known));
+                               _side->name, name, quoteNames(known));
         }
         return std::format("Plugin '{}' requires '{}', which no library registers (known: {})", requiredBy, name,
                            quoteNames(known));
     }
 
-    const SelectionRequest& _request;  ///< The game and the runtime.
-    const Side& _side;                 ///< The side read.
-    Reasons& _reasons;                 ///< Where the libraries kept go.
+    const SelectionRequest* _request;  ///< The game and the runtime; outlives the selection.
+    const Side* _side;                 ///< The side read; outlives the selection.
+    Reasons* _reasons;                 ///< Where the libraries kept go; outlives the selection.
     Registered _registered;            ///< What the side's libraries brought.
 };
 
@@ -288,9 +291,12 @@ std::vector<SelectedLibrary> selectLibraries(const SelectionRequest& request) {
     std::vector<SelectedLibrary> selected;
     for (auto& [file, why] : reasons) {
         const std::filesystem::path folder = file.parent_path();
-        const LibraryKind kind = folder == plugins                                ? LibraryKind::kPlugin
-                                 : folder == plugins / Engine::kBackendsDirectory ? LibraryKind::kBackend
-                                                                                  : LibraryKind::kGame;
+        LibraryKind kind = LibraryKind::kGame;
+        if (folder == plugins) {
+            kind = LibraryKind::kPlugin;
+        } else if (folder == plugins / Engine::kBackendsDirectory) {
+            kind = LibraryKind::kBackend;
+        }
         selected.push_back(SelectedLibrary{.file = file, .kind = kind, .reasons = {why.begin(), why.end()}});
     }
     std::ranges::sort(selected, [](const SelectedLibrary& left, const SelectedLibrary& right) {

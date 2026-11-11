@@ -8,6 +8,7 @@
 #include "core/library/LibraryEntry.hpp"
 
 #include <format>
+#include <functional>
 #include <map>
 #include <string>
 #include <string_view>
