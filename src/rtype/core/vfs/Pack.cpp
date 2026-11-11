@@ -7,15 +7,15 @@
 
 #include "core/vfs/Pack.hpp"
 
-#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
 #include <format>
 #include <fstream>
+#include <functional>
 #include <ios>
-#include <limits>
+#include <istream>
 #include <map>
 #include <memory>
 #include <optional>
@@ -29,6 +29,7 @@
 
 #include "core/asset/AssetFiles.hpp"
 #include "core/asset/exceptions/AssetExceptions.hpp"
+#include "core/vfs/FileSource.hpp"
 #include "core/vfs/exceptions/PackException.hpp"
 
 namespace rtype::core::vfs {
@@ -109,7 +110,7 @@ void writeData(std::ofstream& out, const PackEntry& entry, const std::uint64_t s
         out.write(bytes->data(), static_cast<std::streamsize>(bytes->size()));
         return;
     }
-    const std::filesystem::path& file = std::get<std::filesystem::path>(entry.data);
+    const auto& file = std::get<std::filesystem::path>(entry.data);
     std::ifstream in{file, std::ios::binary};
     std::array<char, kCopyBufferSize> buffer{};
     std::uint64_t copied = 0;
@@ -123,6 +124,46 @@ void writeData(std::ofstream& out, const PackEntry& entry, const std::uint64_t s
         throw exceptions::PackException{
             std::format("'{}' changed while it was packed ({} bytes, then {})", file.generic_string(), size, copied)};
     }
+}
+/// @return Why @p file is refused as a pack: @p why.
+exceptions::PackException notAPack(const std::filesystem::path& file, const std::string_view why) {
+    return exceptions::PackException{std::format("'{}' is not a game pack: {}", file.generic_string(), why)};
+}
+
+/// @brief One entry of a pack's table, read and checked.
+struct TableEntry {
+    std::string name;      ///< Its path, normalized.
+    std::uint64_t offset;  ///< From the start of the pack.
+    std::uint64_t size;    ///< In bytes.
+};
+
+/// @return The entry @p index of the table of the pack @p file, at the stream's position, checked against the @p size
+/// bytes of the pack.
+/// @throws exceptions::PackException If it is cut short, its path is too long, leaves the pack or is not normalized, or
+/// it goes past the end of the pack.
+TableEntry readTableEntry(std::istream& in, const std::filesystem::path& file, const std::uint64_t index,
+                          const std::uint64_t size) {
+    const std::optional<std::uint64_t> length = getInteger(in, 4);
+    if (!length || *length == 0 || *length > kMaxPathSize) {
+        throw notAPack(file, std::format("the path of its entry {} has an invalid length", index));
+    }
+    std::string name(static_cast<std::size_t>(*length), '\0');
+    if (!in.read(name.data(), static_cast<std::streamsize>(name.size()))) {
+        throw notAPack(file, "its table is longer than the file");
+    }
+    const std::optional<std::uint64_t> offset = getInteger(in, 8);
+    const std::optional<std::uint64_t> bytes = getInteger(in, 8);
+    if (!offset || !bytes) {
+        throw notAPack(file, "its table is longer than the file");
+    }
+    const std::optional<std::string> path = packPath(name);
+    if (!path || *path != name) {
+        throw notAPack(file, std::format("its entry '{}' is not a path that stays in it", name));
+    }
+    if (*offset > size || *bytes > size - *offset) {
+        throw notAPack(file, std::format("its entry '{}' goes past the end of the file", name));
+    }
+    return TableEntry{.name = std::move(name), .offset = *offset, .size = *bytes};
 }
 }  // namespace
 
@@ -149,11 +190,11 @@ void writePack(const std::filesystem::path& file, const std::vector<PackEntry>& 
     putInteger(header, entries.size(), 4);
     std::uint64_t offset = kHeaderSize + tableSize;
     for (std::size_t i = 0; i < entries.size(); ++i) {
-        putInteger(header, paths[i].size(), 4);
-        header += paths[i];
+        putInteger(header, paths.at(i).size(), 4);
+        header += paths.at(i);
         putInteger(header, offset, 8);
-        putInteger(header, sizes[i], 8);
-        offset += sizes[i];
+        putInteger(header, sizes.at(i), 8);
+        offset += sizes.at(i);
     }
     std::ofstream out{file, std::ios::binary | std::ios::trunc};
     if (!out) {
@@ -161,7 +202,7 @@ void writePack(const std::filesystem::path& file, const std::vector<PackEntry>& 
     }
     out.write(header.data(), static_cast<std::streamsize>(header.size()));
     for (std::size_t i = 0; i < entries.size(); ++i) {
-        writeData(out, entries[i], sizes[i]);
+        writeData(out, entries.at(i), sizes.at(i));
     }
     out.close();
     if (!out) {
@@ -170,9 +211,6 @@ void writePack(const std::filesystem::path& file, const std::vector<PackEntry>& 
 }
 
 PackSource::PackSource(std::filesystem::path file, const std::uint64_t start) : _file{std::move(file)} {
-    const auto refuse = [this](const std::string_view why) {
-        return exceptions::PackException{std::format("'{}' is not a game pack: {}", _file.generic_string(), why)};
-    };
     std::error_code error;
     const std::uintmax_t fileSize = std::filesystem::file_size(_file, error);
     if (error) {
@@ -180,46 +218,27 @@ PackSource::PackSource(std::filesystem::path file, const std::uint64_t start) : 
             std::format("Cannot open the pack '{}': {}", _file.generic_string(), error.message())};
     }
     if (start > fileSize || fileSize - start < kHeaderSize) {
-        throw refuse("it is too short");
+        throw notAPack(_file, "it is too short");
     }
-    const std::uint64_t end = fileSize;
+    const std::uint64_t size = fileSize - start;
     std::ifstream in{_file, std::ios::binary};
     in.seekg(static_cast<std::streamoff>(start));
     std::array<char, kMagic.size()> magic{};
     if (!in.read(magic.data(), magic.size()) || magic != kMagic) {
-        throw refuse("it does not start like one");
+        throw notAPack(_file, "it does not start like one");
     }
     const std::optional<std::uint64_t> version = getInteger(in, 4);
     if (!version || *version != kPackVersion) {
-        throw refuse(std::format("its version is {}, the engine reads {}", version.value_or(0), kPackVersion));
+        throw notAPack(_file, std::format("its version is {}, the engine reads {}", version.value_or(0), kPackVersion));
     }
     const std::optional<std::uint64_t> count = getInteger(in, 4);
-    if (!count || *count > (end - start - kHeaderSize) / (kEntryFixedSize + 1)) {
-        throw refuse("its table is longer than the file");
+    if (!count || *count > (size - kHeaderSize) / (kEntryFixedSize + 1)) {
+        throw notAPack(_file, "its table is longer than the file");
     }
     for (std::uint64_t i = 0; i < *count; ++i) {
-        const std::optional<std::uint64_t> length = getInteger(in, 4);
-        if (!length || *length == 0 || *length > kMaxPathSize) {
-            throw refuse(std::format("the path of its entry {} has an invalid length", i));
-        }
-        std::string name(static_cast<std::size_t>(*length), '\0');
-        if (!in.read(name.data(), static_cast<std::streamsize>(name.size()))) {
-            throw refuse("its table is longer than the file");
-        }
-        const std::optional<std::uint64_t> offset = getInteger(in, 8);
-        const std::optional<std::uint64_t> size = getInteger(in, 8);
-        if (!offset || !size) {
-            throw refuse("its table is longer than the file");
-        }
-        const std::optional<std::string> path = packPath(name);
-        if (!path || *path != name) {
-            throw refuse(std::format("its entry '{}' is not a path that stays in it", name));
-        }
-        if (*offset > end - start || *size > end - start - *offset) {
-            throw refuse(std::format("its entry '{}' goes past the end of the file", name));
-        }
-        if (!_entries.emplace(name, Entry{.offset = start + *offset, .size = *size}).second) {
-            throw refuse(std::format("it holds '{}' twice", name));
+        TableEntry entry = readTableEntry(in, _file, i, size);
+        if (!_entries.emplace(entry.name, Entry{.offset = start + entry.offset, .size = entry.size}).second) {
+            throw notAPack(_file, std::format("it holds '{}' twice", entry.name));
         }
     }
 }
@@ -313,7 +332,7 @@ std::vector<std::string> SubSource::list(const std::string_view folder) const {
     }
     const std::string prefix = _folder.empty() ? std::string{} : _folder + "/";
     std::vector<std::string> files;
-    for (std::string& file : _parent->list(inside)) {
+    for (const std::string& file : _parent->list(inside)) {
         if (file.starts_with(prefix)) {
             files.push_back(file.substr(prefix.size()));
         }
