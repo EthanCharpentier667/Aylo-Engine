@@ -10,13 +10,14 @@ Add the plugin in `project.luau`. Optional `persistence` section:
 | Key         | Default   | Meaning                                                                          |
 | ----------- | --------- | -------------------------------------------------------------------------------- |
 | `directory` | none      | Absolute folder for the saves. Without it: `<user data directory>/<folder>`.      |
-| `folder`    | `"aylo"` | The game's folder in the user data directory (`%APPDATA%`, `~/Library/Application Support`, `$XDG_DATA_HOME` or `~/.local/share`). |
+| `folder`    | the game's [`name`](project-settings.md#game) | The game's folder in the user data directory (`%APPDATA%`, `~/Library/Application Support`, `$XDG_DATA_HOME` or `~/.local/share`). |
 
-Set `folder` to your game's name: every game that keeps the default shares the `aylo` folder.
+Each game has its own folder by default, named after it, so two games never mix their saves.
 
-If you keep the default and the player has saves in an `rtype` folder (the default of older versions of the engine)
-but no `aylo` folder yet, the plugin copies those saves to `aylo` when it starts. The old folder is left as it is. A
-game that sets `folder` or `directory` is not concerned.
+Older versions of the engine kept the saves of every game in one shared folder, `aylo` (and `rtype` before it). If you
+keep both defaults and the game's folder does not exist yet, the plugin copies the saves of `aylo` (or, when it has
+none, of `rtype`) into it when it starts. The old folders are left as they are. A game that sets `folder` or
+`directory` is not concerned.
 
 ## From scripts
 

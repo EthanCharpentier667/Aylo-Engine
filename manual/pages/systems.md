@@ -51,6 +51,38 @@ A frame runs its phases in this order.
 Gameplay on the server goes in `FixedUpdate`; what a client shows goes in `Update`. Use `after` and `before` to order
 systems of the same phase, including the engine's (the physics names are in [Physics](physics.md)).
 
+## Smooth movement
+
+`FixedUpdate` runs 60 times a second, whatever the screen does. On a 144 Hz screen, some frames see no tick and others
+see one, so an entity moved in `FixedUpdate` stops and jumps: it judders. Add `aylo.TransformInterpolation` next to
+its `aylo.Transform`, and the engine draws it between its last two ticks instead:
+
+```luau
+engine.ecs.system("game.SpawnBall", {
+	phase = "Startup",
+	side = "server",
+	query = {},
+	run = function(ctx)
+		ctx.commands:spawn({
+			["aylo.Transform"] = { position = { x = 400, y = 300 } },
+			["aylo.TransformInterpolation"] = {},
+		})
+	end,
+})
+```
+
+The component has no fields. On the client (and in single player and the editor), after the ticks of each frame, the
+engine records the entity's `aylo.Transform` and computes the position you see, `aylo.GlobalTransform`, from the last
+two records, blended by how far the frame is into the next tick. Its children follow the blended position.
+
+- **What is drawn is up to one tick behind** the simulation (about 17 ms at 60 ticks a second). `aylo.Transform`, the
+  physics and the server keep the simulated position: read `aylo.Transform` for gameplay.
+- **A move made out of the ticks is drawn at once**: a teleport written in `Update`, or an entity moved in the editor,
+  does not slide there.
+- **Add it only to what moves in `FixedUpdate`** (your gameplay, or a body of the [physics](physics.md)). An entity a
+  client moves in `Update`, such as one following replicated data, gains nothing from it.
+- The server never blends: a dedicated server draws nothing, so its `aylo.GlobalTransform` is the `aylo.Transform`.
+
 ## Queries
 
 ```luau
