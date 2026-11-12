@@ -24,6 +24,22 @@ TEST(DynamicRendering, ColorAttachmentClearsAndStores) {
     EXPECT_FLOAT_EQ(color.clearValue.color.float32[2], 0.3F);
 }
 
+TEST(DynamicRendering, LoadedColorAttachmentKeepsWhatTheImageHolds) {
+    const vk::RenderingAttachmentInfo color = rendering::loadedColorAttachment(vk::ImageView{});
+    EXPECT_EQ(color.imageLayout, vk::ImageLayout::eColorAttachmentOptimal);
+    EXPECT_EQ(color.loadOp, vk::AttachmentLoadOp::eLoad);
+    EXPECT_EQ(color.storeOp, vk::AttachmentStoreOp::eStore);
+}
+
+TEST(DynamicRendering, ShaderReadToColorAttachmentKeepsTheContentsAndOrdersTheLoad) {
+    const rendering::ImageTransition transition = rendering::kShaderReadToColorAttachment;
+    EXPECT_EQ(transition.oldLayout, vk::ImageLayout::eShaderReadOnlyOptimal);
+    EXPECT_EQ(transition.newLayout, vk::ImageLayout::eColorAttachmentOptimal);
+    EXPECT_TRUE(transition.srcStage & vk::PipelineStageFlagBits2::eFragmentShader);
+    EXPECT_TRUE(transition.dstAccess & vk::AccessFlagBits2::eColorAttachmentRead);
+    EXPECT_TRUE(transition.dstAccess & vk::AccessFlagBits2::eColorAttachmentWrite);
+}
+
 TEST(DynamicRendering, DepthAttachmentClearsAndDiscards) {
     const vk::RenderingAttachmentInfo depth = rendering::depthAttachment(vk::ImageView{});
     EXPECT_EQ(depth.imageLayout, vk::ImageLayout::eDepthAttachmentOptimal);
