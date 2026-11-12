@@ -31,6 +31,7 @@
 #include "aylo/contract/renderer/drawing/Texture.hpp"
 #include "aylo/contract/renderer/particle/Particle.hpp"
 #include "aylo/contract/renderer/particle/ParticleSystemDesc.hpp"
+#include "aylo/contract/renderer/postprocess/PostProcess.hpp"
 #include "aylo/contract/renderer/shaders/CompiledShader.hpp"
 #include "aylo/contract/renderer/view/View.hpp"
 #include "aylo/ecs/app/App.hpp"
@@ -85,6 +86,7 @@ struct FakeBackendState {
     std::vector<std::optional<glm::uvec2>> sceneSizeRequests;  ///< Every setSceneSize() call.
     std::optional<glm::uvec2> sceneSize;                       ///< What getSceneSize() returns: the last request.
     aylo::contract::renderer::TextureId sceneTexture;          ///< What getSceneTexture() returns.
+    std::vector<aylo::contract::renderer::PostProcessSettings> postProcesses;  ///< Every setPostProcess() call.
 };
 
 /// @brief A window that returns scripted events.
@@ -223,6 +225,10 @@ class FakeRenderer : public aylo::contract::renderer::IRenderer {
         _state->destroyedMaterials.push_back(material);
     }
     void drawMesh(const aylo::contract::renderer::Mesh& mesh) override { _state->meshes.push_back(mesh); }
+    [[nodiscard]] bool supportsPostProcess() const noexcept override { return true; }
+    void setPostProcess(const aylo::contract::renderer::PostProcessSettings& settings) override {
+        _state->postProcesses.push_back(settings);
+    }
     void setSceneSize(std::optional<glm::uvec2> size) override {
         _state->sceneSizeRequests.push_back(size);
         _state->sceneSize = size;
