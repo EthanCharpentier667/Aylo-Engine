@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** NetworkSettingsTests
 */
@@ -9,10 +9,10 @@
 
 #include <chrono>
 
-#include "rtype/network/NetworkSettings.hpp"
+#include "aylo/network/NetworkSettings.hpp"
 
 TEST(NetworkSettings, DefaultsMatchTheDesign) {
-    const rtype::network::NetworkSettings settings;
+    const aylo::network::NetworkSettings settings;
 
     EXPECT_EQ(settings.port, 4242);
     EXPECT_EQ(settings.maxClients, 64U);
@@ -27,7 +27,7 @@ TEST(NetworkSettings, DefaultsMatchTheDesign) {
 }
 
 TEST(NetworkSettings, FieldsCanBeOverridden) {
-    rtype::network::NetworkSettings settings;
+    aylo::network::NetworkSettings settings;
     settings.port = 5000;
     settings.timeout = std::chrono::milliseconds{500};
 

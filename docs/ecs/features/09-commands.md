@@ -33,8 +33,8 @@ each phase**. `spawn()` returns a **reserved** entity right away. Until systems 
 made from a world and flushed by hand:
 
 ```c++
-rtype::ecs::Commands commands{world};
-const rtype::ecs::Entity bullet = commands.spawn().add(Position{}).add(Velocity{.x = 600.F}).getEntity();
+aylo::ecs::Commands commands{world};
+const aylo::ecs::Entity bullet = commands.spawn().add(Position{}).add(Velocity{.x = 600.F}).getEntity();
 commands.entity(enemy).remove<Shield>().add(Dead{});
 commands.despawn(other);
 commands.entity(boss).patch<Transform>([](Transform& transform) { transform.position.x += 40.F; });
@@ -55,8 +55,8 @@ commands.flush();                        // the scheduler will flush between pha
 ## How it works
 
 ```c++
-void shoot(rtype::ecs::Query<const Transform, const Weapon, const PlayerInput> players,
-           rtype::ecs::Commands& commands) {
+void shoot(aylo::ecs::Query<const Transform, const Weapon, const PlayerInput> players,
+           aylo::ecs::Commands& commands) {
     for (auto [entity, transform, weapon, input] : players) {
         if (input.isHeld(Action::kFire)) {
             commands.spawn()
@@ -67,7 +67,7 @@ void shoot(rtype::ecs::Query<const Transform, const Weapon, const PlayerInput> p
     }
 }
 
-void killDead(rtype::ecs::Query<const Health, rtype::ecs::Without<Dead>> query, rtype::ecs::Commands& commands) {
+void killDead(aylo::ecs::Query<const Health, aylo::ecs::Without<Dead>> query, aylo::ecs::Commands& commands) {
     for (auto [entity, health] : query) {
         if (health.isDead()) {
             commands.add(entity, Dead{});
@@ -134,9 +134,9 @@ sequenceDiagram
 
 ```luau
 function WaveSpawner:run(ctx)
-    local enemy = ctx.call("rtype.capsule.spawn", { capsule = "actors/bydo.actor" })   -- or engine.capsule.spawn
+    local enemy = ctx.call("aylo.capsule.spawn", { capsule = "actors/bydo.actor" })   -- or engine.capsule.spawn
     ctx.commands:add(enemy, "game.Shield", { strength = 20 })          -- the whole value: defaults + strength
-    ctx.commands:patch(enemy, "rtype.Transform", { position = { x = 820, y = 140 } })   -- only position
+    ctx.commands:patch(enemy, "aylo.Transform", { position = { x = 820, y = 140 } })   -- only position
 end
 ```
 

@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ParticleSystemsTests
 */
@@ -12,23 +12,23 @@
 #include <stdexcept>
 #include <variant>
 
+#include "aylo/contract/renderer/particle/Particle.hpp"
+#include "aylo/contract/renderer/particle/ParticleSystemDesc.hpp"
+#include "aylo/ecs/entity/Entity.hpp"
+#include "aylo/ecs/resource/ResourceTraits.hpp"
 #include "core/asset/AssetId.hpp"
 #include "plugins/particle/CpuSimulation.hpp"
 #include "plugins/particle/ParticleSystems.hpp"
-#include "rtype/contract/renderer/particle/Particle.hpp"
-#include "rtype/contract/renderer/particle/ParticleSystemDesc.hpp"
-#include "rtype/ecs/entity/Entity.hpp"
-#include "rtype/ecs/resource/ResourceTraits.hpp"
 
-using rtype::contract::renderer::ParticleSystemDesc;
-using rtype::contract::renderer::ParticleSystemId;
-using rtype::core::asset::AssetId;
-using rtype::ecs::Entity;
-using rtype::plugins::particle::CpuSimulation;
-using rtype::plugins::particle::EmitterState;
-using rtype::plugins::particle::ParticleSystems;
+using aylo::contract::renderer::ParticleSystemDesc;
+using aylo::contract::renderer::ParticleSystemId;
+using aylo::core::asset::AssetId;
+using aylo::ecs::Entity;
+using aylo::plugins::particle::CpuSimulation;
+using aylo::plugins::particle::EmitterState;
+using aylo::plugins::particle::ParticleSystems;
 
-static_assert(rtype::ecs::Resource<ParticleSystems>);
+static_assert(aylo::ecs::Resource<ParticleSystems>);
 
 namespace {
 /// @return The state of an emitter of the effect "sparks" simulated on the GPU, by the system @p system.

@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** SchedulesTests
 */
@@ -13,42 +13,42 @@
 #include <string_view>
 #include <vector>
 
-#include "rtype/ecs/component/ComponentTraits.hpp"
-#include "rtype/ecs/exceptions/ScheduleException.hpp"
-#include "rtype/ecs/query/Query.hpp"
-#include "rtype/ecs/resource/ResourceTraits.hpp"
-#include "rtype/ecs/schedule/FrameClock.hpp"
-#include "rtype/ecs/schedule/Phase.hpp"
-#include "rtype/ecs/schedule/RunMode.hpp"
-#include "rtype/ecs/schedule/Schedule.hpp"
-#include "rtype/ecs/schedule/Schedules.hpp"
-#include "rtype/ecs/system/ResourceParam.hpp"
-#include "rtype/ecs/system/System.hpp"
-#include "rtype/ecs/world/World.hpp"
+#include "aylo/ecs/component/ComponentTraits.hpp"
+#include "aylo/ecs/exceptions/ScheduleException.hpp"
+#include "aylo/ecs/query/Query.hpp"
+#include "aylo/ecs/resource/ResourceTraits.hpp"
+#include "aylo/ecs/schedule/FrameClock.hpp"
+#include "aylo/ecs/schedule/Phase.hpp"
+#include "aylo/ecs/schedule/RunMode.hpp"
+#include "aylo/ecs/schedule/Schedule.hpp"
+#include "aylo/ecs/schedule/Schedules.hpp"
+#include "aylo/ecs/system/ResourceParam.hpp"
+#include "aylo/ecs/system/System.hpp"
+#include "aylo/ecs/world/World.hpp"
 
-namespace rtype::test::schedules {
+namespace aylo::test::schedules {
 struct Runs {
     int count;
 };
-RTYPE_ECS_RESOURCE(Runs, "test.schedules.Runs", count);
+AYLO_ECS_RESOURCE(Runs, "test.schedules.Runs", count);
 
 struct Health {
     int value;
 };
-RTYPE_ECS_COMPONENT(Health, "test.schedules.Health", value);
-}  // namespace rtype::test::schedules
+AYLO_ECS_COMPONENT(Health, "test.schedules.Health", value);
+}  // namespace aylo::test::schedules
 
 namespace {
-using rtype::ecs::FrameClock;
-using rtype::ecs::Phase;
-using rtype::ecs::Query;
-using rtype::ecs::ResMut;
-using rtype::ecs::RunMode;
-using rtype::ecs::Schedules;
-using rtype::ecs::World;
-using rtype::ecs::exceptions::ScheduleException;
-using rtype::test::schedules::Health;
-using rtype::test::schedules::Runs;
+using aylo::ecs::FrameClock;
+using aylo::ecs::Phase;
+using aylo::ecs::Query;
+using aylo::ecs::ResMut;
+using aylo::ecs::RunMode;
+using aylo::ecs::Schedules;
+using aylo::ecs::World;
+using aylo::ecs::exceptions::ScheduleException;
+using aylo::test::schedules::Health;
+using aylo::test::schedules::Runs;
 
 void noop() {}
 void count(ResMut<Runs> runs) { ++runs->count; }
@@ -116,10 +116,10 @@ TEST(Schedules, AddsSystemsToTheirPhase) {
 TEST(Schedules, RejectsANameUsedInAnotherPhase) {
     World world;
     Schedules schedules{world, RunMode::kStandalone};
-    schedules.addSystem(Phase::kUpdate, "rtype.movement", &noop);
-    expectScheduleError([&] { schedules.addSystem(Phase::kRender, "rtype.movement", &noop); },
-                        "Two systems are named 'rtype.movement' (phases Update and Render)");
-    EXPECT_FALSE(schedules.getSchedule(Phase::kRender).contains("rtype.movement"));
+    schedules.addSystem(Phase::kUpdate, "aylo.movement", &noop);
+    expectScheduleError([&] { schedules.addSystem(Phase::kRender, "aylo.movement", &noop); },
+                        "Two systems are named 'aylo.movement' (phases Update and Render)");
+    EXPECT_FALSE(schedules.getSchedule(Phase::kRender).contains("aylo.movement"));
 }
 
 TEST(Schedules, ReplacesTheSystemsOfOnePhase) {
@@ -127,9 +127,9 @@ TEST(Schedules, ReplacesTheSystemsOfOnePhase) {
     Schedules schedules{world, RunMode::kStandalone};
     schedules.addSystem(Phase::kUpdate, "update", &noop);
     schedules.addSystem(Phase::kRender, "render", &noop);
-    std::vector<rtype::ecs::Schedule::SystemSpec> systems;
-    systems.push_back({.system = rtype::ecs::System{world, "update", &noop}, .after = {}, .before = {}});
-    systems.push_back({.system = rtype::ecs::System{world, "other", &noop}, .after = {"update"}, .before = {}});
+    std::vector<aylo::ecs::Schedule::SystemSpec> systems;
+    systems.push_back({.system = aylo::ecs::System{world, "update", &noop}, .after = {}, .before = {}});
+    systems.push_back({.system = aylo::ecs::System{world, "other", &noop}, .after = {"update"}, .before = {}});
 
     schedules.replaceSystems(Phase::kUpdate, std::move(systems), {});
     schedules.build();
@@ -143,8 +143,8 @@ TEST(Schedules, RefusesToReplaceWithANameUsedInAnotherPhase) {
     Schedules schedules{world, RunMode::kStandalone};
     schedules.addSystem(Phase::kUpdate, "update", &noop);
     schedules.addSystem(Phase::kRender, "render", &noop);
-    std::vector<rtype::ecs::Schedule::SystemSpec> systems;
-    systems.push_back({.system = rtype::ecs::System{world, "render", &noop}, .after = {}, .before = {}});
+    std::vector<aylo::ecs::Schedule::SystemSpec> systems;
+    systems.push_back({.system = aylo::ecs::System{world, "render", &noop}, .after = {}, .before = {}});
 
     expectScheduleError([&] { schedules.replaceSystems(Phase::kUpdate, std::move(systems), {}); },
                         "Two systems are named 'render' (phases Render and Update)");
@@ -165,10 +165,10 @@ TEST(Schedules, RejectsANameUsedTwiceInOnePhase) {
 TEST(Schedules, RejectsATargetInAnotherPhase) {
     World world;
     Schedules schedules{world, RunMode::kStandalone};
-    schedules.addSystem(Phase::kPreUpdate, "rtype.input", &noop);
-    schedules.addSystem(Phase::kFixedUpdate, "rtype.movement", &noop).before("rtype.input");
+    schedules.addSystem(Phase::kPreUpdate, "aylo.input", &noop);
+    schedules.addSystem(Phase::kFixedUpdate, "aylo.movement", &noop).before("aylo.input");
     expectScheduleError([&] { schedules.build(); },
-                        "'rtype.movement' runs before 'rtype.input', which is not a system of phase FixedUpdate");
+                        "'aylo.movement' runs before 'aylo.input', which is not a system of phase FixedUpdate");
 }
 
 TEST(Schedules, AcceptsConflictingSystemsOfDifferentPhases) {

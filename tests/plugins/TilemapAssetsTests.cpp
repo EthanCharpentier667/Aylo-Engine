@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** TilemapAssetsTests
 */
@@ -13,14 +13,14 @@
 #include <string_view>
 #include <vector>
 
+#include "aylo/ecs/resource/ResourceTraits.hpp"
 #include "core/asset/AssetId.hpp"
 #include "plugins/tilemap/Tilemap.hpp"
 #include "plugins/tilemap/TilemapAssets.hpp"
-#include "rtype/ecs/resource/ResourceTraits.hpp"
 
-using rtype::core::asset::AssetId;
-using rtype::plugins::tilemap::Tilemap;
-using rtype::plugins::tilemap::TilemapAssets;
+using aylo::core::asset::AssetId;
+using aylo::plugins::tilemap::Tilemap;
+using aylo::plugins::tilemap::TilemapAssets;
 
 namespace {
 /// @brief A text file in the temporary directory, removed when the test ends.
@@ -46,23 +46,23 @@ class TemporaryFile {
 /// @brief A map whose external tileset and image layer use the same image.
 constexpr std::string_view kMap = R"({
   "tilewidth": 16, "tileheight": 16,
-  "tilesets": [ { "firstgid": 1, "source": "rtype-tilemap-tests.tsj" } ],
+  "tilesets": [ { "firstgid": 1, "source": "aylo-tilemap-tests.tsj" } ],
   "layers": [
-    { "type": "imagelayer", "name": "sky", "image": "rtype-tilemap-tests.png", "repeatx": true },
+    { "type": "imagelayer", "name": "sky", "image": "aylo-tilemap-tests.png", "repeatx": true },
     { "type": "tilelayer", "name": "ground", "width": 2, "height": 1, "data": [1, 2] }
   ]
 })";
 
 /// @brief The external tileset of kMap.
-constexpr std::string_view kTileset = R"({ "name": "tiles", "image": "rtype-tilemap-tests.png", "imagewidth": 32,
+constexpr std::string_view kTileset = R"({ "name": "tiles", "image": "aylo-tilemap-tests.png", "imagewidth": 32,
   "imageheight": 16, "tilewidth": 16, "tileheight": 16, "columns": 2, "tilecount": 2 })";
 }  // namespace
 
-static_assert(rtype::ecs::Resource<TilemapAssets>);
+static_assert(aylo::ecs::Resource<TilemapAssets>);
 
 TEST(TilemapAssets, ReadsAMapAndItsExternalTilesets) {
-    const TemporaryFile tileset{"rtype-tilemap-tests.tsj", kTileset};
-    const TemporaryFile map{"rtype-tilemap-tests.tmj", kMap};
+    const TemporaryFile tileset{"aylo-tilemap-tests.tsj", kTileset};
+    const TemporaryFile map{"aylo-tilemap-tests.tmj", kMap};
     TilemapAssets maps;
     const AssetId id = maps.load(map.getPath());
     EXPECT_EQ(id, AssetId::fromPath(map.getPath()));
@@ -73,32 +73,32 @@ TEST(TilemapAssets, ReadsAMapAndItsExternalTilesets) {
 }
 
 TEST(TilemapAssets, AsksForEachImageOnceRepeatedIfALayerRepeatsIt) {
-    const TemporaryFile tileset{"rtype-tilemap-tests.tsj", kTileset};
-    const TemporaryFile map{"rtype-tilemap-tests.tmj", kMap};
+    const TemporaryFile tileset{"aylo-tilemap-tests.tsj", kTileset};
+    const TemporaryFile map{"aylo-tilemap-tests.tmj", kMap};
     TilemapAssets maps;
     static_cast<void>(maps.load(map.getPath()));
     static_cast<void>(maps.load(map.getPath()));  // Already known: nothing new.
     const std::vector<TilemapAssets::TextureRequest> requests = maps.takeTextureRequests();
     ASSERT_EQ(requests.size(), 1U);
-    EXPECT_EQ(std::filesystem::path{requests.at(0).path}.filename(), "rtype-tilemap-tests.png");
+    EXPECT_EQ(std::filesystem::path{requests.at(0).path}.filename(), "aylo-tilemap-tests.png");
     EXPECT_TRUE(requests.at(0).desc.repeat);
     EXPECT_TRUE(maps.takeTextureRequests().empty());
 }
 
 TEST(TilemapAssets, RecordsAMapThatCannotBeRead) {
     TilemapAssets maps;
-    const AssetId id = maps.load(std::filesystem::temp_directory_path() / "rtype-no-such-map.tmj");
+    const AssetId id = maps.load(std::filesystem::temp_directory_path() / "aylo-no-such-map.tmj");
     EXPECT_EQ(maps.get(id), nullptr);
     ASSERT_NE(maps.getEntry(id), nullptr);
     EXPECT_FALSE(maps.getEntry(id)->error.empty());
 }
 
 TEST(TilemapAssets, RecordsAMapWhoseTilesetIsMissing) {
-    const TemporaryFile map{"rtype-tilemap-tests.tmj", kMap};
+    const TemporaryFile map{"aylo-tilemap-tests.tmj", kMap};
     TilemapAssets maps;
     const AssetId id = maps.load(map.getPath());
     EXPECT_EQ(maps.get(id), nullptr);
-    EXPECT_NE(maps.getEntry(id)->error.find("rtype-tilemap-tests.tsj"), std::string::npos);
+    EXPECT_NE(maps.getEntry(id)->error.find("aylo-tilemap-tests.tsj"), std::string::npos);
 }
 
 TEST(TilemapAssets, AddsAndUnloadsAMapBuiltInCode) {

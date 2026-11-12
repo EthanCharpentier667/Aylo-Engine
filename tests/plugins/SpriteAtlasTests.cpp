@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** SpriteAtlasTests
 */
@@ -12,16 +12,16 @@
 #include <optional>
 #include <vector>
 
+#include "aylo/contract/renderer/math/Rect.hpp"
 #include "core/asset/AssetId.hpp"
 #include "plugins/sprite/SpriteAtlas.hpp"
 #include "plugins/sprite/exceptions/SpriteExceptions.hpp"
-#include "rtype/contract/renderer/math/Rect.hpp"
 
-using rtype::contract::renderer::math::Rect;
-using rtype::plugins::sprite::AnimationDirection;
-using rtype::plugins::sprite::SpriteAnimation;
-using rtype::plugins::sprite::SpriteAtlas;
-using rtype::plugins::sprite::exceptions::AtlasException;
+using aylo::contract::renderer::math::Rect;
+using aylo::plugins::sprite::AnimationDirection;
+using aylo::plugins::sprite::SpriteAnimation;
+using aylo::plugins::sprite::SpriteAtlas;
+using aylo::plugins::sprite::exceptions::AtlasException;
 
 namespace {
 /// @return An atlas of @p count frames of 10x10 pixels, on one row.
@@ -50,7 +50,7 @@ SpriteAnimation animationOf(std::uint32_t count, AnimationDirection direction, s
 TEST(SpriteAtlas, NamesItsTextureByItsPath) {
     const SpriteAtlas atlas{"assets/ship.png"};
     EXPECT_EQ(atlas.getTexturePath(), "assets/ship.png");
-    EXPECT_EQ(atlas.getTexture(), rtype::core::asset::AssetId::fromPath("assets/ship.png"));
+    EXPECT_EQ(atlas.getTexture(), aylo::core::asset::AssetId::fromPath("assets/ship.png"));
 }
 
 TEST(SpriteAtlas, GridCutsRowsOfFramesWithTheirSpacing) {
@@ -86,13 +86,13 @@ TEST(SpriteAtlas, RejectsTwoFramesOfTheSameName) {
 TEST(SpriteAtlas, FindsAnAnimationByTheIdOfItsName) {
     SpriteAtlas atlas = rowOf(4);
     atlas.addAnimation("fly", {0, 1, 2}, 0.1F, AnimationDirection::kPingPong, 2);
-    const SpriteAnimation* fly = atlas.findAnimation(rtype::plugins::sprite::animationId("fly"));
+    const SpriteAnimation* fly = atlas.findAnimation(aylo::plugins::sprite::animationId("fly"));
     ASSERT_NE(fly, nullptr);
     EXPECT_EQ(fly->frames, (std::vector<std::uint32_t>{0, 1, 2}));
     EXPECT_EQ(fly->durations, (std::vector<float>{0.1F, 0.1F, 0.1F}));
     EXPECT_EQ(fly->direction, AnimationDirection::kPingPong);
     EXPECT_EQ(fly->repeat, 2U);
-    EXPECT_EQ(atlas.findAnimation(rtype::plugins::sprite::animationId("walk")), nullptr);
+    EXPECT_EQ(atlas.findAnimation(aylo::plugins::sprite::animationId("walk")), nullptr);
 }
 
 TEST(SpriteAtlas, RejectsAnAnimationOfAFrameItDoesNotHave) {

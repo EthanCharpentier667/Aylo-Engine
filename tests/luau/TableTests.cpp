@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** TableTests
 */
@@ -15,49 +15,49 @@
 #include <type_traits>
 #include <utility>
 
-#include "rtype/luau/CallContext.hpp"
-#include "rtype/luau/ErrorKind.hpp"
-#include "rtype/luau/Exceptions.hpp"
-#include "rtype/luau/Function.hpp"
-#include "rtype/luau/Ref.hpp"
-#include "rtype/luau/Runtime.hpp"
-#include "rtype/luau/RuntimeConfig.hpp"
-#include "rtype/luau/Table.hpp"
-#include "rtype/luau/Value.hpp"
-#include "rtype/luau/ValuePack.hpp"
-#include "rtype/luau/detail/RawState.hpp"
-#include "rtype/luau/detail/Stack.hpp"
+#include "aylo/luau/CallContext.hpp"
+#include "aylo/luau/ErrorKind.hpp"
+#include "aylo/luau/Exceptions.hpp"
+#include "aylo/luau/Function.hpp"
+#include "aylo/luau/Ref.hpp"
+#include "aylo/luau/Runtime.hpp"
+#include "aylo/luau/RuntimeConfig.hpp"
+#include "aylo/luau/Table.hpp"
+#include "aylo/luau/Value.hpp"
+#include "aylo/luau/ValuePack.hpp"
+#include "aylo/luau/detail/RawState.hpp"
+#include "aylo/luau/detail/Stack.hpp"
 
 namespace {
-using ErrorKind = rtype::luau::ErrorKind;
-using Function = rtype::luau::Function;
-using Table = rtype::luau::Table;
-using Value = rtype::luau::Value;
-using ValuePack = rtype::luau::ValuePack;
+using ErrorKind = aylo::luau::ErrorKind;
+using Function = aylo::luau::Function;
+using Table = aylo::luau::Table;
+using Value = aylo::luau::Value;
+using ValuePack = aylo::luau::ValuePack;
 
 /// @brief Creates a runtime with the standard libraries, failing the test if it cannot be created.
-rtype::luau::Runtime makeRuntime() {
-    auto runtime = rtype::luau::Runtime::create({
-        .libs = rtype::luau::RuntimeConfig::Libs::kStandard,
-        .optimizationLevel = rtype::luau::RuntimeConfig::OptimizationLevel::kStandard,
+aylo::luau::Runtime makeRuntime() {
+    auto runtime = aylo::luau::Runtime::create({
+        .libs = aylo::luau::RuntimeConfig::Libs::kStandard,
+        .optimizationLevel = aylo::luau::RuntimeConfig::OptimizationLevel::kStandard,
     });
     EXPECT_TRUE(runtime);
     return std::move(*runtime);
 }
 
 /// @brief Runs a Luau chunk that receives @p args as `...`, and returns what it returns.
-ValuePack run(const rtype::luau::Runtime& runtime, const std::string& source, const ValuePack& args = {}) {
+ValuePack run(const aylo::luau::Runtime& runtime, const std::string& source, const ValuePack& args = {}) {
     const auto script = runtime.load("table", source);
     EXPECT_TRUE(script);
-    script->closure().push(rtype::luau::detail::rawState(runtime));
-    const Function function = Function::fromRef(rtype::luau::Ref::pop(rtype::luau::detail::rawState(runtime)), "table");
+    script->closure().push(aylo::luau::detail::rawState(runtime));
+    const Function function = Function::fromRef(aylo::luau::Ref::pop(aylo::luau::detail::rawState(runtime)), "table");
     auto results = function.call(args);
     EXPECT_TRUE(results) << results.error().message();
     return std::move(*results);
 }
 
 /// @brief Runs a Luau chunk and returns the table it returns.
-Table runForTable(const rtype::luau::Runtime& runtime, const std::string& source) {
+Table runForTable(const aylo::luau::Runtime& runtime, const std::string& source) {
     const ValuePack results = run(runtime, source);
     EXPECT_EQ(results.size(), 1U);
     const Table* table = results.values()[0].tryAs<Table>();
@@ -87,11 +87,11 @@ TEST(Table, CreateLeavesTheStackUntouched) {
     const auto runtime = makeRuntime();
     ValuePack probe{};
     probe.add({1.0});
-    ASSERT_EQ(rtype::luau::detail::pushValuePack(rtype::luau::detail::rawState(runtime), probe).value(), 1U);
+    ASSERT_EQ(aylo::luau::detail::pushValuePack(aylo::luau::detail::rawState(runtime), probe).value(), 1U);
 
     const Table table = Table::create(runtime, 4, 4).value();
 
-    EXPECT_TRUE(rtype::luau::detail::popValue(rtype::luau::detail::rawState(runtime)));
+    EXPECT_TRUE(aylo::luau::detail::popValue(aylo::luau::detail::rawState(runtime)));
     EXPECT_EQ(table.count().value(), 0U);
 }
 
@@ -353,7 +353,7 @@ TEST(Table, MovedFromHandleThrowsInvalidRef) {
 
     EXPECT_EQ(moved.count().value(), 0U);
     // NOLINTNEXTLINE(bugprone-use-after-move,clang-analyzer-cplusplus.Move)
-    EXPECT_THROW(static_cast<void>(source.count().value()), rtype::luau::exceptions::InvalidRef);
+    EXPECT_THROW(static_cast<void>(source.count().value()), aylo::luau::exceptions::InvalidRef);
 }
 
 TEST(Table, IsCheapToCopyAndMove) {
@@ -392,9 +392,9 @@ TEST(Table, CppSeesChangesMadeByScript) {
 TEST(Table, ReadsTableReturnedByScript) {
     const auto runtime = makeRuntime();
 
-    const Table table = runForTable(runtime, "return {name = 'r-type', lives = 3, {1, 2}}");
+    const Table table = runForTable(runtime, "return {name = 'aylo', lives = 3, {1, 2}}");
 
-    EXPECT_EQ(table.get("name")->as<std::string>(), "r-type");
+    EXPECT_EQ(table.get("name")->as<std::string>(), "aylo");
     EXPECT_DOUBLE_EQ(number(table, "lives"), 3.0);
     EXPECT_EQ(table.size().value(), 1U);
     EXPECT_EQ(table.count().value(), 3U);
@@ -418,21 +418,21 @@ TEST(Table, PushThenFromStackGivesTheSameTable) {
     const auto runtime = makeRuntime();
     const Table table = Table::create(runtime).value();
 
-    ASSERT_TRUE(rtype::luau::detail::pushTable(rtype::luau::detail::rawState(runtime), table));
-    const auto read = rtype::luau::detail::readTable(rtype::luau::detail::rawState(runtime));
+    ASSERT_TRUE(aylo::luau::detail::pushTable(aylo::luau::detail::rawState(runtime), table));
+    const auto read = aylo::luau::detail::readTable(aylo::luau::detail::rawState(runtime));
 
     ASSERT_TRUE(read);
     EXPECT_TRUE(read->refersToSame(table).value());
-    EXPECT_TRUE(rtype::luau::detail::popValue(rtype::luau::detail::rawState(runtime)));
+    EXPECT_TRUE(aylo::luau::detail::popValue(aylo::luau::detail::rawState(runtime)));
 }
 
 TEST(Table, FromStackFailsForOtherTypes) {
     const auto runtime = makeRuntime();
     ValuePack pack{};
     pack.add({1.0});
-    ASSERT_EQ(rtype::luau::detail::pushValuePack(rtype::luau::detail::rawState(runtime), pack).value(), 1U);
+    ASSERT_EQ(aylo::luau::detail::pushValuePack(aylo::luau::detail::rawState(runtime), pack).value(), 1U);
 
-    const auto read = rtype::luau::detail::readTable(rtype::luau::detail::rawState(runtime));
+    const auto read = aylo::luau::detail::readTable(aylo::luau::detail::rawState(runtime));
 
     ASSERT_FALSE(read);
     EXPECT_EQ(read.error().kind(), ErrorKind::kTypeMismatch);
@@ -443,10 +443,10 @@ TEST(Table, PushFailsForTableOfAnotherState) {
     const auto foreign = makeRuntime();
     const Table table = Table::create(foreign).value();
 
-    const auto pushed = rtype::luau::detail::pushTable(rtype::luau::detail::rawState(runtime), table);
+    const auto pushed = aylo::luau::detail::pushTable(aylo::luau::detail::rawState(runtime), table);
 
     ASSERT_FALSE(pushed);
-    EXPECT_EQ(pushed.error().kind(), rtype::luau::ErrorKind::kRuntime);
+    EXPECT_EQ(pushed.error().kind(), aylo::luau::ErrorKind::kRuntime);
 }
 
 TEST(Table, AccessIgnoresMetatables) {
@@ -637,7 +637,7 @@ TEST(Table, ScriptsRunTheIndexMetamethodButRawReadsDoNot) {
     Table metatable = Table::create(runtime).value();
     Function index = Function::create(runtime, "index");
 
-    index.setHandler([](const rtype::luau::CallContext&) {
+    index.setHandler([](const aylo::luau::CallContext&) {
         ValuePack answer;
 
         answer.add(Value{42.0});
@@ -664,7 +664,7 @@ TEST(Table, MovedFromHandleThrowsInvalidRefOnMetatableAccess) {
     const Table moved{std::move(source)};
 
     // NOLINTBEGIN(bugprone-use-after-move,clang-analyzer-cplusplus.Move)
-    EXPECT_THROW(std::ignore = source.metatable(), rtype::luau::exceptions::InvalidRef);
-    EXPECT_THROW(std::ignore = source.clearMetatable(), rtype::luau::exceptions::InvalidRef);
+    EXPECT_THROW(std::ignore = source.metatable(), aylo::luau::exceptions::InvalidRef);
+    EXPECT_THROW(std::ignore = source.clearMetatable(), aylo::luau::exceptions::InvalidRef);
     // NOLINTEND(bugprone-use-after-move,clang-analyzer-cplusplus.Move)
 }

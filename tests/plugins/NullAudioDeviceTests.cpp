@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** NullAudioDeviceTests
 */
@@ -11,36 +11,36 @@
 #include <filesystem>
 #include <span>
 
+#include "aylo/contract/audiodevice/AudioTypes.hpp"
 #include "plugins/audio/NullAudioDevice.hpp"
-#include "rtype/contract/audiodevice/AudioTypes.hpp"
 
 namespace {
 /// @return A sound created from a file path in @p device.
-rtype::contract::audiodevice::SoundId loadSound(rtype::plugins::audio::NullAudioDevice& device) {
+aylo::contract::audiodevice::SoundId loadSound(aylo::plugins::audio::NullAudioDevice& device) {
     return device.createSound(std::filesystem::path{"assets/shot.wav"}, {});
 }
 }  // namespace
 
 TEST(NullAudioDevice, LoadsEverySound) {
-    rtype::plugins::audio::NullAudioDevice device;
-    const rtype::contract::audiodevice::SoundId fromFile = loadSound(device);
-    const rtype::contract::audiodevice::SoundId fromMemory = device.createSound(std::span<const std::byte>{}, {});
+    aylo::plugins::audio::NullAudioDevice device;
+    const aylo::contract::audiodevice::SoundId fromFile = loadSound(device);
+    const aylo::contract::audiodevice::SoundId fromMemory = device.createSound(std::span<const std::byte>{}, {});
     EXPECT_NE(fromFile.value, 0U);
     EXPECT_NE(fromMemory.value, 0U);
     EXPECT_NE(fromFile, fromMemory);
 }
 
 TEST(NullAudioDevice, EndsAOneShotVoiceAtTheNextUpdate) {
-    rtype::plugins::audio::NullAudioDevice device;
-    const rtype::contract::audiodevice::VoiceId voice = device.play(loadSound(device), {});
+    aylo::plugins::audio::NullAudioDevice device;
+    const aylo::contract::audiodevice::VoiceId voice = device.play(loadSound(device), {});
     EXPECT_TRUE(device.isPlaying(voice));
     device.update();
     EXPECT_FALSE(device.isPlaying(voice));
 }
 
 TEST(NullAudioDevice, PlaysALoopingVoiceUntilStopped) {
-    rtype::plugins::audio::NullAudioDevice device;
-    const rtype::contract::audiodevice::VoiceId voice = device.play(loadSound(device), {.loop = true});
+    aylo::plugins::audio::NullAudioDevice device;
+    const aylo::contract::audiodevice::VoiceId voice = device.play(loadSound(device), {.loop = true});
     device.update();
     device.update();
     EXPECT_TRUE(device.isPlaying(voice));
@@ -49,8 +49,8 @@ TEST(NullAudioDevice, PlaysALoopingVoiceUntilStopped) {
 }
 
 TEST(NullAudioDevice, KeepsAPausedVoice) {
-    rtype::plugins::audio::NullAudioDevice device;
-    const rtype::contract::audiodevice::VoiceId voice = device.play(loadSound(device), {});
+    aylo::plugins::audio::NullAudioDevice device;
+    const aylo::contract::audiodevice::VoiceId voice = device.play(loadSound(device), {});
     device.setPaused(voice, true);
     device.update();
     EXPECT_TRUE(device.isPlaying(voice));
@@ -60,11 +60,11 @@ TEST(NullAudioDevice, KeepsAPausedVoice) {
 }
 
 TEST(NullAudioDevice, NeverLetsAStaleIdControlANewVoice) {
-    rtype::plugins::audio::NullAudioDevice device;
-    const rtype::contract::audiodevice::SoundId sound = loadSound(device);
-    const rtype::contract::audiodevice::VoiceId old = device.play(sound, {});
+    aylo::plugins::audio::NullAudioDevice device;
+    const aylo::contract::audiodevice::SoundId sound = loadSound(device);
+    const aylo::contract::audiodevice::VoiceId old = device.play(sound, {});
     device.update();
-    const rtype::contract::audiodevice::VoiceId reused = device.play(sound, {.loop = true});
+    const aylo::contract::audiodevice::VoiceId reused = device.play(sound, {.loop = true});
     EXPECT_EQ(reused.index, old.index);
     EXPECT_NE(reused.generation, old.generation);
     device.stop(old, 0.0F);
@@ -72,29 +72,29 @@ TEST(NullAudioDevice, NeverLetsAStaleIdControlANewVoice) {
 }
 
 TEST(NullAudioDevice, NeverHandsOutAVoiceThatADefaultIdNames) {
-    rtype::plugins::audio::NullAudioDevice device;
-    const rtype::contract::audiodevice::VoiceId voice = device.play(loadSound(device), {.loop = true});
-    EXPECT_NE(voice, rtype::contract::audiodevice::VoiceId{});
-    EXPECT_FALSE(device.isPlaying(rtype::contract::audiodevice::VoiceId{}));
+    aylo::plugins::audio::NullAudioDevice device;
+    const aylo::contract::audiodevice::VoiceId voice = device.play(loadSound(device), {.loop = true});
+    EXPECT_NE(voice, aylo::contract::audiodevice::VoiceId{});
+    EXPECT_FALSE(device.isPlaying(aylo::contract::audiodevice::VoiceId{}));
 }
 
 TEST(NullAudioDevice, PlaysNothingBeyondItsVoiceCount) {
-    rtype::plugins::audio::NullAudioDevice device{2};
-    const rtype::contract::audiodevice::SoundId sound = loadSound(device);
+    aylo::plugins::audio::NullAudioDevice device{2};
+    const aylo::contract::audiodevice::SoundId sound = loadSound(device);
     EXPECT_TRUE(device.isPlaying(device.play(sound, {.loop = true})));
     EXPECT_TRUE(device.isPlaying(device.play(sound, {.loop = true})));
     EXPECT_FALSE(device.isPlaying(device.play(sound, {.loop = true})));
 }
 
 TEST(NullAudioDevice, PlaysNothingForAnUnknownSound) {
-    rtype::plugins::audio::NullAudioDevice device;
-    EXPECT_FALSE(device.isPlaying(device.play(rtype::contract::audiodevice::SoundId{.value = 42}, {})));
+    aylo::plugins::audio::NullAudioDevice device;
+    EXPECT_FALSE(device.isPlaying(device.play(aylo::contract::audiodevice::SoundId{.value = 42}, {})));
 }
 
 TEST(NullAudioDevice, StopsTheVoicesOfADestroyedSound) {
-    rtype::plugins::audio::NullAudioDevice device;
-    const rtype::contract::audiodevice::SoundId sound = loadSound(device);
-    const rtype::contract::audiodevice::VoiceId voice = device.play(sound, {.loop = true});
+    aylo::plugins::audio::NullAudioDevice device;
+    const aylo::contract::audiodevice::SoundId sound = loadSound(device);
+    const aylo::contract::audiodevice::VoiceId voice = device.play(sound, {.loop = true});
     device.destroySound(sound);
     EXPECT_FALSE(device.isPlaying(voice));
     EXPECT_FALSE(device.isPlaying(device.play(sound, {})));

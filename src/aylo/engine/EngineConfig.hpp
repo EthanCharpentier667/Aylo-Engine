@@ -1,0 +1,71 @@
+/*
+** EPITECH PROJECT, 2026
+** aylo
+** File description:
+** EngineConfig
+*/
+
+#pragma once
+
+#include <filesystem>
+#include <functional>
+#include <optional>
+#include <string>
+#include <vector>
+
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/schedule/RunMode.hpp"
+#include "core/config/Settings.hpp"
+#include "core/layout/Layout.hpp"
+
+namespace aylo::engine {
+class Engine;
+
+/// @brief What an Engine runs, and how it builds its App again on a reload.
+///
+/// @details The Engine keeps it for its whole life: every build of the App (the first one, then one per reload) calls
+/// the functions below again. The Engine names no plugin but the ones every game has: the program lists the others.
+/// @code
+/// aylo::engine::Engine engine{{
+///     .mode = aylo::ecs::RunMode::kClient,
+///     .args = {args.begin(), args.end()},
+///     .addPlugins = [](aylo::ecs::App& app, const aylo::core::config::Settings& settings) {
+///         app.addPlugin(aylo::plugins::input::InputPlugin{});
+///         app.addPlugin(aylo::plugins::graphics::GraphicsPlugin{makeBackends(), settings});
+///     },
+/// }};
+/// @endcode
+struct EngineConfig {
+    /// @brief What the process runs: the client side, the server side, or both (standalone, no network).
+    ecs::RunMode mode{ecs::RunMode::kStandalone};
+
+    /// @brief The game directory when the command line starts with no directory; relative to the working directory.
+    std::filesystem::path game{core::layout::kGameFolder};
+
+    /// @brief The command line, without the program name: the game directory (optional), then any flag `project.luau`
+    /// reads from `engine.args`.
+    std::vector<std::string> args;
+
+    /// @brief Adds the plugins this program uses, with the project's settings: a server without a window adds none of
+    /// the client's, and links none of them. Optional.
+    ///
+    /// Called on every build of the App, after MinimalPlugins and the transform plugin, before the replication.
+    std::function<void(ecs::App&, const core::config::Settings&)> addPlugins;
+
+    /// @brief Plugins added by name after those `project.luau` lists under `plugins`, from their libraries, as if the
+    /// project listed them last; one the project already lists is not added twice. For a program that brings a tool
+    /// to any game.
+    std::vector<std::string> extraPlugins;
+
+    /// @brief Whether this is a debug run (`engine.isDebug`, and the default of hot reload). Empty: it follows the
+    /// build type. `aylo-editor` sets it, so the editor is always a debug run. The check of the game plugins'
+    /// signatures does not follow it: it stays tied to the build type.
+    std::optional<bool> debug;
+
+    /// @brief The game's own native code: its components, resources, systems and plugins. Optional.
+    ///
+    /// Called on every build of the App, after the engine's plugins and before the scripts and the network plugin,
+    /// so the scripts can use what it registers and the network replicates it.
+    std::function<void(Engine&)> setup;
+};
+}  // namespace aylo::engine

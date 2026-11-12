@@ -13,11 +13,11 @@ change.** A feature with no manual page is not done (root `AGENTS.md`, rule 2).
 
 Any change that alters what a script can observe:
 
-- an engine call added, renamed, or given a new argument, result, default or error (`rtype.<plugin>.<verb>`);
+- an engine call added, renamed, or given a new argument, result, default or error (`aylo.<plugin>.<verb>`);
 - a component, resource or event of a plugin: a field, a type, a default, the side it lives on;
 - a setup form (`engine.assets`, `engine.input`...) or an `engine.*` helper;
 - a `project.luau` setting or a plugin name;
-- a system phase, ordering name (`rtype.Physics.SyncBodies`...) or a rule of the scripting bridge;
+- a system phase, ordering name (`aylo.Physics.SyncBodies`...) or a rule of the scripting bridge;
 - a new plugin; networking or replication behavior a game sees.
 
 Pure internals (a refactor, a private class) need no manual change, but say so in the pull request.
@@ -53,7 +53,7 @@ Say what a thing is for before how it works. No marketing, no filler, no "simply
 6. **See also**: links to the related pages.
 
 **Examples must be true.** Every snippet is Luau that runs: names, argument tables and phases are those of the
-engine. Prefer taking them from, or checking them against, `examples/games/rtype_duel/game/` and the script tests. If you
+engine. Prefer taking them from, or checking them against, `examples/games/aylo_duel/game/` and the script tests. If you
 can, run the snippet (a script test, or the duel game) before you publish it. An example that was not checked is worse
 than none.
 
@@ -61,7 +61,7 @@ than none.
 
 - Units and axes are stated once and the same everywhere (world units, Y down, seconds).
 - Say the side of every piece of data: server, client, both. A client never writes replicated data.
-- Use the names the engine uses (`rtype.Collider`, `rtype.physics.raycast`), in code font; link a first mention to its
+- Use the names the engine uses (`aylo.Collider`, `aylo.physics.raycast`), in code font; link a first mention to its
   page.
 - Admonitions (`!!! note`, `!!! warning`) for the one thing the reader must not miss; not more than one or two a page.
 - Tables for facts, prose for reasons, code for how.

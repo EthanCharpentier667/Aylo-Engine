@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** main
 */
@@ -35,6 +35,22 @@
 #include <utility>
 #include <vector>
 
+#include "aylo/contract/renderer/IRenderer.hpp"
+#include "aylo/contract/renderer/drawing/BlendMode.hpp"
+#include "aylo/contract/renderer/drawing/Color.hpp"
+#include "aylo/contract/renderer/drawing/Shape.hpp"
+#include "aylo/contract/renderer/drawing/Texture.hpp"
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/app/AppExit.hpp"
+#include "aylo/ecs/app/MinimalPlugins.hpp"
+#include "aylo/ecs/command/Commands.hpp"
+#include "aylo/ecs/component/ComponentTraits.hpp"
+#include "aylo/ecs/query/Query.hpp"
+#include "aylo/ecs/resource/ResourceTraits.hpp"
+#include "aylo/ecs/schedule/Phase.hpp"
+#include "aylo/ecs/system/EventWriter.hpp"
+#include "aylo/ecs/system/ResourceParam.hpp"
+#include "aylo/ecs/time/Time.hpp"
 #include "core/asset/AssetId.hpp"
 #include "core/config/Settings.hpp"
 #include "platform/glfw/Registration.hpp"
@@ -50,30 +66,14 @@
 #include "plugins/transform/Transform.hpp"
 #include "plugins/transform/TransformPlugin.hpp"
 #include "render/vulkan/Registration.hpp"
-#include "rtype/contract/renderer/IRenderer.hpp"
-#include "rtype/contract/renderer/drawing/BlendMode.hpp"
-#include "rtype/contract/renderer/drawing/Color.hpp"
-#include "rtype/contract/renderer/drawing/Shape.hpp"
-#include "rtype/contract/renderer/drawing/Texture.hpp"
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/app/AppExit.hpp"
-#include "rtype/ecs/app/MinimalPlugins.hpp"
-#include "rtype/ecs/command/Commands.hpp"
-#include "rtype/ecs/component/ComponentTraits.hpp"
-#include "rtype/ecs/query/Query.hpp"
-#include "rtype/ecs/resource/ResourceTraits.hpp"
-#include "rtype/ecs/schedule/Phase.hpp"
-#include "rtype/ecs/system/EventWriter.hpp"
-#include "rtype/ecs/system/ResourceParam.hpp"
-#include "rtype/ecs/time/Time.hpp"
 
-using namespace rtype;
-using namespace rtype::contract::renderer;
-using namespace rtype::plugins::graphics;
-using namespace rtype::plugins::sprite;
-using rtype::core::asset::AssetId;
-using namespace rtype::contract::renderer;
-using rtype::plugins::transform::Transform;
+using namespace aylo;
+using namespace aylo::contract::renderer;
+using namespace aylo::plugins::graphics;
+using namespace aylo::plugins::sprite;
+using aylo::core::asset::AssetId;
+using namespace aylo::contract::renderer;
+using aylo::plugins::transform::Transform;
 
 namespace {
 constexpr double kWidth = 800.0;
@@ -91,9 +91,9 @@ constexpr float kCirclesY = 480.0F;
 // Frames of the sprite sheets of examples/assets/: top-left corner and size, in pixels.
 constexpr glm::vec2 kShotPosition{110.0F, 151.0F};  // bullet.gif: the first shot.
 constexpr glm::vec2 kShotSize{78.0F, 16.0F};
-constexpr glm::vec2 kShipPosition{9.0F, 9.0F};  // r-typesheet24.gif: the first ship.
+constexpr glm::vec2 kShipPosition{9.0F, 9.0F};  // spritesheet24.gif: the first ship.
 constexpr glm::vec2 kShipSize{48.0F, 48.0F};
-constexpr glm::vec2 kBandPosition{1.0F, 1.0F};  // r-typesheet26.gif: six frames, one every 65 pixels.
+constexpr glm::vec2 kBandPosition{1.0F, 1.0F};  // spritesheet26.gif: six frames, one every 65 pixels.
 constexpr glm::vec2 kBandSize{63.0F, 48.0F};
 constexpr float kBandFrameWidth = 65.0F;
 constexpr int kBandFrames = 6;
@@ -113,20 +113,20 @@ constexpr float kSlideSpeed = 1.5F;
 struct Shot {
     float columnX = 0.0F;
 };
-RTYPE_ECS_COMPONENT(Shot, "example.Shot");
+AYLO_ECS_COMPONENT(Shot, "example.Shot");
 
 // How long the demo runs, if --seconds was given, and how long it has run.
 struct Lifetime {
     std::optional<float> seconds;
     float elapsed = 0.0F;
 };
-RTYPE_ECS_RESOURCE(Lifetime, "example.Lifetime");
+AYLO_ECS_RESOURCE(Lifetime, "example.Lifetime");
 
 // Startup: loads the sprite sheets and spawns the bands, then one ship and one shot per column over them.
 void spawnScene(ecs::ResMut<TextureAssets> textures, ecs::Commands& commands) {
     const AssetId shots = textures->load("examples/assets/bullet.gif", TextureDesc{.filter = TextureFilter::kLinear});
-    const AssetId ships = textures->load("examples/assets/r-typesheet24.gif");
-    const AssetId band = textures->load("examples/assets/r-typesheet26.gif");
+    const AssetId ships = textures->load("examples/assets/spritesheet24.gif");
+    const AssetId band = textures->load("examples/assets/spritesheet26.gif");
 
     constexpr float kBandScale = 2.0F;
     const float step = kBandSize.x * kBandScale;
@@ -235,17 +235,17 @@ int main(int argc, char** argv) {
             }
         }
         auto registry = std::make_unique<BackendRegistry>();
-        rtype::platform::glfw::registerPlatform(registry->platforms);
+        aylo::platform::glfw::registerPlatform(registry->platforms);
         render::vulkan::registerRenderer(registry->renderers);
 
         ecs::App app;
         app.addPlugins(ecs::MinimalPlugins{})
-            .addPlugin(rtype::plugins::transform::TransformPlugin{})
-            .addPlugin(rtype::plugins::input::InputPlugin{})
+            .addPlugin(aylo::plugins::transform::TransformPlugin{})
+            .addPlugin(aylo::plugins::input::InputPlugin{})
             .addPlugin(GraphicsPlugin{std::move(registry), makeSettings(validate)})
-            .addPlugin(rtype::plugins::shader::ShaderPlugin{})
-            .addPlugin(rtype::plugins::sprite::SpritePlugin{})
-            .addPlugin(rtype::plugins::sprite::SpriteDrawPlugin{});
+            .addPlugin(aylo::plugins::shader::ShaderPlugin{})
+            .addPlugin(aylo::plugins::sprite::SpritePlugin{})
+            .addPlugin(aylo::plugins::sprite::SpriteDrawPlugin{});
         app.insertResource(ClearColor{.value = kClear});
         app.insertResource(lifetime);
         app.addSystem(ecs::Phase::kStartup, "example.spawnScene", &spawnScene);

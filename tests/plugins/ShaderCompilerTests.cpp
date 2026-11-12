@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ShaderCompilerTests
 */
@@ -13,20 +13,20 @@
 #include <string_view>
 #include <vector>
 
+#include "aylo/contract/renderer/shaders/CompiledShader.hpp"
 #include "plugins/shader/detail/ShaderAssembler.hpp"
 #include "plugins/shader/detail/ShaderCompiler.hpp"
 #include "plugins/shader/detail/ShaderParser.hpp"
 #include "plugins/shader/exceptions/ShaderExceptions.hpp"
-#include "rtype/contract/renderer/shaders/CompiledShader.hpp"
 
-using rtype::contract::renderer::CompiledShader;
-using rtype::contract::renderer::ShaderTarget;
-using rtype::plugins::shader::detail::assembleShader;
-using rtype::plugins::shader::detail::compileShader;
-using rtype::plugins::shader::detail::compileStage;
-using rtype::plugins::shader::detail::ParsedShader;
-using rtype::plugins::shader::detail::ShaderStage;
-using rtype::plugins::shader::exceptions::ShaderException;
+using aylo::contract::renderer::CompiledShader;
+using aylo::contract::renderer::ShaderTarget;
+using aylo::plugins::shader::detail::assembleShader;
+using aylo::plugins::shader::detail::compileShader;
+using aylo::plugins::shader::detail::compileStage;
+using aylo::plugins::shader::detail::ParsedShader;
+using aylo::plugins::shader::detail::ShaderStage;
+using aylo::plugins::shader::exceptions::ShaderException;
 
 namespace {
 /// @brief The first word of every SPIR-V module.
@@ -57,7 +57,7 @@ std::string errorOf(std::string_view source) {
 TEST(ShaderCompiler, CompilesAShaderForEveryTarget) {
     const CompiledShader shader = compileShader(kFlash, "flash");
     ASSERT_EQ(shader.variants.size(), 4U);
-    for (const ShaderTarget target : rtype::plugins::shader::detail::kAllTargets) {
+    for (const ShaderTarget target : aylo::plugins::shader::detail::kAllTargets) {
         const auto* variant = shader.findVariant(target);
         ASSERT_NE(variant, nullptr);
         ASSERT_FALSE(variant->vertex.empty());
@@ -65,7 +65,7 @@ TEST(ShaderCompiler, CompilesAShaderForEveryTarget) {
         EXPECT_EQ(variant->vertex.front(), kSpirvMagic);
         EXPECT_EQ(variant->fragment.front(), kSpirvMagic);
     }
-    EXPECT_NO_THROW(rtype::contract::renderer::validate(shader));
+    EXPECT_NO_THROW(aylo::contract::renderer::validate(shader));
 }
 
 TEST(ShaderCompiler, CarriesWhatTheParserFound) {
@@ -103,7 +103,7 @@ TEST(ShaderCompiler, RejectsInvalidGlslForAStage) {
 }
 
 TEST(ShaderCompiler, CompilesTheDefaultShaderOfEveryTarget) {
-    for (const ShaderTarget target : rtype::plugins::shader::detail::kAllTargets) {
+    for (const ShaderTarget target : aylo::plugins::shader::detail::kAllTargets) {
         for (const ShaderStage stage : {ShaderStage::kVertex, ShaderStage::kFragment}) {
             const std::vector<std::uint32_t> spirv =
                 compileStage(assembleShader(ParsedShader{}, target, stage), stage, "default");

@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** SfmlRenderer
 */
@@ -17,16 +17,16 @@
 #include <span>
 #include <vector>
 
-#include "rtype/contract/platform/IPlatform.hpp"
-#include "rtype/contract/renderer/IRenderer.hpp"
-#include "rtype/contract/renderer/drawing/Color.hpp"
-#include "rtype/contract/renderer/drawing/Shape.hpp"
-#include "rtype/contract/renderer/drawing/Sprite.hpp"
-#include "rtype/contract/renderer/drawing/Text.hpp"
-#include "rtype/contract/renderer/drawing/Texture.hpp"
-#include "rtype/contract/renderer/particle/Particle.hpp"
-#include "rtype/contract/renderer/particle/ParticleSystemDesc.hpp"
-#include "rtype/contract/renderer/view/View.hpp"
+#include "aylo/contract/platform/IPlatform.hpp"
+#include "aylo/contract/renderer/IRenderer.hpp"
+#include "aylo/contract/renderer/drawing/Color.hpp"
+#include "aylo/contract/renderer/drawing/Shape.hpp"
+#include "aylo/contract/renderer/drawing/Sprite.hpp"
+#include "aylo/contract/renderer/drawing/Text.hpp"
+#include "aylo/contract/renderer/drawing/Texture.hpp"
+#include "aylo/contract/renderer/particle/Particle.hpp"
+#include "aylo/contract/renderer/particle/ParticleSystemDesc.hpp"
+#include "aylo/contract/renderer/view/View.hpp"
 
 namespace example {
 
@@ -38,7 +38,7 @@ namespace example {
 ///
 /// Textures live in a table of slots: a TextureId is a slot index plus the slot's generation, bumped each time the
 /// slot is freed, so a TextureId used after destroy() is detected instead of reaching the next texture of the slot.
-class SfmlRenderer final : public rtype::contract::renderer::IRenderer {
+class SfmlRenderer final : public aylo::contract::renderer::IRenderer {
   public:
     SfmlRenderer() = default;
     ~SfmlRenderer() override = default;
@@ -47,43 +47,43 @@ class SfmlRenderer final : public rtype::contract::renderer::IRenderer {
     SfmlRenderer(SfmlRenderer&&) = delete;
     SfmlRenderer& operator=(SfmlRenderer&&) = delete;
 
-    /// @throws rtype::contract::platform::exceptions::UnsupportedFeatureException If the platform is not an
+    /// @throws aylo::contract::platform::exceptions::UnsupportedFeatureException If the platform is not an
     /// SfmlPlatform.
-    void init(rtype::contract::platform::IPlatform& platform) override;
+    void init(aylo::contract::platform::IPlatform& platform) override;
     void resize(glm::uvec2 framebufferSize) override;
 
     /// @throws std::invalid_argument If pixels does not hold size.x * size.y RGBA pixels.
-    [[nodiscard]] rtype::contract::renderer::TextureId createTexture(const rtype::contract::renderer::TextureDesc& desc,
-                                                                     std::span<const std::byte> pixels) override;
-    void destroy(rtype::contract::renderer::TextureId texture) override;
+    [[nodiscard]] aylo::contract::renderer::TextureId createTexture(const aylo::contract::renderer::TextureDesc& desc,
+                                                                    std::span<const std::byte> pixels) override;
+    void destroy(aylo::contract::renderer::TextureId texture) override;
 
     /// @brief Clears the window, and resets the view to window pixels (origin at the top-left corner).
-    void beginFrame(const rtype::contract::renderer::Color& clearColor) override;
+    void beginFrame(const aylo::contract::renderer::Color& clearColor) override;
     void endFrame() override;
 
-    void setView(const rtype::contract::renderer::View& view) override;
+    void setView(const aylo::contract::renderer::View& view) override;
     /// @throws std::invalid_argument If the sprite's texture was destroyed.
-    void draw(const rtype::contract::renderer::Sprite& sprite) override;
+    void draw(const aylo::contract::renderer::Sprite& sprite) override;
     /// @brief Draws a rectangle, circle, capsule or line with SFML's shapes; SFML has no rounded rectangle, so
     /// cornerRadius is ignored.
-    void draw(const rtype::contract::renderer::Shape& shape) override;
+    void draw(const aylo::contract::renderer::Shape& shape) override;
     /// @brief Draws the glyphs of a text in one vertex array, through a small MSDF fragment shader; nothing if the
     /// graphics driver has no shaders (the raw distances would show as coloured blocks).
     /// @throws std::invalid_argument If the text's texture was destroyed.
-    void draw(const rtype::contract::renderer::Text& text) override;
+    void draw(const aylo::contract::renderer::Text& text) override;
 
     /// @brief SFML has no compute shaders: particles run on the CPU (supportsGpuParticles() is false).
-    /// @throws rtype::contract::platform::exceptions::UnsupportedFeatureException Always.
-    [[nodiscard]] rtype::contract::renderer::ParticleSystemId createParticleSystem(
-        const rtype::contract::renderer::ParticleSystemDesc& desc) override;
+    /// @throws aylo::contract::platform::exceptions::UnsupportedFeatureException Always.
+    [[nodiscard]] aylo::contract::renderer::ParticleSystemId createParticleSystem(
+        const aylo::contract::renderer::ParticleSystemDesc& desc) override;
     /// @brief Does nothing: no particle system can be created.
-    void destroy(rtype::contract::renderer::ParticleSystemId system) override;
+    void destroy(aylo::contract::renderer::ParticleSystemId system) override;
     /// @throws std::invalid_argument Always: no particle system can be created.
-    void simulate(rtype::contract::renderer::ParticleSystemId system,
-                  const rtype::contract::renderer::ParticleEmission& emission) override;
+    void simulate(aylo::contract::renderer::ParticleSystemId system,
+                  const aylo::contract::renderer::ParticleEmission& emission) override;
     /// @brief Not implemented yet: the example draws no particles.
-    /// @throws rtype::contract::platform::exceptions::UnsupportedFeatureException Always.
-    void draw(const rtype::contract::renderer::ParticleDraw& particles) override;
+    /// @throws aylo::contract::platform::exceptions::UnsupportedFeatureException Always.
+    void draw(const aylo::contract::renderer::ParticleDraw& particles) override;
 
   private:
     /// @brief A place for one texture; reused after destroy() with a higher generation.
@@ -93,7 +93,7 @@ class SfmlRenderer final : public rtype::contract::renderer::IRenderer {
     };
 
     /// @return The texture a TextureId refers to, or null if it was destroyed (or never existed).
-    [[nodiscard]] const sf::Texture* find(rtype::contract::renderer::TextureId texture) const;
+    [[nodiscard]] const sf::Texture* find(aylo::contract::renderer::TextureId texture) const;
 
     /// @return The MSDF shader, compiled on first use, or null if shaders are not available.
     [[nodiscard]] sf::Shader* msdfShader();

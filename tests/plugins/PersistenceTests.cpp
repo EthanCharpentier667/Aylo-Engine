@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** PersistenceTests
 */
@@ -14,23 +14,23 @@
 #include <random>
 #include <string>
 
+#include "aylo/ecs/app/App.hpp"
 #include "core/config/Settings.hpp"
 #include "core/config/exceptions/ConfigExceptions.hpp"
 #include "plugins/persistence/PersistenceCalls.hpp"
 #include "plugins/persistence/PersistencePlugin.hpp"
 #include "plugins/persistence/PersistenceSettings.hpp"
 #include "plugins/persistence/SaveStore.hpp"
-#include "rtype/ecs/app/App.hpp"
 
 namespace {
-using rtype::plugins::persistence::SaveStore;
+using aylo::plugins::persistence::SaveStore;
 
 /// A fresh empty directory, removed at the end of each test.
 class PersistenceFixture : public ::testing::Test {
   protected:
     void SetUp() override {
         static std::atomic<int> counter{0};
-        _directory = std::filesystem::temp_directory_path() / ("rtype-persistence-test-" + std::to_string(++counter) +
+        _directory = std::filesystem::temp_directory_path() / ("aylo-persistence-test-" + std::to_string(++counter) +
                                                                "-" + std::to_string(std::random_device{}()));
         std::filesystem::remove_all(_directory);
     }
@@ -162,17 +162,17 @@ TEST_F(PersistenceFixture, RejectsNamesThatEscapeTheDirectory) {
 }
 
 TEST(PersistenceSettings, ReadsDirectoryAndFolder) {
-    using rtype::plugins::persistence::PersistenceSettings;
-    const auto defaults = PersistenceSettings::fromSettings(rtype::core::config::Settings{});
+    using aylo::plugins::persistence::PersistenceSettings;
+    const auto defaults = PersistenceSettings::fromSettings(aylo::core::config::Settings{});
     EXPECT_TRUE(defaults.directory.empty());
-    EXPECT_EQ(defaults.folder, "rtype");
+    EXPECT_EQ(defaults.folder, "aylo");
 }
 
 TEST_F(PersistenceFixture, PluginRegistersTheCallsOnItsDirectory) {
-    using namespace rtype::plugins::persistence;
-    rtype::ecs::App app;
-    app.addPlugin(PersistencePlugin{PersistenceSettings{.directory = _directory.string(), .folder = "rtype"}});
-    rtype::ecs::World& world = app.getWorld();
+    using namespace aylo::plugins::persistence;
+    aylo::ecs::App app;
+    app.addPlugin(PersistencePlugin{PersistenceSettings{.directory = _directory.string(), .folder = "aylo"}});
+    aylo::ecs::World& world = app.getWorld();
     for (const auto call : {kReadCall, kWriteCall, kDeleteCall, kExistsCall}) {
         EXPECT_NE(world.getCalls().findByName(call), nullptr) << call;
     }

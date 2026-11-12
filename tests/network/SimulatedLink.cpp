@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** SimulatedLink
 */
@@ -14,9 +14,9 @@
 #include <utility>
 #include <vector>
 
-#include "rtype/network/Types.hpp"
+#include "aylo/network/Types.hpp"
 
-namespace rtype::network::tests {
+namespace aylo::network::tests {
 SimulatedLink::SimulatedLink(LinkConditions conditions, const std::uint32_t seed)
     : _conditions{std::move(conditions)}, _random{seed} {}
 
@@ -77,4 +77,4 @@ std::vector<Bytes> SimulatedLink::receive(const int at, const TimePoint now) {
     _stats.delivered += result.size();
     return result;
 }
-}  // namespace rtype::network::tests
+}  // namespace aylo::network::tests

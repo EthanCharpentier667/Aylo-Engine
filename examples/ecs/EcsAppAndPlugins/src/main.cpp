@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** main
 */
@@ -19,36 +19,36 @@
 #include <string>
 #include <string_view>
 
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/app/AppExit.hpp"
-#include "rtype/ecs/app/MinimalPlugins.hpp"
-#include "rtype/ecs/app/Plugin.hpp"
-#include "rtype/ecs/app/PluginGroup.hpp"
-#include "rtype/ecs/app/PluginRegistry.hpp"
-#include "rtype/ecs/command/Commands.hpp"
-#include "rtype/ecs/component/ComponentTraits.hpp"
-#include "rtype/ecs/exceptions/PluginException.hpp"
-#include "rtype/ecs/query/Query.hpp"
-#include "rtype/ecs/resource/ResourceTraits.hpp"
-#include "rtype/ecs/schedule/Phase.hpp"
-#include "rtype/ecs/schedule/RunMode.hpp"
-#include "rtype/ecs/system/EventWriter.hpp"
-#include "rtype/ecs/system/ResourceParam.hpp"
-#include "rtype/ecs/system/Side.hpp"
-#include "rtype/ecs/time/TimePlugin.hpp"
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/app/AppExit.hpp"
+#include "aylo/ecs/app/MinimalPlugins.hpp"
+#include "aylo/ecs/app/Plugin.hpp"
+#include "aylo/ecs/app/PluginGroup.hpp"
+#include "aylo/ecs/app/PluginRegistry.hpp"
+#include "aylo/ecs/command/Commands.hpp"
+#include "aylo/ecs/component/ComponentTraits.hpp"
+#include "aylo/ecs/exceptions/PluginException.hpp"
+#include "aylo/ecs/query/Query.hpp"
+#include "aylo/ecs/resource/ResourceTraits.hpp"
+#include "aylo/ecs/schedule/Phase.hpp"
+#include "aylo/ecs/schedule/RunMode.hpp"
+#include "aylo/ecs/system/EventWriter.hpp"
+#include "aylo/ecs/system/ResourceParam.hpp"
+#include "aylo/ecs/system/Side.hpp"
+#include "aylo/ecs/time/TimePlugin.hpp"
 
-using namespace rtype::ecs;
+using namespace aylo::ecs;
 
 namespace {
 struct Position {
     float x;
 };
-RTYPE_ECS_COMPONENT(Position, "example.Position", x);
+AYLO_ECS_COMPONENT(Position, "example.Position", x);
 
 struct Frames {
     int count;
 };
-RTYPE_ECS_RESOURCE(Frames, "example.Frames", count);
+AYLO_ECS_RESOURCE(Frames, "example.Frames", count);
 
 void spawnShip(Commands& commands) {
     static_cast<void>(commands.spawn().add(Position{.x = 0.F}));
@@ -181,7 +181,7 @@ void run() {
         .addPlugins(MinimalPlugins{})                                 // its TimePlugin is skipped: already added
         .addPlugins(GamePlugins{})
         .addPlugin(GamePlugin{});  // already added through the group: ignored
-    std::cout << std::format("  has example.game? {}; has rtype.time? {}\n", app.hasPlugin("example.game"),
+    std::cout << std::format("  has example.game? {}; has aylo.time? {}\n", app.hasPlugin("example.game"),
                              app.hasPlugin(TimePlugin::kName));
 
     std::cout << "\n== Dependencies: example.hud requires example.game (added) and example.text (registered) ==\n";

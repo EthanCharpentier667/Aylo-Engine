@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ResourceParamTests
 */
@@ -11,36 +11,36 @@
 #include <type_traits>
 #include <utility>
 
-#include "rtype/ecs/change/Tick.hpp"
-#include "rtype/ecs/exceptions/MissingResourceException.hpp"
-#include "rtype/ecs/resource/ResourceTraits.hpp"
-#include "rtype/ecs/system/ResourceParam.hpp"
-#include "rtype/ecs/world/World.hpp"
+#include "aylo/ecs/change/Tick.hpp"
+#include "aylo/ecs/exceptions/MissingResourceException.hpp"
+#include "aylo/ecs/resource/ResourceTraits.hpp"
+#include "aylo/ecs/system/ResourceParam.hpp"
+#include "aylo/ecs/world/World.hpp"
 
-namespace rtype::test::resource_param {
+namespace aylo::test::resource_param {
 struct Time {
     float delta;
 };
-RTYPE_ECS_RESOURCE(Time, "test.resource_param.Time", delta);
+AYLO_ECS_RESOURCE(Time, "test.resource_param.Time", delta);
 
 struct Score {
     int value;
 };
-RTYPE_ECS_RESOURCE(Score, "test.resource_param.Score", value);
-}  // namespace rtype::test::resource_param
+AYLO_ECS_RESOURCE(Score, "test.resource_param.Score", value);
+}  // namespace aylo::test::resource_param
 
 namespace {
-using rtype::ecs::NonSend;
-using rtype::ecs::NonSendMut;
-using rtype::ecs::Res;
-using rtype::ecs::ResAppend;
-using rtype::ecs::ResMut;
-using rtype::ecs::ResourceAccess;
-using rtype::ecs::ResourceThread;
-using rtype::ecs::Tick;
-using rtype::ecs::World;
-using rtype::test::resource_param::Score;
-using rtype::test::resource_param::Time;
+using aylo::ecs::NonSend;
+using aylo::ecs::NonSendMut;
+using aylo::ecs::Res;
+using aylo::ecs::ResAppend;
+using aylo::ecs::ResMut;
+using aylo::ecs::ResourceAccess;
+using aylo::ecs::ResourceThread;
+using aylo::ecs::Tick;
+using aylo::ecs::World;
+using aylo::test::resource_param::Score;
+using aylo::test::resource_param::Time;
 
 // The four aliases are distinct types, so a signature tells what a system reads, writes, and where it runs.
 static_assert(!std::is_same_v<Res<Time>, ResMut<Time>>);
@@ -110,11 +110,11 @@ TEST(ResourceParam, ThrowsForAMissingResourceNamingIt) {
     try {
         const Res<Time> time{world.getResources(), 0, world.getChangeTick()};
         FAIL() << "Res did not throw";
-    } catch (const rtype::ecs::exceptions::MissingResourceException& error) {
+    } catch (const aylo::ecs::exceptions::MissingResourceException& error) {
         EXPECT_NE(std::string_view{error.what()}.find("test.resource_param.Time"), std::string_view::npos);
     }
     EXPECT_THROW((ResMut<Time>{world.getResources(), 0, world.getChangeTick()}),
-                 rtype::ecs::exceptions::MissingResourceException);
+                 aylo::ecs::exceptions::MissingResourceException);
 }
 
 TEST(ResourceParam, NonSendParametersReadAndWriteLikeTheOthers) {

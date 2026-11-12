@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** PhysicsContactsTests
 */
@@ -14,6 +14,14 @@
 #include <string>
 #include <vector>
 
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/component/Components.hpp"
+#include "aylo/ecs/entity/Entity.hpp"
+#include "aylo/ecs/resource/ResourceTraits.hpp"
+#include "aylo/ecs/schedule/Phase.hpp"
+#include "aylo/ecs/system/EventReader.hpp"
+#include "aylo/ecs/system/ResourceParam.hpp"
+#include "aylo/ecs/time/Time.hpp"
 #include "plugins/physics/Collider.hpp"
 #include "plugins/physics/CollisionEvents.hpp"
 #include "plugins/physics/PhysicsPlugin.hpp"
@@ -23,27 +31,19 @@
 #include "plugins/physics/Velocity.hpp"
 #include "plugins/transform/Transform.hpp"
 #include "plugins/transform/TransformPlugin.hpp"
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/component/Components.hpp"
-#include "rtype/ecs/entity/Entity.hpp"
-#include "rtype/ecs/resource/ResourceTraits.hpp"
-#include "rtype/ecs/schedule/Phase.hpp"
-#include "rtype/ecs/system/EventReader.hpp"
-#include "rtype/ecs/system/ResourceParam.hpp"
-#include "rtype/ecs/time/Time.hpp"
 
-using rtype::ecs::Entity;
-using rtype::plugins::physics::Collider;
-using rtype::plugins::physics::CollisionEnded;
-using rtype::plugins::physics::CollisionStarted;
-using rtype::plugins::physics::PhysicsPlugin;
-using rtype::plugins::physics::PhysicsSettings;
-using rtype::plugins::physics::RigidBody;
-using rtype::plugins::physics::ShapeType;
-using rtype::plugins::physics::TriggerEntered;
-using rtype::plugins::physics::TriggerExited;
-using rtype::plugins::physics::Velocity;
-using rtype::plugins::transform::Transform;
+using aylo::ecs::Entity;
+using aylo::plugins::physics::Collider;
+using aylo::plugins::physics::CollisionEnded;
+using aylo::plugins::physics::CollisionStarted;
+using aylo::plugins::physics::PhysicsPlugin;
+using aylo::plugins::physics::PhysicsSettings;
+using aylo::plugins::physics::RigidBody;
+using aylo::plugins::physics::ShapeType;
+using aylo::plugins::physics::TriggerEntered;
+using aylo::plugins::physics::TriggerExited;
+using aylo::plugins::physics::Velocity;
+using aylo::plugins::transform::Transform;
 
 namespace {
 constexpr float kFixedDelta = 1.0F / 60.0F;
@@ -57,12 +57,12 @@ struct Received {
     std::vector<TriggerEntered> entered;    ///< TriggerEntered events.
     std::vector<TriggerExited> exited;      ///< TriggerExited events.
 };
-RTYPE_ECS_RESOURCE(Received, "test.Received");
+AYLO_ECS_RESOURCE(Received, "test.Received");
 
 /// @brief FixedUpdate, after the physics: records the contact events.
-void record(rtype::ecs::ResMut<Received> received, rtype::ecs::EventReader<CollisionStarted> started,
-            rtype::ecs::EventReader<CollisionEnded> ended, rtype::ecs::EventReader<TriggerEntered> entered,
-            rtype::ecs::EventReader<TriggerExited> exited) {
+void record(aylo::ecs::ResMut<Received> received, aylo::ecs::EventReader<CollisionStarted> started,
+            aylo::ecs::EventReader<CollisionEnded> ended, aylo::ecs::EventReader<TriggerEntered> entered,
+            aylo::ecs::EventReader<TriggerExited> exited) {
     for (const CollisionStarted& event : started) {
         received->started.push_back(event);
     }
@@ -84,30 +84,30 @@ bool isPair(Entity first, Entity second, Entity a, Entity b) {
 
 /// @brief An App with the PhysicsPlugin, 100 units per meter, ticked by hand, recording the contact events.
 struct PhysicsApp {
-    rtype::ecs::App app;  ///< The App under test.
+    aylo::ecs::App app;  ///< The App under test.
 
     explicit PhysicsApp(glm::vec2 gravity = {0.0F, 0.0F}) {
-        app.addPlugin(rtype::plugins::transform::TransformPlugin{});
+        app.addPlugin(aylo::plugins::transform::TransformPlugin{});
         app.addPlugin(PhysicsPlugin{PhysicsSettings{.gravity = gravity,
                                                     .unitsPerMeter = 100.0F,
                                                     .maxBodies = 16,
                                                     .maxBodyPairs = 16,
                                                     .maxContactConstraints = 16,
                                                     .tempAllocatorBytes = 1024 * 1024}});
-        app.getWorld().getResources().insert(rtype::ecs::Time{.fixedDelta = kFixedDelta});
+        app.getWorld().getResources().insert(aylo::ecs::Time{.fixedDelta = kFixedDelta});
         app.insertResource(Received{});
-        app.addSystem(rtype::ecs::Phase::kFixedUpdate, "test.Record", &record)
+        app.addSystem(aylo::ecs::Phase::kFixedUpdate, "test.Record", &record)
             .after(std::string{PhysicsPlugin::kEventsSystem});
     }
 
     /// @brief Runs the given number of fixed ticks.
     void tick(int count = 1) {
         for (int index = 0; index < count; ++index) {
-            app.getSchedules().run(rtype::ecs::Phase::kFixedUpdate);
+            app.getSchedules().run(aylo::ecs::Phase::kFixedUpdate);
         }
     }
 
-    [[nodiscard]] rtype::ecs::Components& components() { return app.getWorld().getComponents(); }
+    [[nodiscard]] aylo::ecs::Components& components() { return app.getWorld().getComponents(); }
     [[nodiscard]] const Received& received() const { return app.getWorld().getResources().require<Received>(); }
 
     /// @return A circle at the position; moving at the velocity when given, static otherwise.
@@ -176,7 +176,7 @@ TEST(PhysicsContacts, ASleepingBodyStaysInContactUntilItReallyLeaves) {
     ASSERT_EQ(fixture.received().started.size(), 1U);
     ASSERT_TRUE(fixture.received().ended.empty());
 
-    fixture.app.getWorld().getResources().requireMut<rtype::plugins::physics::PhysicsWorld>()->applyImpulse(
+    fixture.app.getWorld().getResources().requireMut<aylo::plugins::physics::PhysicsWorld>()->applyImpulse(
         ball, {0.0F, -800.0F});  // Kicked upward: wakes up, then leaves the floor.
     fixture.tick(10);
     EXPECT_EQ(fixture.received().started.size(), 1U);  // Waking up is not a new contact.
@@ -238,8 +238,8 @@ TEST(PhysicsContacts, FilteredPairsSendNothing) {
 
 TEST(PhysicsContacts, ThePluginRegistersTheEvents) {
     PhysicsApp fixture;
-    EXPECT_TRUE(fixture.app.getWorld().getEvents().find("rtype.CollisionStarted"));
-    EXPECT_TRUE(fixture.app.getWorld().getEvents().find("rtype.CollisionEnded"));
-    EXPECT_TRUE(fixture.app.getWorld().getEvents().find("rtype.TriggerEntered"));
-    EXPECT_TRUE(fixture.app.getWorld().getEvents().find("rtype.TriggerExited"));
+    EXPECT_TRUE(fixture.app.getWorld().getEvents().find("aylo.CollisionStarted"));
+    EXPECT_TRUE(fixture.app.getWorld().getEvents().find("aylo.CollisionEnded"));
+    EXPECT_TRUE(fixture.app.getWorld().getEvents().find("aylo.TriggerEntered"));
+    EXPECT_TRUE(fixture.app.getWorld().getEvents().find("aylo.TriggerExited"));
 }

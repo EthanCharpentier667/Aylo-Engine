@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ClientStateTests
 */
@@ -16,59 +16,59 @@
 #include <vector>
 
 #include "ServerFixtures.hpp"
-#include "rtype/ecs/change/Tick.hpp"
-#include "rtype/ecs/command/Commands.hpp"
-#include "rtype/ecs/component/Components.hpp"
-#include "rtype/ecs/entity/Entity.hpp"
-#include "rtype/ecs/hierarchy/Children.hpp"
-#include "rtype/ecs/hierarchy/Parent.hpp"
-#include "rtype/ecs/type/String.hpp"
-#include "rtype/ecs/world/World.hpp"
-#include "rtype/network/NetworkSettings.hpp"
-#include "rtype/network/Types.hpp"
-#include "rtype/network/bytes/ByteWriter.hpp"
-#include "rtype/network/client/ClientEvent.hpp"
-#include "rtype/network/io/Address.hpp"
-#include "rtype/replication/MessageType.hpp"
-#include "rtype/replication/ReplicationSettings.hpp"
-#include "rtype/replication/client/ClientState.hpp"
-#include "rtype/replication/component/NetworkId.hpp"
-#include "rtype/replication/component/Owner.hpp"
-#include "rtype/replication/component/PlayerInput.hpp"
-#include "rtype/replication/input/InputKind.hpp"
-#include "rtype/replication/input/InputLayout.hpp"
-#include "rtype/replication/input/InputMessage.hpp"
-#include "rtype/replication/manifest/Manifest.hpp"
-#include "rtype/replication/snapshot/Snapshot.hpp"
+#include "aylo/ecs/change/Tick.hpp"
+#include "aylo/ecs/command/Commands.hpp"
+#include "aylo/ecs/component/Components.hpp"
+#include "aylo/ecs/entity/Entity.hpp"
+#include "aylo/ecs/hierarchy/Children.hpp"
+#include "aylo/ecs/hierarchy/Parent.hpp"
+#include "aylo/ecs/type/String.hpp"
+#include "aylo/ecs/world/World.hpp"
+#include "aylo/network/NetworkSettings.hpp"
+#include "aylo/network/Types.hpp"
+#include "aylo/network/bytes/ByteWriter.hpp"
+#include "aylo/network/client/ClientEvent.hpp"
+#include "aylo/network/io/Address.hpp"
+#include "aylo/replication/MessageType.hpp"
+#include "aylo/replication/ReplicationSettings.hpp"
+#include "aylo/replication/client/ClientState.hpp"
+#include "aylo/replication/component/NetworkId.hpp"
+#include "aylo/replication/component/Owner.hpp"
+#include "aylo/replication/component/PlayerInput.hpp"
+#include "aylo/replication/input/InputKind.hpp"
+#include "aylo/replication/input/InputLayout.hpp"
+#include "aylo/replication/input/InputMessage.hpp"
+#include "aylo/replication/manifest/Manifest.hpp"
+#include "aylo/replication/snapshot/Snapshot.hpp"
 
 namespace {
-namespace snapshot = rtype::replication::snapshot;
-namespace network = rtype::network;
-using rtype::ecs::Commands;
-using rtype::ecs::Entity;
-using rtype::ecs::Presence;
-using rtype::ecs::ReplicationMode;
-using rtype::ecs::World;
-using rtype::replication::MessageType;
-using rtype::replication::ReplicationSettings;
-using rtype::replication::client::ClientState;
-using rtype::replication::client::ConnectionStatus;
-using rtype::replication::client::ManifestStatus;
-using rtype::replication::component::NetworkId;
-using rtype::replication::component::Owner;
-using rtype::replication::component::PlayerInput;
-using rtype::replication::input::InputKind;
-using rtype::replication::input::InputLayout;
-using rtype::replication::manifest::Manifest;
-using rtype::test::server::Follow;
-using rtype::test::server::Position;
+namespace snapshot = aylo::replication::snapshot;
+namespace network = aylo::network;
+using aylo::ecs::Commands;
+using aylo::ecs::Entity;
+using aylo::ecs::Presence;
+using aylo::ecs::ReplicationMode;
+using aylo::ecs::World;
+using aylo::replication::MessageType;
+using aylo::replication::ReplicationSettings;
+using aylo::replication::client::ClientState;
+using aylo::replication::client::ConnectionStatus;
+using aylo::replication::client::ManifestStatus;
+using aylo::replication::component::NetworkId;
+using aylo::replication::component::Owner;
+using aylo::replication::component::PlayerInput;
+using aylo::replication::input::InputKind;
+using aylo::replication::input::InputLayout;
+using aylo::replication::manifest::Manifest;
+using aylo::test::server::Follow;
+using aylo::test::server::Position;
 
 /// @brief A component with a string, which takes a different number of bytes on the wire for each value.
 struct Named {
-    rtype::ecs::String name;
+    aylo::ecs::String name;
     std::uint8_t level{0};
 };
-RTYPE_ECS_COMPONENT(Named, "test.client.Named", name, level);
+AYLO_ECS_COMPONENT(Named, "test.client.Named", name, level);
 
 constexpr ReplicationSettings kServerSettings{.tickRate = 30, .snapshotRate = 15, .reconnectionGraceSeconds = 7};
 
@@ -81,9 +81,9 @@ void registerComponents(World& world, const bool withFollow = true) {
         components.registerType<Owner>({.presence = Presence::kBoth, .replication = ReplicationMode::kEveryChange}));
     static_cast<void>(
         components.registerType<Position>({.presence = Presence::kBoth, .replication = ReplicationMode::kEveryChange}));
-    static_cast<void>(components.registerType<rtype::ecs::Parent>(
+    static_cast<void>(components.registerType<aylo::ecs::Parent>(
         {.presence = Presence::kBoth, .replication = ReplicationMode::kEveryChange}));
-    static_cast<void>(components.registerType<rtype::test::server::Cargo>(
+    static_cast<void>(components.registerType<aylo::test::server::Cargo>(
         {.presence = Presence::kBoth, .replication = ReplicationMode::kEveryChange}));
     if (withFollow) {
         static_cast<void>(components.registerType<Follow>(
@@ -132,7 +132,7 @@ class ClientStateTest : public ::testing::Test {
         _positionId = _world.getComponents().find("test.server.Position").value();
         _followId = _world.getComponents().find("test.server.Follow").value();
         _ownerId = _world.getComponents().find("net.Owner").value();
-        _parentId = _world.getComponents().find("rtype.Parent").value();
+        _parentId = _world.getComponents().find("aylo.Parent").value();
         _cargoId = _world.getComponents().find("test.server.Cargo").value();
     }
 
@@ -146,7 +146,7 @@ class ClientStateTest : public ::testing::Test {
     }
 
     /// @return The short id of a component of the manifest.
-    [[nodiscard]] std::uint16_t shortId(const rtype::ecs::ComponentId id) const {
+    [[nodiscard]] std::uint16_t shortId(const aylo::ecs::ComponentId id) const {
         return Manifest::build(_world, _layout).toShort(id).value();
     }
 
@@ -181,7 +181,7 @@ class ClientStateTest : public ::testing::Test {
 
     /// @return The children of an entity, empty if it has none.
     [[nodiscard]] std::vector<Entity> childrenOf(const Entity entity) const {
-        const rtype::ecs::Children* children = _world.getComponents().get<rtype::ecs::Children>(entity);
+        const aylo::ecs::Children* children = _world.getComponents().get<aylo::ecs::Children>(entity);
         return children != nullptr ? children->entities : std::vector<Entity>{};
     }
 
@@ -215,11 +215,11 @@ class ClientStateTest : public ::testing::Test {
     network::io::Address _address;
     Commands _commands{_world};
     ClientState _state;
-    rtype::ecs::ComponentId _positionId{};
-    rtype::ecs::ComponentId _followId{};
-    rtype::ecs::ComponentId _ownerId{};
-    rtype::ecs::ComponentId _parentId{};
-    rtype::ecs::ComponentId _cargoId{};
+    aylo::ecs::ComponentId _positionId{};
+    aylo::ecs::ComponentId _followId{};
+    aylo::ecs::ComponentId _ownerId{};
+    aylo::ecs::ComponentId _parentId{};
+    aylo::ecs::ComponentId _cargoId{};
 };
 }  // namespace
 
@@ -358,14 +358,14 @@ TEST_F(ClientStateTest, LinksAChildListedBeforeItsParent) {
     accept();
     ASSERT_TRUE(apply(
         {.tick = 1, .spawns = {{.networkId = 1, .components = {parent(2)}}, {.networkId = 2, .components = {}}}}));
-    EXPECT_EQ(_world.getComponents().get<rtype::ecs::Parent>(_state.find(1))->entity, _state.find(2));
+    EXPECT_EQ(_world.getComponents().get<aylo::ecs::Parent>(_state.find(1))->entity, _state.find(2));
     EXPECT_EQ(childrenOf(_state.find(2)), std::vector<Entity>{_state.find(1)});
 }
 
 TEST_F(ClientStateTest, LinksAChildOnceASnapshotBringsItsParent) {
     accept();
     ASSERT_TRUE(apply({.tick = 1, .spawns = {{.networkId = 1, .components = {parent(2)}}}}));
-    EXPECT_FALSE(_world.getComponents().has<rtype::ecs::Parent>(_state.find(1)));
+    EXPECT_FALSE(_world.getComponents().has<aylo::ecs::Parent>(_state.find(1)));
     ASSERT_TRUE(apply({.tick = 2,
                        .spawns = {{.networkId = 2, .components = {}}},
                        .updates = {{.networkId = 1, .components = {parent(2)}}}}));
@@ -401,7 +401,7 @@ TEST_F(ClientStateTest, DetachesAChildWhoseParentIsRemoved) {
     ASSERT_TRUE(apply(
         {.tick = 1, .spawns = {{.networkId = 1, .components = {}}, {.networkId = 2, .components = {parent(1)}}}}));
     ASSERT_TRUE(apply({.tick = 2, .removals = {{.networkId = 2, .shortId = shortId(_parentId)}}}));
-    EXPECT_FALSE(_world.getComponents().has<rtype::ecs::Parent>(_state.find(2)));
+    EXPECT_FALSE(_world.getComponents().has<aylo::ecs::Parent>(_state.find(2)));
     EXPECT_TRUE(childrenOf(_state.find(1)).empty());
 }
 
@@ -432,7 +432,7 @@ TEST_F(ClientStateTest, AppliesAComponentWithLists) {
     ASSERT_TRUE(apply({.tick = 1,
                        .spawns = {{.networkId = 1, .components = {cargo({4, 5}, {2, 77}, 1.5F)}},
                                   {.networkId = 2, .components = {}}}}));
-    const auto* received = _world.getComponents().get<rtype::test::server::Cargo>(_state.find(1));
+    const auto* received = _world.getComponents().get<aylo::test::server::Cargo>(_state.find(1));
     ASSERT_NE(received, nullptr);
     EXPECT_EQ(received->items, (std::vector<std::uint32_t>{4, 5}));
     EXPECT_EQ(received->crew, std::vector<Entity>{_state.find(2)});  // 77 is not known here
@@ -443,7 +443,7 @@ TEST_F(ClientStateTest, ReplacesAListThatChanged) {
     accept();
     ASSERT_TRUE(apply({.tick = 1, .spawns = {{.networkId = 1, .components = {cargo({1, 2, 3}, {}, 0.F)}}}}));
     ASSERT_TRUE(apply({.tick = 2, .updates = {{.networkId = 1, .components = {cargo({9}, {}, 2.F)}}}}));
-    const auto* received = _world.getComponents().get<rtype::test::server::Cargo>(_state.find(1));
+    const auto* received = _world.getComponents().get<aylo::test::server::Cargo>(_state.find(1));
     ASSERT_NE(received, nullptr);
     EXPECT_EQ(received->items, std::vector<std::uint32_t>{9});
     EXPECT_FLOAT_EQ(received->weight, 2.F);
@@ -655,7 +655,7 @@ TEST_F(ClientStateTest, SendsTheLastThreeInputsAndTheLastAppliedTick) {
     _state.setInput(input);
     std::vector<std::uint32_t> sequences;
     for (int frame = 1; frame <= 4; ++frame) {
-        const auto message = rtype::replication::input::decodeInput(_state.nextInputMessage(_layout).value(), _layout);
+        const auto message = aylo::replication::input::decodeInput(_state.nextInputMessage(_layout).value(), _layout);
         ASSERT_TRUE(message);
         EXPECT_EQ(message->lastAppliedSnapshot, 12U);
         sequences.clear();
@@ -673,7 +673,7 @@ TEST_F(ClientStateTest, SendsTheLastThreeInputsAndTheLastAppliedTick) {
 
 TEST_F(ClientStateTest, SendsTheNeutralInputWhenTheGameGaveNone) {
     accept();
-    const auto message = rtype::replication::input::decodeInput(_state.nextInputMessage(_layout).value(), _layout);
+    const auto message = aylo::replication::input::decodeInput(_state.nextInputMessage(_layout).value(), _layout);
     ASSERT_TRUE(message);
     ASSERT_EQ(message->inputs.size(), 1U);
     EXPECT_EQ(message->inputs.front().buttons, 0U);
@@ -706,7 +706,7 @@ TEST_F(ClientStateTest, RecordsTheEndOfTheConnection) {
 
 namespace {
 /// @return When the entity's value of a component was last written.
-rtype::ecs::Tick changedTick(const World& world, const Entity entity, const rtype::ecs::ComponentId id) {
+aylo::ecs::Tick changedTick(const World& world, const Entity entity, const aylo::ecs::ComponentId id) {
     return world.getComponents().getTicks(entity, id).value().changed;
 }
 }  // namespace
@@ -721,9 +721,9 @@ TEST_F(ClientStateTest, AValueTheEntityHoldsIsNotWrittenAgain) {
     ASSERT_TRUE(apply(first));
     const Entity one = _state.find(1);
     const Entity two = _state.find(2);
-    const rtype::ecs::Tick positionTick = changedTick(_world, one, _positionId);
-    const rtype::ecs::Tick cargoTick = changedTick(_world, one, _cargoId);
-    const rtype::ecs::Tick followTick = changedTick(_world, two, _followId);
+    const aylo::ecs::Tick positionTick = changedTick(_world, one, _positionId);
+    const aylo::ecs::Tick cargoTick = changedTick(_world, one, _cargoId);
+    const aylo::ecs::Tick followTick = changedTick(_world, two, _followId);
     static_cast<void>(_world.advanceChangeTick());
 
     snapshot::Snapshot same = first;

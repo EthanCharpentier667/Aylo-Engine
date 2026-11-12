@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** SimulatedLink
 */
@@ -12,9 +12,9 @@
 #include <random>
 #include <vector>
 
-#include "rtype/network/Types.hpp"
+#include "aylo/network/Types.hpp"
 
-namespace rtype::network::tests {
+namespace aylo::network::tests {
 /// @brief The faults a `SimulatedLink` applies to the datagrams sent through it.
 struct LinkConditions {
     double loss{0.0};       ///< Probability that a datagram is dropped.
@@ -81,4 +81,4 @@ class SimulatedLink {
     std::uint64_t _nextOrder{0};      ///< Send order of the next datagram.
     LinkStats _stats;                 ///< Counters.
 };
-}  // namespace rtype::network::tests
+}  // namespace aylo::network::tests

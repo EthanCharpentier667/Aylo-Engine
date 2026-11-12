@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ScriptPacketTests
 */
@@ -22,49 +22,49 @@
 #include <thread>
 #include <vector>
 
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/event/EventCursor.hpp"
-#include "rtype/ecs/event/EventTraits.hpp"
-#include "rtype/ecs/schedule/RunMode.hpp"
-#include "rtype/ecs/time/FixedTimestep.hpp"
-#include "rtype/ecs/time/TimePlugin.hpp"
-#include "rtype/network/NetworkSettings.hpp"
-#include "rtype/network/Types.hpp"
-#include "rtype/network/io/Address.hpp"
-#include "rtype/replication/MessageType.hpp"
-#include "rtype/replication/ReplicationPlugin.hpp"
-#include "rtype/replication/client/ClientPlugin.hpp"
-#include "rtype/replication/client/ClientState.hpp"
-#include "rtype/replication/exceptions/ReplicationExceptions.hpp"
-#include "rtype/replication/input/InputLayout.hpp"
-#include "rtype/replication/packet/PacketCalls.hpp"
-#include "rtype/replication/packet/PacketCodec.hpp"
-#include "rtype/replication/packet/PacketSchema.hpp"
-#include "rtype/replication/server/ServerPlugin.hpp"
-#include "rtype/replication/server/ServerState.hpp"
-#include "rtype/scripting/plugin/ScriptingPlugin.hpp"
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/event/EventCursor.hpp"
+#include "aylo/ecs/event/EventTraits.hpp"
+#include "aylo/ecs/schedule/RunMode.hpp"
+#include "aylo/ecs/time/FixedTimestep.hpp"
+#include "aylo/ecs/time/TimePlugin.hpp"
+#include "aylo/network/NetworkSettings.hpp"
+#include "aylo/network/Types.hpp"
+#include "aylo/network/io/Address.hpp"
+#include "aylo/replication/MessageType.hpp"
+#include "aylo/replication/ReplicationPlugin.hpp"
+#include "aylo/replication/client/ClientPlugin.hpp"
+#include "aylo/replication/client/ClientState.hpp"
+#include "aylo/replication/exceptions/ReplicationExceptions.hpp"
+#include "aylo/replication/input/InputLayout.hpp"
+#include "aylo/replication/packet/PacketCalls.hpp"
+#include "aylo/replication/packet/PacketCodec.hpp"
+#include "aylo/replication/packet/PacketSchema.hpp"
+#include "aylo/replication/server/ServerPlugin.hpp"
+#include "aylo/replication/server/ServerState.hpp"
+#include "aylo/scripting/plugin/ScriptingPlugin.hpp"
 
-namespace rtype::test::script_packets {
+namespace aylo::test::script_packets {
 /// @brief Sent by a script after a check of its own held: the test counts them, since a failing Luau assert only
 /// stops the system and logs.
 struct Checked {
     std::string what;
 };
-RTYPE_ECS_EVENT(Checked, "test.packets.Checked", what);
-}  // namespace rtype::test::script_packets
+AYLO_ECS_EVENT(Checked, "test.packets.Checked", what);
+}  // namespace aylo::test::script_packets
 
 namespace {
-namespace network = rtype::network;
+namespace network = aylo::network;
 using namespace std::chrono_literals;  // NOLINT(google-build-using-namespace): only the literals
-using rtype::ecs::App;
-using rtype::ecs::RunMode;
-using rtype::replication::client::ClientPlugin;
-using rtype::replication::client::ClientState;
-using rtype::replication::client::ManifestStatus;
-using rtype::replication::packet::PacketReceived;
-using rtype::replication::server::ServerPlugin;
-using rtype::replication::server::ServerState;
-using rtype::test::script_packets::Checked;
+using aylo::ecs::App;
+using aylo::ecs::RunMode;
+using aylo::replication::client::ClientPlugin;
+using aylo::replication::client::ClientState;
+using aylo::replication::client::ManifestStatus;
+using aylo::replication::packet::PacketReceived;
+using aylo::replication::server::ServerPlugin;
+using aylo::replication::server::ServerState;
+using aylo::test::script_packets::Checked;
 
 constexpr std::uint8_t kTickRate = 50;
 constexpr std::chrono::milliseconds kFrame{20};
@@ -89,7 +89,7 @@ local commands = {
 }
 local nextCommand = 1
 engine.ecs.system("game.Commands", {
-    phase = "Update", side = "client", query = {}, calls = { "rtype.net.sendToServer" },
+    phase = "Update", side = "client", query = {}, calls = { "aylo.net.sendToServer" },
     events = { send = { "test.packets.Checked" } },
     run = function(ctx)
         while nextCommand <= #commands do
@@ -107,7 +107,7 @@ engine.ecs.system("game.Commands", {
 constexpr std::string_view kServer = R"(
 local catalog = { laser = 10 }
 engine.ecs.system("game.Rules", {
-    phase = "Update", side = "server", query = {}, calls = { "rtype.net.sendToClients" },
+    phase = "Update", side = "server", query = {}, calls = { "aylo.net.sendToClients" },
     events = { read = { "net.PacketReceived" }, send = { "test.packets.Checked" } },
     run = function(ctx)
         for _, packet in engine.net.received(ctx) do
@@ -164,18 +164,18 @@ class ScriptsDirectory {
 };
 
 /// @brief Declares packets from C++, as a plugin does; the scripts load after it.
-using NativeDeclarations = std::function<void(rtype::replication::packet::PacketRegistry&)>;
+using NativeDeclarations = std::function<void(aylo::replication::packet::PacketRegistry&)>;
 
 std::unique_ptr<App> makeApp(const RunMode mode, const std::filesystem::path& scripts,
                              const NativeDeclarations& native) {
     auto app = std::make_unique<App>(mode);
     app->getWorld().getEvents().registerType<Checked>();
-    app->addPlugin(rtype::ecs::TimePlugin::manual(kFrame, rtype::ecs::FixedTimestep{kTickRate, 5}));
-    app->addPlugin(rtype::replication::ReplicationPlugin{});
+    app->addPlugin(aylo::ecs::TimePlugin::manual(kFrame, aylo::ecs::FixedTimestep{kTickRate, 5}));
+    app->addPlugin(aylo::replication::ReplicationPlugin{});
     if (native) {
-        native(*app->getWorld().getResources().getMut<rtype::replication::packet::PacketRegistry>());
+        native(*app->getWorld().getResources().getMut<aylo::replication::packet::PacketRegistry>());
     }
-    app->addPlugin(rtype::scripting::ScriptingPlugin{
+    app->addPlugin(aylo::scripting::ScriptingPlugin{
         {.directory = scripts,
          .options = {.isClient = mode == RunMode::kClient, .isServer = mode == RunMode::kServer}}});
     return app;
@@ -187,10 +187,10 @@ struct Pair {
     ScriptsDirectory clientScripts;
     std::unique_ptr<App> server;
     std::unique_ptr<App> client;
-    rtype::ecs::EventCursor serverCursor;
-    rtype::ecs::EventCursor clientCursor;
-    rtype::ecs::EventCursor serverChecks;
-    rtype::ecs::EventCursor clientChecks;
+    aylo::ecs::EventCursor serverCursor;
+    aylo::ecs::EventCursor clientCursor;
+    aylo::ecs::EventCursor serverChecks;
+    aylo::ecs::EventCursor clientChecks;
     std::vector<std::string> serverChecked;      ///< What the server's scripts reported (Checked events).
     std::vector<std::string> clientChecked;      ///< What the client's scripts reported.
     std::vector<PacketReceived> serverReceived;  ///< Every packet the server's scripts were given.
@@ -248,7 +248,7 @@ std::string withShared(const std::string_view rest) { return std::string{kShared
 }  // namespace
 
 TEST(ScriptPackets, AClientCommandIsValidatedByTheServerAndAnswered) {
-    Pair pair{"rtype-packets-example", withShared(kServer), withShared(kClient)};
+    Pair pair{"aylo-packets-example", withShared(kServer), withShared(kClient)};
 
     ASSERT_TRUE(pair.runUntil([&] { return pair.clientReceived.size() >= 3; }));
 
@@ -273,7 +273,7 @@ TEST(ScriptPackets, AClientCommandIsValidatedByTheServerAndAnswered) {
 TEST(ScriptPackets, TheServerOnlySendsToTheClientItNames) {
     constexpr std::string_view kEcho = R"(
 engine.ecs.system("game.Rules", {
-    phase = "Update", side = "server", query = {}, calls = { "rtype.net.sendToClients" },
+    phase = "Update", side = "server", query = {}, calls = { "aylo.net.sendToClients" },
     events = { read = { "net.PacketReceived" }, send = { "test.packets.Checked" } },
     run = function(ctx)
         for _, packet in engine.net.received(ctx) do
@@ -285,7 +285,7 @@ engine.ecs.system("game.Rules", {
     end,
 })
 )";
-    Pair pair{"rtype-packets-unknown-client", withShared(kEcho), withShared(kClient)};
+    Pair pair{"aylo-packets-unknown-client", withShared(kEcho), withShared(kClient)};
 
     ASSERT_TRUE(pair.runUntil([&] { return pair.serverReceived.size() >= 3; }));
     for (int frame = 0; frame < 20; ++frame) {
@@ -301,7 +301,7 @@ TEST(ScriptPackets, ASendThatBreaksTheSchemaIsAScriptErrorAndNothingTravels) {
 local rejected = false
 local sent = false
 engine.ecs.system("game.Commands", {
-    phase = "Update", side = "client", query = {}, calls = { "rtype.net.sendToServer" },
+    phase = "Update", side = "client", query = {}, calls = { "aylo.net.sendToServer" },
     events = { send = { "test.packets.Checked" } },
     run = function(ctx)
         if not rejected then
@@ -321,7 +321,7 @@ engine.ecs.system("game.Commands", {
     end,
 })
 )";
-    Pair pair{"rtype-packets-bad-send", withShared(kServer), withShared(kBad)};
+    Pair pair{"aylo-packets-bad-send", withShared(kServer), withShared(kBad)};
 
     ASSERT_TRUE(pair.runUntil([&] { return !pair.clientReceived.empty(); }));
     for (int frame = 0; frame < 20; ++frame) {
@@ -360,7 +360,7 @@ engine.ecs.system("game.Report", {
     end,
 })
 )";
-    Pair pair{"rtype-packets-declarations", std::string{kDeclarations}, withShared(kClient)};
+    Pair pair{"aylo-packets-declarations", std::string{kDeclarations}, withShared(kClient)};
 
     ASSERT_TRUE(pair.runUntil([&] { return pair.serverChecked.size() >= 8; }));
 
@@ -373,7 +373,7 @@ TEST(ScriptPackets, AScriptSendsAndReadsAPacketDeclaredInCpp) {
     constexpr std::string_view kNativeClient = R"(
 local sent = false
 engine.ecs.system("native.Send", {
-    phase = "Update", side = "client", query = {}, calls = { "rtype.net.sendToServer" },
+    phase = "Update", side = "client", query = {}, calls = { "aylo.net.sendToServer" },
     run = function(ctx)
         if not sent and engine.net.sendToServer(ctx, "native.Ping", { n = 42, who = "me" }) then
             sent = true
@@ -393,12 +393,12 @@ engine.ecs.system("native.Read", {
 })
 )";
     Pair pair{
-        "rtype-packets-native", std::string{kNativeServer}, std::string{kNativeClient}, kTickRate,
-        [](rtype::replication::packet::PacketRegistry& registry) {
-            using rtype::replication::packet::PacketField;
-            using rtype::replication::packet::PacketType;
+        "aylo-packets-native", std::string{kNativeServer}, std::string{kNativeClient}, kTickRate,
+        [](aylo::replication::packet::PacketRegistry& registry) {
+            using aylo::replication::packet::PacketField;
+            using aylo::replication::packet::PacketType;
             registry.declare({.name = "native.Ping",
-                              .direction = rtype::replication::packet::PacketDirection::kToServer,
+                              .direction = aylo::replication::packet::PacketDirection::kToServer,
                               .channel = network::Channel::kReliable,
                               .fields = {PacketField{.name = "n", .type = PacketType::kU8, .maxLength = 0},
                                          PacketField{.name = "who", .type = PacketType::kString, .maxLength = 8}}});
@@ -409,12 +409,12 @@ engine.ecs.system("native.Read", {
 }
 
 TEST(ScriptPackets, AMalformedPacketIsRefusedBeforeItIsQueued) {
-    Pair pair{"rtype-packets-malformed", withShared(kServer), withShared(kClient)};
+    Pair pair{"aylo-packets-malformed", withShared(kServer), withShared(kClient)};
     ASSERT_TRUE(pair.runUntil([&] { return pair.clientReceived.size() >= 3; }));
     const std::size_t before = pair.state().droppedPacketCount();
 
     // A custom packet whose body no schema accepts.
-    const network::Bytes garbage{static_cast<std::byte>(rtype::replication::MessageType::kCustomPacket), std::byte{1},
+    const network::Bytes garbage{static_cast<std::byte>(aylo::replication::MessageType::kCustomPacket), std::byte{1},
                                  std::byte{2}, std::byte{3}};
     ASSERT_TRUE(pair.runUntil([&] { return pair.clientState().sendPacket(network::Channel::kReliable, garbage); }));
     ASSERT_TRUE(pair.runUntil([&] { return pair.state().droppedPacketCount() > before; }));
@@ -423,14 +423,14 @@ TEST(ScriptPackets, AMalformedPacketIsRefusedBeforeItIsQueued) {
 }
 
 TEST(ScriptPackets, RefusesADeclarationAfterTheNetworkStarted) {
-    Pair pair{"rtype-packets-late", withShared(kServer), withShared(kClient)};
+    Pair pair{"aylo-packets-late", withShared(kServer), withShared(kClient)};
     pair.frame();
-    auto registry = pair.server->getWorld().getResources().getMut<rtype::replication::packet::PacketRegistry>();
+    auto registry = pair.server->getWorld().getResources().getMut<aylo::replication::packet::PacketRegistry>();
 
     EXPECT_TRUE(registry->isFrozen());
-    rtype::replication::packet::PacketSchema late{
+    aylo::replication::packet::PacketSchema late{
         .name = "game.Late", .direction = {}, .channel = network::Channel::kReliable, .fields = {}};
-    EXPECT_THROW(registry->declare(late), rtype::replication::exceptions::PacketException);
+    EXPECT_THROW(registry->declare(late), aylo::replication::exceptions::PacketException);
     // A reload declares the packets again, unchanged: accepted.
     EXPECT_NO_THROW(registry->declare(*registry->find("game.Buy")));
 }
@@ -438,10 +438,10 @@ TEST(ScriptPackets, RefusesADeclarationAfterTheNetworkStarted) {
 TEST(ScriptPackets, AnUnreliableCommandWaitsUntilTheServerAnswered) {
     // The transport hands a datagram's unreliable messages to the server before its reliable ones, so a command sent
     // in the datagram of `Ready` is dropped as "not ready". The client therefore refuses it until the server spoke.
-    Pair pair{"rtype-packets-ready", withShared(kServer), withShared(kClient)};
-    const auto& registry = *pair.client->getWorld().getResources().get<rtype::replication::packet::PacketRegistry>();
+    Pair pair{"aylo-packets-ready", withShared(kServer), withShared(kClient)};
+    const auto& registry = *pair.client->getWorld().getResources().get<aylo::replication::packet::PacketRegistry>();
     const auto& schema = *registry.find("game.Buy");
-    const auto message = rtype::replication::packet::encodePacket(schema, {std::string{"laser"}, 1.0});
+    const auto message = aylo::replication::packet::encodePacket(schema, {std::string{"laser"}, 1.0});
     ASSERT_TRUE(pair.runUntil([&] { return pair.clientState().manifestStatus() == ManifestStatus::kAccepted; }));
 
     // The manifest is accepted, `Ready` is on its way and nothing came back yet.
@@ -461,7 +461,7 @@ TEST(ScriptPackets, AnUnreliableCommandWaitsUntilTheServerAnswered) {
 }
 
 TEST(ScriptPackets, TheServerPushesASnapshotAtTenHertzWhileCommandsFlow) {
-    Pair pair{"rtype-packets-rate", withShared(kServer), withShared(kClient), 10};
+    Pair pair{"aylo-packets-rate", withShared(kServer), withShared(kClient), 10};
     std::set<std::uint32_t> ticks;
     std::set<std::uint32_t> applied;
 

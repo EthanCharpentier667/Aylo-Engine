@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ShapeInstanceTests
 */
@@ -13,16 +13,16 @@
 #include <glm/ext/vector_float4.hpp>
 #include <vulkan/vulkan_raii.hpp>
 
+#include "aylo/contract/renderer/drawing/BlendMode.hpp"
+#include "aylo/contract/renderer/drawing/Shape.hpp"
 #include "render/vulkan/rendering/Blend.hpp"
 #include "render/vulkan/rendering/ShapeInstance.hpp"
-#include "rtype/contract/renderer/drawing/BlendMode.hpp"
-#include "rtype/contract/renderer/drawing/Shape.hpp"
 
 namespace {
-using rtype::contract::renderer::Shape;
-using rtype::contract::renderer::ShapeKind;
-using rtype::render::vulkan::rendering::ShapeInstance;
-using rtype::render::vulkan::rendering::ShapeInstanceKind;
+using aylo::contract::renderer::Shape;
+using aylo::contract::renderer::ShapeKind;
+using aylo::render::vulkan::rendering::ShapeInstance;
+using aylo::render::vulkan::rendering::ShapeInstanceKind;
 
 constexpr float kTolerance = 1e-5F;
 
@@ -114,18 +114,18 @@ TEST(ShapeInstance, KeepsItsColoursAndOutline) {
 }
 
 TEST(ShapeInstance, BlendsOrAddsButNeverCutsOut) {
-    using rtype::contract::renderer::BlendMode;
-    EXPECT_EQ(ShapeInstance::fromShape(Shape{}).blend, rtype::render::vulkan::rendering::kBlendAlpha);
+    using aylo::contract::renderer::BlendMode;
+    EXPECT_EQ(ShapeInstance::fromShape(Shape{}).blend, aylo::render::vulkan::rendering::kBlendAlpha);
     EXPECT_EQ(ShapeInstance::fromShape(Shape{.blend = BlendMode::kAdditive}).blend,
-              rtype::render::vulkan::rendering::kBlendAdditive);
+              aylo::render::vulkan::rendering::kBlendAdditive);
     // A cutout would lose the antialiased edge: drawn as kAlpha.
     EXPECT_EQ(ShapeInstance::fromShape(Shape{.blend = BlendMode::kCutout}).blend,
-              rtype::render::vulkan::rendering::kBlendAlpha);
+              aylo::render::vulkan::rendering::kBlendAlpha);
 }
 
 TEST(ShapeInstance, KeepsThePaddingReadWithItsKindZero) {
     const ShapeInstance instance = ShapeInstance::fromShape(
-        Shape{.kind = ShapeKind::kCircle, .blend = rtype::contract::renderer::BlendMode::kAdditive});
+        Shape{.kind = ShapeKind::kCircle, .blend = aylo::contract::renderer::BlendMode::kAdditive});
     EXPECT_EQ(instance.padding, 0U);
 }
 

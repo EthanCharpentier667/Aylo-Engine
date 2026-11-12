@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ParticleRandomTests
 */
@@ -12,13 +12,13 @@
 #include <cstdint>
 #include <set>
 
-#include "rtype/contract/renderer/particle/ParticleRandom.hpp"
+#include "aylo/contract/renderer/particle/ParticleRandom.hpp"
 
 namespace {
-using rtype::contract::renderer::particleRandom;
-using rtype::contract::renderer::particleRandomFloat;
-using rtype::contract::renderer::ParticleRandomStream;
-using rtype::contract::renderer::pcgHash;
+using aylo::contract::renderer::particleRandom;
+using aylo::contract::renderer::particleRandomFloat;
+using aylo::contract::renderer::ParticleRandomStream;
+using aylo::contract::renderer::pcgHash;
 
 constexpr std::uint32_t kDraws = 10000;
 

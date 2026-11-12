@@ -1,6 +1,6 @@
 ---
 name: verify
-description: Verify a change in the R-Type repository against the definition of done before reporting it finished or opening a pull request. Use when you finished editing code, docs or scripts, when asked to "check", "verify", "test", "lint" or "make sure it builds", before committing or opening a pull request, and whenever you are about to say a task is done.
+description: Verify a change in the Aylo-Engine repository against the definition of done before reporting it finished or opening a pull request. Use when you finished editing code, docs or scripts, when asked to "check", "verify", "test", "lint" or "make sure it builds", before committing or opening a pull request, and whenever you are about to say a task is done.
 ---
 
 # Verify a change
@@ -11,7 +11,7 @@ outcome. CI runs the same checks on Linux, macOS and Windows.
 ## 1. Configure and build, with the tests
 
 ```sh
-xmake f -y --Tests=y        # add --rtype_duel=y or --AllExamples=y if your change touches an example
+xmake f -y --Tests=y        # add --aylo_duel=y or --AllExamples=y if your change touches an example
 xmake build -y
 ```
 

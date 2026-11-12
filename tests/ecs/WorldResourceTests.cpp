@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** WorldResourceTests
 */
@@ -18,20 +18,20 @@
 #include <utility>
 #include <vector>
 
-#include "rtype/ecs/change/ComponentTicks.hpp"
-#include "rtype/ecs/change/Mut.hpp"
-#include "rtype/ecs/change/Tick.hpp"
-#include "rtype/ecs/component/ComponentInfo.hpp"
-#include "rtype/ecs/component/ComponentTraits.hpp"
-#include "rtype/ecs/error/Error.hpp"
-#include "rtype/ecs/error/Result.hpp"
-#include "rtype/ecs/exceptions/ComponentExceptions.hpp"
-#include "rtype/ecs/exceptions/MissingResourceException.hpp"
-#include "rtype/ecs/exceptions/ResourceExceptions.hpp"
-#include "rtype/ecs/resource/ResourceInfo.hpp"
-#include "rtype/ecs/resource/ResourceTraits.hpp"
-#include "rtype/ecs/storage/ViewAs.hpp"
-#include "rtype/ecs/world/World.hpp"
+#include "aylo/ecs/change/ComponentTicks.hpp"
+#include "aylo/ecs/change/Mut.hpp"
+#include "aylo/ecs/change/Tick.hpp"
+#include "aylo/ecs/component/ComponentInfo.hpp"
+#include "aylo/ecs/component/ComponentTraits.hpp"
+#include "aylo/ecs/error/Error.hpp"
+#include "aylo/ecs/error/Result.hpp"
+#include "aylo/ecs/exceptions/ComponentExceptions.hpp"
+#include "aylo/ecs/exceptions/MissingResourceException.hpp"
+#include "aylo/ecs/exceptions/ResourceExceptions.hpp"
+#include "aylo/ecs/resource/ResourceInfo.hpp"
+#include "aylo/ecs/resource/ResourceTraits.hpp"
+#include "aylo/ecs/storage/ViewAs.hpp"
+#include "aylo/ecs/world/World.hpp"
 
 namespace {
 /// @brief Number of Counter instances alive, to detect leaks and double destruction.
@@ -48,35 +48,35 @@ struct Counter {
 };
 }  // namespace
 
-namespace rtype::test::world_resource {
+namespace aylo::test::world_resource {
 struct Time {
     float delta;
     float fixedDelta;
 };
-RTYPE_ECS_RESOURCE(Time, "test.worldres.Time");
+AYLO_ECS_RESOURCE(Time, "test.worldres.Time");
 
 struct Backend {
     std::unique_ptr<std::int32_t> window;
 };
-RTYPE_ECS_RESOURCE(Backend, "test.worldres.Backend");
+AYLO_ECS_RESOURCE(Backend, "test.worldres.Backend");
 
 struct Assets {
     std::vector<std::int32_t> textures;
     Counter counter;
 };
-RTYPE_ECS_RESOURCE(Assets, "test.worldres.Assets");
+AYLO_ECS_RESOURCE(Assets, "test.worldres.Assets");
 
 struct Paused {};
-RTYPE_ECS_RESOURCE(Paused, "test.worldres.Paused");
+AYLO_ECS_RESOURCE(Paused, "test.worldres.Paused");
 
 /// @brief A component under Time's name: refused, since a name is either a component or a resource.
 struct TimeComponent {
     float value;
 };
-RTYPE_ECS_COMPONENT(TimeComponent, "test.worldres.Time", value);
-}  // namespace rtype::test::world_resource
+AYLO_ECS_COMPONENT(TimeComponent, "test.worldres.Time", value);
+}  // namespace aylo::test::world_resource
 
-namespace wres = rtype::test::world_resource;
+namespace wres = aylo::test::world_resource;
 
 namespace {
 /// @brief The C++ view of a Score value, which only exists as a run-time description in the world.
@@ -91,13 +91,13 @@ std::span<const std::byte> bytesOf(const T& value) {
 }
 
 /// @return A run-time description, as a Luau script would provide it.
-rtype::ecs::ResourceInfo makeScore() {
-    return rtype::ecs::ResourceInfo{.type = {.name = "test.worldres.Score", .size = 4, .alignment = 4}};
+aylo::ecs::ResourceInfo makeScore() {
+    return aylo::ecs::ResourceInfo{.type = {.name = "test.worldres.Score", .size = 4, .alignment = 4}};
 }
 }  // namespace
 
 TEST(WorldResource, StartsWithoutResources) {
-    const rtype::ecs::World world;
+    const aylo::ecs::World world;
     EXPECT_EQ(world.getResources().getRegistry().getCount(), 0U);
     EXPECT_FALSE(world.getResources().has<wres::Time>());
     EXPECT_EQ(world.getResources().get<wres::Time>(), nullptr);
@@ -105,7 +105,7 @@ TEST(WorldResource, StartsWithoutResources) {
 }
 
 TEST(WorldResource, InsertsAndReadsACppResource) {
-    rtype::ecs::World world;
+    aylo::ecs::World world;
     world.getResources().insert(wres::Time{.delta = 0.5F, .fixedDelta = 0.25F});
     ASSERT_TRUE(world.getResources().has<wres::Time>());
     const wres::Time* time = world.getResources().get<wres::Time>();
@@ -116,7 +116,7 @@ TEST(WorldResource, InsertsAndReadsACppResource) {
 }
 
 TEST(WorldResource, InsertReplacesTheValue) {
-    rtype::ecs::World world;
+    aylo::ecs::World world;
     world.getResources().insert(wres::Time{.delta = 1.F, .fixedDelta = 0.F});
     world.getResources().insert(wres::Time{.delta = 2.F, .fixedDelta = 0.F});
     EXPECT_FLOAT_EQ(world.getResources().get<wres::Time>()->delta, 2.F);
@@ -124,8 +124,8 @@ TEST(WorldResource, InsertReplacesTheValue) {
 }
 
 TEST(WorldResource, RegisteringWithoutAValueLeavesItEmpty) {
-    rtype::ecs::World world;
-    const rtype::ecs::ResourceId id = world.getResources().registerType<wres::Time>();
+    aylo::ecs::World world;
+    const aylo::ecs::ResourceId id = world.getResources().registerType<wres::Time>();
     EXPECT_EQ(world.getResources().find("test.worldres.Time"), id);
     EXPECT_FALSE(world.getResources().has<wres::Time>());
     EXPECT_FALSE(world.getResources().getMut<wres::Time>());
@@ -133,7 +133,7 @@ TEST(WorldResource, RegisteringWithoutAValueLeavesItEmpty) {
 }
 
 TEST(WorldResource, RemovesAResourceButKeepsItRegistered) {
-    rtype::ecs::World world;
+    aylo::ecs::World world;
     world.getResources().insert(wres::Time{.delta = 1.F, .fixedDelta = 0.F});
     EXPECT_TRUE(world.getResources().remove<wres::Time>());
     EXPECT_FALSE(world.getResources().has<wres::Time>());
@@ -143,7 +143,7 @@ TEST(WorldResource, RemovesAResourceButKeepsItRegistered) {
 }
 
 TEST(WorldResource, StoresMoveOnlyResources) {
-    rtype::ecs::World world;
+    aylo::ecs::World world;
     world.getResources().insertNonSend(wres::Backend{.window = std::make_unique<std::int32_t>(42)});
     const wres::Backend* backend = world.getResources().get<wres::Backend>();
     ASSERT_NE(backend, nullptr);
@@ -153,20 +153,20 @@ TEST(WorldResource, StoresMoveOnlyResources) {
 }
 
 TEST(WorldResource, RefusesToSwitchTheMainThreadFlag) {
-    rtype::ecs::World world;
+    aylo::ecs::World world;
     world.getResources().insertNonSend(wres::Backend{});
-    EXPECT_THROW(world.getResources().insert(wres::Backend{}), rtype::ecs::exceptions::ResourceRegistrationException);
+    EXPECT_THROW(world.getResources().insert(wres::Backend{}), aylo::ecs::exceptions::ResourceRegistrationException);
     world.getResources().insert(wres::Time{});
     EXPECT_THROW(world.getResources().insertNonSend(wres::Time{}),
-                 rtype::ecs::exceptions::ResourceRegistrationException);
+                 aylo::ecs::exceptions::ResourceRegistrationException);
     EXPECT_THROW(world.getResources().registerType<wres::Time>({.nonSend = true}),
-                 rtype::ecs::exceptions::ResourceRegistrationException);
+                 aylo::ecs::exceptions::ResourceRegistrationException);
 }
 
 TEST(WorldResource, DestroysValuesWhenReplacedRemovedAndDestroyed) {
     liveCounters = 0;
     {
-        rtype::ecs::World world;
+        aylo::ecs::World world;
         world.getResources().insert(wres::Assets{.textures = {1, 2}, .counter = {}});
         EXPECT_EQ(liveCounters, 1);
         world.getResources().insert(wres::Assets{.textures = {3}, .counter = {}});
@@ -181,7 +181,7 @@ TEST(WorldResource, DestroysValuesWhenReplacedRemovedAndDestroyed) {
 }
 
 TEST(WorldResource, StoresEmptyResources) {
-    rtype::ecs::World world;
+    aylo::ecs::World world;
     world.getResources().insert(wres::Paused{});
     EXPECT_TRUE(world.getResources().has<wres::Paused>());
     EXPECT_TRUE(world.getResources().remove<wres::Paused>());
@@ -189,7 +189,7 @@ TEST(WorldResource, StoresEmptyResources) {
 }
 
 TEST(WorldResource, InsertIfAbsentInsertsAMissingResource) {
-    rtype::ecs::World world;
+    aylo::ecs::World world;
     EXPECT_TRUE(world.getResources().insertIfAbsent(wres::Time{.delta = 0.5F, .fixedDelta = 0.25F}));
     const wres::Time* time = world.getResources().get<wres::Time>();
     ASSERT_NE(time, nullptr);
@@ -199,20 +199,20 @@ TEST(WorldResource, InsertIfAbsentInsertsAMissingResource) {
 }
 
 TEST(WorldResource, InsertIfAbsentKeepsAnExistingValueAndItsTicks) {
-    rtype::ecs::World world;
+    aylo::ecs::World world;
     world.advanceChangeTick(3);
     world.getResources().insert(wres::Time{.delta = 1.F, .fixedDelta = 0.F});
     world.advanceChangeTick(2);
     EXPECT_FALSE(world.getResources().insertIfAbsent(wres::Time{.delta = 2.F, .fixedDelta = 0.F}));
     EXPECT_FLOAT_EQ(world.getResources().get<wres::Time>()->delta, 1.F);
-    const std::optional<rtype::ecs::ComponentTicks> ticks = world.getResources().getTicks<wres::Time>();
+    const std::optional<aylo::ecs::ComponentTicks> ticks = world.getResources().getTicks<wres::Time>();
     ASSERT_TRUE(ticks);
     EXPECT_EQ(ticks->added, 3U);
     EXPECT_EQ(ticks->changed, 3U);  // not marked changed
 }
 
 TEST(WorldResource, InsertIfAbsentDefaultsToAValueInitializedResource) {
-    rtype::ecs::World world;
+    aylo::ecs::World world;
     EXPECT_TRUE(world.getResources().insertIfAbsent<wres::Assets>());
     const wres::Assets* assets = world.getResources().get<wres::Assets>();
     ASSERT_NE(assets, nullptr);
@@ -222,7 +222,7 @@ TEST(WorldResource, InsertIfAbsentDefaultsToAValueInitializedResource) {
 TEST(WorldResource, InsertIfAbsentDestroysTheValueItDoesNotInsert) {
     liveCounters = 0;
     {
-        rtype::ecs::World world;
+        aylo::ecs::World world;
         world.getResources().insert(wres::Assets{.textures = {1}, .counter = {}});
         EXPECT_FALSE(world.getResources().insertIfAbsent(wres::Assets{.textures = {2, 3}, .counter = {}}));
         EXPECT_EQ(liveCounters, 1);
@@ -232,14 +232,14 @@ TEST(WorldResource, InsertIfAbsentDestroysTheValueItDoesNotInsert) {
 }
 
 TEST(WorldResource, InsertIfAbsentHandlesEmptyResources) {
-    rtype::ecs::World world;
+    aylo::ecs::World world;
     EXPECT_TRUE(world.getResources().insertIfAbsent<wres::Paused>());
     EXPECT_TRUE(world.getResources().has<wres::Paused>());
     EXPECT_FALSE(world.getResources().insertIfAbsent<wres::Paused>());
 }
 
 TEST(WorldResource, InsertIfAbsentInsertsAgainAfterARemoval) {
-    rtype::ecs::World world;
+    aylo::ecs::World world;
     world.getResources().insert(wres::Time{.delta = 1.F, .fixedDelta = 0.F});
     world.getResources().remove<wres::Time>();
     EXPECT_TRUE(world.getResources().insertIfAbsent(wres::Time{.delta = 2.F, .fixedDelta = 0.F}));
@@ -247,21 +247,21 @@ TEST(WorldResource, InsertIfAbsentInsertsAgainAfterARemoval) {
 }
 
 TEST(WorldResource, InsertIfAbsentRefusesAMainThreadResourceOnlyWhenItInserts) {
-    rtype::ecs::World world;
+    aylo::ecs::World world;
     world.getResources().insertNonSend(wres::Backend{});
     EXPECT_FALSE(world.getResources().insertIfAbsent<wres::Backend>());  // has a value: nothing to refuse
     world.getResources().remove<wres::Backend>();
     EXPECT_THROW(world.getResources().insertIfAbsent<wres::Backend>(),
-                 rtype::ecs::exceptions::ResourceRegistrationException);
+                 aylo::ecs::exceptions::ResourceRegistrationException);
 }
 
 TEST(WorldResource, ANameUsedByAComponentCannotBeAResource) {
-    rtype::ecs::World world;
+    aylo::ecs::World world;
     world.getComponents().registerType<wres::TimeComponent>();
     try {
         world.getResources().insert(wres::Time{.delta = 3.F, .fixedDelta = 0.F});
         FAIL() << "expected the resource to be refused";
-    } catch (const rtype::ecs::exceptions::ResourceRegistrationException& error) {
+    } catch (const aylo::ecs::exceptions::ResourceRegistrationException& error) {
         EXPECT_NE(std::string{error.what()}.find("already used by a component"), std::string::npos) << error.what();
     }
     EXPECT_FALSE(world.getResources().find("test.worldres.Time"));
@@ -269,57 +269,57 @@ TEST(WorldResource, ANameUsedByAComponentCannotBeAResource) {
 }
 
 TEST(WorldResource, ANameUsedByAResourceCannotBeAComponent) {
-    rtype::ecs::World world;
+    aylo::ecs::World world;
     world.getResources().insert(wres::Time{.delta = 3.F, .fixedDelta = 0.F});
     EXPECT_THROW(world.getComponents().registerType<wres::TimeComponent>(),
-                 rtype::ecs::exceptions::ComponentRegistrationException);
-    const rtype::ecs::Entity entity = world.spawn();
+                 aylo::ecs::exceptions::ComponentRegistrationException);
+    const aylo::ecs::Entity entity = world.spawn();
     EXPECT_THROW(world.getComponents().add(entity, wres::TimeComponent{}),
-                 rtype::ecs::exceptions::ComponentRegistrationException);
+                 aylo::ecs::exceptions::ComponentRegistrationException);
     EXPECT_FALSE(world.getComponents().find("test.worldres.Time"));
     EXPECT_FLOAT_EQ(world.getResources().get<wres::Time>()->delta, 3.F);  // the resource is untouched
 }
 
 TEST(WorldResource, RunTimeRegistrationsRefuseTheOtherKindsNames) {
-    rtype::ecs::World world;
+    aylo::ecs::World world;
     world.getComponents().registerType<wres::TimeComponent>();
     world.getResources().insert(wres::Paused{});
-    const rtype::ecs::Result<rtype::ecs::ResourceId> resource = world.getResources().registerType(
-        rtype::ecs::ResourceInfo{.type = {.name = "test.worldres.Time", .size = 4, .alignment = 4}});
+    const aylo::ecs::Result<aylo::ecs::ResourceId> resource = world.getResources().registerType(
+        aylo::ecs::ResourceInfo{.type = {.name = "test.worldres.Time", .size = 4, .alignment = 4}});
     ASSERT_FALSE(resource);
-    EXPECT_EQ(resource.error().getKind(), rtype::ecs::ErrorKind::kNameCollision);
+    EXPECT_EQ(resource.error().getKind(), aylo::ecs::ErrorKind::kNameCollision);
     EXPECT_EQ(std::string{resource.error().getMessage()},
               "Resource 'test.worldres.Time': the name is already used by a component");
-    const rtype::ecs::Result<rtype::ecs::ComponentId> component = world.getComponents().registerType(
-        rtype::ecs::ComponentInfo{.type = {.name = "test.worldres.Paused", .size = 4, .alignment = 4}});
+    const aylo::ecs::Result<aylo::ecs::ComponentId> component = world.getComponents().registerType(
+        aylo::ecs::ComponentInfo{.type = {.name = "test.worldres.Paused", .size = 4, .alignment = 4}});
     ASSERT_FALSE(component);
-    EXPECT_EQ(component.error().getKind(), rtype::ecs::ErrorKind::kNameCollision);
+    EXPECT_EQ(component.error().getKind(), aylo::ecs::ErrorKind::kNameCollision);
     EXPECT_EQ(std::string{component.error().getMessage()},
               "Component 'test.worldres.Paused': the name is already used by a resource");
 }
 
 TEST(WorldResource, WorldsAreIndependent) {
-    rtype::ecs::World first;
-    rtype::ecs::World second;
+    aylo::ecs::World first;
+    aylo::ecs::World second;
     first.getResources().insert(wres::Time{.delta = 1.F, .fixedDelta = 0.F});
     EXPECT_FALSE(second.getResources().has<wres::Time>());
     EXPECT_FALSE(second.getResources().find("test.worldres.Time"));
 }
 
 TEST(WorldResource, MovingKeepsResources) {
-    rtype::ecs::World world;
+    aylo::ecs::World world;
     world.getResources().insert(wres::Time{.delta = 5.F, .fixedDelta = 0.F});
-    const rtype::ecs::World moved{std::move(world)};
+    const aylo::ecs::World moved{std::move(world)};
     ASSERT_TRUE(moved.getResources().has<wres::Time>());
     EXPECT_FLOAT_EQ(moved.getResources().get<wres::Time>()->delta, 5.F);
 }
 
 TEST(WorldResource, AMutStaysValidWhenOtherResourcesAreRegistered) {
-    rtype::ecs::World world;
+    aylo::ecs::World world;
     world.getResources().insert(wres::Time{.delta = 0.F, .fixedDelta = 0.F});
-    rtype::ecs::Mut<wres::Time> time = world.getResources().getMut<wres::Time>();
+    aylo::ecs::Mut<wres::Time> time = world.getResources().getMut<wres::Time>();
     for (int index = 0; index < 64; ++index) {
-        ASSERT_TRUE(world.getResources().registerType(rtype::ecs::ResourceInfo{
+        ASSERT_TRUE(world.getResources().registerType(aylo::ecs::ResourceInfo{
             .type = {.name = std::format("test.worldres.Many{}", index), .size = 4, .alignment = 4}}));
     }
     time->delta = 7.F;
@@ -327,44 +327,44 @@ TEST(WorldResource, AMutStaysValidWhenOtherResourcesAreRegistered) {
 }
 
 TEST(WorldResource, RegistersRunTimeDescriptions) {
-    rtype::ecs::World world;
-    const rtype::ecs::Result<rtype::ecs::ResourceId> id = world.getResources().registerType(makeScore());
+    aylo::ecs::World world;
+    const aylo::ecs::Result<aylo::ecs::ResourceId> id = world.getResources().registerType(makeScore());
     ASSERT_TRUE(id);
     EXPECT_EQ(world.getResources().find("test.worldres.Score"), *id);
     EXPECT_FALSE(world.getResources().has(*id));
-    const rtype::ecs::Result<rtype::ecs::ResourceId> invalid = world.getResources().registerType(
-        rtype::ecs::ResourceInfo{.type = {.name = "test.worldres.Bad", .size = 4, .alignment = 3}});
+    const aylo::ecs::Result<aylo::ecs::ResourceId> invalid = world.getResources().registerType(
+        aylo::ecs::ResourceInfo{.type = {.name = "test.worldres.Bad", .size = 4, .alignment = 3}});
     ASSERT_FALSE(invalid);
-    EXPECT_EQ(invalid.error().getKind(), rtype::ecs::ErrorKind::kInvalidType);
+    EXPECT_EQ(invalid.error().getKind(), aylo::ecs::ErrorKind::kInvalidType);
 }
 
 TEST(WorldResource, InsertsAndReadsARunTimeResourceById) {
-    rtype::ecs::World world;
-    const rtype::ecs::ResourceId id = *world.getResources().registerType(makeScore());
+    aylo::ecs::World world;
+    const aylo::ecs::ResourceId id = *world.getResources().registerType(makeScore());
     EXPECT_TRUE(world.getResources().insert(id, bytesOf(ScoreValue{.points = 100})));
     ASSERT_TRUE(world.getResources().has(id));
-    EXPECT_EQ(rtype::ecs::storage::viewAs<ScoreValue>(world.getResources().get(id))->points, 100);
+    EXPECT_EQ(aylo::ecs::storage::viewAs<ScoreValue>(world.getResources().get(id))->points, 100);
     EXPECT_TRUE(world.getResources().insert(id, bytesOf(ScoreValue{.points = 200})));
-    EXPECT_EQ(rtype::ecs::storage::viewAs<ScoreValue>(world.getResources().get(id))->points, 200);
+    EXPECT_EQ(aylo::ecs::storage::viewAs<ScoreValue>(world.getResources().get(id))->points, 200);
     EXPECT_TRUE(world.getResources().remove(id));
     EXPECT_FALSE(world.getResources().has(id));
     EXPECT_TRUE(world.getResources().get(id).empty());
 }
 
 TEST(WorldResource, RefusesInvalidInsertsById) {
-    rtype::ecs::World world;
-    const rtype::ecs::ResourceId score = *world.getResources().registerType(makeScore());
-    const rtype::ecs::ResourceId backend = world.getResources().registerType<wres::Backend>();
+    aylo::ecs::World world;
+    const aylo::ecs::ResourceId score = *world.getResources().registerType(makeScore());
+    const aylo::ecs::ResourceId backend = world.getResources().registerType<wres::Backend>();
     EXPECT_FALSE(world.getResources().insert(score, bytesOf(std::int64_t{1})));
     EXPECT_FALSE(world.getResources().insert(backend, bytesOf(wres::Backend{})));
-    EXPECT_FALSE(world.getResources().insert(rtype::ecs::ResourceId{99}, bytesOf(ScoreValue{.points = 1})));
+    EXPECT_FALSE(world.getResources().insert(aylo::ecs::ResourceId{99}, bytesOf(ScoreValue{.points = 1})));
     EXPECT_FALSE(world.getResources().has(score));
     EXPECT_FALSE(world.getResources().has(backend));
 }
 
 TEST(WorldResource, AnswersNothingForAnUnknownId) {
-    rtype::ecs::World world;
-    const rtype::ecs::ResourceId unknown{7};
+    aylo::ecs::World world;
+    const aylo::ecs::ResourceId unknown{7};
     EXPECT_FALSE(world.getResources().has(unknown));
     EXPECT_TRUE(world.getResources().get(unknown).empty());
     EXPECT_TRUE(world.getResources().getMut(unknown).empty());
@@ -373,19 +373,19 @@ TEST(WorldResource, AnswersNothingForAnUnknownId) {
 }
 
 TEST(WorldResource, TypedAndErasedCallsSeeTheSameData) {
-    rtype::ecs::World world;
+    aylo::ecs::World world;
     world.getResources().insert(wres::Time{.delta = 1.F, .fixedDelta = 2.F});
-    const rtype::ecs::ResourceId id = *world.getResources().find("test.worldres.Time");
+    const aylo::ecs::ResourceId id = *world.getResources().find("test.worldres.Time");
     EXPECT_EQ(world.getResources().get(id).data(),
               reinterpret_cast<const std::byte*>(world.getResources().get<wres::Time>()));
     EXPECT_EQ(world.getResources().getTicks(id)->changed, world.getResources().getTicks<wres::Time>()->changed);
 }
 
 TEST(WorldResource, InsertingStampsBothTicksAndReplacingOnlyTheChangedTick) {
-    rtype::ecs::World world;
+    aylo::ecs::World world;
     world.advanceChangeTick(3);
     world.getResources().insert(wres::Time{});
-    std::optional<rtype::ecs::ComponentTicks> ticks = world.getResources().getTicks<wres::Time>();
+    std::optional<aylo::ecs::ComponentTicks> ticks = world.getResources().getTicks<wres::Time>();
     ASSERT_TRUE(ticks);
     EXPECT_EQ(ticks->added, 3U);
     EXPECT_EQ(ticks->changed, 3U);
@@ -397,20 +397,20 @@ TEST(WorldResource, InsertingStampsBothTicksAndReplacingOnlyTheChangedTick) {
 }
 
 TEST(WorldResource, ReadingThroughMutDoesNotMarkChanged) {
-    rtype::ecs::World world;
+    aylo::ecs::World world;
     world.getResources().insert(wres::Time{.delta = 4.F, .fixedDelta = 0.F});
     world.advanceChangeTick();
-    const rtype::ecs::Mut<wres::Time> time = world.getResources().getMut<wres::Time>();
+    const aylo::ecs::Mut<wres::Time> time = world.getResources().getMut<wres::Time>();
     ASSERT_TRUE(time);
     EXPECT_FLOAT_EQ(time.get().delta, 4.F);
     EXPECT_EQ(world.getResources().getTicks<wres::Time>()->changed, 0U);
 }
 
 TEST(WorldResource, WritingThroughMutMarksChanged) {
-    rtype::ecs::World world;
+    aylo::ecs::World world;
     world.getResources().insert(wres::Time{.delta = 0.F, .fixedDelta = 0.F});
     world.advanceChangeTick(4);
-    rtype::ecs::Mut<wres::Time> time = world.getResources().getMut<wres::Time>();
+    aylo::ecs::Mut<wres::Time> time = world.getResources().getMut<wres::Time>();
     time->delta = 9.F;
     EXPECT_FLOAT_EQ(world.getResources().get<wres::Time>()->delta, 9.F);
     EXPECT_EQ(world.getResources().getTicks<wres::Time>()->added, 0U);
@@ -418,8 +418,8 @@ TEST(WorldResource, WritingThroughMutMarksChanged) {
 }
 
 TEST(WorldResource, TypeErasedGetMutMarksOnAccess) {
-    rtype::ecs::World world;
-    const rtype::ecs::ResourceId id = *world.getResources().registerType(makeScore());
+    aylo::ecs::World world;
+    const aylo::ecs::ResourceId id = *world.getResources().registerType(makeScore());
     world.getResources().insert(id, bytesOf(ScoreValue{.points = 1}));
     world.advanceChangeTick(6);
     const std::span<std::byte> bytes = world.getResources().getMut(id);
@@ -428,26 +428,26 @@ TEST(WorldResource, TypeErasedGetMutMarksOnAccess) {
 }
 
 TEST(WorldResource, ChangeDetectionSurvivesTheTickWrapping) {
-    rtype::ecs::World world;
+    aylo::ecs::World world;
     world.advanceChangeTick();
-    world.getResources().insert(wres::Time{});             // added and changed at tick 1
-    rtype::ecs::Tick lastRun = world.advanceChangeTick();  // a system runs at tick 2 and sees it
+    world.getResources().insert(wres::Time{});            // added and changed at tick 1
+    aylo::ecs::Tick lastRun = world.advanceChangeTick();  // a system runs at tick 2 and sees it
     // Five billion ticks later, past the 32-bit wrap; the system keeps clamping its own last run, as it must.
     for (int step = 0; step < 5; ++step) {
         world.advanceChangeTick(1'000'000'000);
-        rtype::ecs::clampTick(lastRun, world.getChangeTick());
+        aylo::ecs::clampTick(lastRun, world.getChangeTick());
     }
-    const rtype::ecs::Tick thisRun = world.getChangeTick();
-    const std::optional<rtype::ecs::ComponentTicks> untouched = world.getResources().getTicks<wres::Time>();
+    const aylo::ecs::Tick thisRun = world.getChangeTick();
+    const std::optional<aylo::ecs::ComponentTicks> untouched = world.getResources().getTicks<wres::Time>();
     ASSERT_TRUE(untouched);
-    EXPECT_LE(thisRun - untouched->changed, rtype::ecs::kMaxChangeAge);  // clamped by the world
-    EXPECT_FALSE(untouched->isChanged(lastRun, thisRun));                // still old, not "new" after the wrap
-    world.getResources().getMut<wres::Time>()->delta = 1.F;              // now written
+    EXPECT_LE(thisRun - untouched->changed, aylo::ecs::kMaxChangeAge);  // clamped by the world
+    EXPECT_FALSE(untouched->isChanged(lastRun, thisRun));               // still old, not "new" after the wrap
+    world.getResources().getMut<wres::Time>()->delta = 1.F;             // now written
     EXPECT_TRUE(world.getResources().getTicks<wres::Time>()->isChanged(lastRun, thisRun));
 }
 
 TEST(WorldResource, RequireReturnsThePresentValue) {
-    rtype::ecs::World world;
+    aylo::ecs::World world;
     world.getResources().insert(wres::Time{.delta = 1.5F, .fixedDelta = 0.F});
     EXPECT_FLOAT_EQ(world.getResources().require<wres::Time>().delta, 1.5F);
     EXPECT_EQ(&world.getResources().require<wres::Time>(), world.getResources().get<wres::Time>());
@@ -455,35 +455,35 @@ TEST(WorldResource, RequireReturnsThePresentValue) {
 }
 
 TEST(WorldResource, RequireThrowsForAnUnregisteredResource) {
-    rtype::ecs::World world;
+    aylo::ecs::World world;
     EXPECT_THROW(static_cast<void>(world.getResources().require<wres::Time>()),
-                 rtype::ecs::exceptions::MissingResourceException);
+                 aylo::ecs::exceptions::MissingResourceException);
     EXPECT_THROW(static_cast<void>(world.getResources().requireMut<wres::Time>()),
-                 rtype::ecs::exceptions::MissingResourceException);
+                 aylo::ecs::exceptions::MissingResourceException);
 }
 
 TEST(WorldResource, RequireThrowsForARegisteredResourceWithoutAValue) {
-    rtype::ecs::World world;
+    aylo::ecs::World world;
     world.getResources().insert(wres::Time{});
     world.getResources().remove<wres::Time>();
     EXPECT_THROW(static_cast<void>(world.getResources().require<wres::Time>()),
-                 rtype::ecs::exceptions::MissingResourceException);
+                 aylo::ecs::exceptions::MissingResourceException);
     EXPECT_THROW(static_cast<void>(world.getResources().requireMut<wres::Time>()),
-                 rtype::ecs::exceptions::MissingResourceException);
+                 aylo::ecs::exceptions::MissingResourceException);
 }
 
 TEST(WorldResource, MissingResourceExceptionNamesTheResource) {
-    const rtype::ecs::World world;
+    const aylo::ecs::World world;
     try {
         static_cast<void>(world.getResources().require<wres::Time>());
         FAIL() << "require did not throw";
-    } catch (const rtype::ecs::exceptions::MissingResourceException& error) {
+    } catch (const aylo::ecs::exceptions::MissingResourceException& error) {
         EXPECT_NE(std::string_view{error.what()}.find("test.worldres.Time"), std::string_view::npos);
     }
 }
 
 TEST(WorldResource, RequireDoesNotMarkChangedButWritingThroughRequireMutDoes) {
-    rtype::ecs::World world;
+    aylo::ecs::World world;
     world.getResources().insert(wres::Time{.delta = 0.F, .fixedDelta = 0.F});
     world.advanceChangeTick(3);
     static_cast<void>(world.getResources().require<wres::Time>());

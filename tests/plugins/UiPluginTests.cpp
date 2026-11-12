@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** UiPluginTests
 */
@@ -15,49 +15,49 @@
 #include <vector>
 
 #include "FakeBackend.hpp"
+#include "aylo/contract/platform/event/Event.hpp"
+#include "aylo/contract/platform/input/Key.hpp"
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/command/Commands.hpp"
+#include "aylo/ecs/component/Components.hpp"
+#include "aylo/ecs/entity/Entity.hpp"
+#include "aylo/ecs/event/EventCursor.hpp"
+#include "aylo/ecs/event/Events.hpp"
+#include "aylo/ecs/resource/Resources.hpp"
+#include "aylo/ecs/schedule/RunMode.hpp"
+#include "aylo/ecs/world/World.hpp"
 #include "plugins/ui/UiComponents.hpp"
 #include "plugins/ui/UiEvents.hpp"
 #include "plugins/ui/UiNode.hpp"
 #include "plugins/ui/UiPlugin.hpp"
 #include "plugins/ui/UiResources.hpp"
 #include "plugins/ui/UiWidgets.hpp"
-#include "rtype/contract/platform/event/Event.hpp"
-#include "rtype/contract/platform/input/Key.hpp"
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/command/Commands.hpp"
-#include "rtype/ecs/component/Components.hpp"
-#include "rtype/ecs/entity/Entity.hpp"
-#include "rtype/ecs/event/EventCursor.hpp"
-#include "rtype/ecs/event/Events.hpp"
-#include "rtype/ecs/resource/Resources.hpp"
-#include "rtype/ecs/schedule/RunMode.hpp"
-#include "rtype/ecs/world/World.hpp"
 
-namespace event = rtype::contract::platform::event;
-using rtype::contract::platform::input::GamepadButton;
-using rtype::contract::platform::input::Key;
-using rtype::contract::platform::input::MouseButton;
-using rtype::ecs::Entity;
-using rtype::plugins::ui::UiBackground;
-using rtype::plugins::ui::UiButton;
-using rtype::plugins::ui::UiClicked;
-using rtype::plugins::ui::UiComputed;
-using rtype::plugins::ui::UiFocus;
-using rtype::plugins::ui::UiInteraction;
-using rtype::plugins::ui::UiLength;
-using rtype::plugins::ui::UiNode;
-using rtype::plugins::ui::UiOverflow;
-using rtype::plugins::ui::UiPlugin;
-using rtype::plugins::ui::UiPointer;
-using rtype::plugins::ui::UiPosition;
-using rtype::plugins::ui::UiScroll;
-using rtype::plugins::ui::UiSlider;
-using rtype::plugins::ui::UiText;
-using rtype::plugins::ui::UiTextChanged;
-using rtype::plugins::ui::UiTextInput;
-using rtype::plugins::ui::UiTextSubmitted;
-using rtype::plugins::ui::UiToggle;
-using rtype::plugins::ui::UiValueChanged;
+namespace event = aylo::contract::platform::event;
+using aylo::contract::platform::input::GamepadButton;
+using aylo::contract::platform::input::Key;
+using aylo::contract::platform::input::MouseButton;
+using aylo::ecs::Entity;
+using aylo::plugins::ui::UiBackground;
+using aylo::plugins::ui::UiButton;
+using aylo::plugins::ui::UiClicked;
+using aylo::plugins::ui::UiComputed;
+using aylo::plugins::ui::UiFocus;
+using aylo::plugins::ui::UiInteraction;
+using aylo::plugins::ui::UiLength;
+using aylo::plugins::ui::UiNode;
+using aylo::plugins::ui::UiOverflow;
+using aylo::plugins::ui::UiPlugin;
+using aylo::plugins::ui::UiPointer;
+using aylo::plugins::ui::UiPosition;
+using aylo::plugins::ui::UiScroll;
+using aylo::plugins::ui::UiSlider;
+using aylo::plugins::ui::UiText;
+using aylo::plugins::ui::UiTextChanged;
+using aylo::plugins::ui::UiTextInput;
+using aylo::plugins::ui::UiTextSubmitted;
+using aylo::plugins::ui::UiToggle;
+using aylo::plugins::ui::UiValueChanged;
 
 namespace {
 /// @return A node of 100 by 40 pixels at (@p x, @p y).
@@ -72,9 +72,9 @@ UiNode box(const float x, const float y) {
 /// @brief An App with the UiPlugin over the fake platform and renderer.
 class UiApp {
   public:
-    UiApp() : _state{std::make_shared<rtype::test::plugins::FakeBackendState>()}, _app{rtype::ecs::RunMode::kClient} {
-        rtype::test::plugins::addDrawingPlugins(_app, rtype::test::plugins::makeFakeRegistry(_state),
-                                                rtype::test::plugins::makeFakeSettings());
+    UiApp() : _state{std::make_shared<aylo::test::plugins::FakeBackendState>()}, _app{aylo::ecs::RunMode::kClient} {
+        aylo::test::plugins::addDrawingPlugins(_app, aylo::test::plugins::makeFakeRegistry(_state),
+                                               aylo::test::plugins::makeFakeSettings());
         _app.addPlugin(UiPlugin{});
     }
     ~UiApp() = default;
@@ -86,7 +86,7 @@ class UiApp {
     /// @return A new entity with @p components.
     template <typename... Components>
     Entity spawn(Components... components) {
-        rtype::ecs::Commands commands{_app.getWorld()};
+        aylo::ecs::Commands commands{_app.getWorld()};
         auto spawned = commands.spawn();
         (spawned.add(std::move(components)), ...);
         const Entity entity = spawned.getEntity();
@@ -98,7 +98,7 @@ class UiApp {
     void parent(const Entity child, const Entity parent) { _app.getWorld().setParent(child, parent); }
 
     /// @brief Runs one frame, with @p events from the platform.
-    void frame(std::vector<rtype::contract::platform::Event> events = {}) {
+    void frame(std::vector<aylo::contract::platform::Event> events = {}) {
         _state->frames.push_back(std::move(events));
         _app.runFrame();
     }
@@ -131,11 +131,11 @@ class UiApp {
         return _app.getWorld().getEvents().getCount<T>();
     }
 
-    [[nodiscard]] rtype::test::plugins::FakeBackendState& state() noexcept { return *_state; }
+    [[nodiscard]] aylo::test::plugins::FakeBackendState& state() noexcept { return *_state; }
 
   private:
-    std::shared_ptr<rtype::test::plugins::FakeBackendState> _state;  ///< Drives the fake backend.
-    rtype::ecs::App _app;                                            ///< The App.
+    std::shared_ptr<aylo::test::plugins::FakeBackendState> _state;  ///< Drives the fake backend.
+    aylo::ecs::App _app;                                            ///< The App.
 };
 }  // namespace
 

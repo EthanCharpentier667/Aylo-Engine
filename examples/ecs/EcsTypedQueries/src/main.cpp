@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** main
 */
@@ -12,44 +12,44 @@
 #include <format>
 #include <iostream>
 
-#include "rtype/ecs/component/ComponentTraits.hpp"
-#include "rtype/ecs/entity/Entity.hpp"
-#include "rtype/ecs/query/Query.hpp"
-#include "rtype/ecs/query/QueryTerms.hpp"
-#include "rtype/ecs/system/System.hpp"
-#include "rtype/ecs/world/World.hpp"
+#include "aylo/ecs/component/ComponentTraits.hpp"
+#include "aylo/ecs/entity/Entity.hpp"
+#include "aylo/ecs/query/Query.hpp"
+#include "aylo/ecs/query/QueryTerms.hpp"
+#include "aylo/ecs/system/System.hpp"
+#include "aylo/ecs/world/World.hpp"
 
-using namespace rtype::ecs;
+using namespace aylo::ecs;
 
 namespace {
 struct Position {
     float x;
     float y;
 };
-RTYPE_ECS_COMPONENT(Position, "example.Position", x, y);
+AYLO_ECS_COMPONENT(Position, "example.Position", x, y);
 
 struct Velocity {
     float x;
     float y;
 };
-RTYPE_ECS_COMPONENT(Velocity, "example.Velocity", x, y);
+AYLO_ECS_COMPONENT(Velocity, "example.Velocity", x, y);
 
 struct Health {
     int value;
 };
-RTYPE_ECS_COMPONENT(Health, "example.Health", value);
+AYLO_ECS_COMPONENT(Health, "example.Health", value);
 
 struct Shield {
     int strength;
 };
-RTYPE_ECS_COMPONENT(Shield, "example.Shield", strength);
+AYLO_ECS_COMPONENT(Shield, "example.Shield", strength);
 
 /// @brief Tags: no data.
 struct Player {};
-RTYPE_ECS_COMPONENT(Player, "example.Player");
+AYLO_ECS_COMPONENT(Player, "example.Player");
 
 struct Dead {};
-RTYPE_ECS_COMPONENT(Dead, "example.Dead");
+AYLO_ECS_COMPONENT(Dead, "example.Dead");
 
 /// @brief Position written (Mut<Position>), Velocity read (const Velocity&): only entities having both.
 void move(Query<Position, const Velocity> query) {

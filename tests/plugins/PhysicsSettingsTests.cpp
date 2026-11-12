@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** PhysicsSettingsTests
 */
@@ -16,10 +16,10 @@
 #include "plugins/physics/debug/PhysicsDebugSettings.hpp"
 
 namespace {
-using rtype::core::config::Settings;
-using rtype::core::config::exceptions::SettingsException;
-using rtype::plugins::physics::PhysicsSettings;
-using rtype::plugins::physics::debug::PhysicsDebugSettings;
+using aylo::core::config::Settings;
+using aylo::core::config::exceptions::SettingsException;
+using aylo::plugins::physics::PhysicsSettings;
+using aylo::plugins::physics::debug::PhysicsDebugSettings;
 
 /// @return A section holding @p key only.
 Settings sectionWith(const char* key, Settings::Value value) {

@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** FakeClock
 */
@@ -9,9 +9,9 @@
 
 #include <chrono>
 
-#include "rtype/network/Types.hpp"
+#include "aylo/network/Types.hpp"
 
-namespace rtype::network::tests {
+namespace aylo::network::tests {
 /// @brief A clock that only moves when the test calls `advance`, so time-dependent code runs instantly and
 /// identically on every run.
 class FakeClock {
@@ -34,4 +34,4 @@ class FakeClock {
   private:
     TimePoint _now;  ///< Starts at the clock's epoch.
 };
-}  // namespace rtype::network::tests
+}  // namespace aylo::network::tests

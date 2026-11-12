@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** CommandLineTests
 */
@@ -13,13 +13,13 @@
 #include <string>
 #include <vector>
 
-#include "rtype/engine/CommandLine.hpp"
-#include "rtype/engine/Exceptions.hpp"
+#include "aylo/engine/CommandLine.hpp"
+#include "aylo/engine/Exceptions.hpp"
 
 namespace {
-using rtype::engine::CommandLine;
-using rtype::engine::takeFrameLimit;
-using rtype::engine::exceptions::RuntimeError;
+using aylo::engine::CommandLine;
+using aylo::engine::takeFrameLimit;
+using aylo::engine::exceptions::RuntimeError;
 
 /// @return The flags of @p args.
 CommandLine parse(const std::vector<std::string>& args) { return CommandLine::parse(args); }

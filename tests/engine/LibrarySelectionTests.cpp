@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** LibrarySelectionTests
 */
@@ -17,21 +17,21 @@
 #include <system_error>
 #include <vector>
 
+#include "aylo/engine/Engine.hpp"
+#include "aylo/engine/Exceptions.hpp"
+#include "aylo/engine/exporting/LibrarySelection.hpp"
+#include "aylo/engine/plugin/SharedLibrary.hpp"
 #include "core/system/ExecutablePath.hpp"
-#include "rtype/engine/Engine.hpp"
-#include "rtype/engine/Exceptions.hpp"
-#include "rtype/engine/exporting/LibrarySelection.hpp"
-#include "rtype/engine/plugin/SharedLibrary.hpp"
 
-using rtype::engine::Engine;
-using rtype::engine::exceptions::RuntimeError;
-using rtype::engine::exporting::LibraryKind;
-using rtype::engine::exporting::SelectedLibrary;
-using rtype::engine::exporting::selectLibraries;
-using rtype::engine::plugin::SharedLibrary;
+using aylo::engine::Engine;
+using aylo::engine::exceptions::RuntimeError;
+using aylo::engine::exporting::LibraryKind;
+using aylo::engine::exporting::SelectedLibrary;
+using aylo::engine::exporting::selectLibraries;
+using aylo::engine::plugin::SharedLibrary;
 
 namespace {
-/// @return The file name of the library @p basename as the build names it ("rtype-plugin-shader").
+/// @return The file name of the library @p basename as the build names it ("aylo-plugin-shader").
 std::string libraryFile(const std::string_view basename) {
 #ifdef _WIN32
     return std::format("{}{}", basename, SharedLibrary::getExtension());
@@ -68,11 +68,11 @@ class LibrarySelectionTest : public ::testing::Test {
 
     /// @return The libraries the game needs, from the build folder's.
     [[nodiscard]] std::vector<SelectedLibrary> select() const {
-        return selectLibraries({.game = _game, .runtime = rtype::core::system::getExecutableDirectory()});
+        return selectLibraries({.game = _game, .runtime = aylo::core::system::getExecutableDirectory()});
     }
 
     std::filesystem::path _game{std::filesystem::temp_directory_path() /
-                                std::format("rtype_library_selection_{:08x}", std::random_device{}())};
+                                std::format("aylo_library_selection_{:08x}", std::random_device{}())};
 };
 }  // namespace
 
@@ -82,33 +82,33 @@ TEST_F(LibrarySelectionTest, KeepsTheTransformPluginOfEveryGame) {
 
     ASSERT_EQ(selected.size(), 1U);
     EXPECT_EQ(selected.front().kind, LibraryKind::kPlugin);
-    EXPECT_EQ(selected.front().file.filename(), libraryFile("rtype-plugin-transform"));
+    EXPECT_EQ(selected.front().file.filename(), libraryFile("aylo-plugin-transform"));
     EXPECT_TRUE(hasReason(selected.front(), "every game"));
 }
 
 TEST_F(LibrarySelectionTest, KeepsTheNamedPluginsAndWhatTheyRequire) {
-    writeProject(R"(engine.settings.plugins = { "rtype.Shader" })");
+    writeProject(R"(engine.settings.plugins = { "aylo.Shader" })");
     const std::vector<SelectedLibrary> selected = select();
 
-    const SelectedLibrary* shader = find(selected, "rtype-plugin-shader");
-    const SelectedLibrary* graphics = find(selected, "rtype-plugin-graphics");
+    const SelectedLibrary* shader = find(selected, "aylo-plugin-shader");
+    const SelectedLibrary* graphics = find(selected, "aylo-plugin-graphics");
     ASSERT_NE(shader, nullptr);
     ASSERT_NE(graphics, nullptr);
     EXPECT_TRUE(hasReason(*shader, "named in plugins (client)"));
     EXPECT_TRUE(hasReason(*shader, "named in plugins (server)"));
-    EXPECT_TRUE(hasReason(*graphics, "required by rtype.Shader"));
-    EXPECT_NE(find(selected, "rtype-plugin-input"), nullptr);  // the graphics plugin requires it
-    EXPECT_EQ(find(selected, "rtype-plugin-physics"), nullptr);
-    EXPECT_EQ(find(selected, "rtype-plugin-sprite"), nullptr);
+    EXPECT_TRUE(hasReason(*graphics, "required by aylo.Shader"));
+    EXPECT_NE(find(selected, "aylo-plugin-input"), nullptr);  // the graphics plugin requires it
+    EXPECT_EQ(find(selected, "aylo-plugin-physics"), nullptr);
+    EXPECT_EQ(find(selected, "aylo-plugin-sprite"), nullptr);
     EXPECT_TRUE(std::ranges::none_of(
         selected, [](const SelectedLibrary& library) { return library.kind == LibraryKind::kBackend; }));
 }
 
 TEST_F(LibrarySelectionTest, KeepsThePluginsOfEachSide) {
-    writeProject(R"(engine.settings.plugins = engine.isServer and { "rtype.Physics" } or {})");
+    writeProject(R"(engine.settings.plugins = engine.isServer and { "aylo.Physics" } or {})");
     const std::vector<SelectedLibrary> selected = select();
 
-    const SelectedLibrary* physics = find(selected, "rtype-plugin-physics");
+    const SelectedLibrary* physics = find(selected, "aylo-plugin-physics");
     ASSERT_NE(physics, nullptr);
     EXPECT_TRUE(hasReason(*physics, "named in plugins (server)"));
     EXPECT_FALSE(hasReason(*physics, "named in plugins (client)"));
@@ -116,7 +116,7 @@ TEST_F(LibrarySelectionTest, KeepsThePluginsOfEachSide) {
 
 TEST_F(LibrarySelectionTest, KeepsOnlyTheBackendsTheClientNames) {
     writeProject(R"(
-        engine.settings.plugins = { "rtype.graphics" }
+        engine.settings.plugins = { "aylo.graphics" }
         if engine.isClient then
             engine.settings.platform = "null"
             engine.settings.renderer = "null"
@@ -124,7 +124,7 @@ TEST_F(LibrarySelectionTest, KeepsOnlyTheBackendsTheClientNames) {
     )");
     const std::vector<SelectedLibrary> selected = select();
 
-    const SelectedLibrary* null = find(selected, "rtype-backend-null");
+    const SelectedLibrary* null = find(selected, "aylo-backend-null");
     ASSERT_NE(null, nullptr);
     EXPECT_EQ(null->kind, LibraryKind::kBackend);
     EXPECT_TRUE(hasReason(*null, "backend 'null' (platform)"));
@@ -160,16 +160,15 @@ TEST_F(LibrarySelectionTest, KeepsTheGamePluginsAndWhatTheyLink) {
     writeProject("");
     const std::filesystem::path plugins = _game / Engine::kPluginsDirectory;
     // The fixture under another name: two libraries of the same file name are refused.
-    const std::string fixture = libraryFile("rtype-game-fixture");
+    const std::string fixture = libraryFile("aylo-game-fixture");
     std::filesystem::create_directories(plugins);
     std::filesystem::copy_file(
-        rtype::core::system::getExecutableDirectory() / "plugins" / libraryFile("rtype-test-plugin"),
-        plugins / fixture);
-    std::ofstream{plugins / (fixture + ".links")} << libraryFile("rtype-plugin-physics") << '\n';
+        aylo::core::system::getExecutableDirectory() / "plugins" / libraryFile("aylo-test-plugin"), plugins / fixture);
+    std::ofstream{plugins / (fixture + ".links")} << libraryFile("aylo-plugin-physics") << '\n';
     const std::vector<SelectedLibrary> selected = select();
 
-    const SelectedLibrary* game = find(selected, "rtype-game-fixture");
-    const SelectedLibrary* physics = find(selected, "rtype-plugin-physics");
+    const SelectedLibrary* game = find(selected, "aylo-game-fixture");
+    const SelectedLibrary* physics = find(selected, "aylo-plugin-physics");
     ASSERT_NE(game, nullptr);
     ASSERT_NE(physics, nullptr);
     EXPECT_EQ(game->kind, LibraryKind::kGame);

@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ComponentRegistrationTests
 */
@@ -11,14 +11,14 @@
 #include <cstring>
 #include <string>
 
-#include "rtype/ecs/world/World.hpp"
-#include "rtype/scripting/component/ComponentDeclaration.hpp"
-#include "rtype/scripting/component/ComponentRegistration.hpp"
+#include "aylo/ecs/world/World.hpp"
+#include "aylo/scripting/component/ComponentDeclaration.hpp"
+#include "aylo/scripting/component/ComponentRegistration.hpp"
 
 namespace {
-namespace sc = rtype::scripting::component;
-using rtype::ecs::FieldType;
-using rtype::scripting::ErrorKind;
+namespace sc = aylo::scripting::component;
+using aylo::ecs::FieldType;
+using aylo::scripting::ErrorKind;
 
 sc::ComponentDeclaration makeBullet() {
     return {.name = "game.Bullet",
@@ -32,7 +32,7 @@ sc::ComponentDeclaration makeShield() {
 }  // namespace
 
 TEST(ComponentRegistration, SortsByAlignmentFirst) {
-    rtype::ecs::World world;
+    aylo::ecs::World world;
     const auto layout = sc::registerComponent(world.getComponents(), makeBullet());
     ASSERT_TRUE(layout);
     EXPECT_EQ(layout->size, 16U);
@@ -45,7 +45,7 @@ TEST(ComponentRegistration, SortsByAlignmentFirst) {
 }
 
 TEST(ComponentRegistration, SortsByNameWithinTheSameAlignment) {
-    rtype::ecs::World world;
+    aylo::ecs::World world;
     const auto layout = sc::registerComponent(world.getComponents(), makeShield());
     ASSERT_TRUE(layout);
     EXPECT_EQ(layout->size, 8U);
@@ -55,14 +55,14 @@ TEST(ComponentRegistration, SortsByNameWithinTheSameAlignment) {
 }
 
 TEST(ComponentRegistration, RegistersTheTypeInTheWorld) {
-    rtype::ecs::World world;
+    aylo::ecs::World world;
     const auto layout = sc::registerComponent(world.getComponents(), makeShield());
     ASSERT_TRUE(layout);
     EXPECT_EQ(world.getComponents().find("game.Shield"), layout->id);
 }
 
 TEST(ComponentRegistration, SameDeclarationTwiceReturnsTheSameId) {
-    rtype::ecs::World world;
+    aylo::ecs::World world;
     const auto first = sc::registerComponent(world.getComponents(), makeShield());
     const auto second = sc::registerComponent(world.getComponents(), makeShield());
     ASSERT_TRUE(first);
@@ -71,7 +71,7 @@ TEST(ComponentRegistration, SameDeclarationTwiceReturnsTheSameId) {
 }
 
 TEST(ComponentRegistration, FieldOrderInTheDeclarationDoesNotChangeTheLayout) {
-    rtype::ecs::World world;
+    aylo::ecs::World world;
     sc::ComponentDeclaration reversed = makeShield();
     std::swap(reversed.fields[0], reversed.fields[1]);
     const auto first = sc::registerComponent(world.getComponents(), makeShield());
@@ -82,7 +82,7 @@ TEST(ComponentRegistration, FieldOrderInTheDeclarationDoesNotChangeTheLayout) {
 }
 
 TEST(ComponentRegistration, AnotherLayoutUnderTheSameNameIsRefused) {
-    rtype::ecs::World world;
+    aylo::ecs::World world;
     ASSERT_TRUE(sc::registerComponent(world.getComponents(), makeShield()));
     sc::ComponentDeclaration other = makeShield();
     other.fields[0].type = FieldType::kF64;
@@ -92,7 +92,7 @@ TEST(ComponentRegistration, AnotherLayoutUnderTheSameNameIsRefused) {
 }
 
 TEST(ComponentRegistration, DuplicateFieldIsRefused) {
-    rtype::ecs::World world;
+    aylo::ecs::World world;
     sc::ComponentDeclaration declaration = makeShield();
     declaration.fields[1].name = "strength";
     const auto result = sc::registerComponent(world.getComponents(), declaration);
@@ -102,7 +102,7 @@ TEST(ComponentRegistration, DuplicateFieldIsRefused) {
 }
 
 TEST(ComponentRegistration, EmptyNamesAreRefused) {
-    rtype::ecs::World world;
+    aylo::ecs::World world;
     sc::ComponentDeclaration noName = makeShield();
     noName.name.clear();
     EXPECT_EQ(sc::registerComponent(world.getComponents(), noName).error().kind(), ErrorKind::kInvalidDeclaration);
@@ -112,7 +112,7 @@ TEST(ComponentRegistration, EmptyNamesAreRefused) {
 }
 
 TEST(ComponentRegistration, DefaultsAreWrittenAtTheFieldOffsets) {
-    rtype::ecs::World world;
+    aylo::ecs::World world;
     sc::ComponentDeclaration declaration = makeBullet();
     const float damage = 10.0F;
     declaration.fields[0].defaultValue.resize(sizeof(float));
@@ -127,7 +127,7 @@ TEST(ComponentRegistration, DefaultsAreWrittenAtTheFieldOffsets) {
 }
 
 TEST(ComponentRegistration, DefaultOfTheWrongSizeIsRefused) {
-    rtype::ecs::World world;
+    aylo::ecs::World world;
     sc::ComponentDeclaration declaration = makeShield();
     declaration.fields[0].defaultValue.resize(3);
     const auto result = sc::registerComponent(world.getComponents(), declaration);

@@ -1,6 +1,6 @@
 # Sprites: atlases and animations
 
-The sprite plugin (`src/rtype/plugins/sprite/`, `rtype::plugins::sprite`) cuts textures into named frames and plays
+The sprite plugin (`src/aylo/plugins/sprite/`, `aylo::plugins::sprite`) cuts textures into named frames and plays
 animations made of them. It knows nothing of the renderer: it writes the `SpriteRenderer` of each animated entity, which
 the graphics plugin draws as before. The game adds `SpritePlugin`, and on a client `SpriteDrawPlugin`, which draws the entities and requires `SpritePlugin`, `GraphicsPlugin` and `ShaderPlugin`; a server adds `SpritePlugin` alone if
 it wants its animators to advance.
@@ -15,7 +15,7 @@ A `SpriteAtlas` is a texture, its frames (a name, a rectangle of the texture, an
 const AssetId ship = atlases->load("assets/ship.json");
 
 // A uniform sheet without a file: a grid, and animations in code.
-SpriteAtlas enemy = SpriteAtlas::grid("assets/r-typesheet26.gif", {63.0F, 48.0F}, 6, {2.0F, 0.0F}, 0, {1.0F, 1.0F});
+SpriteAtlas enemy = SpriteAtlas::grid("assets/spritesheet26.gif", {63.0F, 48.0F}, 6, {2.0F, 0.0F}, 0, {1.0F, 1.0F});
 enemy.addAnimation("fly", {0, 1, 2, 3, 4, 5}, 0.08F);
 const AssetId enemies = atlases->add("enemy", std::move(enemy));
 
@@ -27,7 +27,7 @@ const AssetId fx = atlases->pack("fx", images);
 - **The atlas is built at once**, on every side: a server gets the same frames and animations, and an error is reported
   where the atlas is asked for. One that cannot be built is recorded as failed, with the reason, which is printed: a
   missing atlas does not stop the game. Its **texture** is handed to `TextureAssets` by the client's
-  `rtype.Sprite.Textures` system and loaded before the frame that draws it, like any texture.
+  `aylo.Sprite.Textures` system and loaded before the frame that draws it, like any texture.
 - **The JSON file** is what Aseprite (File > Export Sprite Sheet, JSON Data) and TexturePacker export, in their "Hash"
   or "Array" layout. Frames keep the file's order. Each frame's `duration` (milliseconds) is read, and a trimmed frame
   keeps its origin where it was in the untrimmed image. Each frame tag becomes an animation, with its `direction`
@@ -57,7 +57,7 @@ commands.spawn()
 - `animation` is `animationId(name)`, a hash of the name: the same in every process and independent of the tags' order,
   so a server can replicate which animation plays. To switch, set it and put `time` back to 0.
 - `time` is the seconds played at speed 1, `speed` multiplies the frame time (0 freezes), and `playing` stops the clock.
-- Every field is reflected. The `rtype.Sprite.Animate` system (PostUpdate, every side) advances the playing animators,
+- Every field is reflected. The `aylo.Sprite.Animate` system (PostUpdate, every side) advances the playing animators,
   stops a finite animation on its last frame (`playing` turns false, an `AnimationFinished` event is sent), and writes
   the frame's texture, source and origin into the entity's `SpriteRenderer`, only when they change, so an idle sprite
   stays unchanged for change detection and replication.
@@ -71,20 +71,20 @@ made with one call and filled by name with the others, since call arguments hold
 range, `first` and `count` (0: up to the last frame).
 
 ```luau
-local ship = engine.call("rtype.sprite.createAtlas", {
+local ship = engine.call("aylo.sprite.createAtlas", {
     name = "game.ship", texture = "assets/ship.png",
     frameSize = { x = 48, y = 48 }, count = 5, spacing = { x = 17, y = 0 },   -- a grid; count 0: no frames
 })
-engine.call("rtype.sprite.addAnimation", { atlas = ship, name = "fly", frameDuration = 0.1, direction = "pingPong" })
+engine.call("aylo.sprite.addAnimation", { atlas = ship, name = "fly", frameDuration = 0.1, direction = "pingPong" })
 
-engine.call("rtype.sprite.createAtlas", { name = "game.laser", texture = "assets/laser.png" })
-engine.call("rtype.sprite.addFrame", {                       -- named "0"; returns its index
+engine.call("aylo.sprite.createAtlas", { name = "game.laser", texture = "assets/laser.png" })
+engine.call("aylo.sprite.addFrame", {                       -- named "0"; returns its index
     atlas = "game.laser", position = { x = 108, y = 151 }, size = { x = 80, y = 16 },   -- origin: its centre
 })
-local explosion = engine.call("rtype.sprite.loadAtlas", { path = "assets/explosion.json" })
+local explosion = engine.call("aylo.sprite.loadAtlas", { path = "assets/explosion.json" })
 ```
 
-`rtype.sprite.addFrame` and `rtype.sprite.addAnimation` change an atlas already added (`AtlasAssets::edit()`). An
+`aylo.sprite.addFrame` and `aylo.sprite.addAnimation` change an atlas already added (`AtlasAssets::edit()`). An
 unknown atlas or direction, or an index that is not a frame, is an error.
 
 The [`engine.assets.atlas` form](ecs/features/19-luau-bridge.md#setup-forms) makes those calls from one table, and only

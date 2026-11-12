@@ -1,6 +1,6 @@
 # C/C++ audio library benchmark (October 2026)
 
-**Context:** our engine is C++23, built with `xmake`, around our own ECS (`rtype::ecs`). Audio was removed from the
+**Context:** our engine is C++23, built with `xmake`, around our own ECS (`aylo::ecs`). Audio was removed from the
 backend contracts until a library is chosen (see [`ecs/design.md`](../ecs/design.md)): it will come back as its own
 plugin, with a resource of sounds by `AssetId` and sounds triggered by events. The game is a 2D shoot'em up: a music
 track, a few dozen short sound effects at once (shots, explosions, hits), left/right panning at most.
@@ -114,7 +114,7 @@ not a playback library (see [Library details](#3-library-details)).
 
 ### Plugin
 
-An `AudioPlugin` in `plugins/audio/` (`rtype::plugins::audio`), declaring its own components, resources and events
+An `AudioPlugin` in `plugins/audio/` (`aylo::plugins::audio`), declaring its own components, resources and events
 like the other plugins:
 
 - a main-thread resource holding the `ma_engine` (the audio device and mixer), with music and sound-effect groups;

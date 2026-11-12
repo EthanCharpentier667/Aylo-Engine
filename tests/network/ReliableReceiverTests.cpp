@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ReliableReceiverTests
 */
@@ -11,13 +11,13 @@
 #include <cstdint>
 #include <vector>
 
-#include "rtype/network/Types.hpp"
-#include "rtype/network/connection/ReliableReceiver.hpp"
-#include "rtype/network/protocol/Constants.hpp"
+#include "aylo/network/Types.hpp"
+#include "aylo/network/connection/ReliableReceiver.hpp"
+#include "aylo/network/protocol/Constants.hpp"
 
-namespace network = rtype::network;
-namespace protocol = rtype::network::protocol;
-using rtype::network::connection::ReliableReceiver;
+namespace network = aylo::network;
+namespace protocol = aylo::network::protocol;
+using aylo::network::connection::ReliableReceiver;
 
 namespace {
 network::Bytes payloadOf(const int value) { return network::Bytes(1, static_cast<std::byte>(value)); }

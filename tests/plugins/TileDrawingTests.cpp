@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** TileDrawingTests
 */
@@ -14,25 +14,25 @@
 #include <numbers>
 #include <optional>
 
+#include "aylo/contract/renderer/drawing/Color.hpp"
+#include "aylo/contract/renderer/drawing/Sprite.hpp"
+#include "aylo/contract/renderer/drawing/Texture.hpp"
 #include "plugins/graphics/VisibleArea.hpp"
 #include "plugins/tilemap/Tilemap.hpp"
 #include "plugins/tilemap/detail/TileDrawing.hpp"
-#include "rtype/contract/renderer/drawing/Color.hpp"
-#include "rtype/contract/renderer/drawing/Sprite.hpp"
-#include "rtype/contract/renderer/drawing/Texture.hpp"
 
-using rtype::contract::renderer::Color;
-using rtype::contract::renderer::Sprite;
-using rtype::contract::renderer::TextureId;
-using rtype::plugins::graphics::VisibleArea;
-using rtype::plugins::tilemap::kFlipDiagonal;
-using rtype::plugins::tilemap::kFlipHorizontal;
-using rtype::plugins::tilemap::kFlipVertical;
-using rtype::plugins::tilemap::LayerKind;
-using rtype::plugins::tilemap::MapLayer;
-using rtype::plugins::tilemap::Tilemap;
-using rtype::plugins::tilemap::Tileset;
-using rtype::plugins::tilemap::detail::LayerPlacement;
+using aylo::contract::renderer::Color;
+using aylo::contract::renderer::Sprite;
+using aylo::contract::renderer::TextureId;
+using aylo::plugins::graphics::VisibleArea;
+using aylo::plugins::tilemap::kFlipDiagonal;
+using aylo::plugins::tilemap::kFlipHorizontal;
+using aylo::plugins::tilemap::kFlipVertical;
+using aylo::plugins::tilemap::LayerKind;
+using aylo::plugins::tilemap::MapLayer;
+using aylo::plugins::tilemap::Tilemap;
+using aylo::plugins::tilemap::Tileset;
+using aylo::plugins::tilemap::detail::LayerPlacement;
 
 namespace {
 constexpr TextureId kTexture{.index = 3, .generation = 1};
@@ -45,8 +45,8 @@ Tilemap mapWith(glm::uvec2 tileSize) {
 
 /// @return The sprite of the tile id @p gid of @p map in @p cell, placed at the origin with no scale.
 Sprite tileOf(const Tilemap& map, std::uint32_t gid, glm::ivec2 cell = {0, 0}) {
-    return rtype::plugins::tilemap::detail::tileSprite(map, map.getTilesets().front(), kTexture, gid, cell, {},
-                                                       Color{1.0F});
+    return aylo::plugins::tilemap::detail::tileSprite(map, map.getTilesets().front(), kTexture, gid, cell, {},
+                                                      Color{1.0F});
 }
 
 /// @return An image layer, repeated along X if @p repeatX.
@@ -58,7 +58,7 @@ constexpr VisibleArea kScreen{.min = {0.0F, 0.0F}, .max = {800.0F, 600.0F}};
 
 TEST(TileDrawing, PlacesATileInItsCellThroughTheLayer) {
     const Tilemap map = mapWith({16, 16});
-    const Sprite sprite = rtype::plugins::tilemap::detail::tileSprite(
+    const Sprite sprite = aylo::plugins::tilemap::detail::tileSprite(
         map, map.getTilesets().front(), kTexture, 6, {2, 1},
         LayerPlacement{.position = {100.0F, 0.0F}, .scale = {2.0F, 2.0F}}, Color{1.0F});
     EXPECT_EQ(sprite.texture, kTexture);
@@ -91,14 +91,14 @@ TEST(TileDrawing, FlipsATileAcrossItsDiagonalWithAQuarterTurn) {
 }
 
 TEST(TileDrawing, BoundsAChunkInTheWorld) {
-    const rtype::plugins::tilemap::detail::Bounds bounds = rtype::plugins::tilemap::detail::chunkBounds(
+    const aylo::plugins::tilemap::detail::Bounds bounds = aylo::plugins::tilemap::detail::chunkBounds(
         mapWith({16, 16}), {16, 0}, LayerPlacement{.position = {10.0F, 0.0F}, .scale = {1.0F, 1.0F}});
     EXPECT_EQ(bounds.min, (glm::vec2{266.0F, 0.0F}));
     EXPECT_EQ(bounds.max, (glm::vec2{522.0F, 256.0F}));
 }
 
 TEST(TileDrawing, DrawsAnImageAtItsPlace) {
-    const std::optional<Sprite> sprite = rtype::plugins::tilemap::detail::imageSprite(
+    const std::optional<Sprite> sprite = aylo::plugins::tilemap::detail::imageSprite(
         imageLayer(false), kTexture, {100, 50}, LayerPlacement{.position = {10.0F, 20.0F}}, kScreen);
     ASSERT_TRUE(sprite);
     EXPECT_EQ(sprite->position, (glm::vec2{10.0F, 20.0F}));
@@ -108,7 +108,7 @@ TEST(TileDrawing, DrawsAnImageAtItsPlace) {
 
 TEST(TileDrawing, RepeatsAnImageAcrossTheView) {
     const VisibleArea narrow{.min = {0.0F, 0.0F}, .max = {250.0F, 600.0F}};
-    const std::optional<Sprite> sprite = rtype::plugins::tilemap::detail::imageSprite(
+    const std::optional<Sprite> sprite = aylo::plugins::tilemap::detail::imageSprite(
         imageLayer(true), kTexture, {100, 50}, LayerPlacement{.position = {30.0F, 0.0F}}, narrow);
     ASSERT_TRUE(sprite);
     EXPECT_FLOAT_EQ(sprite->position.x, -70.0F);         // The copy that covers the left edge.
@@ -117,13 +117,12 @@ TEST(TileDrawing, RepeatsAnImageAcrossTheView) {
 }
 
 TEST(TileDrawing, SkipsAnImageOutOfView) {
-    EXPECT_FALSE(rtype::plugins::tilemap::detail::imageSprite(imageLayer(false), kTexture, {100, 50},
-                                                              LayerPlacement{.position = {900.0F, 0.0F}}, kScreen));
-    EXPECT_FALSE(
-        rtype::plugins::tilemap::detail::imageSprite(imageLayer(true), kTexture, {100, 50}, {}, VisibleArea{}));
+    EXPECT_FALSE(aylo::plugins::tilemap::detail::imageSprite(imageLayer(false), kTexture, {100, 50},
+                                                             LayerPlacement{.position = {900.0F, 0.0F}}, kScreen));
+    EXPECT_FALSE(aylo::plugins::tilemap::detail::imageSprite(imageLayer(true), kTexture, {100, 50}, {}, VisibleArea{}));
 }
 
 TEST(TileDrawing, ColoursALayerWithItsTintAndOpacity) {
     const MapLayer layer{.opacity = 0.5F, .tint = Color{1.0F, 0.5F, 1.0F, 1.0F}};
-    EXPECT_EQ(rtype::plugins::tilemap::detail::layerColor(layer), (Color{1.0F, 0.5F, 1.0F, 0.5F}));
+    EXPECT_EQ(aylo::plugins::tilemap::detail::layerColor(layer), (Color{1.0F, 0.5F, 1.0F, 0.5F}));
 }

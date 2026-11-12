@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** main
 */
@@ -13,24 +13,24 @@
 
 #include "SfmlPlatform.hpp"
 #include "SfmlRenderer.hpp"
+#include "aylo/contract/platform/IPlatform.hpp"
+#include "aylo/contract/platform/event/Event.hpp"
+#include "aylo/contract/platform/input/Key.hpp"
+#include "aylo/contract/renderer/IRenderer.hpp"
+#include "aylo/contract/renderer/drawing/Color.hpp"
 #include "core/config/Settings.hpp"
 #include "plugins/graphics/BackendRegistry.hpp"
-#include "rtype/contract/platform/IPlatform.hpp"
-#include "rtype/contract/platform/event/Event.hpp"
-#include "rtype/contract/platform/input/Key.hpp"
-#include "rtype/contract/renderer/IRenderer.hpp"
-#include "rtype/contract/renderer/drawing/Color.hpp"
 
-using namespace rtype::contract::platform::event;
+using namespace aylo::contract::platform::event;
+using aylo::contract::platform::IPlatform;
+using aylo::contract::platform::input::Key;
+using aylo::contract::renderer::Color;
+using aylo::contract::renderer::IRenderer;
+using aylo::core::config::Settings;
+using aylo::plugins::graphics::Backend;
+using aylo::plugins::graphics::BackendRegistry;
 using example::SfmlPlatform;
 using example::SfmlRenderer;
-using rtype::contract::platform::IPlatform;
-using rtype::contract::platform::input::Key;
-using rtype::contract::renderer::Color;
-using rtype::contract::renderer::IRenderer;
-using rtype::core::config::Settings;
-using rtype::plugins::graphics::Backend;
-using rtype::plugins::graphics::BackendRegistry;
 
 int main() {
     try {

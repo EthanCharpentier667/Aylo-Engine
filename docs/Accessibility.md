@@ -1,7 +1,7 @@
 # Accessibility
 
 What the engine offers for players with disabilities, what a game must do with it, and what the engine still lacks.
-The game developer's side is the manual page [Accessibility](https://charles-mahoudeau.github.io/rtype/accessibility/); this page is for engine
+The game developer's side is the manual page [Accessibility](https://ethancharpentier667.github.io/Aylo-Engine/accessibility/); this page is for engine
 developers, to know where the gaps are.
 
 ## By category
@@ -28,7 +28,7 @@ Diagrams are Mermaid source, rendered as SVG, and every diagram is explained in 
 
 In order of value for the cost:
 
-1. **Runtime remapping**: `rtype.input.unbind` and a way to save bindings with the persistence plugin, so a game can
+1. **Runtime remapping**: `aylo.input.unbind` and a way to save bindings with the persistence plugin, so a game can
    offer a controls menu.
 2. **Volumes at run time**: an engine call that sets `AudioVolumes`, for an options menu.
 3. **Colour-blind filter**: a full-screen pass in the renderer with the three common simulations/corrections

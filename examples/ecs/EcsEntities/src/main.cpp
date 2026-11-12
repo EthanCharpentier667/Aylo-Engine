@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** main
 */
@@ -13,10 +13,10 @@
 #include <iostream>
 #include <string>
 
-#include "rtype/ecs/entity/Entity.hpp"
-#include "rtype/ecs/world/World.hpp"
+#include "aylo/ecs/entity/Entity.hpp"
+#include "aylo/ecs/world/World.hpp"
 
-using namespace rtype::ecs;
+using namespace aylo::ecs;
 
 namespace {
 /// @return "#index v generation", the two halves of an Entity.

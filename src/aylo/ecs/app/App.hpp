@@ -1,0 +1,150 @@
+/*
+** EPITECH PROJECT, 2026
+** aylo
+** File description:
+** App
+*/
+
+#pragma once
+
+#include <concepts>
+#include <memory>
+#include <optional>
+#include <string>
+#include <string_view>
+#include <vector>
+
+#include "aylo/ecs/Export.hpp"
+#include "aylo/ecs/app/Plugin.hpp"
+#include "aylo/ecs/app/PluginGroup.hpp"
+#include "aylo/ecs/app/PluginRegistry.hpp"
+#include "aylo/ecs/call/CallInfo.hpp"
+#include "aylo/ecs/event/EventCursor.hpp"
+#include "aylo/ecs/resource/ResourceTraits.hpp"
+#include "aylo/ecs/schedule/Phase.hpp"
+#include "aylo/ecs/schedule/RunMode.hpp"
+#include "aylo/ecs/schedule/Schedule.hpp"
+#include "aylo/ecs/schedule/Schedules.hpp"
+#include "aylo/ecs/world/World.hpp"
+
+namespace aylo::ecs {
+/// @brief The entry point of a game: a world, its schedules, the plugins that filled them, and the loop that runs
+/// them until a system sends AppExit.
+/// @details One App runs one world in one run mode: a client, a dedicated server, or both sides in one process
+/// (standalone). The same game plugins are added in every mode; each system's side decides where it runs. Every App
+/// has a TimePlugin: if none was added, the App adds one with the defaults before its first frame. The App keeps a
+/// pointer to its own world in its schedules, so it can be neither copied nor moved.
+/// @code
+/// aylo::ecs::App app{aylo::ecs::RunMode::kStandalone};
+/// app.addPlugin(GamePlugin{});
+/// app.addSystem(aylo::ecs::Phase::kUpdate, "game.camera", &follow).setSide(aylo::ecs::Side::kClient);
+/// return app.run();
+/// @endcode
+class AYLO_ECS_API App {
+  public:
+    /// @param mode What this process runs: it decides which systems run, from their side.
+    explicit App(RunMode mode = RunMode::kStandalone);
+    ~App();
+    App(const App& other) = delete;
+    App& operator=(const App& other) = delete;
+    App(App&& other) = delete;
+    App& operator=(App&& other) = delete;
+
+    /// @return The world the systems run on.
+    [[nodiscard]] World& getWorld() noexcept;
+    [[nodiscard]] const World& getWorld() const noexcept;
+
+    /// @return The world's schedules.
+    [[nodiscard]] Schedules& getSchedules() noexcept;
+    [[nodiscard]] const Schedules& getSchedules() const noexcept;
+
+    /// @return The plugins the App builds by name when a plugin requires one that was not added.
+    [[nodiscard]] PluginRegistry& getPluginRegistry() noexcept;
+    [[nodiscard]] const PluginRegistry& getPluginRegistry() const noexcept;
+
+    /// @brief Adds a plugin and builds it at once; does nothing if a plugin with the same name was added.
+    template <std::derived_from<Plugin> P>
+    App& addPlugin(P plugin);
+
+    /// @brief Adds a plugin and builds it at once; does nothing if a plugin with the same name was added.
+    /// @details Its dependencies (Plugin::getDependencies()) are built first, whatever order the plugins are added in:
+    /// one not added yet is built from the plugin registry, with a warning on `std::cerr` naming it and the plugin
+    /// that requires it. Then the plugin is recorded and built: recorded first, so a plugin that adds itself again
+    /// from build(), directly or through another plugin, is not built twice. It is kept by the App until the App is
+    /// destroyed.
+    /// @param plugin The plugin; must not be null.
+    /// @throws exceptions::PluginException When a dependency is neither added nor registered, when the registry
+    /// builds a plugin with another name than the one required, or when plugins require each other in a cycle. The
+    /// plugin is then not added (dependencies built before the error stay).
+    App& addPlugin(std::unique_ptr<Plugin> plugin);
+
+    /// @brief Adds a group of plugins (PluginGroup::build()).
+    template <std::derived_from<PluginGroup> G>
+    App& addPlugins(G group);
+
+    /// @return Whether a plugin with this name was added.
+    [[nodiscard]] bool hasPlugin(std::string_view name) const noexcept;
+
+    /// @return Every plugin added, in the order they were recorded (a plugin's dependencies come before it). The
+    /// pointers stay valid until the App is destroyed.
+    [[nodiscard]] std::vector<const Plugin*> getPlugins() const;
+
+    /// @brief Makes a system of a function (or a lambda without captures) and adds it to a phase
+    /// (Schedules::addSystem()).
+    /// @param configs The configurations of its configured parameters (see SystemParam), if any.
+    /// @throws exceptions::ScheduleException When a system of any phase already has this name.
+    template <typename Function, typename... Configs>
+    Schedule::SystemConfig addSystem(Phase phase, std::string name, Function function, Configs... configs);
+
+    /// @brief Gives scripts an engine call made of a function (makeCallInfo() tells what it may take and return).
+    /// @param name Its stable name, such as "aylo.audio.loadSound".
+    /// @return The call's id in the world's Calls.
+    /// @throws exceptions::CallException When the name is taken, or the arguments or result break a rule of
+    /// validateType().
+    template <typename Function>
+    CallId addCall(std::string name, Function function);
+
+    /// @brief Sets a resource of the world, replacing its value if any (Resources::insert()).
+    template <Resource T>
+    App& insertResource(T value);
+
+    /// @brief Sets a resource of the world only if it has no value yet, keeping an existing one
+    /// (Resources::insertIfAbsent()).
+    template <Resource T>
+    App& insertResourceIfAbsent(T value = T{});
+
+    /// @brief Finishes every plugin added (Plugin::finish()), in the order they were added, once: runFrame() does it
+    /// before the first frame. A program that uses the world without running frames (a test, a tool) calls it itself.
+    /// A plugin added afterwards is finished right after its build.
+    void finishPlugins();
+
+    /// @brief Runs one frame (Schedules::runFrame()), adding a TimePlugin with the defaults first if none was added,
+    /// and finishing the plugins before the first one (finishPlugins()).
+    /// @throws exceptions::ScheduleException When a schedule cannot be built.
+    void runFrame();
+
+    /// @brief Runs frames until a system sends AppExit, Startup first.
+    /// @return The code of the first AppExit read.
+    /// @throws exceptions::ScheduleException When a schedule cannot be built.
+    int run();
+
+    /// @brief Reads the AppExit events sent since the last call, for a loop that calls runFrame() itself.
+    /// @return The code of the first AppExit sent since the last call, or nothing.
+    [[nodiscard]] std::optional<int> takeExit() noexcept;
+
+  private:
+    /// @brief Adds the dependencies of a plugin that are not added yet, from the registry, before it is built.
+    /// @throws exceptions::PluginException As addPlugin().
+    void addDependencies(const Plugin& plugin);
+
+    World _world;                                   ///< The world the systems run on.
+    Schedules _schedules;                           ///< The world's schedules; points to _world.
+    PluginRegistry _pluginRegistry;                 ///< The plugins that can be built by name.
+    std::vector<std::unique_ptr<Plugin>> _plugins;  ///< Every plugin added, in the order added.
+    bool _finished{false};                          ///< Whether finishPlugins() ran: later plugins finish at once.
+    EventCursor _exitCursor;                        ///< The AppExit events read so far.
+    std::vector<std::string> _resolving;  ///< The plugins whose dependencies are being added, outermost first.
+};
+}  // namespace aylo::ecs
+
+#include "App.tpp"

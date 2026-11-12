@@ -14,9 +14,9 @@ if engine.isClient then
 
 	if engine.args.headless then
 		-- The client sends its inputs to the server, so it needs the input plugin even with no window.
-		engine.settings.plugins = { "rtype.Input" }
+		engine.settings.plugins = { "aylo.Input" }
 	else
-		engine.settings.plugins = { "rtype.graphics" }
+		engine.settings.plugins = { "aylo.graphics" }
 		engine.settings.platform = "glfw"
 		engine.settings.renderer = "vulkan"
 		engine.settings.window.title = "My game"

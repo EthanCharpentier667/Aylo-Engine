@@ -1,0 +1,15 @@
+add_requires("luau 696", "tl_expected")
+
+target("luau")
+    -- Static, linked into the executable: no plugin links it (aylo.static_modules enforces it).
+    set_kind("static")
+    set_basename("aylo-luau")
+    add_files("**.cpp")
+    add_headerfiles("**.hpp")
+    add_defines("AYLO_LUAU_BUILD", {public = false})
+    add_defines("AYLO_LUAU_STATIC", {public = true})
+    add_includedirs("$(projectdir)/src", {public = true})
+    add_packages("luau", {public = false})
+    add_packages("tl_expected", {public = true})
+    add_packages("glm", {public = true})
+    add_defines("GLM_FORCE_XYZW_ONLY", {public = true})

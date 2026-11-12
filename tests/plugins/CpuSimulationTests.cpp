@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** CpuSimulationTests
 */
@@ -13,17 +13,17 @@
 #include <glm/geometric.hpp>
 #include <numbers>
 
+#include "aylo/contract/renderer/exceptions/ParticleExceptions.hpp"
+#include "aylo/contract/renderer/particle/Particle.hpp"
+#include "aylo/contract/renderer/particle/ParticleSystemDesc.hpp"
 #include "plugins/particle/CpuSimulation.hpp"
-#include "rtype/contract/renderer/exceptions/ParticleExceptions.hpp"
-#include "rtype/contract/renderer/particle/Particle.hpp"
-#include "rtype/contract/renderer/particle/ParticleSystemDesc.hpp"
 
-using rtype::contract::renderer::CircleShape;
-using rtype::contract::renderer::ParticleEmission;
-using rtype::contract::renderer::ParticleSpace;
-using rtype::contract::renderer::ParticleSystemDesc;
-using rtype::contract::renderer::RectShape;
-using rtype::plugins::particle::CpuSimulation;
+using aylo::contract::renderer::CircleShape;
+using aylo::contract::renderer::ParticleEmission;
+using aylo::contract::renderer::ParticleSpace;
+using aylo::contract::renderer::ParticleSystemDesc;
+using aylo::contract::renderer::RectShape;
+using aylo::plugins::particle::CpuSimulation;
 
 namespace {
 constexpr float kTolerance = 1e-4F;
@@ -54,7 +54,7 @@ TEST(CpuSimulationTests, StartsEmpty) {
 TEST(CpuSimulationTests, ThrowsOnAnInvalidDesc) {
     ParticleSystemDesc desc = makeDesc();
     desc.capacity = 0;
-    EXPECT_THROW(CpuSimulation{desc}, rtype::contract::renderer::exceptions::ParticleException);
+    EXPECT_THROW(CpuSimulation{desc}, aylo::contract::renderer::exceptions::ParticleException);
 }
 
 TEST(CpuSimulationTests, EmitsTheSpawnCount) {

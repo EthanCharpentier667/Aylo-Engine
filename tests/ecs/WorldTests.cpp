@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** WorldTests
 */
@@ -15,15 +15,15 @@
 #include <utility>
 #include <vector>
 
-#include "rtype/ecs/component/ComponentInfo.hpp"
-#include "rtype/ecs/component/ComponentRegistry.hpp"
-#include "rtype/ecs/component/ComponentTraits.hpp"
-#include "rtype/ecs/entity/Entity.hpp"
-#include "rtype/ecs/error/Error.hpp"
-#include "rtype/ecs/error/Result.hpp"
-#include "rtype/ecs/exceptions/ComponentExceptions.hpp"
-#include "rtype/ecs/storage/ViewAs.hpp"
-#include "rtype/ecs/world/World.hpp"
+#include "aylo/ecs/component/ComponentInfo.hpp"
+#include "aylo/ecs/component/ComponentRegistry.hpp"
+#include "aylo/ecs/component/ComponentTraits.hpp"
+#include "aylo/ecs/entity/Entity.hpp"
+#include "aylo/ecs/error/Error.hpp"
+#include "aylo/ecs/error/Result.hpp"
+#include "aylo/ecs/exceptions/ComponentExceptions.hpp"
+#include "aylo/ecs/storage/ViewAs.hpp"
+#include "aylo/ecs/world/World.hpp"
 
 namespace {
 /// @brief Number of Counter instances alive, to detect leaks and double destruction.
@@ -40,45 +40,45 @@ struct Counter {
 };
 }  // namespace
 
-namespace rtype::test::world {
+namespace aylo::test::world {
 struct Position {
     float x;
     float y;
 };
-RTYPE_ECS_COMPONENT(Position, "test.world.Position", x, y);
+AYLO_ECS_COMPONENT(Position, "test.world.Position", x, y);
 
 struct Health {
     std::int32_t value;
 };
-RTYPE_ECS_COMPONENT(Health, "test.world.Health", value);
+AYLO_ECS_COMPONENT(Health, "test.world.Health", value);
 
 struct Inventory {
     std::vector<std::int32_t> items;
     Counter counter;
 };
-RTYPE_ECS_COMPONENT(Inventory, "test.world.Inventory");
+AYLO_ECS_COMPONENT(Inventory, "test.world.Inventory");
 
 struct Dead {};
-RTYPE_ECS_COMPONENT(Dead, "test.world.Dead");
+AYLO_ECS_COMPONENT(Dead, "test.world.Dead");
 
 struct Bullet {
-    rtype::ecs::Entity owner;
+    aylo::ecs::Entity owner;
     float speed;
 };
-RTYPE_ECS_COMPONENT(Bullet, "test.world.Bullet", owner, speed);
+AYLO_ECS_COMPONENT(Bullet, "test.world.Bullet", owner, speed);
 
 struct Squad {
-    std::array<rtype::ecs::Entity, 3> members;
+    std::array<aylo::ecs::Entity, 3> members;
 };
-RTYPE_ECS_COMPONENT(Squad, "test.world.Squad", members);
-}  // namespace rtype::test::world
+AYLO_ECS_COMPONENT(Squad, "test.world.Squad", members);
+}  // namespace aylo::test::world
 
 namespace {
-using rtype::ecs::ComponentId;
-using rtype::ecs::Entity;
-using rtype::ecs::World;
-using rtype::test::world::Health;
-using rtype::test::world::Position;
+using aylo::ecs::ComponentId;
+using aylo::ecs::Entity;
+using aylo::ecs::World;
+using aylo::test::world::Health;
+using aylo::test::world::Position;
 
 /// @brief The C++ view of a Brain value, which only exists as a run-time description in the world.
 struct BrainValue {
@@ -93,13 +93,13 @@ std::span<const std::byte> bytesOf(const T& value) {
 }
 
 /// @return A run-time description, as a Luau script would provide it.
-rtype::ecs::ComponentInfo makeBrain() {
-    return rtype::ecs::ComponentInfo{
+aylo::ecs::ComponentInfo makeBrain() {
+    return aylo::ecs::ComponentInfo{
         .type = {.name = "test.world.Brain",
                  .size = 8,
                  .alignment = 4,
-                 .fields = {{.name = "health", .type = rtype::ecs::FieldType::kI32, .offset = 0},
-                            {.name = "iq", .type = rtype::ecs::FieldType::kF32, .offset = 4}}}};
+                 .fields = {{.name = "health", .type = aylo::ecs::FieldType::kI32, .offset = 0},
+                            {.name = "iq", .type = aylo::ecs::FieldType::kF32, .offset = 4}}}};
 }
 }  // namespace
 
@@ -137,27 +137,27 @@ TEST(World, ComponentThrowsWhenTheOptionsConflict) {
     World world;
     world.getComponents().registerType<Position>();
     EXPECT_THROW(world.getComponents().registerType<Position>(
-                     rtype::ecs::ComponentOptions{.replication = rtype::ecs::ReplicationMode::kEveryChange}),
-                 rtype::ecs::exceptions::ComponentRegistrationException);
+                     aylo::ecs::ComponentOptions{.replication = aylo::ecs::ReplicationMode::kEveryChange}),
+                 aylo::ecs::exceptions::ComponentRegistrationException);
 }
 
 TEST(World, RegistersRunTimeDescriptions) {
     World world;
-    const rtype::ecs::Result<ComponentId> id = world.getComponents().registerType(makeBrain());
+    const aylo::ecs::Result<ComponentId> id = world.getComponents().registerType(makeBrain());
     ASSERT_TRUE(id);
     EXPECT_EQ(world.getComponents().find("test.world.Brain"), std::optional<ComponentId>{*id});
-    const rtype::ecs::Result<ComponentId> again = world.getComponents().registerType(makeBrain());
+    const aylo::ecs::Result<ComponentId> again = world.getComponents().registerType(makeBrain());
     ASSERT_TRUE(again);
     EXPECT_EQ(*again, *id);
 }
 
 TEST(World, RefusesAnInvalidDescription) {
     World world;
-    rtype::ecs::ComponentInfo brain = makeBrain();
+    aylo::ecs::ComponentInfo brain = makeBrain();
     brain.type.alignment = 3;
-    const rtype::ecs::Result<ComponentId> id = world.getComponents().registerType(std::move(brain));
+    const aylo::ecs::Result<ComponentId> id = world.getComponents().registerType(std::move(brain));
     ASSERT_FALSE(id);
-    EXPECT_EQ(id.error().getKind(), rtype::ecs::ErrorKind::kInvalidType);
+    EXPECT_EQ(id.error().getKind(), aylo::ecs::ErrorKind::kInvalidType);
     EXPECT_FALSE(world.getComponents().find("test.world.Brain"));
 }
 
@@ -200,8 +200,8 @@ TEST(World, AddsAndReadsARunTimeComponentById) {
     EXPECT_TRUE(world.getComponents().has(entity, brain));
     const std::span<const std::byte> bytes = world.getComponents().get(entity, brain);
     ASSERT_EQ(bytes.size(), sizeof(BrainValue));
-    EXPECT_EQ(rtype::ecs::storage::viewAs<BrainValue>(bytes)->health, 90);
-    EXPECT_EQ(rtype::ecs::storage::viewAs<BrainValue>(bytes)->iq, 1.5F);
+    EXPECT_EQ(aylo::ecs::storage::viewAs<BrainValue>(bytes)->health, 90);
+    EXPECT_EQ(aylo::ecs::storage::viewAs<BrainValue>(bytes)->iq, 1.5F);
 }
 
 TEST(World, AddReplacesTheValueOfAComponentTheEntityHas) {
@@ -212,8 +212,8 @@ TEST(World, AddReplacesTheValueOfAComponentTheEntityHas) {
     world.getComponents().add(first, brain, bytesOf(BrainValue{.health = 1, .iq = 0.0F}));
     world.getComponents().add(second, brain, bytesOf(BrainValue{.health = 2, .iq = 0.0F}));
     EXPECT_TRUE(world.getComponents().add(first, brain, bytesOf(BrainValue{.health = 10, .iq = 0.0F})));
-    EXPECT_EQ(rtype::ecs::storage::viewAs<BrainValue>(world.getComponents().get(first, brain))->health, 10);
-    EXPECT_EQ(rtype::ecs::storage::viewAs<BrainValue>(world.getComponents().get(second, brain))->health, 2);
+    EXPECT_EQ(aylo::ecs::storage::viewAs<BrainValue>(world.getComponents().get(first, brain))->health, 10);
+    EXPECT_EQ(aylo::ecs::storage::viewAs<BrainValue>(world.getComponents().get(second, brain))->health, 2);
 }
 
 TEST(World, RemovesAComponentById) {
@@ -252,7 +252,7 @@ TEST(World, AnswersNothingForAnUnknownId) {
 TEST(World, AddsTagsById) {
     World world;
     const ComponentId dead =
-        *world.getComponents().registerType(rtype::ecs::ComponentInfo{.type = {.name = "test.world.Dead"}});
+        *world.getComponents().registerType(aylo::ecs::ComponentInfo{.type = {.name = "test.world.Dead"}});
     const Entity entity = world.spawn();
     EXPECT_TRUE(world.getComponents().add(entity, dead, {}));
     EXPECT_TRUE(world.getComponents().has(entity, dead));
@@ -263,17 +263,16 @@ TEST(World, CopiesNonTrivialValuesById) {
     liveCounters = 0;
     {
         World world;
-        const ComponentId inventory = world.getComponents().registerType<rtype::test::world::Inventory>();
+        const ComponentId inventory = world.getComponents().registerType<aylo::test::world::Inventory>();
         const Entity entity = world.spawn();
-        const rtype::test::world::Inventory source{.items = {1, 2}};
+        const aylo::test::world::Inventory source{.items = {1, 2}};
         EXPECT_TRUE(world.getComponents().add(entity, inventory, bytesOf(source)));
         EXPECT_EQ(source.items.size(), 2U);  // copied, untouched
-        const rtype::test::world::Inventory replacement{.items = {3}};
+        const aylo::test::world::Inventory replacement{.items = {3}};
         world.getComponents().add(entity, inventory, bytesOf(replacement));
-        EXPECT_EQ(
-            rtype::ecs::storage::viewAs<rtype::test::world::Inventory>(world.getComponents().get(entity, inventory))
-                ->items,
-            (std::vector<std::int32_t>{3}));
+        EXPECT_EQ(aylo::ecs::storage::viewAs<aylo::test::world::Inventory>(world.getComponents().get(entity, inventory))
+                      ->items,
+                  (std::vector<std::int32_t>{3}));
         EXPECT_EQ(liveCounters, 3);  // source, replacement, the stored copy
     }
     EXPECT_EQ(liveCounters, 0);
@@ -283,16 +282,16 @@ TEST(World, MovesNonTrivialValuesInById) {
     liveCounters = 0;
     {
         World world;
-        const ComponentId inventory = world.getComponents().registerType<rtype::test::world::Inventory>();
+        const ComponentId inventory = world.getComponents().registerType<aylo::test::world::Inventory>();
         const Entity entity = world.spawn();
-        rtype::test::world::Inventory source{.items = {1, 2}};
+        aylo::test::world::Inventory source{.items = {1, 2}};
         EXPECT_TRUE(world.getComponents().addMove(entity, inventory, std::as_writable_bytes(std::span{&source, 1})));
         EXPECT_TRUE(source.items.empty());  // moved from, still alive: destroyed with `source`
-        rtype::test::world::Inventory replacement{.items = {3}};
+        aylo::test::world::Inventory replacement{.items = {3}};
         EXPECT_TRUE(
             world.getComponents().addMove(entity, inventory, std::as_writable_bytes(std::span{&replacement, 1})));
         EXPECT_TRUE(replacement.items.empty());
-        EXPECT_EQ(world.getComponents().get<rtype::test::world::Inventory>(entity)->items,
+        EXPECT_EQ(world.getComponents().get<aylo::test::world::Inventory>(entity)->items,
                   (std::vector<std::int32_t>{3}));
         EXPECT_EQ(liveCounters, 3);  // source, replacement (both moved from), the stored value
     }
@@ -301,9 +300,9 @@ TEST(World, MovesNonTrivialValuesInById) {
 
 TEST(World, RefusesInvalidMovesWithoutMovingFrom) {
     World world;
-    const ComponentId inventory = world.getComponents().registerType<rtype::test::world::Inventory>();
+    const ComponentId inventory = world.getComponents().registerType<aylo::test::world::Inventory>();
     const Entity entity = world.spawn();
-    rtype::test::world::Inventory source{.items = {1, 2}};
+    aylo::test::world::Inventory source{.items = {1, 2}};
     const std::span<std::byte> bytes = std::as_writable_bytes(std::span{&source, 1});
     EXPECT_FALSE(world.getComponents().addMove(Entity{42, 1}, inventory, bytes));    // not alive
     EXPECT_FALSE(world.getComponents().addMove(entity, inventory + 1, bytes));       // unknown id
@@ -372,7 +371,7 @@ TEST(World, TypedAndErasedCallsSeeTheSameData) {
     world.getComponents().add(first, Health{.value = 7});
     const ComponentId health = *world.getComponents().find("test.world.Health");
     EXPECT_TRUE(world.getComponents().has(first, health));
-    EXPECT_EQ(rtype::ecs::storage::viewAs<Health>(world.getComponents().get(first, health))->value, 7);
+    EXPECT_EQ(aylo::ecs::storage::viewAs<Health>(world.getComponents().get(first, health))->value, 7);
     world.getComponents().add(second, health, bytesOf(Health{.value = 8}));
     EXPECT_EQ(world.getComponents().get<Health>(second)->value, 8);
     world.getComponents().remove(first, health);
@@ -382,21 +381,21 @@ TEST(World, TypedAndErasedCallsSeeTheSameData) {
 TEST(World, KeepsTheOptionsOfAnExplicitRegistration) {
     World world;
     const ComponentId health = world.getComponents().registerType<Health>(
-        rtype::ecs::ComponentOptions{.replication = rtype::ecs::ReplicationMode::kEveryChange});
+        aylo::ecs::ComponentOptions{.replication = aylo::ecs::ReplicationMode::kEveryChange});
     const Entity entity = world.spawn();
     EXPECT_TRUE(
         world.getComponents().add(entity, Health{.value = 1}));  // finds the registration, does not register again
     EXPECT_EQ(world.getComponents().getRegistry().findById(health)->type.replication,
-              rtype::ecs::ReplicationMode::kEveryChange);
+              aylo::ecs::ReplicationMode::kEveryChange);
 }
 
 TEST(World, AddsCppTags) {
     World world;
     const Entity entity = world.spawn();
-    EXPECT_TRUE(world.getComponents().add(entity, rtype::test::world::Dead{}));
-    EXPECT_TRUE(world.getComponents().has<rtype::test::world::Dead>(entity));
-    EXPECT_TRUE(world.getComponents().remove<rtype::test::world::Dead>(entity));
-    EXPECT_FALSE(world.getComponents().has<rtype::test::world::Dead>(entity));
+    EXPECT_TRUE(world.getComponents().add(entity, aylo::test::world::Dead{}));
+    EXPECT_TRUE(world.getComponents().has<aylo::test::world::Dead>(entity));
+    EXPECT_TRUE(world.getComponents().remove<aylo::test::world::Dead>(entity));
+    EXPECT_FALSE(world.getComponents().has<aylo::test::world::Dead>(entity));
 }
 
 TEST(World, MovesNonTrivialCppValuesIn) {
@@ -404,12 +403,12 @@ TEST(World, MovesNonTrivialCppValuesIn) {
     {
         World world;
         const Entity entity = world.spawn();
-        rtype::test::world::Inventory source{.items = {1, 2, 3}};
+        aylo::test::world::Inventory source{.items = {1, 2, 3}};
         world.getComponents().add(entity, std::move(source));
-        EXPECT_EQ(world.getComponents().get<rtype::test::world::Inventory>(entity)->items,
+        EXPECT_EQ(world.getComponents().get<aylo::test::world::Inventory>(entity)->items,
                   (std::vector<std::int32_t>{1, 2, 3}));
-        world.getComponents().add(entity, rtype::test::world::Inventory{.items = {4}});
-        EXPECT_EQ(world.getComponents().get<rtype::test::world::Inventory>(entity)->items,
+        world.getComponents().add(entity, aylo::test::world::Inventory{.items = {4}});
+        EXPECT_EQ(world.getComponents().get<aylo::test::world::Inventory>(entity)->items,
                   (std::vector<std::int32_t>{4}));
         EXPECT_EQ(liveCounters, 2);  // the stored value and the moved-from `source`
     }
@@ -480,7 +479,7 @@ TEST(World, DespawnRemovesTheEntityFromEveryPool) {
     for (const Entity entity : {doomed, survivor}) {
         world.getComponents().add(entity, Position{.x = 1.0F, .y = 1.0F});
         world.getComponents().add(entity, Health{.value = 5});
-        world.getComponents().add(entity, rtype::test::world::Dead{});
+        world.getComponents().add(entity, aylo::test::world::Dead{});
         world.getComponents().add(entity, brain, bytesOf(BrainValue{.health = 1, .iq = 0.0F}));
     }
     world.despawn(doomed);
@@ -510,7 +509,7 @@ TEST(World, DespawnDestroysNonTrivialValues) {
     liveCounters = 0;
     World world;
     const Entity entity = world.spawn();
-    world.getComponents().add(entity, rtype::test::world::Inventory{.items = {1}});
+    world.getComponents().add(entity, aylo::test::world::Inventory{.items = {1}});
     EXPECT_EQ(liveCounters, 1);
     world.despawn(entity);
     EXPECT_EQ(liveCounters, 0);  // destroyed by despawn, not only when the world goes away
@@ -529,10 +528,10 @@ TEST(World, SpawnsAnEntityWithItsComponents) {
 TEST(World, SpawnsWithASingleComponentAndWithTags) {
     World world;
     const Entity single = world.spawn(Health{.value = 1});
-    const Entity tagged = world.spawn(Position{.x = 0.0F, .y = 0.0F}, rtype::test::world::Dead{});
+    const Entity tagged = world.spawn(Position{.x = 0.0F, .y = 0.0F}, aylo::test::world::Dead{});
     EXPECT_EQ(world.getComponents().get<Health>(single)->value, 1);
-    EXPECT_TRUE(world.getComponents().has<rtype::test::world::Dead>(tagged));
-    EXPECT_FALSE(world.getComponents().has<rtype::test::world::Dead>(single));
+    EXPECT_TRUE(world.getComponents().has<aylo::test::world::Dead>(tagged));
+    EXPECT_FALSE(world.getComponents().has<aylo::test::world::Dead>(single));
 }
 
 TEST(World, SpawnKeepsTheLaterValueOfARepeatedType) {
@@ -545,8 +544,8 @@ TEST(World, SpawnMovesNonTrivialValuesIn) {
     liveCounters = 0;
     {
         World world;
-        const Entity entity = world.spawn(rtype::test::world::Inventory{.items = {5, 6}}, Health{.value = 1});
-        EXPECT_EQ(world.getComponents().get<rtype::test::world::Inventory>(entity)->items,
+        const Entity entity = world.spawn(aylo::test::world::Inventory{.items = {5, 6}}, Health{.value = 1});
+        EXPECT_EQ(world.getComponents().get<aylo::test::world::Inventory>(entity)->items,
                   (std::vector<std::int32_t>{5, 6}));
         EXPECT_EQ(liveCounters, 1);  // only the stored value: the temporaries are gone
     }
@@ -555,12 +554,12 @@ TEST(World, SpawnMovesNonTrivialValuesIn) {
 
 TEST(World, TypedCallsRefuseARunTimeComponentThatOnlySharesTheName) {
     World world;
-    rtype::ecs::ComponentInfo script = makeBrain();  // 8 bytes, while Health has 4
+    aylo::ecs::ComponentInfo script = makeBrain();  // 8 bytes, while Health has 4
     script.type.name = "test.world.Health";
     const ComponentId scriptId = *world.getComponents().registerType(std::move(script));
     const Entity entity = world.spawn();
     EXPECT_THROW(world.getComponents().add(entity, Health{.value = 1}),
-                 rtype::ecs::exceptions::ComponentRegistrationException);
+                 aylo::ecs::exceptions::ComponentRegistrationException);
     EXPECT_FALSE(world.getComponents().has<Health>(entity));
     EXPECT_EQ(world.getComponents().get<Health>(entity), nullptr);
     EXPECT_FALSE(world.getComponents().remove<Health>(entity));
@@ -570,12 +569,12 @@ TEST(World, TypedCallsRefuseARunTimeComponentThatOnlySharesTheName) {
 
 TEST(World, AFailedSpawnLeavesNoEntity) {
     World world;
-    rtype::ecs::ComponentInfo script = makeBrain();
+    aylo::ecs::ComponentInfo script = makeBrain();
     script.type.name = "test.world.Health";
     static_cast<void>(world.getComponents().registerType(std::move(script)));
     // Position is added first, then Health throws: the entity must not survive with only a Position.
     EXPECT_THROW(static_cast<void>(world.spawn(Position{.x = 1.0F, .y = 1.0F}, Health{.value = 1})),
-                 rtype::ecs::exceptions::ComponentRegistrationException);
+                 aylo::ecs::exceptions::ComponentRegistrationException);
     EXPECT_EQ(world.getEntityCount(), 0U);
     const ComponentId position = *world.getComponents().find("test.world.Position");
     EXPECT_FALSE(world.getComponents().has(Entity{0, 1}, position));
@@ -598,15 +597,15 @@ TEST(World, TheChangeTickWrapsAround) {
 TEST(World, CheckingTicksOfAnEmptyWorldIsHarmless) {
     World world;
     world.checkChangeTicks();
-    world.advanceChangeTick(rtype::ecs::kCheckTickThreshold);  // runs a check through advancing
-    EXPECT_EQ(world.getChangeTick(), rtype::ecs::kCheckTickThreshold);
+    world.advanceChangeTick(aylo::ecs::kCheckTickThreshold);  // runs a check through advancing
+    EXPECT_EQ(world.getChangeTick(), aylo::ecs::kCheckTickThreshold);
 }
 
 TEST(World, AddingStampsBothTicksWithTheCurrentTick) {
     World world;
     world.advanceChangeTick(3);
     const Entity entity = world.spawn(Health{.value = 1});
-    const std::optional<rtype::ecs::ComponentTicks> ticks = world.getComponents().getTicks<Health>(entity);
+    const std::optional<aylo::ecs::ComponentTicks> ticks = world.getComponents().getTicks<Health>(entity);
     ASSERT_TRUE(ticks);
     EXPECT_EQ(ticks->added, 3U);
     EXPECT_EQ(ticks->changed, 3U);
@@ -618,7 +617,7 @@ TEST(World, ReplacingStampsOnlyTheChangedTick) {
     const Entity entity = world.spawn(Health{.value = 1});
     world.advanceChangeTick(4);
     world.getComponents().add(entity, Health{.value = 2});
-    const std::optional<rtype::ecs::ComponentTicks> ticks = world.getComponents().getTicks<Health>(entity);
+    const std::optional<aylo::ecs::ComponentTicks> ticks = world.getComponents().getTicks<Health>(entity);
     ASSERT_TRUE(ticks);
     EXPECT_EQ(ticks->added, 3U);
     EXPECT_EQ(ticks->changed, 7U);
@@ -629,11 +628,11 @@ TEST(World, ReplacingStampsOnlyTheChangedTick) {
 TEST(World, TypedAndErasedTicksAgree) {
     World world;
     world.advanceChangeTick(2);
-    const Entity entity = world.spawn(Health{.value = 1}, rtype::test::world::Dead{});
+    const Entity entity = world.spawn(Health{.value = 1}, aylo::test::world::Dead{});
     const ComponentId health = *world.getComponents().find("test.world.Health");
     EXPECT_EQ(world.getComponents().getTicks(entity, health)->changed,
               world.getComponents().getTicks<Health>(entity)->changed);
-    EXPECT_EQ(world.getComponents().getTicks<rtype::test::world::Dead>(entity)->added, 2U);  // tags have ticks too
+    EXPECT_EQ(world.getComponents().getTicks<aylo::test::world::Dead>(entity)->added, 2U);  // tags have ticks too
 }
 
 TEST(World, HasNoTicksForAnAbsentComponent) {
@@ -650,18 +649,18 @@ TEST(World, ChangeDetectionSurvivesTheTickWrapping) {
     World world;
     world.advanceChangeTick();
     const Entity entity = world.spawn(Health{.value = 1});  // added and changed at tick 1
-    rtype::ecs::Tick lastRun = world.advanceChangeTick();   // a system runs at tick 2 and sees it
+    aylo::ecs::Tick lastRun = world.advanceChangeTick();    // a system runs at tick 2 and sees it
     // Five billion ticks later, past the 32-bit wrap; the system keeps clamping its own last run, as it must.
     for (int step = 0; step < 5; ++step) {
         world.advanceChangeTick(1'000'000'000);
-        rtype::ecs::clampTick(lastRun, world.getChangeTick());
+        aylo::ecs::clampTick(lastRun, world.getChangeTick());
     }
-    const rtype::ecs::Tick thisRun = world.getChangeTick();
-    const std::optional<rtype::ecs::ComponentTicks> untouched = world.getComponents().getTicks<Health>(entity);
+    const aylo::ecs::Tick thisRun = world.getChangeTick();
+    const std::optional<aylo::ecs::ComponentTicks> untouched = world.getComponents().getTicks<Health>(entity);
     ASSERT_TRUE(untouched);
-    EXPECT_LE(thisRun - untouched->changed, rtype::ecs::kMaxChangeAge);  // clamped by the world
-    EXPECT_FALSE(untouched->isChanged(lastRun, thisRun));                // still old, not "new" after the wrap
-    world.getComponents().add(entity, Health{.value = 2});               // now written
+    EXPECT_LE(thisRun - untouched->changed, aylo::ecs::kMaxChangeAge);  // clamped by the world
+    EXPECT_FALSE(untouched->isChanged(lastRun, thisRun));               // still old, not "new" after the wrap
+    world.getComponents().add(entity, Health{.value = 2});              // now written
     EXPECT_TRUE(world.getComponents().getTicks<Health>(entity)->isChanged(lastRun, thisRun));
 }
 
@@ -669,7 +668,7 @@ TEST(World, ReadingThroughMutDoesNotMarkChanged) {
     World world;
     const Entity entity = world.spawn(Health{.value = 3});  // tick 0
     world.advanceChangeTick(5);
-    const rtype::ecs::Mut<Health> health = world.getComponents().getMut<Health>(entity);
+    const aylo::ecs::Mut<Health> health = world.getComponents().getMut<Health>(entity);
     ASSERT_TRUE(health);
     EXPECT_EQ(health.get().value, 3);
     EXPECT_EQ(world.getComponents().getTicks<Health>(entity)->changed, 0U);
@@ -679,7 +678,7 @@ TEST(World, WritingThroughMutMarksChanged) {
     World world;
     const Entity entity = world.spawn(Health{.value = 3});
     world.advanceChangeTick(5);
-    rtype::ecs::Mut<Health> health = world.getComponents().getMut<Health>(entity);
+    aylo::ecs::Mut<Health> health = world.getComponents().getMut<Health>(entity);
     health->value -= 1;
     EXPECT_EQ(world.getComponents().get<Health>(entity)->value, 2);  // written in place, in the pool
     EXPECT_EQ(world.getComponents().getTicks<Health>(entity)->changed, 5U);
@@ -715,8 +714,8 @@ TEST(World, TypeErasedGetMutMarksOnAccess) {
     const std::span<std::byte> bytes = world.getComponents().getMut(entity, brain);
     ASSERT_EQ(bytes.size(), sizeof(BrainValue));
     EXPECT_EQ(world.getComponents().getTicks(entity, brain)->changed, 4U);  // marked by the access itself
-    rtype::ecs::storage::viewAs<BrainValue>(bytes)->health = 7;
-    EXPECT_EQ(rtype::ecs::storage::viewAs<BrainValue>(world.getComponents().get(entity, brain))->health, 7);
+    aylo::ecs::storage::viewAs<BrainValue>(bytes)->health = 7;
+    EXPECT_EQ(aylo::ecs::storage::viewAs<BrainValue>(world.getComponents().get(entity, brain))->health, 7);
 }
 
 TEST(World, TypeErasedGetMutIsEmptyForAnAbsentComponent) {
@@ -731,7 +730,7 @@ TEST(World, AMutStampsTheTickItWasMadeAt) {
     World world;
     const Entity entity = world.spawn(Health{.value = 3});
     world.advanceChangeTick(5);
-    rtype::ecs::Mut<Health> health = world.getComponents().getMut<Health>(entity);
+    aylo::ecs::Mut<Health> health = world.getComponents().getMut<Health>(entity);
     world.advanceChangeTick();  // the world moves on; the handle keeps the tick of its system run
     health->value = 0;
     EXPECT_EQ(world.getComponents().getTicks<Health>(entity)->changed, 5U);
@@ -741,22 +740,22 @@ TEST(World, DespawnClearsTheEntityFieldsThatPointToIt) {
     World world;
     const Entity ship = world.spawn();
     const Entity otherShip = world.spawn();
-    const Entity bullet = world.spawn(rtype::test::world::Bullet{.owner = ship, .speed = 2.0F});
-    const Entity otherBullet = world.spawn(rtype::test::world::Bullet{.owner = otherShip, .speed = 3.0F});
+    const Entity bullet = world.spawn(aylo::test::world::Bullet{.owner = ship, .speed = 2.0F});
+    const Entity otherBullet = world.spawn(aylo::test::world::Bullet{.owner = otherShip, .speed = 3.0F});
     world.despawn(ship);
-    EXPECT_TRUE(world.getComponents().get<rtype::test::world::Bullet>(bullet)->owner.isNull());
-    EXPECT_EQ(world.getComponents().get<rtype::test::world::Bullet>(bullet)->speed,
+    EXPECT_TRUE(world.getComponents().get<aylo::test::world::Bullet>(bullet)->owner.isNull());
+    EXPECT_EQ(world.getComponents().get<aylo::test::world::Bullet>(bullet)->speed,
               2.0F);  // only the entity field changes
-    EXPECT_EQ(world.getComponents().get<rtype::test::world::Bullet>(otherBullet)->owner, otherShip);
+    EXPECT_EQ(world.getComponents().get<aylo::test::world::Bullet>(otherBullet)->owner, otherShip);
 }
 
 TEST(World, DespawnClearsEveryMatchingElementOfAnEntityArray) {
     World world;
     const Entity leader = world.spawn();
     const Entity wingman = world.spawn();
-    const Entity squad = world.spawn(rtype::test::world::Squad{.members = {leader, wingman, leader}});
+    const Entity squad = world.spawn(aylo::test::world::Squad{.members = {leader, wingman, leader}});
     world.despawn(leader);
-    const std::array<Entity, 3>& members = world.getComponents().get<rtype::test::world::Squad>(squad)->members;
+    const std::array<Entity, 3>& members = world.getComponents().get<aylo::test::world::Squad>(squad)->members;
     EXPECT_TRUE(members[0].isNull());
     EXPECT_EQ(members[1], wingman);
     EXPECT_TRUE(members[2].isNull());
@@ -765,27 +764,27 @@ TEST(World, DespawnClearsEveryMatchingElementOfAnEntityArray) {
 TEST(World, AClearedValueIsMarkedChanged) {
     World world;
     const Entity ship = world.spawn();
-    const Entity bullet = world.spawn(rtype::test::world::Bullet{.owner = ship, .speed = 1.0F});
-    const Entity stray = world.spawn(rtype::test::world::Bullet{.owner = Entity{}, .speed = 1.0F});
+    const Entity bullet = world.spawn(aylo::test::world::Bullet{.owner = ship, .speed = 1.0F});
+    const Entity stray = world.spawn(aylo::test::world::Bullet{.owner = Entity{}, .speed = 1.0F});
     world.advanceChangeTick(5);
     world.despawn(ship);
-    EXPECT_EQ(world.getComponents().getTicks<rtype::test::world::Bullet>(bullet)->changed,
+    EXPECT_EQ(world.getComponents().getTicks<aylo::test::world::Bullet>(bullet)->changed,
               5U);  // the network must send the null
-    EXPECT_EQ(world.getComponents().getTicks<rtype::test::world::Bullet>(stray)->changed, 0U);  // untouched
+    EXPECT_EQ(world.getComponents().getTicks<aylo::test::world::Bullet>(stray)->changed, 0U);  // untouched
 }
 
 TEST(World, DespawnClearsEntityFieldsOfRunTimeComponents) {
     World world;
-    const ComponentId homing = *world.getComponents().registerType(rtype::ecs::ComponentInfo{
+    const ComponentId homing = *world.getComponents().registerType(aylo::ecs::ComponentInfo{
         .type = {.name = "test.world.Homing",
                  .size = sizeof(Entity),
                  .alignment = alignof(Entity),
-                 .fields = {{.name = "target", .type = rtype::ecs::FieldType::kEntity, .offset = 0}}}});
+                 .fields = {{.name = "target", .type = aylo::ecs::FieldType::kEntity, .offset = 0}}}});
     const Entity target = world.spawn();
     const Entity missile = world.spawn();
     world.getComponents().add(missile, homing, bytesOf(target));
     world.despawn(target);
-    EXPECT_TRUE(rtype::ecs::storage::viewAs<Entity>(world.getComponents().get(missile, homing))->isNull());
+    EXPECT_TRUE(aylo::ecs::storage::viewAs<Entity>(world.getComponents().get(missile, homing))->isNull());
 }
 
 TEST(World, DespawnLeavesStaleHandlesOfTheSameIndexAlone) {
@@ -794,15 +793,15 @@ TEST(World, DespawnLeavesStaleHandlesOfTheSameIndexAlone) {
     world.despawn(first);
     const Entity second = world.spawn();  // same index, newer generation
     ASSERT_EQ(second.getIndex(), first.getIndex());
-    const Entity bullet = world.spawn(rtype::test::world::Bullet{.owner = first, .speed = 1.0F});
+    const Entity bullet = world.spawn(aylo::test::world::Bullet{.owner = first, .speed = 1.0F});
     world.despawn(second);
-    EXPECT_EQ(world.getComponents().get<rtype::test::world::Bullet>(bullet)->owner, first);  // not the despawned handle
+    EXPECT_EQ(world.getComponents().get<aylo::test::world::Bullet>(bullet)->owner, first);  // not the despawned handle
 }
 
 TEST(World, DespawningADeadEntityChangesNoField) {
     World world;
     const Entity ship = world.spawn();
-    const Entity bullet = world.spawn(rtype::test::world::Bullet{.owner = ship, .speed = 1.0F});
+    const Entity bullet = world.spawn(aylo::test::world::Bullet{.owner = ship, .speed = 1.0F});
     EXPECT_FALSE(world.despawn(Entity{ship.getIndex(), ship.getGeneration() + 1}));
-    EXPECT_EQ(world.getComponents().get<rtype::test::world::Bullet>(bullet)->owner, ship);
+    EXPECT_EQ(world.getComponents().get<aylo::test::world::Bullet>(bullet)->owner, ship);
 }

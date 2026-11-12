@@ -1,0 +1,81 @@
+/*
+** EPITECH PROJECT, 2026
+** aylo
+** File description:
+** PhysicsPlugin
+*/
+
+#pragma once
+
+#include <span>
+#include <string_view>
+
+#include "aylo/ecs/app/Plugin.hpp"
+#include "plugins/physics/Export.hpp"
+#include "plugins/physics/PhysicsSettings.hpp"
+
+namespace aylo::ecs {
+class App;
+}  // namespace aylo::ecs
+
+namespace aylo::plugins::physics {
+
+/// @brief Physics for an App: registers the physics components, inserts the PhysicsWorld resource and steps it once per
+/// fixed tick.
+///
+/// @details Registers RigidBody, Collider and Velocity, so they can be found by name (Luau, replication) before any
+/// entity has them, and adds the TransformPlugin. Collider and RigidBody are replicated (ComponentOptions.hpp), through
+/// ECS options only: the physics knows nothing of the network. The server simulates; clients receive the Transforms
+/// and keep bodies that never step, only for scene queries (moveAndSlide() for prediction) and the debug view. In
+/// standalone, everything runs as on the server. Each fixed tick, in this order:
+/// - "aylo.Physics.SyncBodies", on every side, keeps one body per entity with a Collider and a Transform (a RigidBody
+///   makes it move; without one it is static), rebuilt when its Collider or RigidBody changes, destroyed when the
+///   entity is despawned or loses either, and linked to the entity by a PhysicsHandle;
+/// - "aylo.Physics.SyncToPhysics", on every side, moves kinematic bodies to their Transform, teleports the others
+///   gameplay moved and gives the bodies the Velocities gameplay changed (a kinematic body with a Velocity moves at
+///   it); in client mode, it teleports every body to its Transform instead;
+/// - "aylo.Physics.Step", on the server like those below, applies the forces and impulses queued on the PhysicsWorld
+///   and steps it by Time::fixedDelta;
+/// - "aylo.Physics.SyncFromPhysics" writes the pose of the bodies that moved back to their Transform, and the velocity
+///   of the dynamic ones to their Velocity;
+/// - "aylo.Physics.Events" sends the contacts of the step: CollisionStarted / CollisionEnded between solid colliders,
+///   TriggerEntered / TriggerExited for sensors (CollisionEvents.hpp), registered by the plugin.
+/// Other systems order themselves around these names. Needs the time plugin (MinimalPlugins) for Time. It also
+/// registers the physics engine calls for scripts (addPhysicsCalls(), PhysicsCalls.hpp).
+/// @code
+/// app.addPlugins(aylo::ecs::MinimalPlugins{})
+///     .addPlugin(aylo::plugins::physics::PhysicsPlugin{{.gravity = {0.0F, 980.0F}}});
+/// @endcode
+class AYLO_PLUGIN_PHYSICS_API PhysicsPlugin : public ecs::Plugin {
+  public:
+    static constexpr std::string_view kName = "aylo.Physics";                         ///< The plugin's name.
+    static constexpr std::string_view kSyncBodiesSystem = "aylo.Physics.SyncBodies";  ///< Creates and destroys bodies.
+    static constexpr std::string_view kSyncToPhysicsSystem = "aylo.Physics.SyncToPhysics";  ///< Transform to body.
+    static constexpr std::string_view kStepSystem = "aylo.Physics.Step";                    ///< Steps the PhysicsWorld.
+    static constexpr std::string_view kSyncFromPhysicsSystem = "aylo.Physics.SyncFromPhysics";  ///< Body to Transform.
+    static constexpr std::string_view kEventsSystem = "aylo.Physics.Events";  ///< Sends the contact events.
+
+    /// @param settings How the PhysicsWorld is built; checked when the plugin is built.
+    explicit PhysicsPlugin(PhysicsSettings settings);
+    PhysicsPlugin();
+    ~PhysicsPlugin() override = default;
+    PhysicsPlugin(const PhysicsPlugin& other) = default;
+    PhysicsPlugin& operator=(const PhysicsPlugin& other) = default;
+    PhysicsPlugin(PhysicsPlugin&& other) noexcept = default;
+    PhysicsPlugin& operator=(PhysicsPlugin&& other) noexcept = default;
+
+    /// @return "aylo.Physics".
+    [[nodiscard]] std::string_view getName() const noexcept override;
+
+    /// @return The TransformPlugin.
+    [[nodiscard]] std::span<const std::string_view> getDependencies() const noexcept override;
+
+    /// @brief Registers the components, inserts the PhysicsWorld and adds the FixedUpdate step system.
+    /// @throws exceptions::PhysicsException When the settings are invalid.
+    void build(ecs::App& app) override;
+
+  private:
+    PhysicsSettings _settings;  ///< Given to the PhysicsWorld.
+};
+
+}  // namespace aylo::plugins::physics

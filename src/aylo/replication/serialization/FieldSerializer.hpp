@@ -1,0 +1,82 @@
+/*
+** EPITECH PROJECT, 2026
+** aylo
+** File description:
+** FieldSerializer
+*/
+
+#pragma once
+
+#include <cstddef>
+#include <cstdint>
+#include <span>
+
+#include "aylo/ecs/type/TypeInfo.hpp"
+#include "aylo/network/bytes/ByteReader.hpp"
+#include "aylo/network/bytes/ByteWriter.hpp"
+#include "aylo/replication/Export.hpp"
+#include "aylo/replication/serialization/EntityMapper.hpp"
+
+/// @brief Writes the value of any replicated type into bytes, and reads it back, field by field from its TypeInfo.
+///
+/// @details Every field of `info.fields` is written in that order, and for each field its `count` values in order,
+/// each in a fixed form whatever the machine: integers and floats little-endian, `bool` as a `u8` 0 or 1, vectors as
+/// 2, 3 or 4 `f32`, entities as the `u32` NetworkId given by an EntityMapper, asset ids as a `u64`, strings as a `u8`
+/// length and their bytes. Padding bytes are never written. Nothing allocates or throws.
+namespace aylo::replication::serialization {
+/// @brief Tells whether values of a type can be sent: it has at least one field, and either a list field, with a type
+/// that can be built and copied, or values that are plain data that
+/// can be copied, moved and destroyed as bytes (no destruct, move or copy hook).
+///
+/// @details A construct hook is allowed: it only applies default member initializers, and readFields() writes every
+/// byte of the value anyway. The manifest refuses to replicate a type that is not serializable.
+/// @param info The description of the type.
+/// @return True when writeFields() and readFields() can handle the type.
+[[nodiscard]] AYLO_REPLICATION_API bool isSerializable(const ecs::TypeInfo& info) noexcept;
+
+/// @brief Tells whether the size of a value on the wire depends on the value: true when a field is a list, or a string,
+/// which takes its length and its bytes.
+/// @param info The description of the type.
+/// @return True when writeFields() writes a different number of bytes for different values.
+[[nodiscard]] AYLO_REPLICATION_API bool isVariableSize(const ecs::TypeInfo& info) noexcept;
+
+/// @brief Gives what client and server compare to agree on a type in the manifest: its layout hash, or for a type with
+/// a list field a hash of its name and fields, since `sizeof(std::string)` and the offsets after it depend on the
+/// standard library, and only the fields matter on the wire.
+/// @param info The description of the type.
+/// @return The hash, the same in every process.
+[[nodiscard]] AYLO_REPLICATION_API std::uint64_t computeManifestHash(const ecs::TypeInfo& info) noexcept;
+
+/// @brief Gives the number of bytes writeFields() writes for a value of a type: the same for every value, unless
+/// isVariableSize() is true, where it is the most it can write (each string at its capacity).
+/// @param info The description of the type.
+/// @return The size of one value on the wire, or its upper bound.
+[[nodiscard]] AYLO_REPLICATION_API std::size_t computeWireSize(const ecs::TypeInfo& info) noexcept;
+
+/// @brief Gives the most bytes writeFields() writes for one value: computeWireSize() plus the values of its lists.
+/// @param info The description of the type.
+/// @param value The bytes of a live value of the type.
+/// @return The upper bound of this value's size on the wire.
+[[nodiscard]] AYLO_REPLICATION_API std::size_t computeWireSize(const ecs::TypeInfo& info,
+                                                               std::span<const std::byte> value) noexcept;
+
+/// @brief Writes every field of a value; a value that does not fit makes the writer invalid.
+/// @param writer Where to write.
+/// @param info The description of the type, valid (see ecs::validateType()) and serializable.
+/// @param value The bytes of one value of the type, at least `info.size` of them. Read with copies, so they need no
+/// alignment.
+/// @param mapper Gives the NetworkId of each entity field: 0 for a null or untracked entity.
+AYLO_REPLICATION_API void writeFields(network::bytes::ByteWriter& writer, const ecs::TypeInfo& info,
+                                      std::span<const std::byte> value, const EntityMapper& mapper) noexcept;
+
+/// @brief Reads every field of a value. A plain value is zeroed first; a type that owns memory (a list field) needs a
+/// live value, built by its construct hook, and its fields are written over it.
+/// @param reader Where to read, usually bytes received from the network.
+/// @param info The description of the type, valid (see ecs::validateType()) and serializable.
+/// @param value Where to build the value: zeroed, then filled; padding bytes stay zero.
+/// @param mapper Gives the local entity of each entity field: the null entity for 0 or an unknown NetworkId.
+/// @return False when bytes are missing, a `bool` is not 0 or 1, a float or a vector component is NaN or infinite,
+/// or `value` is smaller than `info.size`. The content of `value` is then unspecified and must be thrown away.
+[[nodiscard]] AYLO_REPLICATION_API bool readFields(network::bytes::ByteReader& reader, const ecs::TypeInfo& info,
+                                                   std::span<std::byte> value, const EntityMapper& mapper) noexcept;
+}  // namespace aylo::replication::serialization

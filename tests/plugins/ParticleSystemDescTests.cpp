@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ParticleSystemDescTests
 */
@@ -9,19 +9,19 @@
 
 #include <limits>
 
-#include "rtype/contract/renderer/exceptions/ParticleExceptions.hpp"
-#include "rtype/contract/renderer/particle/ParticleCurve.hpp"
-#include "rtype/contract/renderer/particle/ParticleSystemDesc.hpp"
+#include "aylo/contract/renderer/exceptions/ParticleExceptions.hpp"
+#include "aylo/contract/renderer/particle/ParticleCurve.hpp"
+#include "aylo/contract/renderer/particle/ParticleSystemDesc.hpp"
 
 namespace {
-using rtype::contract::renderer::CircleShape;
-using rtype::contract::renderer::Curve;
-using rtype::contract::renderer::ParticleBurst;
-using rtype::contract::renderer::ParticleSystemDesc;
-using rtype::contract::renderer::Range;
-using rtype::contract::renderer::RectShape;
-using rtype::contract::renderer::validate;
-using rtype::contract::renderer::exceptions::ParticleException;
+using aylo::contract::renderer::CircleShape;
+using aylo::contract::renderer::Curve;
+using aylo::contract::renderer::ParticleBurst;
+using aylo::contract::renderer::ParticleSystemDesc;
+using aylo::contract::renderer::Range;
+using aylo::contract::renderer::RectShape;
+using aylo::contract::renderer::validate;
+using aylo::contract::renderer::exceptions::ParticleException;
 
 constexpr float kNaN = std::numeric_limits<float>::quiet_NaN();
 constexpr float kInfinity = std::numeric_limits<float>::infinity();

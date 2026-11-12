@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** PluginDependenciesTests
 */
@@ -10,6 +10,9 @@
 #include <memory>
 
 #include "FakeBackend.hpp"
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/exceptions/PluginException.hpp"
+#include "aylo/ecs/schedule/RunMode.hpp"
 #include "plugins/audio/AudioPlugin.hpp"
 #include "plugins/graphics/GraphicsPlugin.hpp"
 #include "plugins/input/InputPlugin.hpp"
@@ -21,34 +24,31 @@
 #include "plugins/text/TextPlugin.hpp"
 #include "plugins/tilemap/TilemapPlugin.hpp"
 #include "plugins/transform/TransformPlugin.hpp"
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/exceptions/PluginException.hpp"
-#include "rtype/ecs/schedule/RunMode.hpp"
 
 namespace {
-using rtype::ecs::App;
-using rtype::ecs::RunMode;
-using rtype::ecs::exceptions::PluginException;
-using rtype::plugins::graphics::GraphicsPlugin;
-using rtype::plugins::input::InputPlugin;
-using rtype::plugins::shader::ShaderPlugin;
-using rtype::plugins::sprite::SpriteDrawPlugin;
-using rtype::plugins::sprite::SpritePlugin;
+using aylo::ecs::App;
+using aylo::ecs::RunMode;
+using aylo::ecs::exceptions::PluginException;
+using aylo::plugins::graphics::GraphicsPlugin;
+using aylo::plugins::input::InputPlugin;
+using aylo::plugins::shader::ShaderPlugin;
+using aylo::plugins::sprite::SpriteDrawPlugin;
+using aylo::plugins::sprite::SpritePlugin;
 
 /// @brief Adds what every plugin that draws needs, and nothing else.
 void addGraphics(App& app) {
-    app.addPlugin(rtype::plugins::transform::TransformPlugin{});
+    app.addPlugin(aylo::plugins::transform::TransformPlugin{});
     app.addPlugin(InputPlugin{});
-    app.addPlugin(GraphicsPlugin{
-        rtype::test::plugins::makeFakeRegistry(std::make_shared<rtype::test::plugins::FakeBackendState>()),
-        rtype::test::plugins::makeFakeSettings()});
+    app.addPlugin(
+        GraphicsPlugin{aylo::test::plugins::makeFakeRegistry(std::make_shared<aylo::test::plugins::FakeBackendState>()),
+                       aylo::test::plugins::makeFakeSettings()});
 }
 
 TEST(PluginDependencies, TheGraphicsPluginRequiresTheInputPlugin) {
     App app{RunMode::kClient};
     EXPECT_THROW(app.addPlugin(GraphicsPlugin{
-                     rtype::test::plugins::makeFakeRegistry(std::make_shared<rtype::test::plugins::FakeBackendState>()),
-                     rtype::test::plugins::makeFakeSettings()}),
+                     aylo::test::plugins::makeFakeRegistry(std::make_shared<aylo::test::plugins::FakeBackendState>()),
+                     aylo::test::plugins::makeFakeSettings()}),
                  PluginException);
 }
 
@@ -57,9 +57,9 @@ TEST(PluginDependencies, TheGraphicsPluginAddsNoPlugin) {
     addGraphics(app);
     EXPECT_FALSE(app.hasPlugin(ShaderPlugin::kName));
     EXPECT_FALSE(app.hasPlugin(SpritePlugin::kName));
-    EXPECT_FALSE(app.hasPlugin(rtype::plugins::tilemap::TilemapPlugin::kName));
-    EXPECT_FALSE(app.hasPlugin(rtype::plugins::text::TextPlugin::kName));
-    EXPECT_FALSE(app.hasPlugin(rtype::plugins::particle::ParticlePlugin::kName));
+    EXPECT_FALSE(app.hasPlugin(aylo::plugins::tilemap::TilemapPlugin::kName));
+    EXPECT_FALSE(app.hasPlugin(aylo::plugins::text::TextPlugin::kName));
+    EXPECT_FALSE(app.hasPlugin(aylo::plugins::particle::ParticlePlugin::kName));
 }
 
 TEST(PluginDependencies, TheGraphicsPluginRunsAlone) {
@@ -76,7 +76,7 @@ TEST(PluginDependencies, TheShaderPluginRequiresTheGraphicsPlugin) {
 TEST(PluginDependencies, TheTilemapPluginRunsWithoutTheOtherPluginsThatDraw) {
     App app{RunMode::kClient};
     addGraphics(app);
-    app.addPlugin(rtype::plugins::tilemap::TilemapPlugin{});
+    app.addPlugin(aylo::plugins::tilemap::TilemapPlugin{});
     EXPECT_NO_THROW(app.runFrame());
 }
 
@@ -84,7 +84,7 @@ TEST(PluginDependencies, TheTextPluginRunsWithoutTheTilemapPlugin) {
     App app{RunMode::kClient};
     addGraphics(app);
     app.addPlugin(ShaderPlugin{});
-    app.addPlugin(rtype::plugins::text::TextPlugin{});
+    app.addPlugin(aylo::plugins::text::TextPlugin{});
     EXPECT_NO_THROW(app.runFrame());
 }
 
@@ -92,7 +92,7 @@ TEST(PluginDependencies, TheParticlePluginRunsWithoutTheTextPlugin) {
     App app{RunMode::kClient};
     addGraphics(app);
     app.addPlugin(ShaderPlugin{});
-    app.addPlugin(rtype::plugins::particle::ParticlePlugin{});
+    app.addPlugin(aylo::plugins::particle::ParticlePlugin{});
     EXPECT_NO_THROW(app.runFrame());
 }
 
@@ -120,13 +120,13 @@ TEST(PluginDependencies, TheSpritePluginRunsAloneOnAServer) {
 
 TEST(PluginDependencies, ThePhysicsPluginRunsWithoutAnythingThatDraws) {
     App app{RunMode::kServer};
-    app.addPlugin(rtype::plugins::transform::TransformPlugin{});
-    app.addPlugin(rtype::plugins::physics::PhysicsPlugin{});
+    app.addPlugin(aylo::plugins::transform::TransformPlugin{});
+    app.addPlugin(aylo::plugins::physics::PhysicsPlugin{});
     EXPECT_NO_THROW(app.runFrame());
 }
 
 TEST(PluginDependencies, ThePhysicsPluginRequiresTheTransformPlugin) {
     App app{RunMode::kServer};
-    EXPECT_THROW(app.addPlugin(rtype::plugins::physics::PhysicsPlugin{}), PluginException);
+    EXPECT_THROW(app.addPlugin(aylo::plugins::physics::PhysicsPlugin{}), PluginException);
 }
 }  // namespace

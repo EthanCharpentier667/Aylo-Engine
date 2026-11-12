@@ -64,13 +64,13 @@ A slow frame runs `FixedUpdate` several times; a fast one may run it zero times.
 avoids the "spiral of death" when the machine cannot keep up: the time beyond it is dropped, so the game
 slows down instead of spending ever longer catching up.
 
-`rtype::ecs::FixedTimestep` (`time/FixedTimestep.hpp`) is the accumulator. It belongs to the **time plugin**
+`aylo::ecs::FixedTimestep` (`time/FixedTimestep.hpp`) is the accumulator. It belongs to the **time plugin**
 (`time/TimePlugin.hpp`), which every App has: if none was added, the App adds one with the defaults before its
 first frame ([App and plugins](14-app-and-plugins.md#time)). Adding one yourself configures it:
 
 ```c++
-app.addPlugin(rtype::ecs::TimePlugin{rtype::ecs::FixedTimestep{30, 5}});  // 30 ticks per second, at most 5 per frame
-app.addPlugin(rtype::ecs::TimePlugin::manual(std::chrono::milliseconds{16}));  // tests: every frame lasts 16 ms
+app.addPlugin(aylo::ecs::TimePlugin{aylo::ecs::FixedTimestep{30, 5}});  // 30 ticks per second, at most 5 per frame
+app.addPlugin(aylo::ecs::TimePlugin::manual(std::chrono::milliseconds{16}));  // tests: every frame lasts 16 ms
 ```
 
 The default is **60 ticks per second, at most 5 per frame**. The accumulator counts in integers
@@ -79,7 +79,7 @@ same ticks for the same frame times, and 60 Hz gives exactly 60 ticks per second
 rounding of 1/60 s. With the defaults, 5 ms frames run a tick every 3 or 4 frames, 16 ms frames almost one
 per frame, and 50 ms frames 3 per frame.
 
-The time plugin inserts the `Time` resource (`time/Time.hpp`, `"rtype.Time"`), and its clock keeps it up to
+The time plugin inserts the `Time` resource (`time/Time.hpp`, `"aylo.Time"`), and its clock keeps it up to
 date:
 
 | Field | Meaning | Set |
@@ -90,7 +90,7 @@ date:
 | `alpha` | how far the frame is into the next tick, in [0, 1): to interpolate what is drawn | before `Update` |
 
 ```c++
-void movement(rtype::ecs::Query<Position, const Velocity> query, rtype::ecs::Res<rtype::ecs::Time> time) {
+void movement(aylo::ecs::Query<Position, const Velocity> query, aylo::ecs::Res<aylo::ecs::Time> time) {
     for (auto [entity, position, velocity] : query) {
         position->x += velocity.x * time->fixedDelta;
     }
@@ -145,9 +145,9 @@ game's own pause menu is gameplay, not this.
 ### Ordering inside a phase
 
 ```c++
-app.addSystem(rtype::ecs::Phase::kFixedUpdate, "rtype.movement", &movement);
-app.addSystem(rtype::ecs::Phase::kFixedUpdate, "rtype.collision", &detectCollisions).after("rtype.movement");
-app.addSystem(rtype::ecs::Phase::kFixedUpdate, "rtype.damage", &applyDamage).after("rtype.collision");
+app.addSystem(aylo::ecs::Phase::kFixedUpdate, "aylo.movement", &movement);
+app.addSystem(aylo::ecs::Phase::kFixedUpdate, "aylo.collision", &detectCollisions).after("aylo.movement");
+app.addSystem(aylo::ecs::Phase::kFixedUpdate, "aylo.damage", &applyDamage).after("aylo.collision");
 ```
 
 Systems live in **one `Schedule` per phase** (`schedule/Schedule.hpp`): a schedule orders, checks and runs
@@ -158,14 +158,14 @@ used in no other phase before handing the system to the phase's schedule. Withou
 directly:
 
 ```c++
-rtype::ecs::Schedules schedules{world, rtype::ecs::RunMode::kStandalone};
-schedules.addSystem(rtype::ecs::Phase::kFixedUpdate, "rtype.movement", &movement);
-schedules.addSystem(rtype::ecs::Phase::kFixedUpdate, "rtype.collision", &detect).after("rtype.movement");
-schedules.addSystem(rtype::ecs::Phase::kUpdate, "rtype.camera", &follow).setSide(rtype::ecs::Side::kClient);
+aylo::ecs::Schedules schedules{world, aylo::ecs::RunMode::kStandalone};
+schedules.addSystem(aylo::ecs::Phase::kFixedUpdate, "aylo.movement", &movement);
+schedules.addSystem(aylo::ecs::Phase::kFixedUpdate, "aylo.collision", &detect).after("aylo.movement");
+schedules.addSystem(aylo::ecs::Phase::kUpdate, "aylo.camera", &follow).setSide(aylo::ecs::Side::kClient);
 schedules.build();                                // checks and sorts every schedule
-schedules.run(rtype::ecs::Phase::kFixedUpdate);   // one phase: its systems, then their commands
+schedules.run(aylo::ecs::Phase::kFixedUpdate);   // one phase: its systems, then their commands
 schedules.runFrame();                             // a whole frame (above)
-schedules.getOrder(rtype::ecs::Phase::kFixedUpdate);
+schedules.getOrder(aylo::ecs::Phase::kFixedUpdate);
 ```
 
 The schedules are keyed by `Phase` for now; named schedules (States' `OnEnter` / `OnExit`) come with v2.
@@ -201,8 +201,8 @@ structural changes are visible from the next phase, never to the other systems o
 ### Run conditions (v2)
 
 ```c++
-app.addSystem(rtype::ecs::Phase::kFixedUpdate, "game.spawnWaves", &spawnWaves)
-    .runIf(&rtype::ecs::inState<GamePhase::kPlaying>);
+app.addSystem(aylo::ecs::Phase::kFixedUpdate, "game.spawnWaves", &spawnWaves)
+    .runIf(&aylo::ecs::inState<GamePhase::kPlaying>);
 ```
 
 A run condition is a small read-only function evaluated before the system; if it returns false the
@@ -251,7 +251,7 @@ several plugins fill is the exception: the order of the additions does not matte
 others would make them require each other. A system takes such a resource as a `ResAppend<T>`:
 
 ```cpp
-void drawTexts(rtype::ecs::ResAppend<rtype::plugins::graphics::SpriteQueue> queue) { queue->push(layer, text); }
+void drawTexts(aylo::ecs::ResAppend<aylo::plugins::graphics::SpriteQueue> queue) { queue->push(layer, text); }
 ```
 
 Two systems appending to it need no order. A system that reads it or writes it any other way still does, so the system
@@ -271,5 +271,5 @@ not depend on the order of the additions.
 
 ## Open questions
 
-- Fixed tick rate for R-Type: 60 Hz, or 30 Hz to halve network traffic? (Team) The default is 60 Hz;
+- Fixed tick rate: 60 Hz, or 30 Hz to halve network traffic? (Team) The default is 60 Hz;
   `setFixedTimestep()` changes it.

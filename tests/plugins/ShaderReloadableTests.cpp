@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ShaderReloadableTests
 */
@@ -18,20 +18,20 @@
 #include <system_error>
 #include <vector>
 
+#include "aylo/core/reload/ChangeSet.hpp"
+#include "aylo/core/reload/HotReloader.hpp"
+#include "aylo/core/reload/ReloadOutcome.hpp"
+#include "aylo/core/reload/ReloadReport.hpp"
 #include "core/asset/AssetId.hpp"
 #include "plugins/shader/ShaderAssets.hpp"
 #include "plugins/shader/ShaderReloadable.hpp"
-#include "rtype/core/reload/ChangeSet.hpp"
-#include "rtype/core/reload/HotReloader.hpp"
-#include "rtype/core/reload/ReloadOutcome.hpp"
-#include "rtype/core/reload/ReloadReport.hpp"
 
-using rtype::core::asset::AssetId;
-using rtype::core::reload::ChangeSet;
-using rtype::core::reload::HotReloader;
-using rtype::core::reload::ReloadOutcome;
-using rtype::plugins::shader::ShaderAssets;
-using rtype::plugins::shader::ShaderReloadable;
+using aylo::core::asset::AssetId;
+using aylo::core::reload::ChangeSet;
+using aylo::core::reload::HotReloader;
+using aylo::core::reload::ReloadOutcome;
+using aylo::plugins::shader::ShaderAssets;
+using aylo::plugins::shader::ShaderReloadable;
 
 namespace {
 constexpr std::string_view kPath = "shaders/tint.glsl";  ///< The shader, in the assets.
@@ -65,13 +65,13 @@ class ShaderReloadableTest : public ::testing::Test {
     }
 
     /// @brief Runs the reloader twice, as the debounce wants the same stamp two times.
-    std::vector<rtype::core::reload::ReloadReport> settle(HotReloader& reloader) {
+    std::vector<aylo::core::reload::ReloadReport> settle(HotReloader& reloader) {
         static_cast<void>(reloader.poll());
         return reloader.poll();
     }
 
     std::filesystem::path _game{std::filesystem::temp_directory_path() /
-                                std::format("rtype_shader_reloadable_{:08x}", std::random_device{}())};
+                                std::format("aylo_shader_reloadable_{:08x}", std::random_device{}())};
     std::filesystem::file_time_type _time{std::filesystem::file_time_type::clock::now()};  ///< Of the last write.
     ShaderAssets _shaders;                                                                 ///< The game's shaders.
     std::vector<std::string> _log;                                                         ///< What the reloader said.

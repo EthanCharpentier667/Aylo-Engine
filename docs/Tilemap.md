@@ -1,6 +1,6 @@
 # Tilemaps and parallax
 
-The tilemap plugin (`src/rtype/plugins/tilemap/`, `rtype::plugins::tilemap`) draws levels made in
+The tilemap plugin (`src/aylo/plugins/tilemap/`, `aylo::plugins::tilemap`) draws levels made in
 [Tiled](https://www.mapeditor.org/) and parallax backgrounds. It knows nothing of the renderer: it pushes the sprites
 of the tiles the camera shows to the backend's `SpriteQueue`, which the `GraphicsPlugin` draws with the sprite entities.
 The game adds it, after `GraphicsPlugin`, which it requires.
@@ -14,7 +14,7 @@ void spawnLevel(ecs::ResMut<TilemapAssets> maps, ecs::Commands& commands) {
 }
 ```
 
-- **`TilemapAssets`** (the resource `rtype.TilemapAssets`) keeps the maps by `AssetId`, as `TextureAssets` keeps the
+- **`TilemapAssets`** (the resource `aylo.TilemapAssets`) keeps the maps by `AssetId`, as `TextureAssets` keeps the
   textures. `load()` reads a map at once, on every side; one that cannot be read is recorded as failed, with the reason,
   which is printed: a missing map does not stop the game. Its images are handed to `TextureAssets` by the client.
 - **`spawnTilemap()`** spawns one entity per layer, bottom first: a `Transform` (the map's position plus the layer's
@@ -40,7 +40,7 @@ Object layers are skipped. Image and tileset paths are relative to the file that
 ## Drawing
 
 Tile layers are stored in **chunks** of 16x16 cells, only where there are tiles. Each frame, the Render system
-`rtype.Tilemap.Draw` skips the chunks outside the `VisibleArea` (what the camera shows, recorded by the
+`aylo.Tilemap.Draw` skips the chunks outside the `VisibleArea` (what the camera shows, recorded by the
 `GraphicsPlugin`) and pushes one sprite per tile of the others: a level of any length costs the tiles on screen. All the
 tiles of a tileset share its texture, so they are drawn in one batch per layer.
 
@@ -50,7 +50,7 @@ needs, and the texture, asked for with `TextureDesc::repeat`, tiles them.
 ## Parallax
 
 `Parallax` moves an entity slower or faster than the camera, and scrolls it on its own. Each frame, the Render system
-`rtype.Tilemap.Parallax` (before the camera) sets the entity's `GlobalTransform` to its `Transform` plus:
+`aylo.Tilemap.Parallax` (before the camera) sets the entity's `GlobalTransform` to its `Transform` plus:
 
 - `(camera - origin) * (1 - factor)`: a factor of 0 stays on screen with the camera, 1 moves with the world, between
   the two moves slower (far away), above 1 faster (a foreground). `origin` is where the camera sees the entity at its
@@ -63,7 +63,7 @@ gameplay and the PostUpdate systems, so physics and audio see the entity at its 
 ## From scripts
 
 The TilemapPlugin registers two [engine calls](ecs/features/19-luau-bridge.md#engine-calls):
-`rtype.tilemap.load { path }` returns the map's id, and `rtype.tilemap.spawn { map, position, scale, firstDrawLayer }`
+`aylo.tilemap.load { path }` returns the map's id, and `aylo.tilemap.spawn { map, position, scale, firstDrawLayer }`
 spawns its layers (`spawnTilemap()`) and returns how many it spawned.
 
 ## In the repository

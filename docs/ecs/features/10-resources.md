@@ -34,7 +34,7 @@ Luau can reach them.
 
 ### Declaring and storing
 
-A resource is a C++ type declared with `RTYPE_ECS_RESOURCE`, or a run-time (Luau) description. It is a second
+A resource is a C++ type declared with `AYLO_ECS_RESOURCE`, or a run-time (Luau) description. It is a second
 kind of the [type core](../design.md) (see "The type core"): `ResourceInfo { TypeInfo type; bool nonSend; }`,
 registered in a `ResourceRegistry` (`TypeRegistry<ResourceInfo>`), its value kept in a `ResourceStorage` slot
 (zero or one value in a `ByteColumn`, with its `added` / `changed` ticks). Unlike a component, a resource may
@@ -45,12 +45,12 @@ struct Time {
     float delta;
     float fixedDelta;
 };
-RTYPE_ECS_RESOURCE(Time, "rtype.Time");
+AYLO_ECS_RESOURCE(Time, "aylo.Time");
 
 struct Score {
     std::int32_t value;
 };
-RTYPE_ECS_RESOURCE(Score, "game.Score", value);   // reflected: replicable, reachable from Luau
+AYLO_ECS_RESOURCE(Score, "game.Score", value);   // reflected: replicable, reachable from Luau
 ```
 
 A name is one kind of type only: registering a resource named like a component or an event is refused
@@ -62,7 +62,7 @@ Resources live in a `Resources` object owned by the world, reached with `world.g
 `world.getComponents()` for components, see [World](06-world.md)):
 
 ```c++
-rtype::ecs::Resources& resources = world.getResources();
+aylo::ecs::Resources& resources = world.getResources();
 resources.insert(Time{.fixedDelta = 1.F / 60.F});
 const Time& time = resources.require<Time>();
 ```
@@ -101,8 +101,8 @@ app.insertResource(Time{.fixedDelta = 1.F / 60.F});
 app.insertResource(std::move(settings));               // Ethan's core::config::Settings
 app.insertNonSendResource(std::move(backend));         // Ethan's plugins::graphics::Backend
 
-void tick(rtype::ecs::ResMut<Time> time);
-void drawSprites(/* queries... */ rtype::ecs::NonSendMut<rtype::plugins::graphics::Backend> backend);
+void tick(aylo::ecs::ResMut<Time> time);
+void drawSprites(/* queries... */ aylo::ecs::NonSendMut<aylo::plugins::graphics::Backend> backend);
 ```
 
 | Parameter | Access | Thread |
@@ -160,7 +160,7 @@ replicated resource is sent like a component of a hidden singleton entity.
   systems only add to: two appending systems need no order, but each is still ordered against whatever reads or
   writes it. Use it only when the order of the additions cannot change the result.
 - **Missing resource.** `require<T>()` throws `MissingResourceException` naming the resource
-  ("Resource 'rtype.Time' is not in the world: insert it (or add the plugin that does) before using it");
+  ("Resource 'aylo.Time' is not in the world: insert it (or add the plugin that does) before using it");
   with #120, a system asking for `Res<T>` reports it the same way. `get<T>()` returns `nullptr` for
   resources that are genuinely optional.
 

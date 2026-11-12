@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** LibraryEntryTests
 */
@@ -12,7 +12,7 @@
 
 #include "core/library/LibraryEntry.hpp"
 
-using rtype::core::library::LibraryRegistrar;
+using aylo::core::library::LibraryRegistrar;
 
 TEST(LibraryRegistrar, FindsWhatALibraryProvides) {
     LibraryRegistrar registrar;

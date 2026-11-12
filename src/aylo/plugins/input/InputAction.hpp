@@ -1,0 +1,97 @@
+/*
+** EPITECH PROJECT, 2026
+** aylo
+** File description:
+** InputAction
+*/
+
+#pragma once
+
+#include <cstdint>
+#include <glm/ext/vector_float2.hpp>
+#include <vector>
+
+#include "plugins/input/Control.hpp"
+#include "plugins/input/Export.hpp"
+
+namespace aylo::plugins::input {
+
+/// @brief What an action produces
+enum class ActionType : std::uint8_t {
+    kButton,   ///< On/off, use isPressed() / isHeld() / isReleased().
+    kAxis,     ///< A single float, use readAxis().
+    kVector2,  ///< A 2D vector, use readVector().
+};
+
+/// @brief A named, device-independent input, e.g. "move" or "fire".
+///
+/// @details An action holds any number of bindings, from any device. Each frame
+/// every binding is evaluated and the one with the largest magnitude wins, so the
+/// keyboard, the mouse and a gamepad can drive the same action.
+///
+/// @code
+/// input.addAction("move", ActionType::kVector2)
+///     .bindVector(plugins::input::Control::key(contract::platform::input::Key::kW),
+///     plugins::input::Control::key(contract::platform::input::Key::kS),
+///     plugins::input::Control::key(contract::platform::input::Key::kA),
+///     plugins::input::Control::key(contract::platform::input::Key::kD))
+///     .bindVector(plugins::input::Control::gamepadAxis(contract::platform::input::GamepadAxis::kLeftX),
+///     plugins::input::Control::gamepadAxis(contract::platform::input::GamepadAxis::kLeftY));
+/// @endcode
+class AYLO_PLUGIN_INPUT_API InputAction {
+  public:
+    explicit InputAction(ActionType type) noexcept;
+
+    /// @brief Binds a single control. For a kVector2 action it drives X.
+    InputAction& bind(plugins::input::Control control);
+    /// @brief 1D composite: negative gives -1, positive gives +1 (e.g. A / D).
+    InputAction& bindAxis(plugins::input::Control negative, plugins::input::Control positive);
+    /// @brief 2D composite from four controls (WASD, arrows, d-pad). Diagonals are normalized.
+    InputAction& bindVector(plugins::input::Control up, plugins::input::Control down, plugins::input::Control left,
+                            plugins::input::Control right);
+    /// @brief 2D vector from two analog controls (gamepad stick, mouse delta).
+    InputAction& bindVector(plugins::input::Control x, plugins::input::Control y);
+
+    /// @brief Magnitude above which the action counts as held. Defaults to 0.5.
+    InputAction& setPressPoint(float pressPoint) noexcept;
+
+    /// @return True only on the frame the action starts being held.
+    [[nodiscard]] bool isPressed() const noexcept;
+    /// @return True every frame the action is held.
+    [[nodiscard]] bool isHeld() const noexcept;
+    /// @return True only on the frame the action stops being held.
+    [[nodiscard]] bool isReleased() const noexcept;
+
+    /// @return The current value as a float (the X of the value).
+    [[nodiscard]] float readAxis() const noexcept;
+    /// @return The current value as a 2D vector.
+    [[nodiscard]] glm::vec2 readVector() const noexcept;
+
+    [[nodiscard]] ActionType getType() const noexcept;
+
+  private:
+    friend class Input;
+
+    /// @brief One control contributing along a direction.
+    struct Part {
+        plugins::input::Control control;
+        glm::vec2 direction;
+    };
+
+    /// @brief A group of parts evaluated together into one vector.
+    struct Binding {
+        std::vector<Part> parts;
+        bool normalize = false;  ///< Clamps the result to length 1 (digital composites).
+    };
+
+    /// @brief Stores this frame's value and shifts the held state. Called by Input::update().
+    void update(glm::vec2 value) noexcept;
+
+    ActionType _type;                ///< What the action produces.
+    std::vector<Binding> _bindings;  ///< Every source that can drive the action.
+    glm::vec2 _value{0.0F};          ///< Value of the winning binding this frame.
+    float _pressPoint = 0.5F;        ///< Magnitude above which the action is held.
+    bool _held = false;              ///< Held this frame.
+    bool _wasHeld = false;           ///< Held the previous frame.
+};
+}  // namespace aylo::plugins::input

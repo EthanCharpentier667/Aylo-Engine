@@ -218,7 +218,7 @@ jobs:
       # no C++, so clang-tidy finds them.
       - name: Generate the embedded shader headers
         run: |
-          xmake build -y --files="src/rtype/render/vulkan/shaders/*" render-vulkan
+          xmake build -y --files="src/aylo/render/vulkan/shaders/*" render-vulkan
           xmake build -y --files="tests/vulkan/shaders/*" vulkan-tests
 
       # The base comes from the gate job: the base of the whole stack for a pull request, the previous head of main for

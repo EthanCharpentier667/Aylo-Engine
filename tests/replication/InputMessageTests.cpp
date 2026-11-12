@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** InputMessageTests
 */
@@ -12,19 +12,19 @@
 #include <cstdint>
 #include <span>
 
-#include "rtype/network/Types.hpp"
-#include "rtype/replication/MessageType.hpp"
-#include "rtype/replication/input/InputKind.hpp"
-#include "rtype/replication/input/InputLayout.hpp"
-#include "rtype/replication/input/InputMessage.hpp"
+#include "aylo/network/Types.hpp"
+#include "aylo/replication/MessageType.hpp"
+#include "aylo/replication/input/InputKind.hpp"
+#include "aylo/replication/input/InputLayout.hpp"
+#include "aylo/replication/input/InputMessage.hpp"
 
 namespace {
-using rtype::replication::input::decodeInput;
-using rtype::replication::input::encodeInput;
-using rtype::replication::input::InputKind;
-using rtype::replication::input::InputLayout;
-using rtype::replication::input::InputMessage;
-using rtype::replication::input::InputSample;
+using aylo::replication::input::decodeInput;
+using aylo::replication::input::encodeInput;
+using aylo::replication::input::InputKind;
+using aylo::replication::input::InputLayout;
+using aylo::replication::input::InputMessage;
+using aylo::replication::input::InputSample;
 
 // Slots: move = 0, 1; throttle = 2. Buttons: boost = 0, fire = 1.
 InputLayout makeLayout() {
@@ -46,7 +46,7 @@ InputSample makeSample(const std::uint32_t sequence, const std::uint32_t buttons
     return sample;
 }
 
-std::span<const std::byte> view(const rtype::network::Bytes& bytes) { return bytes; }
+std::span<const std::byte> view(const aylo::network::Bytes& bytes) { return bytes; }
 }  // namespace
 
 TEST(InputMessage, RoundTripsOneInput) {
@@ -55,7 +55,7 @@ TEST(InputMessage, RoundTripsOneInput) {
 
     const auto bytes = encodeInput(message, layout);
     EXPECT_EQ(bytes.size(), 6U + 8U + 6U);
-    EXPECT_EQ(bytes[0], static_cast<std::byte>(rtype::replication::MessageType::kInput));
+    EXPECT_EQ(bytes[0], static_cast<std::byte>(aylo::replication::MessageType::kInput));
 
     const auto decoded = decodeInput(view(bytes), layout);
     ASSERT_TRUE(decoded);

@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ParticleConstantsTests
 */
@@ -11,17 +11,17 @@
 #include <glm/ext/vector_float4.hpp>
 #include <glm/ext/vector_uint2.hpp>
 
+#include "aylo/contract/renderer/drawing/BlendMode.hpp"
+#include "aylo/contract/renderer/math/Rect.hpp"
+#include "aylo/contract/renderer/particle/Particle.hpp"
 #include "render/vulkan/rendering/Blend.hpp"
 #include "render/vulkan/rendering/ParticleConstants.hpp"
-#include "rtype/contract/renderer/drawing/BlendMode.hpp"
-#include "rtype/contract/renderer/math/Rect.hpp"
-#include "rtype/contract/renderer/particle/Particle.hpp"
 
-using rtype::contract::renderer::BlendMode;
-using rtype::contract::renderer::ParticleAlignment;
-using rtype::contract::renderer::ParticleDraw;
-using rtype::contract::renderer::math::Rect;
-using rtype::render::vulkan::rendering::ParticleConstants;
+using aylo::contract::renderer::BlendMode;
+using aylo::contract::renderer::ParticleAlignment;
+using aylo::contract::renderer::ParticleDraw;
+using aylo::contract::renderer::math::Rect;
+using aylo::render::vulkan::rendering::ParticleConstants;
 
 TEST(ParticleConstants, AnEmptySourceShowsTheWholeTexture) {
     const ParticleConstants constants = ParticleConstants::fromDraw(ParticleDraw{}, glm::uvec2{64, 32});
@@ -50,7 +50,7 @@ TEST(ParticleConstants, CarriesTheBlendModeTheAlignmentAndTheStretch) {
     draw.alignment = ParticleAlignment::kVelocity;
     draw.stretch = 0.05F;
     const ParticleConstants constants = ParticleConstants::fromDraw(draw, glm::uvec2{8, 8});
-    EXPECT_EQ(constants.blend, rtype::render::vulkan::rendering::kBlendCutout);
+    EXPECT_EQ(constants.blend, aylo::render::vulkan::rendering::kBlendCutout);
     EXPECT_EQ(constants.alignment, 1U);
     EXPECT_FLOAT_EQ(constants.stretch, 0.05F);
 }

@@ -3,7 +3,7 @@
 > **Implemented:** the physics plugin built from this plan is described in
 > [`../physics/design.md`](../physics/design.md), which also lists where it differs from section 4.
 
-**Context:** our engine is C++23, built with `xmake`, around our own ECS (`rtype::ecs`) with GLM math. The game is
+**Context:** our engine is C++23, built with `xmake`, around our own ECS (`aylo::ecs`) with GLM math. The game is
 **2D for now** (`Transform` holds a `glm::vec2`), and **moving to 3D later is mandatory**, so the physics engine must
 cover both without a rewrite. We need `Collider` and `RigidBody` components, triggers and raycasts.
 
@@ -69,7 +69,7 @@ as much as "2D today".
   character controller (`CharacterVirtual`), raycasts and shape casts, and an optional cross-platform deterministic
   mode.
 - **2D:** `EAllowedDOFs::Plane2D` locks Z and the X/Y rotations. It works well for classic 2D gameplay such as a
-  shoot'em up, but it is not true 2D: no native 2D polygons or chains. R-Type needs boxes, circles and capsules,
+  shoot'em up, but it is not true 2D: no native 2D polygons or chains. A shoot'em up needs boxes, circles and capsules,
   which `Plane2D` covers.
 - **Threading:** Jolt runs its work through a `JobSystem` we choose. With `JobSystemSingleThreaded` (or a small pool
   shared by all rooms), a room steps its world on its own thread and the `ContactListener` is called on that
@@ -120,7 +120,7 @@ as much as "2D today".
 
 ### Components and systems
 
-The components stay **descriptors** (`Collider`, `RigidBody`, declared with `RTYPE_ECS_COMPONENT` like `Transform`),
+The components stay **descriptors** (`Collider`, `RigidBody`, declared with `AYLO_ECS_COMPONENT` like `Transform`),
 and an internal `PhysicsHandle` component links the entity to its body. The body stores the entity in its user data
 (`Body::SetUserData`) to go back from a contact to the entity.
 
@@ -175,7 +175,7 @@ It is the best fit for **our** project:
 2. **Mature in 3D today**, while 3D is mandatory for us and Box3D is still in alpha.
 3. **Fits our architecture:** a single-threaded job system per room, contact callbacks on the room thread,
    `CharacterVirtual` for prediction, and a ready `xmake` package.
-4. **Enough for an R-Type in 2D** (boxes, spheres, capsules, triggers, raycasts).
+4. **Enough for a shoot'em up in 2D** (boxes, spheres, capsules, triggers, raycasts).
 
 **Two points to watch:** the GLM ↔ Jolt conversion header (with the Y-axis flip), and where the integration lives
 in our dependency graph (see [Build](#build)).

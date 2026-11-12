@@ -37,22 +37,22 @@ damage, spawning waves, drawing).
 ### C++ systems
 
 ```c++
-void movement(rtype::ecs::Query<Transform, const Velocity> query, rtype::ecs::Res<Time> time) {
+void movement(aylo::ecs::Query<Transform, const Velocity> query, aylo::ecs::Res<Time> time) {
     for (auto [entity, transform, velocity] : query) {
         transform->position += velocity.value * time->fixedDelta;
     }
 }
 
-app.addSystem(rtype::ecs::Phase::kFixedUpdate, "rtype.movement", &movement)
-    .setSide(rtype::ecs::Side::kBoth);
+app.addSystem(aylo::ecs::Phase::kFixedUpdate, "aylo.movement", &movement)
+    .setSide(aylo::ecs::Side::kBoth);
 ```
 
 `app.addSystem` adds it to the world's [schedules](13-scheduler.md), which order, run and flush the systems
 of each phase. Without an App, a system can also be made from a world and run by hand:
 
 ```c++
-rtype::ecs::System system{world, "rtype.movement", &movement};   // a function, or a lambda without captures
-system.setSide(rtype::ecs::Side::kBoth);                          // kServer by default
+aylo::ecs::System system{world, "aylo.movement", &movement};   // a function, or a lambda without captures
+system.setSide(aylo::ecs::Side::kBoth);                          // kServer by default
 system.run();             // builds the parameters, calls the function, advances the change tick
 system.flushCommands();   // applies its Commands& (the scheduler: after each phase)
 system.getAccess();       // what it reads and writes, for the scheduler
@@ -87,18 +87,18 @@ function when the system is added (any order; each configured parameter takes th
 time (the replicated ones, those a script declares), configured with a `QueryList`:
 
 ```c++
-void snapshot(rtype::ecs::Res<ServerState> state, rtype::ecs::DynamicQueries replicated) {
+void snapshot(aylo::ecs::Res<ServerState> state, aylo::ecs::DynamicQueries replicated) {
     for (std::size_t query = 0; query < replicated.getCount(); ++query) {
-        for (rtype::ecs::QueryMatch& match : replicated.iter(query)) {            // since this system's last run
+        for (aylo::ecs::QueryMatch& match : replicated.iter(query)) {            // since this system's last run
             // match.getEntity(), match.get(0)...
         }
-        for (rtype::ecs::QueryMatch& match : replicated.iterSince(query, ack)) {  // since any tick
+        for (aylo::ecs::QueryMatch& match : replicated.iterSince(query, ack)) {  // since any tick
         }
     }
 }
 
-app.addSystem(rtype::ecs::Phase::kPostUpdate, "net.snapshot", &snapshot,
-              rtype::ecs::QueryList{{rtype::ecs::QueryBuilder{}.read(networkId).read(healthId)}});
+app.addSystem(aylo::ecs::Phase::kPostUpdate, "net.snapshot", &snapshot,
+              aylo::ecs::QueryList{{aylo::ecs::QueryBuilder{}.read(networkId).read(healthId)}});
 ```
 
 - The queries are built **once**, when the system is added; a query that cannot be built (an unregistered
@@ -115,7 +115,7 @@ app.addSystem(rtype::ecs::Phase::kPostUpdate, "net.snapshot", &snapshot,
 configured with a `ResourceList` (`{id, write}` per resource) and an `EventList` (`{id, read, send}` per event):
 
 ```c++
-void run(rtype::ecs::DynamicResources resources, rtype::ecs::DynamicEvents events) {
+void run(aylo::ecs::DynamicResources resources, aylo::ecs::DynamicEvents events) {
     std::span<const std::byte> time = resources.get(0);          // empty while the resource has no value
     std::span<std::byte> score = resources.getMut(1);            // empty unless declared write
     for (std::span<const std::byte> bytes : events.read(0)) {}   // each event once, like an EventReader
@@ -123,9 +123,9 @@ void run(rtype::ecs::DynamicResources resources, rtype::ecs::DynamicEvents event
     events.send(1, explosion);                                   // false unless declared send, or a wrong size
 }
 
-app.addSystem(rtype::ecs::Phase::kUpdate, "game.run", &run,
-              rtype::ecs::ResourceList{{{timeId, false}, {scoreId, true}}},
-              rtype::ecs::EventList{{{collisionId, true, false}, {explosionId, false, true}}});
+app.addSystem(aylo::ecs::Phase::kUpdate, "game.run", &run,
+              aylo::ecs::ResourceList{{{timeId, false}, {scoreId, true}}},
+              aylo::ecs::EventList{{{collisionId, true, false}, {explosionId, false, true}}});
 ```
 
 - The ids must be registered before the system is added, or an exception names the problem
@@ -146,11 +146,11 @@ A script runtime cannot give a function pointer: its system calls a function tha
 function. Its parameters are deduced from its call operator, so its access is declared as for any system:
 
 ```c++
-auto run = [script](rtype::ecs::DynamicQueries queries, rtype::ecs::Commands& commands) {
+auto run = [script](aylo::ecs::DynamicQueries queries, aylo::ecs::Commands& commands) {
     script.call(queries, commands);
 };
-app.addSystem(rtype::ecs::Phase::kFixedUpdate, "game.ShieldRegen", rtype::ecs::ScriptCallable{run},
-              rtype::ecs::QueryList{{rtype::ecs::QueryBuilder{}.write(shieldId).without(deadId)}});
+app.addSystem(aylo::ecs::Phase::kFixedUpdate, "game.ShieldRegen", aylo::ecs::ScriptCallable{run},
+              aylo::ecs::QueryList{{aylo::ecs::QueryBuilder{}.write(shieldId).without(deadId)}});
 ```
 
 It must take explicit parameter types (no `auto`) and return void; it is moved into the system, so a
@@ -164,16 +164,16 @@ plugin registers on the App for scripts; `ecs` keeps its description, so it stay
 
 ```c++
 struct LoadSound {
-    rtype::core::asset::AssetId path;
+    aylo::core::asset::AssetId path;
     bool stream = false;
 };
-RTYPE_ECS_CALL_DATA(LoadSound, "rtype.audio.LoadSound", path, stream);   // arguments and results: call data
+AYLO_ECS_CALL_DATA(LoadSound, "aylo.audio.LoadSound", path, stream);   // arguments and results: call data
 struct Loaded {
-    rtype::core::asset::AssetId id;
+    aylo::core::asset::AssetId id;
 };
-RTYPE_ECS_CALL_DATA(Loaded, "rtype.audio.Loaded", id);
+AYLO_ECS_CALL_DATA(Loaded, "aylo.audio.Loaded", id);
 
-app.addCall("rtype.audio.loadSound", [](rtype::ecs::ResMut<AudioAssets> sounds, const LoadSound& args) {
+app.addCall("aylo.audio.loadSound", [](aylo::ecs::ResMut<AudioAssets> sounds, const LoadSound& args) {
     return Loaded{.id = sounds->load(args.path, {.stream = args.stream})};
 });
 ```
@@ -182,7 +182,7 @@ app.addCall("rtype.audio.loadSound", [](rtype::ecs::ResMut<AudioAssets> sounds, 
   configuration (`Res`, `ResMut`, `NonSend`, `NonSendMut`, `Query`, `Commands&`, `EventReader`, `EventWriter`),
   then optionally `const Args&`; it returns void or call data. They give the call's **access**, as a system's
   parameters give its own (`CallInfo::access`).
-- Arguments and results are declared with `RTYPE_ECS_CALL_DATA` (standard-layout, default-constructible, moved and
+- Arguments and results are declared with `AYLO_ECS_CALL_DATA` (standard-layout, default-constructible, moved and
   destroyed without throwing), so their description is a `TypeInfo`: a script runtime builds them from their defaults
   and the fields a script names, with the conversions it already has for components.
 - A field is a value, an `ecs::String` (255 bytes at most), or, for a longer text or a list, a `std::string` or a
@@ -204,7 +204,7 @@ app.addCall("rtype.audio.loadSound", [](rtype::ecs::ResMut<AudioAssets> sounds, 
 
 The list above is what the ECS provides, not a closed set. `SystemParam` is chosen by the compiler when a system is
 added: no runtime registration, so a library can add a parameter type of its own by specializing
-`rtype::ecs::SystemParam` for it, in the same header as the type. Every file that adds a system taking it must
+`aylo::ecs::SystemParam` for it, in the same header as the type. Every file that adds a system taking it must
 include that header. The specialization gives the same three members as the built-in ones:
 
 | Member | Called | Does |
@@ -223,7 +223,7 @@ access to what it declares as read): the scheduler orders systems only by what i
 
 The list above is what the ECS provides, not a closed set. `SystemParam` is chosen by the compiler when a system is
 added: no runtime registration, so a library can add a parameter type of its own by specializing
-`rtype::ecs::SystemParam` for it, in the same header as the type. Every file that adds a system taking it must
+`aylo::ecs::SystemParam` for it, in the same header as the type. Every file that adds a system taking it must
 include that header. The specialization gives the same three members as the built-in ones:
 
 | Member | Called | Does |
@@ -256,8 +256,8 @@ tick counts system runs, not frames, and every run has its own number:
 local ShieldRegen = ecs.system("game.ShieldRegen", {
     phase = "FixedUpdate",                                   -- default
     side = "server",                                         -- default
-    query = { write = { "game.Shield" }, without = { "rtype.Dead" } },
-    after = { "rtype.movement" },
+    query = { write = { "game.Shield" }, without = { "aylo.Dead" } },
+    after = { "aylo.movement" },
 })
 
 function ShieldRegen:run(ctx)

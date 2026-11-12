@@ -62,33 +62,33 @@ never depend on each other. Only the code that registers the backends (`main.cpp
 
 | File | Role |
 |---|---|
-| [`rtype/contract/platform/IPlatform.hpp`](../src/rtype/contract/platform/IPlatform.hpp) | The window and its events |
-| [`rtype/contract/platform/WindowConfig.hpp`](../src/rtype/contract/platform/WindowConfig.hpp) | How the window is created, read from the `window` settings |
-| [`rtype/contract/renderer/IRenderer.hpp`](../src/rtype/contract/renderer/IRenderer.hpp) | Textures, camera, sprites and shapes |
-| [`core/config/Settings.hpp`](../src/rtype/core/config/Settings.hpp) | The configuration |
-| [`rtype/plugins/graphics/BackendRegistry.hpp`](../src/rtype/plugins/graphics/BackendRegistry.hpp) | Backends by name, and the start-up sequence |
-| [`interop/vulkan/IVulkanSurfaceSource.hpp`](../src/rtype/interop/vulkan/IVulkanSurfaceSource.hpp) | What a Vulkan renderer needs from a window |
-| [`platform/glfw/Registration.hpp`](../src/rtype/platform/glfw/Registration.hpp) | Registers `glfw` |
-| [`render/vulkan/Registration.hpp`](../src/rtype/render/vulkan/Registration.hpp) | Registers `vulkan` |
+| [`aylo/contract/platform/IPlatform.hpp`](../src/aylo/contract/platform/IPlatform.hpp) | The window and its events |
+| [`aylo/contract/platform/WindowConfig.hpp`](../src/aylo/contract/platform/WindowConfig.hpp) | How the window is created, read from the `window` settings |
+| [`aylo/contract/renderer/IRenderer.hpp`](../src/aylo/contract/renderer/IRenderer.hpp) | Textures, camera, sprites and shapes |
+| [`core/config/Settings.hpp`](../src/aylo/core/config/Settings.hpp) | The configuration |
+| [`aylo/plugins/graphics/BackendRegistry.hpp`](../src/aylo/plugins/graphics/BackendRegistry.hpp) | Backends by name, and the start-up sequence |
+| [`interop/vulkan/IVulkanSurfaceSource.hpp`](../src/aylo/interop/vulkan/IVulkanSurfaceSource.hpp) | What a Vulkan renderer needs from a window |
+| [`platform/glfw/Registration.hpp`](../src/aylo/platform/glfw/Registration.hpp) | Registers `glfw` |
+| [`render/vulkan/Registration.hpp`](../src/aylo/render/vulkan/Registration.hpp) | Registers `vulkan` |
 
 ## Usage
 
 ```cpp
 // 1. Every module registers its backends.
-rtype::plugins::graphics::BackendRegistry registry;
-rtype::platform::glfw::registerPlatform(registry.platforms);   // "glfw"
-rtype::render::vulkan::registerRenderer(registry.renderers);  // "vulkan"
+aylo::plugins::graphics::BackendRegistry registry;
+aylo::platform::glfw::registerPlatform(registry.platforms);   // "glfw"
+aylo::render::vulkan::registerRenderer(registry.renderers);  // "vulkan"
 
 // 2. The configuration picks the pair and sets it up.
-rtype::core::config::Settings config;
+aylo::core::config::Settings config;
 config.set("platform", "glfw");
 config.set("renderer", "vulkan");
-config.set("window.title", "R-Type");
+config.set("window.title", "AYLO");
 config.set("window.size", std::vector<double>{1280, 720});
 config.set("vulkan.debugging", true);
 
 // 3. Start them, then only use the interfaces.
-const rtype::plugins::graphics::Backend backend = registry.createBackend(config);
+const aylo::plugins::graphics::Backend backend = registry.createBackend(config);
 while (backend.platform->isOpen()) {
     for (const auto& event : backend.platform->pollEvents()) { /* ... */ }
     backend.renderer->beginFrame(color);
@@ -106,8 +106,8 @@ In an App, the `BackendPlugin` draws two components at their entity's `GlobalTra
 
 | Component | System | What it draws |
 |---|---|---|
-| `SpriteRenderer` (`rtype.SpriteRenderer`) | `rtype.backend.sprites` | a texture's `source` rectangle, with the `SpriteQueue` (tiles, texts), sorted by `layer` |
-| `ShapeRenderer` (`rtype.ShapeRenderer`) | `rtype.backend.shapes`, after the sprites | a `Shape`: a rectangle, circle, capsule or line, filled and/or outlined, sorted by `layer` among the shapes |
+| `SpriteRenderer` (`aylo.SpriteRenderer`) | `aylo.backend.sprites` | a texture's `source` rectangle, with the `SpriteQueue` (tiles, texts), sorted by `layer` |
+| `ShapeRenderer` (`aylo.ShapeRenderer`) | `aylo.backend.shapes`, after the sprites | a `Shape`: a rectangle, circle, capsule or line, filled and/or outlined, sorted by `layer` among the shapes |
 
 A shape turns and scales with its entity (its `size` on both axes, its radii, corner radius and outline on X), and a
 line runs from the entity's position to its `end`, in the entity's space. Shapes are overlays: they are drawn over every
@@ -118,8 +118,8 @@ capsule, 3 line) and the sprite's `source` as a `vec4` (`x`, `y` its position, `
 
 ```luau
 ctx.commands:spawn({
-    ["rtype.Transform"] = { position = { x = 400, y = 300 } },
-    ["rtype.ShapeRenderer"] = {
+    ["aylo.Transform"] = { position = { x = 400, y = 300 } },
+    ["aylo.ShapeRenderer"] = {
         kind = 1, radius = 36, -- a circle
         fillColor = { x = 0.25, y = 0.27, z = 0.32, w = 1 },
         outlineColor = { x = 0.55, y = 0.6, z = 0.7, w = 1 }, outlineThickness = 2,
@@ -186,7 +186,7 @@ is defined **once per API**, in a header-only target of `interop/` that depends 
 
 | Target | Interface | Implemented by | Used by |
 |---|---|---|---|
-| `interop-vulkan` | [`IVulkanSurfaceSource`](../src/rtype/interop/vulkan/IVulkanSurfaceSource.hpp) | `GlfwPlatform`, the SDL example's `SdlPlatform` | `VulkanRenderer` |
+| `interop-vulkan` | [`IVulkanSurfaceSource`](../src/aylo/interop/vulkan/IVulkanSurfaceSource.hpp) | `GlfwPlatform`, the SDL example's `SdlPlatform` | `VulkanRenderer` |
 
 ```cpp
 class GlfwPlatform final : public contract::platform::IPlatform, public interop::vulkan::IVulkanSurfaceSource { ... };
@@ -211,8 +211,8 @@ interface once, and works with every Vulkan renderer. Another API would get its 
 (`interop-webgpu` with an `IWebGpuSurfaceSource`, `interop-metal` with an `IMetalLayerSource`...), only when a renderer
 needs it.
 
-The interfaces are marked `RTYPE_INTEROP_API`, and the engine's (`IPlatform`, `IRenderer`)
-`RTYPE_ENGINE_API`: both give them a default visibility. The renderer, in a shared library, `dynamic_cast`s a
+The interfaces are marked `AYLO_INTEROP_API`, and the engine's (`IPlatform`, `IRenderer`)
+`AYLO_ENGINE_API`: both give them a default visibility. The renderer, in a shared library, `dynamic_cast`s a
 platform created in the executable, which is built with `-fvisibility=hidden`: the cast compares the type
 information of the source (`IPlatform`) and of the target (`IVulkanSurfaceSource`) across the two binaries, so both
 must be shared. Neither macro exports code (the interfaces are header-only), and both are empty on Windows, where
@@ -275,7 +275,7 @@ lists of strings.
 ```
 platform        = "glfw"
 renderer        = "vulkan"
-window.title    = "R-Type"
+window.title    = "AYLO"
 window.size     = { 1280, 720 }
 vulkan.layers   = { "VK_LAYER_KHRONOS_validation" }
 vulkan.debugging = true
@@ -316,7 +316,7 @@ Everything is reported by exceptions, before a window opens whenever possible:
 
 A backend can live in an engine module or in your own code, as the SDL and SFML examples do. In both cases:
 
-1. **Implement the interface.** `class MyPlatform final : public rtype::contract::platform::IPlatform`, or `IRenderer`.
+1. **Implement the interface.** `class MyPlatform final : public aylo::contract::platform::IPlatform`, or `IRenderer`.
    A platform also implements the interop interfaces of the renderers it serves (`IVulkanSurfaceSource` for
    `vulkan`, with `add_deps("interop-vulkan")`); a renderer overrides `setup()` if it must set the platform up
    before its window exists.
@@ -330,32 +330,32 @@ A backend can live in an engine module or in your own code, as the SDL and SFML 
    ```
 
    A backend with settings reads them in its factory, into its own typed configuration
-   (see [`render/vulkan/Registration.cpp`](../src/rtype/render/vulkan/Registration.cpp)).
+   (see [`render/vulkan/Registration.cpp`](../src/aylo/render/vulkan/Registration.cpp)).
 3. **Choose it** in the configuration: `config.set("platform", "sdl")`.
 
 In an engine module, a backend gets its own folder and target (`platform/<library>/` → `platform-<library>`,
 `render/<api>/` → `render-<api>`), and its registration goes in a `Registration.hpp` with a `registerPlatform()` /
-`registerRenderer()` function, exported with the target's `RTYPE_<LIB>_API` macro if it is a shared library.
+`registerRenderer()` function, exported with the target's `AYLO_<LIB>_API` macro if it is a shared library.
 Self-registration through global variables does not work: the linker drops the unreferenced objects of static
 libraries.
 
 ## The null backend
 
-`src/rtype/backend/null/` (`backend-null`, `rtype-backend-null`) registers a `null` platform and a `null` renderer: no
+`src/aylo/backend/null/` (`backend-null`, `aylo-backend-null`) registers a `null` platform and a `null` renderer: no
 window, no event, nothing drawn, textures and particle systems only get ids. A client that names them in `project.luau`
 (`platform = "null"`, `renderer = "null"`) runs its UI, graphics and input scripts on a machine with no display, so a
 headless client test can exist. `close()` ends the run with one `Closed` event.
 
 ## The SDL3 platform
 
-`src/rtype/platform/sdl/` (`platform-sdl`, `rtype-platform-sdl`) registers the platform `sdl`: the window, keyboard,
+`src/aylo/platform/sdl/` (`platform-sdl`, `aylo-platform-sdl`) registers the platform `sdl`: the window, keyboard,
 mouse, text input and clipboard through SDL3. Like `platform-glfw`, it implements `IVulkanSurfaceSource`, so the Vulkan
 renderer draws in its window unchanged: `platform = "sdl"`, `renderer = "vulkan"`. Gamepads are not reported yet. SDL3
 is private to this folder; on Linux only SDL itself is linked, as for GLFW, so a headless server still loads it.
 
 ## The raylib backend
 
-`src/rtype/backend/raylib/` (`backend-raylib`, `rtype-backend-raylib`) registers a platform `raylib` and a renderer
+`src/aylo/backend/raylib/` (`backend-raylib`, `aylo-backend-raylib`) registers a platform `raylib` and a renderer
 `raylib`. raylib opens its window and its OpenGL context together (`InitWindow()`), so the two live in one library, as
 the null backend does, and the renderer refuses any other platform. Settings: the section `raylib`, with
 `virtualResolution` as for Vulkan.

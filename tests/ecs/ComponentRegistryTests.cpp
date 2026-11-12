@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ComponentRegistryTests
 */
@@ -13,230 +13,230 @@
 #include <utility>
 #include <vector>
 
+#include "aylo/ecs/component/ComponentInfo.hpp"
+#include "aylo/ecs/component/ComponentRegistry.hpp"
+#include "aylo/ecs/component/ComponentTraits.hpp"
+#include "aylo/ecs/error/Error.hpp"
+#include "aylo/ecs/exceptions/ComponentExceptions.hpp"
 #include "core/hash/NameHash.hpp"
-#include "rtype/ecs/component/ComponentInfo.hpp"
-#include "rtype/ecs/component/ComponentRegistry.hpp"
-#include "rtype/ecs/component/ComponentTraits.hpp"
-#include "rtype/ecs/error/Error.hpp"
-#include "rtype/ecs/exceptions/ComponentExceptions.hpp"
 
-namespace rtype::test::registry {
+namespace aylo::test::registry {
 struct Health {
     std::int32_t value;
     std::int32_t max;
 };
-RTYPE_ECS_COMPONENT(Health, "rtype.Health", value, max);
+AYLO_ECS_COMPONENT(Health, "aylo.Health", value, max);
 
 struct Transform {
     float x;
     float y;
 };
-RTYPE_ECS_COMPONENT(Transform, "rtype.Transform", x, y);
+AYLO_ECS_COMPONENT(Transform, "aylo.Transform", x, y);
 
 struct Dead {};
-RTYPE_ECS_COMPONENT(Dead, "rtype.Dead");
+AYLO_ECS_COMPONENT(Dead, "aylo.Dead");
 
-/// @brief Another struct claiming the name "rtype.Health", with another layout.
+/// @brief Another struct claiming the name "aylo.Health", with another layout.
 struct OtherHealth {
     float value;
 };
-RTYPE_ECS_COMPONENT(OtherHealth, "rtype.Health", value);
-}  // namespace rtype::test::registry
+AYLO_ECS_COMPONENT(OtherHealth, "aylo.Health", value);
+}  // namespace aylo::test::registry
 
 namespace {
 /// @return A run-time description, as a script would provide it.
-rtype::ecs::ComponentInfo makeShield() {
-    return rtype::ecs::ComponentInfo{
+aylo::ecs::ComponentInfo makeShield() {
+    return aylo::ecs::ComponentInfo{
         .type = {.name = "game.Shield",
                  .size = 8,
                  .alignment = 4,
-                 .fields = {{.name = "strength", .type = rtype::ecs::FieldType::kF32, .offset = 0},
-                            {.name = "regen", .type = rtype::ecs::FieldType::kF32, .offset = 4}}}};
+                 .fields = {{.name = "strength", .type = aylo::ecs::FieldType::kF32, .offset = 0},
+                            {.name = "regen", .type = aylo::ecs::FieldType::kF32, .offset = 4}}}};
 }
 }  // namespace
 
 TEST(ComponentRegistry, GivesDenseIdsFromZero) {
-    rtype::ecs::ComponentRegistry registry;
-    EXPECT_EQ(registry.registerType<rtype::test::registry::Health>(), 0U);
-    EXPECT_EQ(registry.registerType<rtype::test::registry::Transform>(), 1U);
-    EXPECT_EQ(registry.registerType<rtype::test::registry::Dead>(), 2U);
+    aylo::ecs::ComponentRegistry registry;
+    EXPECT_EQ(registry.registerType<aylo::test::registry::Health>(), 0U);
+    EXPECT_EQ(registry.registerType<aylo::test::registry::Transform>(), 1U);
+    EXPECT_EQ(registry.registerType<aylo::test::registry::Dead>(), 2U);
     EXPECT_EQ(registry.getCount(), 3U);
 }
 
 TEST(ComponentRegistry, RegisteringTheSameComponentTwiceReturnsTheSameId) {
-    rtype::ecs::ComponentRegistry registry;
-    const rtype::ecs::ComponentId first = registry.registerType<rtype::test::registry::Health>();
-    EXPECT_EQ(registry.registerType<rtype::test::registry::Health>(), first);
+    aylo::ecs::ComponentRegistry registry;
+    const aylo::ecs::ComponentId first = registry.registerType<aylo::test::registry::Health>();
+    EXPECT_EQ(registry.registerType<aylo::test::registry::Health>(), first);
     EXPECT_EQ(registry.getCount(), 1U);
 }
 
 TEST(ComponentRegistry, FindsComponentsByIdNameHashAndType) {
-    rtype::ecs::ComponentRegistry registry;
-    const rtype::ecs::ComponentId id = registry.registerType<rtype::test::registry::Health>();
+    aylo::ecs::ComponentRegistry registry;
+    const aylo::ecs::ComponentId id = registry.registerType<aylo::test::registry::Health>();
 
-    const rtype::ecs::ComponentInfo* byId = registry.findById(id);
+    const aylo::ecs::ComponentInfo* byId = registry.findById(id);
     ASSERT_NE(byId, nullptr);
-    EXPECT_EQ(byId->type.name, "rtype.Health");
+    EXPECT_EQ(byId->type.name, "aylo.Health");
     EXPECT_EQ(byId->type.id, id);
-    EXPECT_EQ(registry.findByName("rtype.Health"), byId);
-    EXPECT_EQ(registry.findByHash(rtype::core::hash::hashName("rtype.Health")), byId);
-    EXPECT_EQ(registry.find<rtype::test::registry::Health>(), byId);
+    EXPECT_EQ(registry.findByName("aylo.Health"), byId);
+    EXPECT_EQ(registry.findByHash(aylo::core::hash::hashName("aylo.Health")), byId);
+    EXPECT_EQ(registry.find<aylo::test::registry::Health>(), byId);
 }
 
 TEST(ComponentRegistry, FindReturnsNullForAnotherLayoutUnderTheSameName) {
-    rtype::ecs::ComponentRegistry registry;
-    static_cast<void>(registry.registerType<rtype::test::registry::Health>());
-    EXPECT_EQ(registry.find<rtype::test::registry::OtherHealth>(), nullptr);  // "rtype.Health", but not this layout
-    EXPECT_NE(registry.find<rtype::test::registry::Health>(), nullptr);
+    aylo::ecs::ComponentRegistry registry;
+    static_cast<void>(registry.registerType<aylo::test::registry::Health>());
+    EXPECT_EQ(registry.find<aylo::test::registry::OtherHealth>(), nullptr);  // "aylo.Health", but not this layout
+    EXPECT_NE(registry.find<aylo::test::registry::Health>(), nullptr);
 }
 
 TEST(ComponentRegistry, FindReturnsNullForARunTimeComponentThatOnlySharesTheName) {
-    rtype::ecs::ComponentRegistry registry;
-    rtype::ecs::ComponentInfo script = makeShield();  // 8 bytes like Health, other fields
-    script.type.name = "rtype.Health";
+    aylo::ecs::ComponentRegistry registry;
+    aylo::ecs::ComponentInfo script = makeShield();  // 8 bytes like Health, other fields
+    script.type.name = "aylo.Health";
     ASSERT_TRUE(registry.registerType(std::move(script)));
-    EXPECT_EQ(registry.find<rtype::test::registry::Health>(), nullptr);
-    EXPECT_THROW(static_cast<void>(registry.registerType<rtype::test::registry::Health>()),
-                 rtype::ecs::exceptions::ComponentRegistrationException);
+    EXPECT_EQ(registry.find<aylo::test::registry::Health>(), nullptr);
+    EXPECT_THROW(static_cast<void>(registry.registerType<aylo::test::registry::Health>()),
+                 aylo::ecs::exceptions::ComponentRegistrationException);
 }
 
 TEST(ComponentRegistry, FindAcceptsARunTimeDescriptionOfTheSameLayout) {
-    rtype::ecs::ComponentRegistry registry;
+    aylo::ecs::ComponentRegistry registry;
     // A script describing exactly the C++ layout is the same component.
-    ASSERT_TRUE(registry.registerType(rtype::ecs::ComponentTraits<rtype::test::registry::Health>::makeInfo()));
-    EXPECT_NE(registry.find<rtype::test::registry::Health>(), nullptr);
+    ASSERT_TRUE(registry.registerType(aylo::ecs::ComponentTraits<aylo::test::registry::Health>::makeInfo()));
+    EXPECT_NE(registry.find<aylo::test::registry::Health>(), nullptr);
 }
 
 TEST(ComponentRegistry, ReturnsNullForUnknownComponents) {
-    rtype::ecs::ComponentRegistry registry;
-    static_cast<void>(registry.registerType<rtype::test::registry::Health>());
+    aylo::ecs::ComponentRegistry registry;
+    static_cast<void>(registry.registerType<aylo::test::registry::Health>());
     EXPECT_EQ(registry.findById(1), nullptr);
-    EXPECT_EQ(registry.findById(rtype::ecs::kInvalidComponentId), nullptr);
-    EXPECT_EQ(registry.findByName("rtype.Unknown"), nullptr);
-    EXPECT_EQ(registry.findByHash(rtype::core::hash::hashName("rtype.Unknown")), nullptr);
-    EXPECT_EQ(registry.find<rtype::test::registry::Transform>(), nullptr);
+    EXPECT_EQ(registry.findById(aylo::ecs::kInvalidComponentId), nullptr);
+    EXPECT_EQ(registry.findByName("aylo.Unknown"), nullptr);
+    EXPECT_EQ(registry.findByHash(aylo::core::hash::hashName("aylo.Unknown")), nullptr);
+    EXPECT_EQ(registry.find<aylo::test::registry::Transform>(), nullptr);
 }
 
 TEST(ComponentRegistry, SetsTheLayoutHash) {
-    rtype::ecs::ComponentRegistry registry;
-    static_cast<void>(registry.registerType<rtype::test::registry::Health>());
-    const rtype::ecs::ComponentInfo* info = registry.find<rtype::test::registry::Health>();
+    aylo::ecs::ComponentRegistry registry;
+    static_cast<void>(registry.registerType<aylo::test::registry::Health>());
+    const aylo::ecs::ComponentInfo* info = registry.find<aylo::test::registry::Health>();
     ASSERT_NE(info, nullptr);
-    EXPECT_EQ(info->type.layoutHash, rtype::ecs::computeLayoutHash(info->type));
+    EXPECT_EQ(info->type.layoutHash, aylo::ecs::computeLayoutHash(info->type));
     EXPECT_NE(info->type.layoutHash, 0U);
 }
 
 TEST(ComponentRegistry, AppliesTheOptions) {
-    rtype::ecs::ComponentRegistry registry;
-    static_cast<void>(registry.registerType<rtype::test::registry::Transform>(
-        {.storage = rtype::ecs::StorageKind::kTable, .replication = rtype::ecs::ReplicationMode::kEveryChange}));
-    const rtype::ecs::ComponentInfo* info = registry.find<rtype::test::registry::Transform>();
+    aylo::ecs::ComponentRegistry registry;
+    static_cast<void>(registry.registerType<aylo::test::registry::Transform>(
+        {.storage = aylo::ecs::StorageKind::kTable, .replication = aylo::ecs::ReplicationMode::kEveryChange}));
+    const aylo::ecs::ComponentInfo* info = registry.find<aylo::test::registry::Transform>();
     ASSERT_NE(info, nullptr);
-    EXPECT_EQ(info->storage, rtype::ecs::StorageKind::kTable);
-    EXPECT_EQ(info->type.presence, rtype::ecs::Presence::kBoth);
-    EXPECT_EQ(info->type.replication, rtype::ecs::ReplicationMode::kEveryChange);
+    EXPECT_EQ(info->storage, aylo::ecs::StorageKind::kTable);
+    EXPECT_EQ(info->type.presence, aylo::ecs::Presence::kBoth);
+    EXPECT_EQ(info->type.replication, aylo::ecs::ReplicationMode::kEveryChange);
 }
 
 TEST(ComponentRegistry, ListsOnlyReplicatedComponents) {
-    rtype::ecs::ComponentRegistry registry;
-    static_cast<void>(registry.registerType<rtype::test::registry::Health>());
-    const rtype::ecs::ComponentId transform = registry.registerType<rtype::test::registry::Transform>(
-        {.replication = rtype::ecs::ReplicationMode::kEveryChange});
-    const rtype::ecs::ComponentId dead =
-        registry.registerType<rtype::test::registry::Dead>({.replication = rtype::ecs::ReplicationMode::kSpawnOnly});
-    static_cast<void>(registry.registerType<rtype::test::registry::Transform>(
-        {.replication = rtype::ecs::ReplicationMode::kEveryChange}));  // again: listed once
+    aylo::ecs::ComponentRegistry registry;
+    static_cast<void>(registry.registerType<aylo::test::registry::Health>());
+    const aylo::ecs::ComponentId transform = registry.registerType<aylo::test::registry::Transform>(
+        {.replication = aylo::ecs::ReplicationMode::kEveryChange});
+    const aylo::ecs::ComponentId dead =
+        registry.registerType<aylo::test::registry::Dead>({.replication = aylo::ecs::ReplicationMode::kSpawnOnly});
+    static_cast<void>(registry.registerType<aylo::test::registry::Transform>(
+        {.replication = aylo::ecs::ReplicationMode::kEveryChange}));  // again: listed once
 
-    const std::vector<rtype::ecs::ComponentId> replicated{registry.getReplicatedIds().begin(),
-                                                          registry.getReplicatedIds().end()};
-    EXPECT_EQ(replicated, (std::vector<rtype::ecs::ComponentId>{transform, dead}));
+    const std::vector<aylo::ecs::ComponentId> replicated{registry.getReplicatedIds().begin(),
+                                                         registry.getReplicatedIds().end()};
+    EXPECT_EQ(replicated, (std::vector<aylo::ecs::ComponentId>{transform, dead}));
 }
 
 TEST(ComponentRegistry, RegistersRunTimeDescriptions) {
-    rtype::ecs::ComponentRegistry registry;
-    const rtype::ecs::Result<rtype::ecs::ComponentId> id = registry.registerType(makeShield());
+    aylo::ecs::ComponentRegistry registry;
+    const aylo::ecs::Result<aylo::ecs::ComponentId> id = registry.registerType(makeShield());
     ASSERT_TRUE(id);
     EXPECT_EQ(*id, 0U);
-    const rtype::ecs::Result<rtype::ecs::ComponentId> again = registry.registerType(makeShield());
+    const aylo::ecs::Result<aylo::ecs::ComponentId> again = registry.registerType(makeShield());
     ASSERT_TRUE(again);
     EXPECT_EQ(*again, *id);
     EXPECT_NE(registry.findByName("game.Shield"), nullptr);
 }
 
 TEST(ComponentRegistry, RefusesAnInvalidDescription) {
-    rtype::ecs::ComponentRegistry registry;
-    rtype::ecs::ComponentInfo info = makeShield();
+    aylo::ecs::ComponentRegistry registry;
+    aylo::ecs::ComponentInfo info = makeShield();
     info.type.alignment = 3;
-    const rtype::ecs::Result<rtype::ecs::ComponentId> id = registry.registerType(std::move(info));
+    const aylo::ecs::Result<aylo::ecs::ComponentId> id = registry.registerType(std::move(info));
     ASSERT_FALSE(id);
-    EXPECT_EQ(id.error().getKind(), rtype::ecs::ErrorKind::kInvalidType);
+    EXPECT_EQ(id.error().getKind(), aylo::ecs::ErrorKind::kInvalidType);
     EXPECT_EQ(registry.getCount(), 0U);
 }
 
 TEST(ComponentRegistry, RefusesTheSameNameWithAnotherLayout) {
-    rtype::ecs::ComponentRegistry registry;
+    aylo::ecs::ComponentRegistry registry;
     ASSERT_TRUE(registry.registerType(makeShield()));
-    rtype::ecs::ComponentInfo bigger = makeShield();
+    aylo::ecs::ComponentInfo bigger = makeShield();
     bigger.type.size = 16;
-    const rtype::ecs::Result<rtype::ecs::ComponentId> id = registry.registerType(std::move(bigger));
+    const aylo::ecs::Result<aylo::ecs::ComponentId> id = registry.registerType(std::move(bigger));
     ASSERT_FALSE(id);
-    EXPECT_EQ(id.error().getKind(), rtype::ecs::ErrorKind::kLayoutMismatch);
+    EXPECT_EQ(id.error().getKind(), aylo::ecs::ErrorKind::kLayoutMismatch);
     EXPECT_NE(std::string{id.error().getMessage()}.find("game.Shield"), std::string::npos);
     EXPECT_EQ(registry.getCount(), 1U);
 }
 
 TEST(ComponentRegistry, RefusesTheSameLayoutWithOtherHooks) {
-    rtype::ecs::ComponentRegistry registry;
+    aylo::ecs::ComponentRegistry registry;
     ASSERT_TRUE(registry.registerType(makeShield()));
-    rtype::ecs::ComponentInfo managed = makeShield();  // same name, size and fields, but needs destroying
+    aylo::ecs::ComponentInfo managed = makeShield();  // same name, size and fields, but needs destroying
     managed.type.hooks.destruct = [](void* /*target*/) noexcept {};
     managed.type.hooks.copy = [](void* /*destination*/, const void* /*source*/) {};  // consistent: valid on its own
-    const rtype::ecs::Result<rtype::ecs::ComponentId> id = registry.registerType(std::move(managed));
+    const aylo::ecs::Result<aylo::ecs::ComponentId> id = registry.registerType(std::move(managed));
     ASSERT_FALSE(id);
-    EXPECT_EQ(id.error().getKind(), rtype::ecs::ErrorKind::kLayoutMismatch);
+    EXPECT_EQ(id.error().getKind(), aylo::ecs::ErrorKind::kLayoutMismatch);
     EXPECT_EQ(registry.getCount(), 1U);
 }
 
 TEST(ComponentRegistry, RefusesTheSameNameWithOtherOptions) {
-    rtype::ecs::ComponentRegistry registry;
+    aylo::ecs::ComponentRegistry registry;
     ASSERT_TRUE(registry.registerType(makeShield()));
-    rtype::ecs::ComponentInfo replicated = makeShield();
-    replicated.type.replication = rtype::ecs::ReplicationMode::kEveryChange;
-    const rtype::ecs::Result<rtype::ecs::ComponentId> id = registry.registerType(std::move(replicated));
+    aylo::ecs::ComponentInfo replicated = makeShield();
+    replicated.type.replication = aylo::ecs::ReplicationMode::kEveryChange;
+    const aylo::ecs::Result<aylo::ecs::ComponentId> id = registry.registerType(std::move(replicated));
     ASSERT_FALSE(id);
-    EXPECT_EQ(id.error().getKind(), rtype::ecs::ErrorKind::kOptionsMismatch);
+    EXPECT_EQ(id.error().getKind(), aylo::ecs::ErrorKind::kOptionsMismatch);
     const std::string message{id.error().getMessage()};
     EXPECT_NE(message.find("replication 'none', not 'everyChange'"), std::string::npos) << message;
     EXPECT_TRUE(registry.getReplicatedIds().empty());
 }
 
 TEST(ComponentRegistry, TypedRegistrationThrowsOnConflicts) {
-    rtype::ecs::ComponentRegistry registry;
-    static_cast<void>(registry.registerType<rtype::test::registry::Health>());
-    EXPECT_THROW(static_cast<void>(registry.registerType<rtype::test::registry::OtherHealth>()),
-                 rtype::ecs::exceptions::ComponentRegistrationException);
-    EXPECT_THROW(static_cast<void>(registry.registerType<rtype::test::registry::Health>(
-                     {.replication = rtype::ecs::ReplicationMode::kEveryChange})),
-                 rtype::ecs::exceptions::ComponentRegistrationException);
+    aylo::ecs::ComponentRegistry registry;
+    static_cast<void>(registry.registerType<aylo::test::registry::Health>());
+    EXPECT_THROW(static_cast<void>(registry.registerType<aylo::test::registry::OtherHealth>()),
+                 aylo::ecs::exceptions::ComponentRegistrationException);
+    EXPECT_THROW(static_cast<void>(registry.registerType<aylo::test::registry::Health>(
+                     {.replication = aylo::ecs::ReplicationMode::kEveryChange})),
+                 aylo::ecs::exceptions::ComponentRegistrationException);
 }
 
 TEST(ComponentRegistry, PointersStayValidAfterManyRegistrations) {
-    rtype::ecs::ComponentRegistry registry;
-    const rtype::ecs::ComponentId health = registry.registerType<rtype::test::registry::Health>();
-    const rtype::ecs::ComponentInfo* info = registry.findById(health);
+    aylo::ecs::ComponentRegistry registry;
+    const aylo::ecs::ComponentId health = registry.registerType<aylo::test::registry::Health>();
+    const aylo::ecs::ComponentInfo* info = registry.findById(health);
     for (int i = 0; i < 500; ++i) {
-        rtype::ecs::ComponentInfo other = makeShield();
+        aylo::ecs::ComponentInfo other = makeShield();
         other.type.name = std::format("game.Shield{}", i);
         ASSERT_TRUE(registry.registerType(std::move(other)));
     }
     EXPECT_EQ(registry.findById(health), info);
-    EXPECT_EQ(info->type.name, "rtype.Health");
+    EXPECT_EQ(info->type.name, "aylo.Health");
 }
 
 TEST(ComponentRegistry, KeepsItsComponentsWhenMoved) {
-    rtype::ecs::ComponentRegistry registry;
-    const rtype::ecs::ComponentId health = registry.registerType<rtype::test::registry::Health>();
-    const rtype::ecs::ComponentRegistry moved{std::move(registry)};
+    aylo::ecs::ComponentRegistry registry;
+    const aylo::ecs::ComponentId health = registry.registerType<aylo::test::registry::Health>();
+    const aylo::ecs::ComponentRegistry moved{std::move(registry)};
     ASSERT_NE(moved.findById(health), nullptr);
-    EXPECT_EQ(moved.findByName("rtype.Health")->type.id, health);
+    EXPECT_EQ(moved.findByName("aylo.Health")->type.id, health);
 }

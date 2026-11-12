@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ScriptReloadTests
 */
@@ -18,27 +18,27 @@
 #include <vector>
 
 #include "ScriptsDirectory.hpp"
-#include "rtype/core/reload/ReloadOutcome.hpp"
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/entity/Entity.hpp"
-#include "rtype/ecs/schedule/Phase.hpp"
-#include "rtype/ecs/time/FixedTimestep.hpp"
-#include "rtype/ecs/time/TimePlugin.hpp"
-#include "rtype/scripting/ScriptHost.hpp"
-#include "rtype/scripting/modules/ScriptResolver.hpp"
+#include "aylo/core/reload/ReloadOutcome.hpp"
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/entity/Entity.hpp"
+#include "aylo/ecs/schedule/Phase.hpp"
+#include "aylo/ecs/time/FixedTimestep.hpp"
+#include "aylo/ecs/time/TimePlugin.hpp"
+#include "aylo/scripting/ScriptHost.hpp"
+#include "aylo/scripting/modules/ScriptResolver.hpp"
 
 namespace {
-using rtype::core::reload::ReloadOutcome;
-using Status = rtype::core::reload::ReloadOutcome::Status;
+using aylo::core::reload::ReloadOutcome;
+using Status = aylo::core::reload::ReloadOutcome::Status;
 
 /// @brief An App whose every frame runs one fixed tick of one second, and a host on it.
 struct Fixture {
-    rtype::ecs::App app;
-    std::unique_ptr<rtype::scripting::ScriptHost> host;
+    aylo::ecs::App app;
+    std::unique_ptr<aylo::scripting::ScriptHost> host;
 
     Fixture() {
-        app.addPlugin(rtype::ecs::TimePlugin::manual(std::chrono::seconds{1}, rtype::ecs::FixedTimestep{1, 5}));
-        auto created = rtype::scripting::ScriptHost::create(app, {});
+        app.addPlugin(aylo::ecs::TimePlugin::manual(std::chrono::seconds{1}, aylo::ecs::FixedTimestep{1, 5}));
+        auto created = aylo::scripting::ScriptHost::create(app, {});
         EXPECT_TRUE(created) << (created ? "" : std::string{created.error().message()});
         host = std::move(*created);
         EXPECT_EQ(load("components.luau", R"(
@@ -55,8 +55,8 @@ struct Fixture {
     }
 
     /// @brief Gives a new entity the shield and the position, at zero.
-    rtype::ecs::Entity spawn() {
-        const rtype::ecs::Entity entity = app.getWorld().spawn();
+    aylo::ecs::Entity spawn() {
+        const aylo::ecs::Entity entity = app.getWorld().spawn();
         for (const std::string_view name : {"game.Shield", "game.Position"}) {
             const auto* layout = host->findComponent(name);
             EXPECT_TRUE(app.getWorld().getComponents().add(entity, layout->id, layout->defaults));
@@ -65,11 +65,11 @@ struct Fixture {
     }
 
     /// @brief Reads the float field of an entity's component.
-    [[nodiscard]] float read(const rtype::ecs::Entity entity, const std::string_view component,
+    [[nodiscard]] float read(const aylo::ecs::Entity entity, const std::string_view component,
                              const std::string_view name) const {
         const auto* layout = host->findComponent(component);
         const auto bytes = app.getWorld().getComponents().get(entity, layout->id);
-        const auto field = std::ranges::find(layout->fields, name, &rtype::ecs::FieldInfo::name);
+        const auto field = std::ranges::find(layout->fields, name, &aylo::ecs::FieldInfo::name);
         float value = 0.F;
         std::memcpy(&value, bytes.data() + field->offset, sizeof(float));
         return value;
@@ -77,20 +77,20 @@ struct Fixture {
 
     /// @return Whether a system of this name is in the fixed update schedule.
     [[nodiscard]] bool hasSystem(const std::string_view name) const {
-        return app.getSchedules().getSchedule(rtype::ecs::Phase::kFixedUpdate).contains(name);
+        return app.getSchedules().getSchedule(aylo::ecs::Phase::kFixedUpdate).contains(name);
     }
 };
 
 /// @brief A host over a scripts directory, whose roots are the modules required by hand, as the entry points will be.
 struct ModuleFixture {
-    rtype::tests::ScriptsDirectory scripts;
-    rtype::ecs::App app;
-    std::unique_ptr<rtype::scripting::ScriptHost> host;
+    aylo::tests::ScriptsDirectory scripts;
+    aylo::ecs::App app;
+    std::unique_ptr<aylo::scripting::ScriptHost> host;
 
     explicit ModuleFixture(const std::string_view name) : scripts{name} {
-        app.addPlugin(rtype::ecs::TimePlugin::manual(std::chrono::seconds{1}, rtype::ecs::FixedTimestep{1, 5}));
-        auto created = rtype::scripting::ScriptHost::create(
-            app, {}, rtype::scripting::modules::ScriptResolver{scripts.path()}.forLoader());
+        app.addPlugin(aylo::ecs::TimePlugin::manual(std::chrono::seconds{1}, aylo::ecs::FixedTimestep{1, 5}));
+        auto created = aylo::scripting::ScriptHost::create(
+            app, {}, aylo::scripting::modules::ScriptResolver{scripts.path()}.forLoader());
         EXPECT_TRUE(created);
         host = std::move(*created);
     }
@@ -108,7 +108,7 @@ struct ModuleFixture {
     }
 
     [[nodiscard]] bool hasSystem(const std::string_view name) const {
-        return app.getSchedules().getSchedule(rtype::ecs::Phase::kFixedUpdate).contains(name);
+        return app.getSchedules().getSchedule(aylo::ecs::Phase::kFixedUpdate).contains(name);
     }
 };
 
@@ -151,7 +151,7 @@ constexpr std::string_view kMove = R"(
 TEST(ScriptReload, ReplacesASystemAndKeepsTheWorld) {
     Fixture fixture;
     ASSERT_EQ(fixture.load("grow.luau", grow(1)), "");
-    const rtype::ecs::Entity ship = fixture.spawn();
+    const aylo::ecs::Entity ship = fixture.spawn();
     fixture.app.runFrame();
     ASSERT_FLOAT_EQ(fixture.read(ship, "game.Shield", "strength"), 1.F);
 
@@ -165,7 +165,7 @@ TEST(ScriptReload, ReplacesASystemAndKeepsTheWorld) {
 
 TEST(ScriptReload, AddsTheSystemsOfANewScript) {
     Fixture fixture;
-    const rtype::ecs::Entity ship = fixture.spawn();
+    const aylo::ecs::Entity ship = fixture.spawn();
 
     const ReloadOutcome outcome = fixture.host->reloadScript("move.luau", std::string{kMove});
 
@@ -178,7 +178,7 @@ TEST(ScriptReload, AddsTheSystemsOfANewScript) {
 TEST(ScriptReload, RemovesTheSystemsAScriptNoLongerDeclares) {
     Fixture fixture;
     ASSERT_EQ(fixture.load("both.luau", grow(1) + std::string{kMove}), "");
-    const rtype::ecs::Entity ship = fixture.spawn();
+    const aylo::ecs::Entity ship = fixture.spawn();
 
     const ReloadOutcome outcome = fixture.host->reloadScript("both.luau", grow(1));
 
@@ -203,7 +203,7 @@ TEST(ScriptReload, RemovesTheSystemsOfADeletedScript) {
 TEST(ScriptReload, KeepsTheOldSystemsWhenTheScriptDoesNotCompile) {
     Fixture fixture;
     ASSERT_EQ(fixture.load("grow.luau", grow(1)), "");
-    const rtype::ecs::Entity ship = fixture.spawn();
+    const aylo::ecs::Entity ship = fixture.spawn();
 
     const ReloadOutcome outcome = fixture.host->reloadScript("grow.luau", "this is not luau (");
 
@@ -216,7 +216,7 @@ TEST(ScriptReload, KeepsTheOldSystemsWhenTheScriptDoesNotCompile) {
 TEST(ScriptReload, ChangesNothingWhenTheScriptFailsAfterDeclaringASystem) {
     Fixture fixture;
     ASSERT_EQ(fixture.load("grow.luau", grow(1)), "");
-    const rtype::ecs::Entity ship = fixture.spawn();
+    const aylo::ecs::Entity ship = fixture.spawn();
 
     const ReloadOutcome outcome = fixture.host->reloadScript("grow.luau", grow(100) + "\nerror('boom')");
 
@@ -229,7 +229,7 @@ TEST(ScriptReload, ChangesNothingWhenTheScriptFailsAfterDeclaringASystem) {
 TEST(ScriptReload, KeepsTheScheduleWhenTheNewOrderCannotBeBuilt) {
     Fixture fixture;
     ASSERT_EQ(fixture.load("grow.luau", grow(1)), "");
-    const rtype::ecs::Entity ship = fixture.spawn();
+    const aylo::ecs::Entity ship = fixture.spawn();
     const std::string orderedAfterNothing = R"(
         engine.ecs.system("game.Grow", {
             phase = "FixedUpdate",
@@ -352,7 +352,7 @@ TEST(ScriptReload, BuildsAgainALuauPluginTheScriptDeclaresAgain) {
         )";
     };
     ASSERT_EQ(fixture.load("growth.luau", plugin(1)), "");
-    const rtype::ecs::Entity ship = fixture.spawn();
+    const aylo::ecs::Entity ship = fixture.spawn();
     fixture.app.runFrame();
     ASSERT_FLOAT_EQ(fixture.read(ship, "game.Shield", "strength"), 1.F);
 
@@ -379,7 +379,7 @@ TEST(ScriptReload, KeepsTheOldPluginWhenTheScriptFails) {
 }
 
 TEST(ScriptReload, ReRunsTheDependentsOfAChangedModuleAfterIt) {
-    ModuleFixture fixture{"rtype-reload-dependents"};
+    ModuleFixture fixture{"aylo-reload-dependents"};
     fixture.scripts.write("lib.luau", noop("game.Lib") + "return { n = 1 }");
     fixture.scripts.write("mid.luau", "local lib = require('./lib')\n" + noop("game.Mid"));
     fixture.scripts.write("main.luau", "require('./mid')\n" + noop("game.Main"));
@@ -397,7 +397,7 @@ TEST(ScriptReload, ReRunsTheDependentsOfAChangedModuleAfterIt) {
 }
 
 TEST(ScriptReload, TheDependentsSeeTheNewValue) {
-    ModuleFixture fixture{"rtype-reload-value"};
+    ModuleFixture fixture{"aylo-reload-value"};
     fixture.scripts.write("lib.luau", "return { n = 1 }");
     fixture.scripts.write("main.luau",
                           "engine.ecs.system('game.V' .. require('./lib').n, "
@@ -412,7 +412,7 @@ TEST(ScriptReload, TheDependentsSeeTheNewValue) {
 }
 
 TEST(ScriptReload, ABatchRunsAModuleChangedTwiceOnce) {
-    ModuleFixture fixture{"rtype-reload-batch"};
+    ModuleFixture fixture{"aylo-reload-batch"};
     fixture.scripts.write("a.luau", "return 1");
     fixture.scripts.write("b.luau", "return 2");
     fixture.scripts.write("main.luau", "require('./a'); require('./b')\n" + noop("game.Main"));
@@ -428,7 +428,7 @@ TEST(ScriptReload, ABatchRunsAModuleChangedTwiceOnce) {
 }
 
 TEST(ScriptReload, AFailingDependentRestoresTheSystemsAndTheCache) {
-    ModuleFixture fixture{"rtype-reload-failure"};
+    ModuleFixture fixture{"aylo-reload-failure"};
     fixture.scripts.write("lib.luau", noop("game.Lib") + "return { n = 1 }");
     const std::string main = "assert(require('./lib').n == 1, 'boom')\n" + noop("game.Main");
     fixture.scripts.write("main.luau", main);
@@ -448,7 +448,7 @@ TEST(ScriptReload, AFailingDependentRestoresTheSystemsAndTheCache) {
 }
 
 TEST(ScriptReload, ARemovedModuleThatIsStillRequiredFailsAndKeepsTheOldState) {
-    ModuleFixture fixture{"rtype-reload-removed-required"};
+    ModuleFixture fixture{"aylo-reload-removed-required"};
     fixture.scripts.write("lib.luau", noop("game.Lib"));
     fixture.scripts.write("main.luau", "require('./lib')\n" + noop("game.Main"));
     fixture.require("main");
@@ -463,7 +463,7 @@ TEST(ScriptReload, ARemovedModuleThatIsStillRequiredFailsAndKeepsTheOldState) {
 }
 
 TEST(ScriptReload, ARemovedModuleNobodyRequiresLosesItsSystems) {
-    ModuleFixture fixture{"rtype-reload-removed"};
+    ModuleFixture fixture{"aylo-reload-removed"};
     fixture.scripts.write("lib.luau", noop("game.Lib"));
     fixture.scripts.write("main.luau", noop("game.Main"));
     fixture.require("main");
@@ -478,7 +478,7 @@ TEST(ScriptReload, ARemovedModuleNobodyRequiresLosesItsSystems) {
 }
 
 TEST(ScriptReload, AModuleNoLongerRequiredIsUnloadedWithItsSystems) {
-    ModuleFixture fixture{"rtype-reload-unreachable"};
+    ModuleFixture fixture{"aylo-reload-unreachable"};
     fixture.scripts.write("lib.luau", noop("game.Lib"));
     fixture.scripts.write("main.luau", "require('./lib')\n" + noop("game.Main"));
     fixture.require("main");
@@ -491,7 +491,7 @@ TEST(ScriptReload, AModuleNoLongerRequiredIsUnloadedWithItsSystems) {
 }
 
 TEST(ScriptReload, NeedsARebuildWhenTheModuleNoLongerRequiredDeclaredAComponent) {
-    ModuleFixture fixture{"rtype-reload-unreachable-component"};
+    ModuleFixture fixture{"aylo-reload-unreachable-component"};
     fixture.scripts.write("lib.luau", "engine.ecs.component('game.C', { fields = {} })");
     fixture.scripts.write("main.luau", "require('./lib')");
     fixture.require("main");
@@ -500,7 +500,7 @@ TEST(ScriptReload, NeedsARebuildWhenTheModuleNoLongerRequiredDeclaredAComponent)
 }
 
 TEST(ScriptReload, ANewlyRequiredModuleIsLoaded) {
-    ModuleFixture fixture{"rtype-reload-newly-required"};
+    ModuleFixture fixture{"aylo-reload-newly-required"};
     fixture.scripts.write("main.luau", noop("game.Main"));
     fixture.require("main");
     fixture.scripts.write("extra.luau", noop("game.Extra"));
@@ -512,7 +512,7 @@ TEST(ScriptReload, ANewlyRequiredModuleIsLoaded) {
 }
 
 TEST(ScriptReload, ANewFileIsARootUnlessTheHostIgnoresNewFiles) {
-    ModuleFixture fixture{"rtype-reload-new-file"};
+    ModuleFixture fixture{"aylo-reload-new-file"};
     fixture.scripts.write("main.luau", noop("game.Main"));
     fixture.require("main");
     ASSERT_EQ(fixture.change("added", noop("game.Added")).status, Status::kApplied);
@@ -529,7 +529,7 @@ TEST(ScriptReload, ANewFileIsARootUnlessTheHostIgnoresNewFiles) {
 }
 
 TEST(ScriptReload, ASystemMovedBetweenTwoModulesInOneBatchIsAccepted) {
-    ModuleFixture fixture{"rtype-reload-moved"};
+    ModuleFixture fixture{"aylo-reload-moved"};
     fixture.scripts.write("a.luau", noop("game.Moving"));
     fixture.scripts.write("b.luau", noop("game.Stays"));
     fixture.require("a");
@@ -548,7 +548,7 @@ TEST(ScriptReload, ASystemMovedBetweenTwoModulesInOneBatchIsAccepted) {
 }
 
 TEST(ScriptReload, ACycleIntroducedByAReloadFailsAndKeepsTheOldState) {
-    ModuleFixture fixture{"rtype-reload-cycle"};
+    ModuleFixture fixture{"aylo-reload-cycle"};
     fixture.scripts.write("a.luau", noop("game.A"));
     fixture.scripts.write("main.luau", "require('./a')\n" + noop("game.Main"));
     fixture.require("main");

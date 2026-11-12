@@ -1,0 +1,34 @@
+/*
+** EPITECH PROJECT, 2026
+** aylo
+** File description:
+** Time
+*/
+
+#pragma once
+
+#include <cstdint>
+
+#include "aylo/ecs/resource/ResourceTraits.hpp"
+
+namespace aylo::ecs {
+/// @brief The time of the frame and of the fixed ticks: a resource the time plugin's frame clock (TimeClock) inserts on
+/// the first frame and keeps up to date.
+/// @details Gameplay that must give the same result on every machine (movement, physics, network) runs in FixedUpdate
+/// and uses fixedDelta; what follows the screen (camera, animation, UI) uses delta.
+/// @code
+/// void movement(aylo::ecs::Query<Position, const Velocity> query, aylo::ecs::Res<aylo::ecs::Time> time) {
+///     for (auto [entity, position, velocity] : query) {
+///         position->x += velocity.x * time->fixedDelta;
+///     }
+/// }
+/// @endcode
+struct Time {
+    float delta{0.F};       ///< The last frame's duration, in seconds.
+    float fixedDelta{0.F};  ///< The duration of one fixed tick, in seconds (1/60 by default).
+    std::uint32_t tick{0};  ///< Fixed ticks completed since the start; while FixedUpdate runs, the current tick.
+    float alpha{0.F};       ///< How far the frame is into the next fixed tick, in [0, 1): to interpolate what is drawn.
+    double elapsed{0.};     ///< The sum of the frames' durations since the start, in seconds (a double: it grows).
+};
+AYLO_ECS_RESOURCE(Time, "aylo.Time", delta, fixedDelta, tick, alpha, elapsed);
+}  // namespace aylo::ecs

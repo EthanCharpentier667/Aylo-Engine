@@ -1,0 +1,147 @@
+/*
+** EPITECH PROJECT, 2026
+** aylo
+** File description:
+** AudioAssets
+*/
+
+#pragma once
+
+#include <cstddef>
+#include <cstdint>
+#include <filesystem>
+#include <memory>
+#include <optional>
+#include <span>
+#include <string>
+#include <unordered_map>
+#include <vector>
+
+#include "aylo/contract/audiodevice/AudioTypes.hpp"
+#include "aylo/contract/audiodevice/IAudioDevice.hpp"
+#include "aylo/ecs/resource/ResourceTraits.hpp"
+#include "core/asset/AssetId.hpp"
+#include "core/vfs/DirectorySource.hpp"
+#include "core/vfs/FileSource.hpp"
+#include "plugins/audio/Export.hpp"
+
+namespace aylo::plugins::audio {
+/// @brief Where a sound is in its loading.
+enum class SoundState : std::uint8_t {
+    kQueued,  ///< Asked for, waiting for the audio device to create it.
+    kLoaded,  ///< Created by the audio device: its SoundId can be played.
+    kFailed,  ///< Could not be loaded; the entry says why.
+};
+
+/// @brief The sounds, as the ECS resource "aylo.AudioAssets": systems ask for a sound by path and get its AssetId at
+/// once, components and events keep that id, and the audio plugin loads the queued sounds.
+///
+/// @details load() records the sound as queued and returns its id, without touching the audio device: gameplay systems
+/// need nothing but this resource, and a server without a device gets the same ids. Each frame, the audio plugin calls
+/// updateSounds(), which creates the queued sounds and destroys the unloaded ones. Unlike TextureAssets, nothing is
+/// decoded here: the device decodes, and streams a sound loaded with SoundDesc::stream. Lookups are by id, in constant
+/// time.
+/// @code
+/// void spawnShip(aylo::ecs::Commands& commands, aylo::ecs::ResMut<aylo::plugins::audio::AudioAssets> sounds)
+/// {
+///     const aylo::core::asset::AssetId engine = sounds->load("assets/sounds/engine.ogg");
+///     commands.spawn(aylo::plugins::audio::AudioSource{.sound = engine, .loop = true});
+/// }
+/// @endcode
+class AYLO_PLUGIN_AUDIO_API AudioAssets {
+  public:
+    /// @brief One sound.
+    struct Entry {
+        std::string path;                       ///< Its path, or its name for a sound given in memory.
+        contract::audiodevice::SoundDesc desc;  ///< How it is loaded: decoded once, or streamed.
+        SoundState state{SoundState::kQueued};  ///< Where it is in its loading.
+        contract::audiodevice::SoundId sound;   ///< The device's id, once loaded.
+        std::vector<std::byte> encoded;         ///< The file's bytes, for a sound given in memory; freed once loaded.
+        std::string error;                      ///< Why it failed to load.
+    };
+
+    AudioAssets() = default;
+    ~AudioAssets() = default;
+    AudioAssets(const AudioAssets& other) = delete;
+    AudioAssets& operator=(const AudioAssets& other) = delete;
+    AudioAssets(AudioAssets&& other) noexcept = default;
+    AudioAssets& operator=(AudioAssets&& other) noexcept = default;
+
+    /// @brief Sets where the files are read; a path that leaves it fails (core::asset::resolveAssetPath()).
+    /// @param directory The assets' directory; empty: the working directory, unchecked.
+    void setDirectory(std::filesystem::path directory);
+
+    /// @brief Sets where the files are read: the game's folder or its pack (plugins::assetSourceOf()).
+    /// @param source The files; null: the working directory, unchecked.
+    void setSource(std::shared_ptr<const core::vfs::FileSource> source);
+
+    /// @return Where the files are read, never null.
+    [[nodiscard]] const core::vfs::FileSource& getSource() const noexcept;
+
+    /// @return The number of sounds known, whatever their state.
+    [[nodiscard]] std::size_t getCount() const noexcept;
+
+    /// @brief Asks for the sound file at @p path (WAV, OGG, MP3, FLAC), opened by the device in updateSounds().
+    /// @param desc How to load it. Ignored if the sound was already asked for: the first request wins.
+    /// @return Its id (AssetId::fromPath()), at once: put it in components and events, the sound plays once loaded.
+    /// @throws exceptions::AudioLoadException If another path already has this id (a hash collision).
+    core::asset::AssetId load(const std::filesystem::path& path, const contract::audiodevice::SoundDesc& desc = {});
+
+    /// @brief Asks for a sound already in memory (embedded, downloaded), known by @p name.
+    /// @param encoded The sound file's bytes (OGG...), copied.
+    /// @return Its id (AssetId::fromPath(name)).
+    /// @throws exceptions::AudioLoadException If another name already has this id (a hash collision).
+    core::asset::AssetId load(const std::string& name, std::span<const std::byte> encoded,
+                              const contract::audiodevice::SoundDesc& desc = {});
+
+    /// @return The sound @p id names, or nullptr if it was never asked for or was unloaded.
+    [[nodiscard]] const Entry* get(core::asset::AssetId id) const;
+
+    /// @return The device's id of the sound @p id names, or nothing if it is not loaded (yet).
+    [[nodiscard]] std::optional<contract::audiodevice::SoundId> getSound(core::asset::AssetId id) const;
+
+    /// @brief Forgets the sound @p id names; if it was loaded, the next updateSounds() destroys it, which stops its
+    /// voices.
+    /// @return False, doing nothing, if no sound has this id.
+    bool unload(core::asset::AssetId id);
+
+    /// @name For updateSounds()
+    /// @{
+
+    /// @return The ids of the queued sounds, in the order they were asked for.
+    [[nodiscard]] const std::vector<core::asset::AssetId>& getQueued() const noexcept;
+
+    /// @brief Records that the queued sound @p id was created as @p sound, and frees its in-memory bytes. Does nothing
+    /// if @p id is not queued.
+    void setLoaded(core::asset::AssetId id, contract::audiodevice::SoundId sound);
+
+    /// @brief Records that the queued sound @p id could not be loaded, and why. Does nothing if @p id is not queued.
+    void setFailed(core::asset::AssetId id, std::string error);
+
+    /// @return The sounds unloaded since the last call, for the device to destroy.
+    [[nodiscard]] std::vector<contract::audiodevice::SoundId> takeUnloaded();
+    /// @}
+
+  private:
+    /// @brief Records a queued sound, or returns the id of the one already asked for.
+    /// @throws exceptions::AudioLoadException If another path already has the id.
+    core::asset::AssetId request(std::string path, std::vector<std::byte> encoded,
+                                 const contract::audiodevice::SoundDesc& desc);
+
+    /// @return The queued entry @p id names, removed from the queue, or nullptr if it is not queued.
+    Entry* dequeue(core::asset::AssetId id);
+
+    std::shared_ptr<const core::vfs::FileSource> _source{
+        std::make_shared<core::vfs::DirectorySource>(std::filesystem::path{})};  ///< Where the files are read.
+    std::unordered_map<core::asset::AssetId, Entry> _entries;                    ///< Every sound asked for, by id.
+    std::vector<core::asset::AssetId> _queued;              ///< The queued sounds, in the order they were asked for.
+    std::vector<contract::audiodevice::SoundId> _unloaded;  ///< Sounds to destroy, from unload().
+};
+AYLO_ECS_RESOURCE(AudioAssets, "aylo.AudioAssets");
+
+/// @brief Destroys the sounds unloaded since the last call, then loads the queued ones in @p device: from their file,
+/// or from the bytes given to load(). Called by the audio plugin each frame, on the main thread.
+/// @details A sound the device cannot open or decode is marked SoundState::kFailed with the reason, which is also
+/// printed: one missing sound does not stop the game.
+AYLO_PLUGIN_AUDIO_API void updateSounds(AudioAssets& assets, contract::audiodevice::IAudioDevice& device);
+}  // namespace aylo::plugins::audio

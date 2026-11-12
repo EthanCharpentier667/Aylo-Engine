@@ -69,19 +69,19 @@ the world: a world is pure data plus the operations on it, which keeps it easy t
 ### Typed and type-erased
 
 ```c++
-rtype::ecs::World world;
+aylo::ecs::World world;
 
-rtype::ecs::Components& components = world.getComponents();
+aylo::ecs::Components& components = world.getComponents();
 
 // Typed
-const rtype::ecs::Entity ship = world.spawn();
+const aylo::ecs::Entity ship = world.spawn();
 components.add(ship, Position{.x = 10.F, .y = 20.F});
 if (const Position* position = components.get<Position>(ship); position != nullptr) {
     // ...
 }
 
 // Type-erased (what the Luau bridge and the replication plugin use)
-const std::optional<rtype::ecs::ComponentId> id = components.find("rtype.Position");
+const std::optional<aylo::ecs::ComponentId> id = components.find("aylo.Position");
 const bool added = components.add(ship, *id, bytes);          // false if the entity is dead, the id unknown or the size wrong
 std::span<const std::byte> raw = components.get(ship, *id);  // empty if absent
 ```
@@ -126,7 +126,7 @@ then never becomes alive.
 3. **Frees the index**: the slot's generation is bumped, so every copy of the handle becomes stale.
 
 **Removal scans every pool.** Each pool answers with one O(1) sparse lookup, so a despawn costs one lookup
-per registered component (a few dozen in R-Type), with no bookkeeping anywhere else. The alternative, a
+per registered component (a few dozen in a shoot'em up), with no bookkeeping anywhere else. The alternative, a
 per-entity list of the pools it is in, would make despawn proportional to the entity's own components but
 cost memory and work on every add and remove, which are far more frequent than despawns.
 

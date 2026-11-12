@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** HotReloaderTests
 */
@@ -24,13 +24,13 @@
 #include "core/reload/ReloadReport.hpp"
 #include "core/reload/Reloadable.hpp"
 
-using rtype::core::reload::ChangeSet;
-using rtype::core::reload::FileWatcher;
-using rtype::core::reload::HotReloader;
-using rtype::core::reload::Reloadable;
-using rtype::core::reload::ReloadOutcome;
-using rtype::core::reload::ReloadReport;
-using rtype::core::reload::WatchedPath;
+using aylo::core::reload::ChangeSet;
+using aylo::core::reload::FileWatcher;
+using aylo::core::reload::HotReloader;
+using aylo::core::reload::Reloadable;
+using aylo::core::reload::ReloadOutcome;
+using aylo::core::reload::ReloadReport;
+using aylo::core::reload::WatchedPath;
 
 namespace {
 /// @brief An empty folder in the temporary directory, removed when the test ends.
@@ -71,7 +71,7 @@ class TemporaryFolder {
     /// @return A name that no other test of the run uses.
     static std::string makeName() {
         const auto* test = testing::UnitTest::GetInstance()->current_test_info();
-        return std::string{"rtype-reload-"} + test->test_suite_name() + "-" + test->name();
+        return std::string{"aylo-reload-"} + test->test_suite_name() + "-" + test->name();
     }
 
     std::filesystem::path _path;  ///< The folder.

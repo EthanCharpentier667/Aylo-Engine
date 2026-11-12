@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** CapsulesTests
 */
@@ -11,27 +11,27 @@
 #include <string>
 #include <utility>
 
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/component/ComponentTraits.hpp"
+#include "aylo/ecs/schedule/RunMode.hpp"
+#include "aylo/ecs/system/Side.hpp"
+#include "aylo/ecs/type/TypeInfo.hpp"
+#include "aylo/ecs/world/World.hpp"
 #include "core/asset/AssetId.hpp"
 #include "plugins/capsule/Capsule.hpp"
 #include "plugins/capsule/CapsulePlugin.hpp"
 #include "plugins/capsule/Capsules.hpp"
 #include "plugins/capsule/exceptions/CapsuleException.hpp"
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/component/ComponentTraits.hpp"
-#include "rtype/ecs/schedule/RunMode.hpp"
-#include "rtype/ecs/system/Side.hpp"
-#include "rtype/ecs/type/TypeInfo.hpp"
-#include "rtype/ecs/world/World.hpp"
 
-namespace rtype::test::capsules {
+namespace aylo::test::capsules {
 struct Health {
     std::int32_t value;
 };
-RTYPE_ECS_COMPONENT(Health, "test.capsules.Health", value);
-}  // namespace rtype::test::capsules
+AYLO_ECS_COMPONENT(Health, "test.capsules.Health", value);
+}  // namespace aylo::test::capsules
 
-namespace capsule = rtype::plugins::capsule;
-namespace tc = rtype::test::capsules;
+namespace capsule = aylo::plugins::capsule;
+namespace tc = aylo::test::capsules;
 
 namespace {
 /// @return The message of the CapsuleException `call` throws, or an empty string if it throws none.
@@ -51,7 +51,7 @@ TEST(Capsules, StartsWithNoCapsules) {
     EXPECT_EQ(capsules.getCount(), 0U);
     EXPECT_EQ(capsules.find("actors/bydo.actor"), nullptr);
     EXPECT_EQ(capsules.find(capsule::CapsuleId::fromPath("actors/bydo.actor")), nullptr);
-    EXPECT_TRUE(capsules.loads(rtype::ecs::Side::kServer) && capsules.loads(rtype::ecs::Side::kClient));  // standalone
+    EXPECT_TRUE(capsules.loads(aylo::ecs::Side::kServer) && capsules.loads(aylo::ecs::Side::kClient));  // standalone
 }
 
 TEST(Capsules, DefinesACapsuleWithARootOnly) {
@@ -69,7 +69,7 @@ TEST(Capsules, DefinesACapsuleWithARootOnly) {
 }
 
 TEST(Capsules, DefinesACapsuleAgainKeepingItsId) {
-    rtype::ecs::World world;
+    aylo::ecs::World world;
     capsule::Capsules capsules;
     capsule::Capsule first{"actors/boss.actor"};
     first.editNode(0).values.set(world.getComponents(), tc::Health{.value = 50});
@@ -121,35 +121,35 @@ TEST(Capsules, RefusesABadNodeName) {
 
 TEST(Capsules, SpawnsTheNodesAndComponentsOfItsSide) {
     capsule::Capsules capsules;
-    const rtype::ecs::Presence server = rtype::ecs::Presence::kServerOnly;
-    const rtype::ecs::Presence client = rtype::ecs::Presence::kClientOnly;
-    EXPECT_TRUE(capsules.loads(rtype::ecs::Side::kServer) && capsules.loads(rtype::ecs::Side::kClient));
+    const aylo::ecs::Presence server = aylo::ecs::Presence::kServerOnly;
+    const aylo::ecs::Presence client = aylo::ecs::Presence::kClientOnly;
+    EXPECT_TRUE(capsules.loads(aylo::ecs::Side::kServer) && capsules.loads(aylo::ecs::Side::kClient));
     EXPECT_TRUE(capsules.keeps(server) && capsules.keeps(client));  // standalone
-    capsules.setRunMode(rtype::ecs::RunMode::kServer);
-    EXPECT_FALSE(capsules.loads(rtype::ecs::Side::kClient));
-    EXPECT_TRUE(capsules.loads(rtype::ecs::Side::kBoth));
+    capsules.setRunMode(aylo::ecs::RunMode::kServer);
+    EXPECT_FALSE(capsules.loads(aylo::ecs::Side::kClient));
+    EXPECT_TRUE(capsules.loads(aylo::ecs::Side::kBoth));
     EXPECT_FALSE(capsules.keeps(client));
-    EXPECT_TRUE(capsules.keeps(rtype::ecs::Presence::kBoth));
-    capsules.setRunMode(rtype::ecs::RunMode::kClient);
-    EXPECT_FALSE(capsules.loads(rtype::ecs::Side::kServer));
-    EXPECT_TRUE(capsules.loads(rtype::ecs::Side::kClient));
+    EXPECT_TRUE(capsules.keeps(aylo::ecs::Presence::kBoth));
+    capsules.setRunMode(aylo::ecs::RunMode::kClient);
+    EXPECT_FALSE(capsules.loads(aylo::ecs::Side::kServer));
+    EXPECT_TRUE(capsules.loads(aylo::ecs::Side::kClient));
     EXPECT_FALSE(capsules.keeps(server));
 }
 
 TEST(CapsulePlugin, InsertsTheCapsulesWithTheRunModeOfTheApp) {
-    rtype::ecs::App app{rtype::ecs::RunMode::kServer};
+    aylo::ecs::App app{aylo::ecs::RunMode::kServer};
     capsule::Capsules early;
     static_cast<void>(early.define(capsule::Capsule{"actors/bydo.actor"}));
     app.insertResource(std::move(early));
     app.addPlugin(capsule::CapsulePlugin{});
     const auto& capsules = app.getWorld().getResources().require<capsule::Capsules>();
-    EXPECT_FALSE(capsules.loads(rtype::ecs::Side::kClient));  // the App's run mode: a server
-    EXPECT_NE(capsules.find("actors/bydo.actor"), nullptr);   // inserted before: kept
+    EXPECT_FALSE(capsules.loads(aylo::ecs::Side::kClient));  // the App's run mode: a server
+    EXPECT_NE(capsules.find("actors/bydo.actor"), nullptr);  // inserted before: kept
 }
 
 TEST(Capsules, RemembersThePathsOfAssets) {
     capsule::Capsules capsules;
-    const rtype::core::asset::AssetId id = rtype::core::asset::AssetId::fromPath("sprites/ship.png");
+    const aylo::core::asset::AssetId id = aylo::core::asset::AssetId::fromPath("sprites/ship.png");
     EXPECT_EQ(capsules.findAssetPath(id), nullptr);
     capsules.rememberAssetPath(id, "sprites/ship.png");
     ASSERT_NE(capsules.findAssetPath(id), nullptr);

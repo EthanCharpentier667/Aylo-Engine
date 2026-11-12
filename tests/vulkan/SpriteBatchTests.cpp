@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** SpriteBatchTests
 */
@@ -13,36 +13,36 @@
 #include <glm/ext/vector_uint2.hpp>
 #include <vulkan/vulkan_raii.hpp>
 
+#include "aylo/contract/renderer/drawing/BlendMode.hpp"
+#include "aylo/contract/renderer/drawing/Sprite.hpp"
+#include "aylo/contract/renderer/drawing/Text.hpp"
+#include "aylo/contract/renderer/drawing/Texture.hpp"
+#include "aylo/contract/renderer/math/Rect.hpp"
+#include "aylo/contract/renderer/shaders/CompiledShader.hpp"
 #include "render/vulkan/rendering/Blend.hpp"
 #include "render/vulkan/rendering/SpriteBatch.hpp"
-#include "rtype/contract/renderer/drawing/BlendMode.hpp"
-#include "rtype/contract/renderer/drawing/Sprite.hpp"
-#include "rtype/contract/renderer/drawing/Text.hpp"
-#include "rtype/contract/renderer/drawing/Texture.hpp"
-#include "rtype/contract/renderer/math/Rect.hpp"
-#include "rtype/contract/renderer/shaders/CompiledShader.hpp"
 
 namespace {
-using rtype::render::vulkan::rendering::SpriteBatch;
-using rtype::render::vulkan::rendering::SpriteInstance;
-using TextureId = rtype::contract::renderer::TextureId;
+using aylo::render::vulkan::rendering::SpriteBatch;
+using aylo::render::vulkan::rendering::SpriteInstance;
+using TextureId = aylo::contract::renderer::TextureId;
 
 constexpr TextureId kShips{.index = 0, .generation = 1};
 constexpr TextureId kEnemies{.index = 1, .generation = 1};
 }  // namespace
 
 TEST(SpriteInstance, TakesItsUvRectFromTheSourceAndTheTextureSize) {
-    const rtype::contract::renderer::Sprite sprite{
-        .texture = kShips, .source = rtype::contract::renderer::math::Rect{{32.0F, 0.0F}, {32.0F, 16.0F}}};
+    const aylo::contract::renderer::Sprite sprite{
+        .texture = kShips, .source = aylo::contract::renderer::math::Rect{{32.0F, 0.0F}, {32.0F, 16.0F}}};
     const SpriteInstance instance = SpriteInstance::fromSprite(sprite, {128, 64});
     EXPECT_EQ(instance.uvRect, (glm::vec4{0.25F, 0.0F, 0.5F, 0.25F}));
     EXPECT_EQ(instance.size, (glm::vec2{32.0F, 16.0F}));
 }
 
 TEST(SpriteInstance, ScalesItsSizeAndOrigin) {
-    const rtype::contract::renderer::Sprite sprite{
+    const aylo::contract::renderer::Sprite sprite{
         .texture = kShips,
-        .source = rtype::contract::renderer::math::Rect{{0.0F, 0.0F}, {10.0F, 20.0F}},
+        .source = aylo::contract::renderer::math::Rect{{0.0F, 0.0F}, {10.0F, 20.0F}},
         .position = {5.0F, 6.0F},
         .scale = {2.0F, -1.0F},
         .origin = {5.0F, 10.0F},
@@ -74,13 +74,13 @@ TEST(SpriteInstance, DescribesOnePerInstanceVertex) {
 }
 
 TEST(SpriteInstance, CarriesItsBlendModeAsTheShadersReadIt) {
-    using rtype::contract::renderer::BlendMode;
-    using rtype::contract::renderer::Sprite;
-    EXPECT_EQ(SpriteInstance::fromSprite(Sprite{}, {1, 1}).blend, rtype::render::vulkan::rendering::kBlendAlpha);
+    using aylo::contract::renderer::BlendMode;
+    using aylo::contract::renderer::Sprite;
+    EXPECT_EQ(SpriteInstance::fromSprite(Sprite{}, {1, 1}).blend, aylo::render::vulkan::rendering::kBlendAlpha);
     EXPECT_EQ(SpriteInstance::fromSprite(Sprite{.blend = BlendMode::kAdditive}, {1, 1}).blend,
-              rtype::render::vulkan::rendering::kBlendAdditive);
+              aylo::render::vulkan::rendering::kBlendAdditive);
     EXPECT_EQ(SpriteInstance::fromSprite(Sprite{.blend = BlendMode::kCutout}, {1, 1}).blend,
-              rtype::render::vulkan::rendering::kBlendCutout);
+              aylo::render::vulkan::rendering::kBlendCutout);
 }
 
 TEST(SpriteBatch, MergesConsecutiveSpritesOfATexture) {
@@ -147,15 +147,15 @@ TEST(SpriteBatch, ClearForgetsASplit) {
 }
 
 TEST(SpriteInstance, PlacesAGlyphAroundTheOriginOfItsText) {
-    const rtype::contract::renderer::GlyphQuad glyph{
-        .source = rtype::contract::renderer::math::Rect{{16.0F, 0.0F}, {16.0F, 32.0F}},
-        .bounds = rtype::contract::renderer::math::Rect{{10.0F, 4.0F}, {8.0F, 16.0F}}};
-    const rtype::contract::renderer::Text text{.texture = kShips,
-                                               .position = {100.0F, 50.0F},
-                                               .scale = {2.0F, 2.0F},
-                                               .origin = {5.0F, 5.0F},
-                                               .rotation = 0.25F,
-                                               .color = {0.0F, 1.0F, 0.0F, 1.0F}};
+    const aylo::contract::renderer::GlyphQuad glyph{
+        .source = aylo::contract::renderer::math::Rect{{16.0F, 0.0F}, {16.0F, 32.0F}},
+        .bounds = aylo::contract::renderer::math::Rect{{10.0F, 4.0F}, {8.0F, 16.0F}}};
+    const aylo::contract::renderer::Text text{.texture = kShips,
+                                              .position = {100.0F, 50.0F},
+                                              .scale = {2.0F, 2.0F},
+                                              .origin = {5.0F, 5.0F},
+                                              .rotation = 0.25F,
+                                              .color = {0.0F, 1.0F, 0.0F, 1.0F}};
     const SpriteInstance instance = SpriteInstance::fromGlyph(text, glyph, {64, 32});
     EXPECT_EQ(instance.position, (glm::vec2{100.0F, 50.0F}));
     EXPECT_EQ(instance.size, (glm::vec2{16.0F, 32.0F}));
@@ -163,30 +163,30 @@ TEST(SpriteInstance, PlacesAGlyphAroundTheOriginOfItsText) {
     EXPECT_FLOAT_EQ(instance.rotation, 0.25F);
     EXPECT_EQ(instance.uvRect, (glm::vec4{0.25F, 0.0F, 0.5F, 1.0F}));
     EXPECT_EQ(instance.color, (glm::vec4{0.0F, 1.0F, 0.0F, 1.0F}));
-    EXPECT_NE(instance.blend >> rtype::render::vulkan::rendering::kDistanceRangeShift, 0U);  // Its atlas' range.
+    EXPECT_NE(instance.blend >> aylo::render::vulkan::rendering::kDistanceRangeShift, 0U);  // Its atlas' range.
 }
 
 TEST(SpriteInstance, PacksTheBlendModeAndTheDistanceRangeOfAGlyph) {
-    using rtype::render::vulkan::rendering::kBlendAdditive;
-    using rtype::render::vulkan::rendering::kBlendMask;
-    using rtype::render::vulkan::rendering::kDistanceRangeShift;
-    using rtype::render::vulkan::rendering::toShaderMsdf;
-    const std::uint32_t packed = toShaderMsdf(rtype::contract::renderer::BlendMode::kAdditive, 4.5F);
+    using aylo::render::vulkan::rendering::kBlendAdditive;
+    using aylo::render::vulkan::rendering::kBlendMask;
+    using aylo::render::vulkan::rendering::kDistanceRangeShift;
+    using aylo::render::vulkan::rendering::toShaderMsdf;
+    const std::uint32_t packed = toShaderMsdf(aylo::contract::renderer::BlendMode::kAdditive, 4.5F);
     EXPECT_EQ(packed & kBlendMask, kBlendAdditive);
     EXPECT_EQ(packed >> kDistanceRangeShift, 4U * 256U + 128U);  // 4.5 pixels, in 1/256 of a pixel.
-    EXPECT_EQ(toShaderMsdf(rtype::contract::renderer::BlendMode::kAlpha, 1000.0F) >> kDistanceRangeShift,
+    EXPECT_EQ(toShaderMsdf(aylo::contract::renderer::BlendMode::kAlpha, 1000.0F) >> kDistanceRangeShift,
               0xFFFFU);  // Clamped.
 }
 
 TEST(SpriteInstance, CarriesNoDistanceRangeForASprite) {
     const SpriteInstance instance =
-        SpriteInstance::fromSprite(rtype::contract::renderer::Sprite{.texture = kShips}, {1, 1});
-    EXPECT_EQ(instance.blend >> rtype::render::vulkan::rendering::kDistanceRangeShift, 0U);
+        SpriteInstance::fromSprite(aylo::contract::renderer::Sprite{.texture = kShips}, {1, 1});
+    EXPECT_EQ(instance.blend >> aylo::render::vulkan::rendering::kDistanceRangeShift, 0U);
 }
 
 namespace {
-using MaterialId = rtype::contract::renderer::MaterialId;
-using ShaderInstanceValues = rtype::contract::renderer::ShaderInstanceValues;
+using MaterialId = aylo::contract::renderer::MaterialId;
+using ShaderInstanceValues = aylo::contract::renderer::ShaderInstanceValues;
 
 constexpr MaterialId kGlow{.index = 0, .generation = 1};
 constexpr MaterialId kFlash{.index = 1, .generation = 1};
@@ -232,7 +232,7 @@ TEST(SpriteBatch, TakesTheDefaultMaterialWithoutValues) {
 }
 
 TEST(SpriteBatch, KeepsTheValuesOfEachGlyphOfAMaterial) {
-    using rtype::contract::renderer::ShaderTarget;
+    using aylo::contract::renderer::ShaderTarget;
     constexpr MaterialId kMaterial{1};
     SpriteBatch batch;
     batch.addGlyph(kShips, MaterialId{}, {}, {});
@@ -246,7 +246,7 @@ TEST(SpriteBatch, KeepsTheValuesOfEachGlyphOfAMaterial) {
 }
 
 TEST(SpriteBatch, NeverMergesGlyphsWithSpritesOfTheirTexture) {
-    using rtype::contract::renderer::ShaderTarget;
+    using aylo::contract::renderer::ShaderTarget;
     SpriteBatch batch;
     batch.add(kShips, {});
     batch.addGlyph(kShips, MaterialId{}, {}, {});

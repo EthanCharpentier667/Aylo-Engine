@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ScriptSetupFormsTests
 */
@@ -16,6 +16,13 @@
 #include <utility>
 #include <variant>
 
+#include "aylo/contract/platform/event/Event.hpp"
+#include "aylo/contract/platform/input/Key.hpp"
+#include "aylo/contract/renderer/drawing/BlendMode.hpp"
+#include "aylo/contract/renderer/particle/Particle.hpp"
+#include "aylo/contract/renderer/particle/ParticleSystemDesc.hpp"
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/scripting/ScriptHost.hpp"
 #include "core/asset/AssetId.hpp"
 #include "core/config/Settings.hpp"
 #include "plugins/graphics/BackendRegistry.hpp"
@@ -38,22 +45,15 @@
 #include "plugins/tilemap/TilemapAssets.hpp"
 #include "plugins/tilemap/TilemapPlugin.hpp"
 #include "plugins/transform/TransformPlugin.hpp"
-#include "rtype/contract/platform/event/Event.hpp"
-#include "rtype/contract/platform/input/Key.hpp"
-#include "rtype/contract/renderer/drawing/BlendMode.hpp"
-#include "rtype/contract/renderer/particle/Particle.hpp"
-#include "rtype/contract/renderer/particle/ParticleSystemDesc.hpp"
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/scripting/ScriptHost.hpp"
 
 namespace {
 /// @brief A standalone App and a script host on it; each test adds the plugins its forms use.
 struct ScriptApp {
-    rtype::ecs::App app;
-    std::unique_ptr<rtype::scripting::ScriptHost> host;
+    aylo::ecs::App app;
+    std::unique_ptr<aylo::scripting::ScriptHost> host;
 
     ScriptApp() {
-        auto created = rtype::scripting::ScriptHost::create(app, {.isClient = true, .isServer = true});
+        auto created = aylo::scripting::ScriptHost::create(app, {.isClient = true, .isServer = true});
         EXPECT_TRUE(created) << (created ? "" : std::string{created.error().message()});
         host = std::move(*created);
     }
@@ -65,22 +65,22 @@ struct ScriptApp {
     }
 
     /// @brief Sends a key press to the InputPlugin, as the backend plugin does after polling the window.
-    void press(const rtype::contract::platform::input::Key key) {
+    void press(const aylo::contract::platform::input::Key key) {
         app.getWorld().getEvents().send(
-            rtype::plugins::input::PlatformEvent{.event = rtype::contract::platform::event::KeyPressed{.key = key}});
+            aylo::plugins::input::PlatformEvent{.event = aylo::contract::platform::event::KeyPressed{.key = key}});
     }
 };
 
 /// @return The atlas @p name names in @p app, or nullptr.
-const rtype::plugins::sprite::SpriteAtlas* atlasOf(rtype::ecs::App& app, const std::string& name) {
-    return app.getWorld().getResources().require<rtype::plugins::sprite::AtlasAssets>().get(
-        rtype::core::asset::AssetId::fromPath(name));
+const aylo::plugins::sprite::SpriteAtlas* atlasOf(aylo::ecs::App& app, const std::string& name) {
+    return app.getWorld().getResources().require<aylo::plugins::sprite::AtlasAssets>().get(
+        aylo::core::asset::AssetId::fromPath(name));
 }
 }  // namespace
 
 TEST(ScriptSetupForms, AnAtlasFormCutsFramesAndNamesAnimations) {
     ScriptApp script;
-    script.app.addPlugin(rtype::plugins::sprite::SpritePlugin{});
+    script.app.addPlugin(aylo::plugins::sprite::SpritePlugin{});
     ASSERT_EQ(script.run(R"(
         local ship = engine.assets.atlas({
             name = "game.ship", texture = "ship.png",
@@ -106,12 +106,12 @@ TEST(ScriptSetupForms, AnAtlasFormCutsFramesAndNamesAnimations) {
     const auto* ship = atlasOf(script.app, "game.ship");
     ASSERT_NE(ship, nullptr);
     EXPECT_EQ(ship->getFrames().size(), 5U);
-    const auto* fly = ship->findAnimation(rtype::plugins::sprite::animationId("fly"));
+    const auto* fly = ship->findAnimation(aylo::plugins::sprite::animationId("fly"));
     ASSERT_NE(fly, nullptr);
     EXPECT_EQ(fly->frames.size(), 5U);
     EXPECT_FLOAT_EQ(fly->durations.front(), 0.08F);
-    EXPECT_EQ(fly->direction, rtype::plugins::sprite::AnimationDirection::kPingPong);
-    const auto* bank = ship->findAnimation(rtype::plugins::sprite::animationId("bank"));
+    EXPECT_EQ(fly->direction, aylo::plugins::sprite::AnimationDirection::kPingPong);
+    const auto* bank = ship->findAnimation(aylo::plugins::sprite::animationId("bank"));
     ASSERT_NE(bank, nullptr);
     EXPECT_EQ(bank->frames.size(), 2U);
     EXPECT_EQ(bank->repeat, 1U);
@@ -121,23 +121,23 @@ TEST(ScriptSetupForms, AnAtlasFormCutsFramesAndNamesAnimations) {
     ASSERT_EQ(laser->getFrames().size(), 2U);
     EXPECT_FLOAT_EQ(laser->getFrames().at(1).source.getX(), 189.0F);
     EXPECT_FLOAT_EQ(laser->getFrames().at(1).origin.y, 8.0F);
-    EXPECT_NE(laser->findAnimation(rtype::plugins::sprite::animationId("glow")), nullptr);
+    EXPECT_NE(laser->findAnimation(aylo::plugins::sprite::animationId("glow")), nullptr);
 }
 
 TEST(ScriptSetupForms, AnAtlasFormReportsTheSpritePluginsErrors) {
     ScriptApp script;
-    script.app.addPlugin(rtype::plugins::sprite::SpritePlugin{});
+    script.app.addPlugin(aylo::plugins::sprite::SpritePlugin{});
     const std::string error = script.run(R"(
         engine.assets.atlas({ texture = "ship.png", animations = { fly = { direction = "sideways" } } })
     )");
-    EXPECT_NE(error.find("engine.assets.atlas: engine call 'rtype.sprite.addAnimation': Unknown animation direction"),
+    EXPECT_NE(error.find("engine.assets.atlas: engine call 'aylo.sprite.addAnimation': Unknown animation direction"),
               std::string::npos)
         << error;
 }
 
 TEST(ScriptSetupForms, AnInputFormDeclaresAnActionAndItsBindings) {
     ScriptApp script;
-    script.app.addPlugin(rtype::plugins::input::InputPlugin{});
+    script.app.addPlugin(aylo::plugins::input::InputPlugin{});
     ASSERT_EQ(script.run(R"(
         engine.input.action("move", "vector2", {
             bind = { { up = "W", down = "S", left = "A", right = "D" }, { x = "GamepadLeftX", y = "GamepadLeftY" } },
@@ -148,38 +148,38 @@ TEST(ScriptSetupForms, AnInputFormDeclaresAnActionAndItsBindings) {
     )"),
               "");
 
-    script.press(rtype::contract::platform::input::Key::kD);
-    script.press(rtype::contract::platform::input::Key::kLeft);
-    script.press(rtype::contract::platform::input::Key::kB);
-    script.press(rtype::contract::platform::input::Key::kSpace);
+    script.press(aylo::contract::platform::input::Key::kD);
+    script.press(aylo::contract::platform::input::Key::kLeft);
+    script.press(aylo::contract::platform::input::Key::kB);
+    script.press(aylo::contract::platform::input::Key::kSpace);
     script.app.runFrame();
 
-    const auto& input = script.app.getWorld().getResources().require<rtype::plugins::input::Input>();
+    const auto& input = script.app.getWorld().getResources().require<aylo::plugins::input::Input>();
     EXPECT_FLOAT_EQ(input.getAction("move").readVector().x, 1.0F);
     EXPECT_FLOAT_EQ(input.getAction("steer").readAxis(), -1.0F);
     EXPECT_FLOAT_EQ(input.getAction("boost").readAxis(), -2.0F);
-    EXPECT_EQ(input.getAction("shoot").getType(), rtype::plugins::input::ActionType::kButton);
+    EXPECT_EQ(input.getAction("shoot").getType(), aylo::plugins::input::ActionType::kButton);
     EXPECT_TRUE(input.getAction("shoot").isPressed());
 }
 
 TEST(ScriptSetupForms, AnInputFormReportsUnknownControls) {
     ScriptApp script;
-    script.app.addPlugin(rtype::plugins::input::InputPlugin{});
+    script.app.addPlugin(aylo::plugins::input::InputPlugin{});
     const std::string error = script.run(R"(engine.input.action("jump", "button", { bind = { "Jump" } }))");
-    EXPECT_NE(error.find("engine.input.action: engine call 'rtype.input.bind': Unknown control 'Jump'"),
+    EXPECT_NE(error.find("engine.input.action: engine call 'aylo.input.bind': Unknown control 'Jump'"),
               std::string::npos)
         << error;
 }
 
 TEST(ScriptSetupForms, FontAndTilemapFormsAskTheirPlugins) {
     ScriptApp script;
-    script.app.addPlugin(rtype::plugins::transform::TransformPlugin{});
-    script.app.addPlugin(rtype::plugins::input::InputPlugin{});
-    script.app.addPlugin(rtype::plugins::graphics::GraphicsPlugin{
-        std::make_unique<rtype::plugins::graphics::BackendRegistry>(), rtype::core::config::Settings{}});
-    script.app.addPlugin(rtype::plugins::shader::ShaderPlugin{});
-    script.app.addPlugin(rtype::plugins::text::TextPlugin{});
-    script.app.addPlugin(rtype::plugins::tilemap::TilemapPlugin{});
+    script.app.addPlugin(aylo::plugins::transform::TransformPlugin{});
+    script.app.addPlugin(aylo::plugins::input::InputPlugin{});
+    script.app.addPlugin(aylo::plugins::graphics::GraphicsPlugin{
+        std::make_unique<aylo::plugins::graphics::BackendRegistry>(), aylo::core::config::Settings{}});
+    script.app.addPlugin(aylo::plugins::shader::ShaderPlugin{});
+    script.app.addPlugin(aylo::plugins::text::TextPlugin{});
+    script.app.addPlugin(aylo::plugins::tilemap::TilemapPlugin{});
     ASSERT_EQ(script.run(R"(
         engine.assets.font("missing-font.json")
         engine.assets.tilemap("missing.tmj")
@@ -187,22 +187,22 @@ TEST(ScriptSetupForms, FontAndTilemapFormsAskTheirPlugins) {
               "");
 
     const auto& resources = script.app.getWorld().getResources();
-    EXPECT_NE(resources.require<rtype::plugins::text::FontAssets>().getEntry(
-                  rtype::core::asset::AssetId::fromPath("missing-font.json")),
+    EXPECT_NE(resources.require<aylo::plugins::text::FontAssets>().getEntry(
+                  aylo::core::asset::AssetId::fromPath("missing-font.json")),
               nullptr);
-    EXPECT_NE(resources.require<rtype::plugins::tilemap::TilemapAssets>().getEntry(
-                  rtype::core::asset::AssetId::fromPath("missing.tmj")),
+    EXPECT_NE(resources.require<aylo::plugins::tilemap::TilemapAssets>().getEntry(
+                  aylo::core::asset::AssetId::fromPath("missing.tmj")),
               nullptr);
 }
 
 namespace {
 /// @brief Adds the plugins the shader forms use to @p script.
 void addShaderPlugins(ScriptApp& script) {
-    script.app.addPlugin(rtype::plugins::transform::TransformPlugin{});
-    script.app.addPlugin(rtype::plugins::input::InputPlugin{});
-    script.app.addPlugin(rtype::plugins::graphics::GraphicsPlugin{
-        std::make_unique<rtype::plugins::graphics::BackendRegistry>(), rtype::core::config::Settings{}});
-    script.app.addPlugin(rtype::plugins::shader::ShaderPlugin{});
+    script.app.addPlugin(aylo::plugins::transform::TransformPlugin{});
+    script.app.addPlugin(aylo::plugins::input::InputPlugin{});
+    script.app.addPlugin(aylo::plugins::graphics::GraphicsPlugin{
+        std::make_unique<aylo::plugins::graphics::BackendRegistry>(), aylo::core::config::Settings{}});
+    script.app.addPlugin(aylo::plugins::shader::ShaderPlugin{});
 }
 }  // namespace
 
@@ -222,19 +222,19 @@ TEST(ScriptSetupForms, ShaderAndMaterialFormsFillTheirAssets) {
               "");
 
     const auto& resources = script.app.getWorld().getResources();
-    const rtype::core::asset::AssetId shader = rtype::core::asset::AssetId::fromPath("missing.glsl");
-    EXPECT_NE(resources.require<rtype::plugins::shader::ShaderAssets>().getEntry(shader), nullptr);
-    const rtype::plugins::shader::Material* material = resources.require<rtype::plugins::shader::MaterialAssets>().get(
-        rtype::core::asset::AssetId::fromPath("enemy_hit"));
+    const aylo::core::asset::AssetId shader = aylo::core::asset::AssetId::fromPath("missing.glsl");
+    EXPECT_NE(resources.require<aylo::plugins::shader::ShaderAssets>().getEntry(shader), nullptr);
+    const aylo::plugins::shader::Material* material = resources.require<aylo::plugins::shader::MaterialAssets>().get(
+        aylo::core::asset::AssetId::fromPath("enemy_hit"));
     ASSERT_NE(material, nullptr);
     EXPECT_EQ(material->shader, shader);
     EXPECT_EQ(material->values.size(), 3U);
     ASSERT_EQ(material->textures.size(), 1U);
-    EXPECT_EQ(material->textures[0].texture, rtype::core::asset::AssetId::fromPath("noise.png"));
+    EXPECT_EQ(material->textures[0].texture, aylo::core::asset::AssetId::fromPath("noise.png"));
 }
 
 TEST(ScriptSetupForms, AMaterialFormGivesAnIntUniformAWholeNumber) {
-    const std::filesystem::path file = std::filesystem::temp_directory_path() / "rtype-setup-forms-frames.glsl";
+    const std::filesystem::path file = std::filesystem::temp_directory_path() / "aylo-setup-forms-frames.glsl";
     std::ofstream{file, std::ios::binary} << "uniform int frames;\nvoid fragment() { COLOR.a *= float(frames); }\n";
     ScriptApp script;
     addShaderPlugins(script);
@@ -247,9 +247,9 @@ TEST(ScriptSetupForms, AMaterialFormGivesAnIntUniformAWholeNumber) {
               "");
     std::filesystem::remove(file);
 
-    const rtype::plugins::shader::Material* material =
-        script.app.getWorld().getResources().require<rtype::plugins::shader::MaterialAssets>().get(
-            rtype::core::asset::AssetId::fromPath("animated"));
+    const aylo::plugins::shader::Material* material =
+        script.app.getWorld().getResources().require<aylo::plugins::shader::MaterialAssets>().get(
+            aylo::core::asset::AssetId::fromPath("animated"));
     ASSERT_NE(material, nullptr);
     ASSERT_EQ(material->values.size(), 1U);
     EXPECT_EQ(std::get<std::int32_t>(material->values[0].value), 4);
@@ -269,7 +269,7 @@ TEST(ScriptSetupForms, AMaterialFormChecksItsTable) {
 TEST(ScriptSetupForms, AParticleFormBuildsTheWholeEffect) {
     ScriptApp script;
     addShaderPlugins(script);
-    script.app.addPlugin(rtype::plugins::particle::ParticlePlugin{});
+    script.app.addPlugin(aylo::plugins::particle::ParticlePlugin{});
     ASSERT_EQ(script.run(R"(
         local smoke = engine.assets.particle({
             name = "game.smoke",
@@ -288,18 +288,18 @@ TEST(ScriptSetupForms, AParticleFormBuildsTheWholeEffect) {
     )"),
               "");
 
-    const rtype::plugins::particle::ParticleEffect* smoke =
-        script.app.getWorld().getResources().require<rtype::plugins::particle::ParticleEffectAssets>().get(
-            rtype::core::asset::AssetId::fromPath("game.smoke"));
+    const aylo::plugins::particle::ParticleEffect* smoke =
+        script.app.getWorld().getResources().require<aylo::plugins::particle::ParticleEffectAssets>().get(
+            aylo::core::asset::AssetId::fromPath("game.smoke"));
     ASSERT_NE(smoke, nullptr);
-    EXPECT_EQ(smoke->texture, rtype::core::asset::AssetId::fromPath("smoke.png"));
+    EXPECT_EQ(smoke->texture, aylo::core::asset::AssetId::fromPath("smoke.png"));
     EXPECT_FLOAT_EQ(smoke->source.getWidth(), 64.0F);
     EXPECT_EQ(smoke->flipbook.columns, 2U);
-    EXPECT_EQ(smoke->blend, rtype::contract::renderer::BlendMode::kAlpha);
-    EXPECT_EQ(smoke->desc.simulation, rtype::contract::renderer::ParticleSimulation::kCpu);
+    EXPECT_EQ(smoke->blend, aylo::contract::renderer::BlendMode::kAlpha);
+    EXPECT_EQ(smoke->desc.simulation, aylo::contract::renderer::ParticleSimulation::kCpu);
     EXPECT_EQ(smoke->desc.capacity, 128U);
     EXPECT_FLOAT_EQ(smoke->desc.rate, 30.0F);
-    const auto* rect = std::get_if<rtype::contract::renderer::RectShape>(&smoke->desc.shape);
+    const auto* rect = std::get_if<aylo::contract::renderer::RectShape>(&smoke->desc.shape);
     ASSERT_NE(rect, nullptr);
     EXPECT_FLOAT_EQ(rect->size.x, 16.0F);
     EXPECT_FLOAT_EQ(smoke->desc.speed.min, 40.0F);
@@ -317,7 +317,7 @@ TEST(ScriptSetupForms, AParticleFormBuildsTheWholeEffect) {
 TEST(ScriptSetupForms, AParticleFormReportsItsMistakes) {
     ScriptApp script;
     addShaderPlugins(script);
-    script.app.addPlugin(rtype::plugins::particle::ParticlePlugin{});
+    script.app.addPlugin(aylo::plugins::particle::ParticlePlugin{});
     const auto expectError = [&script](const std::string& source, const std::string& message) {
         const std::string error = script.run(source);
         EXPECT_NE(error.find(message), std::string::npos) << "got: " << error;

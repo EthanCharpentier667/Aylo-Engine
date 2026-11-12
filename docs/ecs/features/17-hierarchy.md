@@ -2,7 +2,7 @@
 
 ## What it is
 
-A hierarchy links entities as **parent and children**: the R-Type "Force" pod attached to the player
+A hierarchy links entities as **parent and children**: the "Force" pod of a shoot'em up attached to the player
 ship, turrets on a boss, a UI panel and its buttons. A child's position is relative to its parent, and
 despawning the parent despawns the children.
 
@@ -10,7 +10,7 @@ despawning the parent despawns the children.
 
 - **R1:** UI, cameras following targets and attached effects all need it.
 - **R4:** every generic engine has scene hierarchies.
-- R-Type: bosses made of parts, ships with attachments.
+- A shoot'em up: bosses made of parts, ships with attachments.
 
 ## How others do it
 
@@ -46,8 +46,8 @@ removed component, while the `World` does all of them.
 ### Linking entities
 
 ```c++
-commands.entity(turret).add(rtype::ecs::Parent{.entity = boss});  // or world.setParent(turret, boss)
-commands.entity(turret).remove<rtype::ecs::Parent>();             // or world.removeParent(turret)
+commands.entity(turret).add(aylo::ecs::Parent{.entity = boss});  // or world.setParent(turret, boss)
+commands.entity(turret).remove<aylo::ecs::Parent>();             // or world.removeParent(turret)
 ```
 
 `Commands::flush()` hands every `Parent` to `World::setParent()` and `removeParent()`, however it was recorded, so
@@ -104,7 +104,7 @@ an entity that is not replicated stays a root on the client, its relative `Trans
 ### From scripts
 
 `ctx.commands:setParent(child, parent)` and `removeParent(child)` change a hierarchy. A system reads it with
-`read = { "rtype.Parent" }` (`parent.entity`) and `read = { "rtype.Children" }` (`children.entities`, a copy). Both are
+`read = { "aylo.Parent" }` (`parent.entity`) and `read = { "aylo.Children" }` (`children.entities`, a copy). Both are
 refused as `write` terms, which would bypass the `World`. They are registered by the `TransformPlugin`.
 
 ## Connections

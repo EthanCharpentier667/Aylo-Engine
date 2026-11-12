@@ -1,0 +1,51 @@
+/*
+** EPITECH PROJECT, 2026
+** aylo
+** File description:
+** ReplicationPlugin
+*/
+
+#pragma once
+
+#include <string_view>
+
+#include "aylo/ecs/app/Plugin.hpp"
+#include "aylo/replication/Export.hpp"
+
+namespace aylo::ecs {
+class App;
+}  // namespace aylo::ecs
+
+namespace aylo::replication {
+/// @brief Registers the components and events through which a game takes part in replication.
+///
+/// @details Registers NetworkId, Owner and PlayerInput (components) and ClientConnected and ClientDisconnected
+/// (server-only events), with the presence and replication mode of each, the InputLayout resource and the input
+/// engine calls for scripts (input::addInputCalls()), and, in an App that runs the client side, the client's
+/// (client::addClientCalls()): the ClientPlugin comes after the scripts, which must see its calls when they load. It
+/// only registers: it adds no system and does no I/O. The server
+/// and client plugins add it from their build(), so the types are registered once on both sides, as the manifest
+/// requires; a standalone game adds it alone.
+/// @code
+/// app.addPlugin(aylo::replication::ReplicationPlugin{});
+/// @endcode
+class AYLO_REPLICATION_API ReplicationPlugin : public ecs::Plugin {
+  public:
+    static constexpr std::string_view kName = "aylo.replication";  ///< The plugin's name.
+
+    ReplicationPlugin() = default;
+    ~ReplicationPlugin() override;
+    ReplicationPlugin(const ReplicationPlugin& other) = default;
+    ReplicationPlugin& operator=(const ReplicationPlugin& other) = default;
+    ReplicationPlugin(ReplicationPlugin&& other) noexcept = default;
+    ReplicationPlugin& operator=(ReplicationPlugin&& other) noexcept = default;
+
+    /// @return "aylo.replication".
+    [[nodiscard]] std::string_view getName() const noexcept override;
+
+    /// @brief Registers every replication component and event.
+    /// @throws ecs::exceptions::TypeRegistrationException When the game registered one of these names with other
+    /// options or another layout.
+    void build(ecs::App& app) override;
+};
+}  // namespace aylo::replication

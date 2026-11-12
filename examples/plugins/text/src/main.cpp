@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** main
 */
@@ -24,6 +24,15 @@
 #include <utility>
 #include <vector>
 
+#include "aylo/contract/renderer/drawing/Color.hpp"
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/app/MinimalPlugins.hpp"
+#include "aylo/ecs/command/Commands.hpp"
+#include "aylo/ecs/component/ComponentTraits.hpp"
+#include "aylo/ecs/query/Query.hpp"
+#include "aylo/ecs/schedule/Phase.hpp"
+#include "aylo/ecs/system/ResourceParam.hpp"
+#include "aylo/ecs/time/Time.hpp"
 #include "core/asset/AssetId.hpp"
 #include "core/config/Settings.hpp"
 #include "platform/glfw/Registration.hpp"
@@ -39,20 +48,11 @@
 #include "plugins/transform/Transform.hpp"
 #include "plugins/transform/TransformPlugin.hpp"
 #include "render/vulkan/Registration.hpp"
-#include "rtype/contract/renderer/drawing/Color.hpp"
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/app/MinimalPlugins.hpp"
-#include "rtype/ecs/command/Commands.hpp"
-#include "rtype/ecs/component/ComponentTraits.hpp"
-#include "rtype/ecs/query/Query.hpp"
-#include "rtype/ecs/schedule/Phase.hpp"
-#include "rtype/ecs/system/ResourceParam.hpp"
-#include "rtype/ecs/time/Time.hpp"
 
-using namespace rtype;
-using namespace rtype::plugins::text;
-using rtype::core::asset::AssetId;
-using rtype::plugins::transform::Transform;
+using namespace aylo;
+using namespace aylo::plugins::text;
+using aylo::core::asset::AssetId;
+using aylo::plugins::transform::Transform;
 
 namespace {
 constexpr glm::vec2 kWindow{1280.0F, 900.0F};
@@ -65,7 +65,7 @@ constexpr float kMargin = 24.0F;
 struct Zoom {
     float time = 0.0F;  // Seconds since it was spawned.
 };
-RTYPE_ECS_COMPONENT(Zoom, "example.Zoom");
+AYLO_ECS_COMPONENT(Zoom, "example.Zoom");
 
 // Startup: spawns the size of every line written at that size, the zooming text and the centred block.
 void spawnTexts(ecs::ResMut<FontAssets> fonts, ecs::Commands& commands) {
@@ -123,16 +123,16 @@ int main(int argc, char** argv) {
         const std::span<char*> args{argv, static_cast<std::size_t>(argc)};
         const bool validation = args.size() > 1 && std::string_view{args.back()} == "--validation";
         auto registry = std::make_unique<plugins::graphics::BackendRegistry>();
-        rtype::platform::glfw::registerPlatform(registry->platforms);
+        aylo::platform::glfw::registerPlatform(registry->platforms);
         render::vulkan::registerRenderer(registry->renderers);
 
         ecs::App app;
         app.addPlugins(ecs::MinimalPlugins{})
-            .addPlugin(rtype::plugins::transform::TransformPlugin{})
-            .addPlugin(rtype::plugins::input::InputPlugin{})
+            .addPlugin(aylo::plugins::transform::TransformPlugin{})
+            .addPlugin(aylo::plugins::input::InputPlugin{})
             .addPlugin(plugins::graphics::GraphicsPlugin{std::move(registry), makeSettings(validation)})
-            .addPlugin(rtype::plugins::shader::ShaderPlugin{})
-            .addPlugin(rtype::plugins::text::TextPlugin{});
+            .addPlugin(aylo::plugins::shader::ShaderPlugin{})
+            .addPlugin(aylo::plugins::text::TextPlugin{});
         app.insertResource(plugins::graphics::ClearColor{.value = kClear});
         static_cast<void>(app.getWorld().getComponents().registerType<Zoom>());
         app.addSystem(ecs::Phase::kStartup, "example.spawnTexts", &spawnTexts);

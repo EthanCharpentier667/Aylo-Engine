@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ParticlePluginTests
 */
@@ -17,6 +17,14 @@
 
 #include "FakeBackend.hpp"
 #include "TestImages.hpp"
+#include "aylo/contract/renderer/drawing/BlendMode.hpp"
+#include "aylo/contract/renderer/particle/Particle.hpp"
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/entity/Entity.hpp"
+#include "aylo/ecs/event/EventCursor.hpp"
+#include "aylo/ecs/schedule/RunMode.hpp"
+#include "aylo/ecs/time/TimePlugin.hpp"
+#include "aylo/ecs/world/World.hpp"
 #include "core/asset/AssetId.hpp"
 #include "plugins/graphics/GraphicsPlugin.hpp"
 #include "plugins/graphics/TextureAssets.hpp"
@@ -31,28 +39,20 @@
 #include "plugins/shader/MaterialInstance.hpp"
 #include "plugins/shader/ShaderAssets.hpp"
 #include "plugins/transform/Transform.hpp"
-#include "rtype/contract/renderer/drawing/BlendMode.hpp"
-#include "rtype/contract/renderer/particle/Particle.hpp"
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/entity/Entity.hpp"
-#include "rtype/ecs/event/EventCursor.hpp"
-#include "rtype/ecs/schedule/RunMode.hpp"
-#include "rtype/ecs/time/TimePlugin.hpp"
-#include "rtype/ecs/world/World.hpp"
 
-using rtype::contract::renderer::ParticleDraw;
-using rtype::contract::renderer::ParticleInstance;
-using rtype::contract::renderer::ParticleSimulation;
-using rtype::contract::renderer::ParticleSystemId;
-using rtype::core::asset::AssetId;
-using rtype::plugins::particle::ParticleEffect;
-using rtype::plugins::particle::ParticleEffectAssets;
-using rtype::plugins::particle::ParticleEmitter;
-using rtype::plugins::particle::ParticleOneShot;
-using rtype::plugins::particle::ParticlesFinished;
-using rtype::plugins::particle::ParticleSystems;
-using rtype::plugins::particle::SpawnParticles;
-using rtype::plugins::transform::Transform;
+using aylo::contract::renderer::ParticleDraw;
+using aylo::contract::renderer::ParticleInstance;
+using aylo::contract::renderer::ParticleSimulation;
+using aylo::contract::renderer::ParticleSystemId;
+using aylo::core::asset::AssetId;
+using aylo::plugins::particle::ParticleEffect;
+using aylo::plugins::particle::ParticleEffectAssets;
+using aylo::plugins::particle::ParticleEmitter;
+using aylo::plugins::particle::ParticleOneShot;
+using aylo::plugins::particle::ParticlesFinished;
+using aylo::plugins::particle::ParticleSystems;
+using aylo::plugins::particle::SpawnParticles;
+using aylo::plugins::transform::Transform;
 
 namespace {
 /// @brief An App with the GraphicsPlugin over the fake backend, 0.1 second per frame, the texture spark.png loaded and
@@ -61,13 +61,13 @@ namespace {
 class ParticleApp {
   public:
     explicit ParticleApp(bool gpuParticles = false)
-        : _state{std::make_shared<rtype::test::plugins::FakeBackendState>()}, _app{rtype::ecs::RunMode::kClient} {
+        : _state{std::make_shared<aylo::test::plugins::FakeBackendState>()}, _app{aylo::ecs::RunMode::kClient} {
         _state->gpuParticles = gpuParticles;
-        rtype::test::plugins::addDrawingPlugins(_app, rtype::test::plugins::makeFakeRegistry(_state),
-                                                rtype::test::plugins::makeFakeSettings());
-        _app.addPlugin(rtype::ecs::TimePlugin::manual(std::chrono::milliseconds{100}));
-        _texture = world().getResources().getMut<rtype::plugins::graphics::TextureAssets>()->load(
-            "spark.png", rtype::test::plugins::twoPixelPng());
+        aylo::test::plugins::addDrawingPlugins(_app, aylo::test::plugins::makeFakeRegistry(_state),
+                                               aylo::test::plugins::makeFakeSettings());
+        _app.addPlugin(aylo::ecs::TimePlugin::manual(std::chrono::milliseconds{100}));
+        _texture = world().getResources().getMut<aylo::plugins::graphics::TextureAssets>()->load(
+            "spark.png", aylo::test::plugins::twoPixelPng());
 
         ParticleEffect burst;
         burst.texture = _texture;
@@ -88,17 +88,17 @@ class ParticleApp {
     ParticleApp(ParticleApp&& other) = delete;
     ParticleApp& operator=(ParticleApp&& other) = delete;
 
-    [[nodiscard]] rtype::ecs::App& app() noexcept { return _app; }
-    [[nodiscard]] rtype::ecs::World& world() noexcept { return _app.getWorld(); }
-    [[nodiscard]] rtype::test::plugins::FakeBackendState& state() noexcept { return *_state; }
+    [[nodiscard]] aylo::ecs::App& app() noexcept { return _app; }
+    [[nodiscard]] aylo::ecs::World& world() noexcept { return _app.getWorld(); }
+    [[nodiscard]] aylo::test::plugins::FakeBackendState& state() noexcept { return *_state; }
     [[nodiscard]] ParticleEffectAssets& effects() { return *world().getResources().getMut<ParticleEffectAssets>(); }
     [[nodiscard]] ParticleSystems& systems() { return *world().getResources().getMut<ParticleSystems>(); }
     [[nodiscard]] AssetId burst() const noexcept { return _burst; }
     [[nodiscard]] AssetId stream() const noexcept { return _stream; }
 
     /// @brief Spawns an entity at @p position playing @p emitter.
-    rtype::ecs::Entity spawnEmitter(ParticleEmitter emitter, glm::vec2 position = {0.0F, 0.0F}) {
-        const rtype::ecs::Entity entity = world().spawn();
+    aylo::ecs::Entity spawnEmitter(ParticleEmitter emitter, glm::vec2 position = {0.0F, 0.0F}) {
+        const aylo::ecs::Entity entity = world().spawn();
         world().getComponents().add(entity, Transform{.position = position});
         world().getComponents().add(entity, emitter);
         return entity;
@@ -113,11 +113,11 @@ class ParticleApp {
     }
 
   private:
-    std::shared_ptr<rtype::test::plugins::FakeBackendState> _state;  ///< Drives the fakes.
-    rtype::ecs::App _app;                                            ///< The App under test.
-    AssetId _texture;                                                ///< spark.png.
-    AssetId _burst;                                                  ///< The effect "burst".
-    AssetId _stream;                                                 ///< The effect "stream".
+    std::shared_ptr<aylo::test::plugins::FakeBackendState> _state;  ///< Drives the fakes.
+    aylo::ecs::App _app;                                            ///< The App under test.
+    AssetId _texture;                                               ///< spark.png.
+    AssetId _burst;                                                 ///< The effect "burst".
+    AssetId _stream;                                                ///< The effect "stream".
 };
 
 /// @return The number of CPU instances @p draw hands over (0 for a GPU system).
@@ -130,23 +130,23 @@ std::size_t countInstances(const ParticleDraw& draw) {
 /// @return The material "hit", of a shader with the instance value `flash`, 0.25 by default.
 AssetId addMaterial(ParticleApp& app) {
     app.state().shaders = true;
-    rtype::ecs::Resources& resources = app.world().getResources();
-    const AssetId shader = resources.getMut<rtype::plugins::shader::ShaderAssets>()->add(
+    aylo::ecs::Resources& resources = app.world().getResources();
+    const AssetId shader = resources.getMut<aylo::plugins::shader::ShaderAssets>()->add(
         "flash", "instance uniform float flash = 0.25;\nvoid fragment() { COLOR.rgb += flash; }\n");
-    return resources.getMut<rtype::plugins::shader::MaterialAssets>()->add("hit", {.shader = shader});
+    return resources.getMut<aylo::plugins::shader::MaterialAssets>()->add("hit", {.shader = shader});
 }
 
 TEST(ParticlePlugin, DrawsAnEmitterWithItsMaterialAndInstanceValues) {
     ParticleApp app;
     const AssetId material = addMaterial(app);
-    const rtype::ecs::Entity entity = app.spawnEmitter(ParticleEmitter{.effect = app.stream(), .material = material});
-    rtype::plugins::shader::MaterialInstance instance;
+    const aylo::ecs::Entity entity = app.spawnEmitter(ParticleEmitter{.effect = app.stream(), .material = material});
+    aylo::plugins::shader::MaterialInstance instance;
     instance.values[0].x = 0.75F;
     app.world().getComponents().add(entity, instance);
     static_cast<void>(app.drawFrame());
     const std::vector<ParticleDraw> draws = app.drawFrame();
     ASSERT_EQ(draws.size(), 1U);
-    EXPECT_NE(draws.at(0).material, rtype::contract::renderer::MaterialId{});
+    EXPECT_NE(draws.at(0).material, aylo::contract::renderer::MaterialId{});
     EXPECT_FLOAT_EQ(draws.at(0).instanceValues[0].x, 0.75F);
 }
 
@@ -160,7 +160,7 @@ TEST(ParticlePlugin, DrawsAnEmitterWithItsEffectsMaterialAndTheShadersDefaults) 
     static_cast<void>(app.drawFrame());
     const std::vector<ParticleDraw> draws = app.drawFrame();
     ASSERT_EQ(draws.size(), 1U);
-    EXPECT_NE(draws.at(0).material, rtype::contract::renderer::MaterialId{});
+    EXPECT_NE(draws.at(0).material, aylo::contract::renderer::MaterialId{});
     EXPECT_FLOAT_EQ(draws.at(0).instanceValues[0].x, 0.25F);
 }
 
@@ -170,16 +170,16 @@ TEST(ParticlePlugin, DrawsAnEmitterWithTheDefaultMaterialUntilItsIsCreated) {
     static_cast<void>(app.drawFrame());
     const std::vector<ParticleDraw> draws = app.drawFrame();
     ASSERT_EQ(draws.size(), 1U);
-    EXPECT_EQ(draws.at(0).material, rtype::contract::renderer::MaterialId{});
+    EXPECT_EQ(draws.at(0).material, aylo::contract::renderer::MaterialId{});
 }
 
 TEST(ParticlePlugin, ComesWithTheGraphicsPlugin) {
     ParticleApp app;
-    EXPECT_TRUE(app.app().hasPlugin(rtype::plugins::particle::ParticlePlugin::kName));
+    EXPECT_TRUE(app.app().hasPlugin(aylo::plugins::particle::ParticlePlugin::kName));
     EXPECT_TRUE(app.world().getResources().has<ParticleEffectAssets>());
     EXPECT_TRUE(app.world().getResources().has<ParticleSystems>());
-    EXPECT_TRUE(app.world().getComponents().find("rtype.ParticleEmitter"));
-    EXPECT_TRUE(app.world().getComponents().find("rtype.ParticleOneShot"));
+    EXPECT_TRUE(app.world().getComponents().find("aylo.ParticleEmitter"));
+    EXPECT_TRUE(app.world().getComponents().find("aylo.ParticleOneShot"));
 }
 
 TEST(ParticlePlugin, DrawsACpuEmitterAtItsLayer) {
@@ -196,8 +196,8 @@ TEST(ParticlePlugin, DrawsACpuEmitterAtItsLayer) {
 TEST(ParticlePlugin, DrawsWithTheLookOfTheEffect) {
     ParticleApp app;
     ParticleEffect sparks = *app.effects().get(app.stream());
-    sparks.blend = rtype::contract::renderer::BlendMode::kAlpha;
-    sparks.alignment = rtype::contract::renderer::ParticleAlignment::kVelocity;
+    sparks.blend = aylo::contract::renderer::BlendMode::kAlpha;
+    sparks.alignment = aylo::contract::renderer::ParticleAlignment::kVelocity;
     sparks.stretch = 0.1F;
     sparks.flipbook = {.columns = 4, .rows = 2, .cycles = 2.0F};
     const AssetId id = app.effects().add("sparks", std::move(sparks));
@@ -205,11 +205,11 @@ TEST(ParticlePlugin, DrawsWithTheLookOfTheEffect) {
     static_cast<void>(app.drawFrame());
     const auto draws = app.drawFrame();
     ASSERT_EQ(draws.size(), 1U);
-    EXPECT_EQ(draws.at(0).blend, rtype::contract::renderer::BlendMode::kAlpha);
-    EXPECT_EQ(draws.at(0).alignment, rtype::contract::renderer::ParticleAlignment::kVelocity);
+    EXPECT_EQ(draws.at(0).blend, aylo::contract::renderer::BlendMode::kAlpha);
+    EXPECT_EQ(draws.at(0).alignment, aylo::contract::renderer::ParticleAlignment::kVelocity);
     EXPECT_FLOAT_EQ(draws.at(0).stretch, 0.1F);
     EXPECT_EQ(draws.at(0).flipbook,
-              (rtype::contract::renderer::ParticleFlipbook{.columns = 4, .rows = 2, .cycles = 2.0F}));
+              (aylo::contract::renderer::ParticleFlipbook{.columns = 4, .rows = 2, .cycles = 2.0F}));
 }
 
 TEST(ParticlePlugin, EmitsTheRateOverTheFrames) {
@@ -242,7 +242,7 @@ TEST(ParticlePlugin, AnUnknownEffectPlaysNothing) {
 
 TEST(ParticlePlugin, RemovingTheEmitterStopsIt) {
     ParticleApp app;
-    const rtype::ecs::Entity entity = app.spawnEmitter(ParticleEmitter{.effect = app.stream()});
+    const aylo::ecs::Entity entity = app.spawnEmitter(ParticleEmitter{.effect = app.stream()});
     static_cast<void>(app.drawFrame());
     static_cast<void>(app.drawFrame());
     EXPECT_EQ(app.systems().getCount(), 1U);
@@ -253,7 +253,7 @@ TEST(ParticlePlugin, RemovingTheEmitterStopsIt) {
 
 TEST(ParticlePlugin, ChangingTheEffectRestartsTheEmitter) {
     ParticleApp app;
-    const rtype::ecs::Entity entity = app.spawnEmitter(ParticleEmitter{.effect = app.stream()});
+    const aylo::ecs::Entity entity = app.spawnEmitter(ParticleEmitter{.effect = app.stream()});
     static_cast<void>(app.drawFrame());
     static_cast<void>(app.drawFrame());
     app.world().getComponents().getMut<ParticleEmitter>(entity)->effect = app.burst();
@@ -265,7 +265,7 @@ TEST(ParticlePlugin, ChangingTheEffectRestartsTheEmitter) {
 
 TEST(ParticlePlugin, ReplacingTheEffectRestartsTheEmittersPlayingIt) {
     ParticleApp app;
-    const rtype::ecs::Entity entity = app.spawnEmitter(ParticleEmitter{.effect = app.burst()});
+    const aylo::ecs::Entity entity = app.spawnEmitter(ParticleEmitter{.effect = app.burst()});
     static_cast<void>(app.drawFrame());
     static_cast<void>(app.drawFrame());  // the burst is out: nothing new to emit
     ParticleEffect bigger = *app.effects().get(app.burst());
@@ -292,9 +292,9 @@ TEST(ParticlePlugin, KeepsPlayingWhileTheSimulationIsPaused) {
 
 TEST(ParticlePlugin, AOneShotEmitterFinishesAndIsDespawned) {
     ParticleApp app;
-    const rtype::ecs::Entity entity = app.spawnEmitter(ParticleEmitter{.effect = app.burst()});
+    const aylo::ecs::Entity entity = app.spawnEmitter(ParticleEmitter{.effect = app.burst()});
     app.world().getComponents().add(entity, ParticleOneShot{});
-    rtype::ecs::EventCursor cursor;
+    aylo::ecs::EventCursor cursor;
     static_cast<void>(app.drawFrame());
     EXPECT_EQ(countInstances(app.drawFrame().at(0)), 8U);
     int sent = 0;
@@ -327,7 +327,7 @@ TEST(ParticlePlugin, SpawnParticlesPlaysAOneShotEffect) {
 
 TEST(ParticlePlugin, RunsOnTheGpuWhenTheRendererCan) {
     ParticleApp app{true};
-    const rtype::ecs::Entity entity = app.spawnEmitter(ParticleEmitter{.effect = app.stream()}, {5.0F, 6.0F});
+    const aylo::ecs::Entity entity = app.spawnEmitter(ParticleEmitter{.effect = app.stream()}, {5.0F, 6.0F});
     static_cast<void>(app.drawFrame());
     static_cast<void>(app.drawFrame());
     const auto draws = app.drawFrame();
@@ -347,7 +347,7 @@ TEST(ParticlePlugin, RunsOnTheGpuWhenTheRendererCan) {
 TEST(ParticlePlugin, SortsAlphaEffectsByAge) {
     ParticleApp app{true};
     ParticleEffect smoke = *app.effects().get(app.stream());
-    smoke.blend = rtype::contract::renderer::BlendMode::kAlpha;
+    smoke.blend = aylo::contract::renderer::BlendMode::kAlpha;
     const AssetId id = app.effects().add("smoke", std::move(smoke));
     static_cast<void>(app.spawnEmitter(ParticleEmitter{.effect = app.stream()}));
     static_cast<void>(app.spawnEmitter(ParticleEmitter{.effect = id}));

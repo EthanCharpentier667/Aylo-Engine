@@ -1,0 +1,44 @@
+/*
+** EPITECH PROJECT, 2026
+** aylo
+** File description:
+** AudioEvents
+*/
+
+#pragma once
+
+#include <glm/ext/vector_float2.hpp>
+#include <optional>
+
+#include "aylo/contract/audiodevice/AudioTypes.hpp"
+#include "aylo/ecs/event/EventTraits.hpp"
+#include "core/asset/AssetId.hpp"
+#include "plugins/AssetIdReflection.hpp"      // IWYU pragma: keep
+#include "plugins/audio/AudioReflection.hpp"  // IWYU pragma: keep
+
+namespace aylo::plugins::audio {
+/// @brief A one-shot sound, fire and forget (a shot, an explosion). Dropped if its sound is not loaded by the time the
+/// audio plugin plays it: a late shot sound is worse than a missing one.
+struct PlaySound {
+    core::asset::AssetId sound;  ///< The sound to play, from AudioAssets::load().
+    contract::audiodevice::Bus bus{contract::audiodevice::Bus::kEffects};  ///< The bus it is mixed into.
+    float volume{1.0F};                                                    ///< Linear gain, 1 = unchanged.
+    float pitch{1.0F};                                                     ///< Playback speed, 1 = unchanged.
+    std::optional<glm::vec2> position;  ///< World position to pan from; none: centred.
+};
+AYLO_ECS_EVENT(PlaySound, "aylo.PlaySound");
+
+/// @brief Replaces the music: the current track fades out while this one fades in, looping on the music bus. Waits for
+/// its sound if it is not loaded yet; a later PlayMusic or StopMusic replaces it.
+struct PlayMusic {
+    core::asset::AssetId sound;  ///< The track, best loaded with SoundDesc::stream.
+    float crossfade{1.0F};       ///< Seconds.
+};
+AYLO_ECS_EVENT(PlayMusic, "aylo.PlayMusic", sound, crossfade);
+
+/// @brief Fades the music out.
+struct StopMusic {
+    float fadeOut{1.0F};  ///< Seconds.
+};
+AYLO_ECS_EVENT(StopMusic, "aylo.StopMusic", fadeOut);
+}  // namespace aylo::plugins::audio

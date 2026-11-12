@@ -3,7 +3,7 @@
 The physics plugin gives your game 2D bodies, colliders and collision events. Add it in `project.luau`:
 
 ```luau
-engine.settings.plugins = { "rtype.Physics", "rtype.PhysicsDebug" }
+engine.settings.plugins = { "aylo.Physics", "aylo.PhysicsDebug" }
 engine.settings.physics.gravity = { 0, 0 }     -- { x, y }, world units per second squared, Y down
 ```
 
@@ -16,14 +16,14 @@ They are ordinary components you spawn with `ctx.commands` and query by name.
 
 | Component | What it is |
 |---|---|
-| `rtype.Collider` | A shape, its material and its collision categories (fields below) |
-| `rtype.RigidBody` | How it moves: static, kinematic or dynamic, its mass and damping (fields below) |
-| `rtype.Velocity` | `linear` and `angular` velocity, in world units per second |
-| `rtype.Transform` | The pose; write it to move a body |
+| `aylo.Collider` | A shape, its material and its collision categories (fields below) |
+| `aylo.RigidBody` | How it moves: static, kinematic or dynamic, its mass and damping (fields below) |
+| `aylo.Velocity` | `linear` and `angular` velocity, in world units per second |
+| `aylo.Transform` | The pose; write it to move a body |
 
 An entity with a `Collider` and a `Transform` gets a body; without a `RigidBody`, it is a static body (a wall).
 
-`rtype.Collider`, the shape and the material. Each shape reads its own fields: `size` for a box, `radius` for a circle,
+`aylo.Collider`, the shape and the material. Each shape reads its own fields: `size` for a box, `radius` for a circle,
 `radius` and `halfHeight` for a capsule.
 
 | Field | Type | Default | Meaning |
@@ -39,7 +39,7 @@ An entity with a `Collider` and a `Transform` gets a body; without a `RigidBody`
 | `layer` | u32 | `1` | the [collision categories](#layers) it belongs to |
 | `mask` | u32 | every category (`0x7FFF`) | the categories it collides with |
 
-`rtype.RigidBody`, how the body moves:
+`aylo.RigidBody`, how the body moves:
 
 | Field | Type | Default | Meaning |
 |---|---|---|---|
@@ -52,15 +52,15 @@ An entity with a `Collider` and a `Transform` gets a body; without a `RigidBody`
 | `continuousCollision` | bool | `false` | never tunnels through thin colliders when fast (bullets), at a cost |
 
 Distances are in world units, Y down. `Collider` and `RigidBody` are replicated by the engine, so a client sees the server's bodies. A body's velocity and
-position are set by writing its `rtype.Velocity` and `rtype.Transform`.
+position are set by writing its `aylo.Velocity` and `aylo.Transform`.
 
 ```luau
 ctx.commands:spawn({
 	["game.Laser"] = { position = muzzle, shooter = player },
-	["rtype.Transform"] = { position = muzzle },
-	["rtype.Collider"] = { size = { x = 60, y = 12 }, layer = 2, mask = 1 },
-	["rtype.RigidBody"] = { gravityScale = 0, fixedRotation = true, continuousCollision = true },
-	["rtype.Velocity"] = { linear = { x = 600, y = 0 } },
+	["aylo.Transform"] = { position = muzzle },
+	["aylo.Collider"] = { size = { x = 60, y = 12 }, layer = 2, mask = 1 },
+	["aylo.RigidBody"] = { gravityScale = 0, fixedRotation = true, continuousCollision = true },
+	["aylo.Velocity"] = { linear = { x = 600, y = 0 } },
 })
 ```
 
@@ -75,8 +75,8 @@ Declare them under `events = { read = {...} }` and read them with `ctx.events.re
 
 | Event | When |
 |---|---|
-| `rtype.CollisionStarted`, `rtype.CollisionEnded` | two bodies start or stop touching (`first`, `second` are entities) |
-| `rtype.TriggerEntered`, `rtype.TriggerExited` | a body enters or leaves a sensor |
+| `aylo.CollisionStarted`, `aylo.CollisionEnded` | two bodies start or stop touching (`first`, `second` are entities) |
+| `aylo.TriggerEntered`, `aylo.TriggerExited` | a body enters or leaves a sensor |
 
 ## Calls
 
@@ -84,13 +84,13 @@ List the ones you use under `calls` and make them with `ctx.call`.
 
 | Call | Arguments | Result |
 |---|---|---|
-| `rtype.physics.raycast` | `origin`, `direction`, `maxDistance`, `mask`, `ignore`, `includeSensors` | `{ hit, entity, point, normal, distance }` |
-| `rtype.physics.shapeCast` | the shape fields of a `Collider`, `from`, `direction`, `maxDistance`, the filter | as `raycast` |
-| `rtype.physics.overlap` | the shape fields, `at`, the filter | `{ count, first }` |
-| `rtype.physics.moveAndSlide` | `entity` (its `Collider` is the shape, its mask the filter), `from`, `delta`, `skin`, `maxSlides` | the position it ends at |
-| `rtype.physics.applyForce`, `applyImpulse` | `entity`, `value` | nothing |
-| `rtype.physics.applyTorque` | `entity`, `torque` | nothing |
-| `rtype.physics.setGravity` | `gravity` | nothing |
+| `aylo.physics.raycast` | `origin`, `direction`, `maxDistance`, `mask`, `ignore`, `includeSensors` | `{ hit, entity, point, normal, distance }` |
+| `aylo.physics.shapeCast` | the shape fields of a `Collider`, `from`, `direction`, `maxDistance`, the filter | as `raycast` |
+| `aylo.physics.overlap` | the shape fields, `at`, the filter | `{ count, first }` |
+| `aylo.physics.moveAndSlide` | `entity` (its `Collider` is the shape, its mask the filter), `from`, `delta`, `skin`, `maxSlides` | the position it ends at |
+| `aylo.physics.applyForce`, `applyImpulse` | `entity`, `value` | nothing |
+| `aylo.physics.applyTorque` | `entity`, `torque` | nothing |
+| `aylo.physics.setGravity` | `gravity` | nothing |
 
 A null `ignore` (the default) skips no entity.
 
@@ -98,21 +98,21 @@ A null `ignore` (the default) skips no entity.
 
 The physics runs in `FixedUpdate`. Order the systems that touch bodies around its steps:
 
-- moving things by `rtype.Transform` or `rtype.Velocity`: `after = { "rtype.Physics.SyncBodies" }`,
-  `before = { "rtype.Physics.SyncToPhysics" }`;
-- reading positions the physics wrote: `after = { "rtype.Physics.SyncFromPhysics" }`;
-- reacting to contacts: `after = { "rtype.Physics.Events" }`.
+- moving things by `aylo.Transform` or `aylo.Velocity`: `after = { "aylo.Physics.SyncBodies" }`,
+  `before = { "aylo.Physics.SyncToPhysics" }`;
+- reading positions the physics wrote: `after = { "aylo.Physics.SyncFromPhysics" }`;
+- reacting to contacts: `after = { "aylo.Physics.Events" }`.
 
 ```luau
 engine.ecs.system("game.Ships", {
 	phase = "FixedUpdate",
-	query = { write = { "rtype.Transform" }, with = { "game.Ship" } },
-	calls = { "rtype.physics.moveAndSlide" },
-	after = { "rtype.Physics.SyncBodies" },
-	before = { "rtype.Physics.SyncToPhysics" },
+	query = { write = { "aylo.Transform" }, with = { "game.Ship" } },
+	calls = { "aylo.physics.moveAndSlide" },
+	after = { "aylo.Physics.SyncBodies" },
+	before = { "aylo.Physics.SyncToPhysics" },
 	run = function(ctx)
 		for ship, transform in ctx.query do
-			transform.position = ctx.call("rtype.physics.moveAndSlide", {
+			transform.position = ctx.call("aylo.physics.moveAndSlide", {
 				entity = ship, from = transform.position, delta = { x = 4, y = 0 },
 			})
 		end
@@ -122,6 +122,6 @@ engine.ecs.system("game.Ships", {
 
 ## The debug view
 
-With `"rtype.PhysicsDebug"` in `plugins` (client only), F3 toggles outlines of the colliders and arrows for the velocities.
-`physicsDebug.drawAll = true` outlines every collider; otherwise only entities with an `rtype.PhysicsDebug` component are
+With `"aylo.PhysicsDebug"` in `plugins` (client only), F3 toggles outlines of the colliders and arrows for the velocities.
+`physicsDebug.drawAll = true` outlines every collider; otherwise only entities with an `aylo.PhysicsDebug` component are
 drawn.

@@ -1,7 +1,7 @@
 site_name: AYLO Engine developer documentation
 site_description: How the AYLO Engine works, for the people who build it.
-site_url: https://charles-mahoudeau.github.io/rtype/engine/
-repo_url: https://github.com/Charles-Mahoudeau/rtype
+site_url: https://ethancharpentier667.github.io/Aylo-Engine/engine/
+repo_url: https://github.com/EthanCharpentier667/Aylo-Engine
 docs_dir: .
 site_dir: site
 exclude_docs: |

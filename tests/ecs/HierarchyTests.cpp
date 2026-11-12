@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** HierarchyTests
 */
@@ -11,28 +11,28 @@
 #include <span>
 #include <vector>
 
-#include "rtype/ecs/command/Commands.hpp"
-#include "rtype/ecs/component/ComponentInfo.hpp"
-#include "rtype/ecs/component/ComponentRegistry.hpp"
-#include "rtype/ecs/component/ComponentTraits.hpp"
-#include "rtype/ecs/entity/Entity.hpp"
-#include "rtype/ecs/hierarchy/Children.hpp"
-#include "rtype/ecs/hierarchy/Parent.hpp"
-#include "rtype/ecs/type/Field.hpp"
-#include "rtype/ecs/world/World.hpp"
+#include "aylo/ecs/command/Commands.hpp"
+#include "aylo/ecs/component/ComponentInfo.hpp"
+#include "aylo/ecs/component/ComponentRegistry.hpp"
+#include "aylo/ecs/component/ComponentTraits.hpp"
+#include "aylo/ecs/entity/Entity.hpp"
+#include "aylo/ecs/hierarchy/Children.hpp"
+#include "aylo/ecs/hierarchy/Parent.hpp"
+#include "aylo/ecs/type/Field.hpp"
+#include "aylo/ecs/world/World.hpp"
 
-using rtype::ecs::Children;
-using rtype::ecs::Entity;
-using rtype::ecs::Parent;
-using rtype::ecs::World;
+using aylo::ecs::Children;
+using aylo::ecs::Entity;
+using aylo::ecs::Parent;
+using aylo::ecs::World;
 
-static_assert(rtype::ecs::Component<Parent>);
-static_assert(rtype::ecs::Component<Children>);
+static_assert(aylo::ecs::Component<Parent>);
+static_assert(aylo::ecs::Component<Children>);
 
 TEST(Parent, ReflectsItsEntity) {
-    const auto& fields = rtype::ecs::TypeTraits<Parent>::kFields;
+    const auto& fields = aylo::ecs::TypeTraits<Parent>::kFields;
     ASSERT_EQ(fields.size(), 1U);
-    EXPECT_EQ(fields.front().type, rtype::ecs::FieldType::kEntity);
+    EXPECT_EQ(fields.front().type, aylo::ecs::FieldType::kEntity);
 }
 
 TEST(Parent, IsClearedWhenItsTargetIsDespawned) {
@@ -46,9 +46,9 @@ TEST(Parent, IsClearedWhenItsTargetIsDespawned) {
 }
 
 TEST(Children, ReflectsItsEntitiesAsAList) {
-    const auto& fields = rtype::ecs::TypeTraits<Children>::kFields;
+    const auto& fields = aylo::ecs::TypeTraits<Children>::kFields;
     ASSERT_EQ(fields.size(), 1U);
-    EXPECT_EQ(fields.front().type, rtype::ecs::FieldType::kEntity);
+    EXPECT_EQ(fields.front().type, aylo::ecs::FieldType::kEntity);
     EXPECT_NE(fields.front().list, nullptr);
 }
 
@@ -337,7 +337,7 @@ TEST(HierarchyCommands, AddingAParentFillsChildren) {
     World world;
     const Entity parent = world.spawn();
     const Entity child = world.spawn();
-    rtype::ecs::Commands commands{world};
+    aylo::ecs::Commands commands{world};
     commands.entity(child).add(Parent{.entity = parent});
     commands.flush();
     EXPECT_EQ(parentOf(world, child), parent);
@@ -349,7 +349,7 @@ TEST(HierarchyCommands, RemovingAParentEmptiesChildren) {
     const Entity parent = world.spawn();
     const Entity child = world.spawn();
     EXPECT_TRUE(world.setParent(child, parent));
-    rtype::ecs::Commands commands{world};
+    aylo::ecs::Commands commands{world};
     commands.entity(child).remove<Parent>();
     commands.flush();
     EXPECT_FALSE(world.getComponents().has<Parent>(child));
@@ -358,7 +358,7 @@ TEST(HierarchyCommands, RemovingAParentEmptiesChildren) {
 
 TEST(HierarchyCommands, LinksEntitiesSpawnedInTheSameFlushWhateverTheirOrder) {
     World world;
-    rtype::ecs::Commands commands{world};
+    aylo::ecs::Commands commands{world};
     const Entity child = commands.spawn().getEntity();
     const Entity parent = commands.spawn().getEntity();
     commands.entity(child).add(Parent{.entity = parent});
@@ -371,7 +371,7 @@ TEST(HierarchyCommands, MovesAChildBetweenParents) {
     const Entity previous = world.spawn();
     const Entity next = world.spawn();
     const Entity child = world.spawn();
-    rtype::ecs::Commands commands{world};
+    aylo::ecs::Commands commands{world};
     commands.entity(child).add(Parent{.entity = previous});
     commands.entity(child).add(Parent{.entity = next});
     commands.flush();
@@ -384,7 +384,7 @@ TEST(HierarchyCommands, SkipsACycle) {
     const Entity parent = world.spawn();
     const Entity child = world.spawn();
     EXPECT_TRUE(world.setParent(child, parent));
-    rtype::ecs::Commands commands{world};
+    aylo::ecs::Commands commands{world};
     commands.entity(parent).add(Parent{.entity = child});
     commands.flush();
     EXPECT_FALSE(world.getComponents().has<Parent>(parent));
@@ -393,11 +393,11 @@ TEST(HierarchyCommands, SkipsACycle) {
 
 TEST(HierarchyCommands, GoesThroughTheWorldByIdAsTheNetworkDoes) {
     World world;
-    const rtype::ecs::ComponentId id = world.getComponents().registerType<Parent>();
+    const aylo::ecs::ComponentId id = world.getComponents().registerType<Parent>();
     const Entity parent = world.spawn();
     const Entity child = world.spawn();
     const Parent value{.entity = parent};
-    rtype::ecs::Commands commands{world};
+    aylo::ecs::Commands commands{world};
     EXPECT_TRUE(commands.add(child, id, std::as_bytes(std::span{&value, 1})));
     commands.flush();
     EXPECT_EQ(childrenOf(world, parent), std::vector<Entity>{child});
@@ -409,11 +409,11 @@ TEST(HierarchyCommands, GoesThroughTheWorldByIdAsTheNetworkDoes) {
 
 TEST(HierarchyCommands, KeepsTheOptionsParentWasRegisteredWith) {
     World world;
-    const rtype::ecs::ComponentId id =
-        world.getComponents().registerType<Parent>({.replication = rtype::ecs::ReplicationMode::kEveryChange});
+    const aylo::ecs::ComponentId id =
+        world.getComponents().registerType<Parent>({.replication = aylo::ecs::ReplicationMode::kEveryChange});
     const Entity parent = world.spawn();
     const Entity child = world.spawn();
-    rtype::ecs::Commands commands{world};
+    aylo::ecs::Commands commands{world};
     commands.entity(child).add(Parent{.entity = parent});
     commands.flush();
     EXPECT_EQ(world.getComponents().getRegistry().find<Parent>()->type.id, id);
@@ -425,13 +425,13 @@ TEST(ParentOptions, AreTheSameWhoeverRegistersItFirst) {
     const Entity parent = byWorld.spawn();
     EXPECT_TRUE(byWorld.setParent(byWorld.spawn(), parent));
     EXPECT_EQ(byWorld.getComponents().getRegistry().find<Parent>()->type.replication,
-              rtype::ecs::kParentOptions.replication);
+              aylo::ecs::kParentOptions.replication);
 
     World byCommands;
     const Entity other = byCommands.spawn();
-    rtype::ecs::Commands commands{byCommands};
+    aylo::ecs::Commands commands{byCommands};
     commands.entity(byCommands.spawn()).add(Parent{.entity = other});
     commands.flush();
     EXPECT_EQ(byCommands.getComponents().getRegistry().find<Parent>()->type.replication,
-              rtype::ecs::kParentOptions.replication);
+              aylo::ecs::kParentOptions.replication);
 }

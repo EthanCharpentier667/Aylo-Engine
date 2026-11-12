@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** SequenceBufferTests
 */
@@ -9,9 +9,9 @@
 
 #include <cstdint>
 
-#include "rtype/network/protocol/SequenceBuffer.hpp"
+#include "aylo/network/protocol/SequenceBuffer.hpp"
 
-namespace protocol = rtype::network::protocol;
+namespace protocol = aylo::network::protocol;
 
 namespace {
 struct Record {

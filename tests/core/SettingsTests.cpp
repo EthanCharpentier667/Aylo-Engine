@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** SettingsTests
 */
@@ -15,8 +15,8 @@
 
 namespace {
 
-using rtype::core::config::Settings;
-using rtype::core::config::exceptions::SettingsException;
+using aylo::core::config::Settings;
+using aylo::core::config::exceptions::SettingsException;
 
 }  // namespace
 
@@ -93,12 +93,12 @@ TEST(Settings, AnEmptyListReadsAsEitherKindOfList) {
 
 TEST(Settings, SectionStripsThePrefix) {
     Settings settings;
-    settings.set("window.title", "R-Type");
+    settings.set("window.title", "AYLO");
     settings.set("window.size", std::vector<double>{800.0, 600.0});
     settings.set("renderer", "vulkan");
 
     const Settings window = settings.section("window");
-    EXPECT_EQ(window.getString("title", ""), "R-Type");
+    EXPECT_EQ(window.getString("title", ""), "AYLO");
     EXPECT_EQ(window.getNumberList("size", {}), (std::vector<double>{800.0, 600.0}));
     EXPECT_FALSE(window.has("renderer"));
 }
@@ -114,7 +114,7 @@ TEST(Settings, SectionIgnoresKeysThatOnlyShareTheStartOfTheName) {
 
 TEST(Settings, CheckKeysAcceptsKnownKeysAndSubsections) {
     Settings settings;
-    settings.set("title", "R-Type");
+    settings.set("title", "AYLO");
     settings.set("size.width", 800.0);
     EXPECT_NO_THROW(settings.checkKeys({"title", "size"}, "window"));
 }
@@ -126,7 +126,7 @@ TEST(Settings, CheckKeysAcceptsAnEmptySection) {
 
 TEST(Settings, CheckKeysRejectsAnUnknownKeyAndNamesIt) {
     Settings settings;
-    settings.set("title", "R-Type");
+    settings.set("title", "AYLO");
     settings.set("tittle", "typo");
     try {
         settings.checkKeys({"title"}, "window");

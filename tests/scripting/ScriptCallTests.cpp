@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ScriptCallTests
 */
@@ -15,50 +15,50 @@
 #include <vector>
 
 #include "ScriptProbe.hpp"
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/app/PluginRegistry.hpp"
-#include "rtype/ecs/call/CallTraits.hpp"
-#include "rtype/ecs/resource/ResourceTraits.hpp"
-#include "rtype/ecs/schedule/Phase.hpp"
-#include "rtype/ecs/schedule/RunMode.hpp"
-#include "rtype/ecs/system/System.hpp"
-#include "rtype/ecs/system/SystemParam.hpp"
-#include "rtype/ecs/time/FixedTimestep.hpp"
-#include "rtype/ecs/time/TimePlugin.hpp"
-#include "rtype/scripting/ScriptHost.hpp"
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/app/PluginRegistry.hpp"
+#include "aylo/ecs/call/CallTraits.hpp"
+#include "aylo/ecs/resource/ResourceTraits.hpp"
+#include "aylo/ecs/schedule/Phase.hpp"
+#include "aylo/ecs/schedule/RunMode.hpp"
+#include "aylo/ecs/system/System.hpp"
+#include "aylo/ecs/system/SystemParam.hpp"
+#include "aylo/ecs/time/FixedTimestep.hpp"
+#include "aylo/ecs/time/TimePlugin.hpp"
+#include "aylo/scripting/ScriptHost.hpp"
 
-namespace rtype::test::script_call {
+namespace aylo::test::script_call {
 /// @brief The resource the calls below change.
 struct Score {
     int value{0};
 };
-RTYPE_ECS_RESOURCE(Score, "test.call.Score", value);
+AYLO_ECS_RESOURCE(Score, "test.call.Score", value);
 
 /// @brief A main-thread resource.
 struct Window {
     int width{0};
 };
-RTYPE_ECS_RESOURCE(Window, "test.call.Window", width);
+AYLO_ECS_RESOURCE(Window, "test.call.Window", width);
 
 /// @brief The arguments of `test.addPoints`.
 struct AddPoints {
     int points{1};
     float scale{1.F};
 };
-RTYPE_ECS_CALL_DATA(AddPoints, "test.call.AddPoints", points, scale);
+AYLO_ECS_CALL_DATA(AddPoints, "test.call.AddPoints", points, scale);
 
 /// @brief A result of one field.
 struct Total {
     int value{0};
 };
-RTYPE_ECS_CALL_DATA(Total, "test.call.Total", value);
+AYLO_ECS_CALL_DATA(Total, "test.call.Total", value);
 
 /// @brief A result of two fields.
 struct Bounds {
     int low{0};
     int high{0};
 };
-RTYPE_ECS_CALL_DATA(Bounds, "test.call.Bounds", low, high);
+AYLO_ECS_CALL_DATA(Bounds, "test.call.Bounds", low, high);
 
 /// @brief Adds the scaled points to the score and returns the new score.
 Total addPoints(ecs::ResMut<Score> score, const AddPoints& arguments) {
@@ -86,7 +86,7 @@ struct Prompt {
     std::string text;
     std::vector<float> weights;
 };
-RTYPE_ECS_CALL_DATA(Prompt, "test.call.Prompt", text, weights);
+AYLO_ECS_CALL_DATA(Prompt, "test.call.Prompt", text, weights);
 
 /// @brief The result of `test.echo`.
 struct Echo {
@@ -94,7 +94,7 @@ struct Echo {
     int length{0};
     float total{0.0F};
 };
-RTYPE_ECS_CALL_DATA(Echo, "test.call.Echo", text, length, total);
+AYLO_ECS_CALL_DATA(Echo, "test.call.Echo", text, length, total);
 
 /// @brief Gives the text back, doubled, with its length and the sum of the weights.
 Echo echo(const Prompt& prompt) {
@@ -104,30 +104,30 @@ Echo echo(const Prompt& prompt) {
     }
     return result;
 }
-}  // namespace rtype::test::script_call
+}  // namespace aylo::test::script_call
 
 namespace {
-using rtype::test::script_call::Score;
-using rtype::test::script_call::Window;
+using aylo::test::script_call::Score;
+using aylo::test::script_call::Window;
 
 /// @brief An App with a manual clock, the calls above and a host on it.
 struct Fixture {
-    rtype::ecs::App app;
-    std::unique_ptr<rtype::scripting::ScriptHost> host;
+    aylo::ecs::App app;
+    std::unique_ptr<aylo::scripting::ScriptHost> host;
 
-    explicit Fixture(const rtype::ecs::RunMode mode = rtype::ecs::RunMode::kStandalone) : app{mode} {
-        app.addPlugin(rtype::ecs::TimePlugin::manual(std::chrono::seconds{1}, rtype::ecs::FixedTimestep{1, 5}));
+    explicit Fixture(const aylo::ecs::RunMode mode = aylo::ecs::RunMode::kStandalone) : app{mode} {
+        app.addPlugin(aylo::ecs::TimePlugin::manual(std::chrono::seconds{1}, aylo::ecs::FixedTimestep{1, 5}));
         app.insertResource(Score{.value = 10});
         app.getWorld().getResources().insertNonSend(Window{});
-        app.addCall("test.addPoints", &rtype::test::script_call::addPoints);
-        app.addCall("test.readScore", &rtype::test::script_call::readScore);
-        app.addCall("test.bounds", &rtype::test::script_call::bounds);
-        app.addCall("test.reset", &rtype::test::script_call::reset);
-        app.addCall("test.widen", &rtype::test::script_call::widen);
-        app.addCall("test.broken", &rtype::test::script_call::broken);
-        app.addCall("test.echo", &rtype::test::script_call::echo);
-        app.getPluginRegistry().addScriptForms("test.Probe", rtype::tests::kProbeForms);
-        auto created = rtype::scripting::ScriptHost::create(app, {});
+        app.addCall("test.addPoints", &aylo::test::script_call::addPoints);
+        app.addCall("test.readScore", &aylo::test::script_call::readScore);
+        app.addCall("test.bounds", &aylo::test::script_call::bounds);
+        app.addCall("test.reset", &aylo::test::script_call::reset);
+        app.addCall("test.widen", &aylo::test::script_call::widen);
+        app.addCall("test.broken", &aylo::test::script_call::broken);
+        app.addCall("test.echo", &aylo::test::script_call::echo);
+        app.getPluginRegistry().addScriptForms("test.Probe", aylo::tests::kProbeForms);
+        auto created = aylo::scripting::ScriptHost::create(app, {});
         EXPECT_TRUE(created) << (created ? "" : std::string{created.error().message()});
         host = std::move(*created);
     }
@@ -273,7 +273,7 @@ TEST(ScriptCall, AnUnknownDeclaredCallIsRefusedWhenTheScriptLoads) {
 }
 
 TEST(ScriptCall, AnUnknownDeclaredCallIsDroppedWhenTheSystemDoesNotRunInThisApp) {
-    Fixture fixture{rtype::ecs::RunMode::kServer};
+    Fixture fixture{aylo::ecs::RunMode::kServer};
     EXPECT_EQ(fixture.run(R"(
         engine.ecs.system("game.ClientOnly", {
             phase = "Update",
@@ -298,12 +298,12 @@ TEST(ScriptCall, TheSchedulerSeesTheAccessOfTheDeclaredCalls) {
     )"),
               "");
 
-    const auto* system = fixture.app.getSchedules().getSchedule(rtype::ecs::Phase::kUpdate).findSystem("game.Widener");
+    const auto* system = fixture.app.getSchedules().getSchedule(aylo::ecs::Phase::kUpdate).findSystem("game.Widener");
     ASSERT_NE(system, nullptr);
     EXPECT_TRUE(system->getAccess().isMainThread());  // test.widen takes a NonSendMut
     const auto& registry = fixture.app.getWorld().getResources().getRegistry();
     const auto resources = system->getAccess().getResources();
-    const auto writes = [&resources](const rtype::ecs::ResourceId id) {
+    const auto writes = [&resources](const aylo::ecs::ResourceId id) {
         for (const auto& access : resources) {
             if (access.id == id) {
                 return access.write;

@@ -14,7 +14,7 @@ what users see, and how to apply for the one signature that is still missing.
 
 ```sh
 sha256sum --check --ignore-missing SHA256SUMS
-gh attestation verify aylo-engine-<version>-<os>-<arch>.zip --repo Charles-Mahoudeau/rtype
+gh attestation verify aylo-engine-<version>-<os>-<arch>.zip --repo EthanCharpentier667/Aylo-Engine
 ```
 
 The attestation proves the zip was built by the release workflow of this repository at a given commit.

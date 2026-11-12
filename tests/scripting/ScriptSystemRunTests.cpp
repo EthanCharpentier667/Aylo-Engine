@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ScriptSystemRunTests
 */
@@ -16,21 +16,21 @@
 #include <string_view>
 #include <vector>
 
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/entity/Entity.hpp"
-#include "rtype/ecs/time/FixedTimestep.hpp"
-#include "rtype/ecs/time/TimePlugin.hpp"
-#include "rtype/scripting/ScriptHost.hpp"
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/entity/Entity.hpp"
+#include "aylo/ecs/time/FixedTimestep.hpp"
+#include "aylo/ecs/time/TimePlugin.hpp"
+#include "aylo/scripting/ScriptHost.hpp"
 
 namespace {
 /// @brief An App whose every frame lasts one second and runs one fixed tick of one second, and a host on it.
 struct Fixture {
-    rtype::ecs::App app;
-    std::unique_ptr<rtype::scripting::ScriptHost> host;
+    aylo::ecs::App app;
+    std::unique_ptr<aylo::scripting::ScriptHost> host;
 
     Fixture() {
-        app.addPlugin(rtype::ecs::TimePlugin::manual(std::chrono::seconds{1}, rtype::ecs::FixedTimestep{1, 5}));
-        auto created = rtype::scripting::ScriptHost::create(app, {});
+        app.addPlugin(aylo::ecs::TimePlugin::manual(std::chrono::seconds{1}, aylo::ecs::FixedTimestep{1, 5}));
+        auto created = aylo::scripting::ScriptHost::create(app, {});
         EXPECT_TRUE(created) << (created ? "" : std::string{created.error().message()});
         host = std::move(*created);
         EXPECT_EQ(run(R"(
@@ -48,12 +48,12 @@ struct Fixture {
     }
 
     /// @brief Gives a new entity a component, its fields set to the given values.
-    rtype::ecs::Entity spawn(rtype::ecs::Entity entity, const std::string_view component,
-                             const std::vector<std::pair<std::string_view, float>>& values) {
+    aylo::ecs::Entity spawn(aylo::ecs::Entity entity, const std::string_view component,
+                            const std::vector<std::pair<std::string_view, float>>& values) {
         const auto* layout = host->findComponent(component);
         std::vector<std::byte> bytes = layout->defaults;
         for (const auto& [name, value] : values) {
-            const auto field = std::ranges::find(layout->fields, name, &rtype::ecs::FieldInfo::name);
+            const auto field = std::ranges::find(layout->fields, name, &aylo::ecs::FieldInfo::name);
             std::memcpy(bytes.data() + field->offset, &value, sizeof(float));
         }
         EXPECT_TRUE(app.getWorld().getComponents().add(entity, layout->id, bytes));
@@ -61,11 +61,11 @@ struct Fixture {
     }
 
     /// @brief Reads a float field of an entity's component.
-    [[nodiscard]] float read(const rtype::ecs::Entity entity, const std::string_view component,
+    [[nodiscard]] float read(const aylo::ecs::Entity entity, const std::string_view component,
                              const std::string_view name) const {
         const auto* layout = host->findComponent(component);
         const auto bytes = app.getWorld().getComponents().get(entity, layout->id);
-        const auto field = std::ranges::find(layout->fields, name, &rtype::ecs::FieldInfo::name);
+        const auto field = std::ranges::find(layout->fields, name, &aylo::ecs::FieldInfo::name);
         float value = 0.F;
         std::memcpy(&value, bytes.data() + field->offset, sizeof(float));
         return value;
@@ -335,8 +335,8 @@ TEST(ScriptSystemRun, AScriptStopsTheAppWithACodeThroughAppExit) {
         engine.ecs.system("game.Quit", {
             phase = "Update",
             query = {},
-            events = { send = { "rtype.AppExit" } },
-            run = function(ctx) ctx.events.send("rtype.AppExit", { code = 3 }) end,
+            events = { send = { "aylo.AppExit" } },
+            run = function(ctx) ctx.events.send("aylo.AppExit", { code = 3 }) end,
         })
     )"),
               "");

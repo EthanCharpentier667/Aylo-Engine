@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** SpecializationBuilderTests
 */
@@ -16,7 +16,7 @@
 
 namespace {
 
-using rtype::render::vulkan::pipeline::SpecializationBuilder;
+using aylo::render::vulkan::pipeline::SpecializationBuilder;
 
 /// @return The value of type T stored at @p offset in @p builder's data.
 template <class T>

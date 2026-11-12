@@ -1,6 +1,6 @@
 # ECS examples
 
-One small console program per feature of the ECS (`src/rtype/ecs`). Each one runs on its own, needs no input and
+One small console program per feature of the ECS (`src/aylo/ecs`). Each one runs on its own, needs no input and
 prints what happens step by step, so reading its output next to its code explains the feature.
 
 ## Build and run
@@ -19,7 +19,7 @@ Read them roughly in this order: each one builds on the ones before.
 | Example | Shows | Details |
 |---|---|---|
 | [`EcsEntities`](EcsEntities/src/main.cpp) | spawning and despawning, an index and a generation, a freed slot reused, a stale handle refused | [Entity](../../docs/ecs/features/01-entity.md) |
-| [`EcsComponents`](EcsComponents/src/main.cpp) | `RTYPE_ECS_COMPONENT` (fields, tags), add / get / getMut / has / remove, what the registry knows | [Component registry](../../docs/ecs/features/02-component-registry.md) |
+| [`EcsComponents`](EcsComponents/src/main.cpp) | `AYLO_ECS_COMPONENT` (fields, tags), add / get / getMut / has / remove, what the registry knows | [Component registry](../../docs/ecs/features/02-component-registry.md) |
 | [`EcsRuntimeComponents`](EcsRuntimeComponents/src/main.cpp) | a component described at run time (as the Luau bridge does), read and written as bytes, a wrong description refused | [Component registry](../../docs/ecs/features/02-component-registry.md) |
 | [`EcsTypedQueries`](EcsTypedQueries/src/main.cpp) | `Query<...>` terms: `T`, `const T`, `Optional<T>`, `With<T>`, `Without<T>` | [Queries](../../docs/ecs/features/07-queries.md) |
 | [`EcsDynamicQueries`](EcsDynamicQueries/src/main.cpp) | `QueryBuilder` by component id, bytes by data term, optional terms, filters, errors | [Queries](../../docs/ecs/features/07-queries.md) |
@@ -36,6 +36,6 @@ Read them roughly in this order: each one builds on the ones before.
 ## Conventions
 
 - Each example is `examples/ecs/<Name>/xmake.lua` and `src/main.cpp`; its build option is its folder name.
-- `using namespace rtype::ecs;` is allowed here (examples only), to keep them short.
+- `using namespace aylo::ecs;` is allowed here (examples only), to keep them short.
 - `main()` only calls `run()` and prints an exception if one escapes, so the examples pass `clang-tidy` like the
   rest of the code.

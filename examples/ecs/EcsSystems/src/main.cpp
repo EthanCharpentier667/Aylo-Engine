@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** main
 */
@@ -13,40 +13,40 @@
 #include <iostream>
 #include <string_view>
 
-#include "rtype/ecs/command/Commands.hpp"
-#include "rtype/ecs/component/ComponentTraits.hpp"
-#include "rtype/ecs/event/EventTraits.hpp"
-#include "rtype/ecs/query/Query.hpp"
-#include "rtype/ecs/resource/ResourceTraits.hpp"
-#include "rtype/ecs/system/EventWriter.hpp"
-#include "rtype/ecs/system/ResourceParam.hpp"
-#include "rtype/ecs/system/Side.hpp"
-#include "rtype/ecs/system/System.hpp"
-#include "rtype/ecs/system/SystemAccess.hpp"
-#include "rtype/ecs/world/World.hpp"
+#include "aylo/ecs/command/Commands.hpp"
+#include "aylo/ecs/component/ComponentTraits.hpp"
+#include "aylo/ecs/event/EventTraits.hpp"
+#include "aylo/ecs/query/Query.hpp"
+#include "aylo/ecs/resource/ResourceTraits.hpp"
+#include "aylo/ecs/system/EventWriter.hpp"
+#include "aylo/ecs/system/ResourceParam.hpp"
+#include "aylo/ecs/system/Side.hpp"
+#include "aylo/ecs/system/System.hpp"
+#include "aylo/ecs/system/SystemAccess.hpp"
+#include "aylo/ecs/world/World.hpp"
 
-using namespace rtype::ecs;
+using namespace aylo::ecs;
 
 namespace {
 struct Position {
     float x;
 };
-RTYPE_ECS_COMPONENT(Position, "example.Position", x);
+AYLO_ECS_COMPONENT(Position, "example.Position", x);
 
 struct Velocity {
     float x;
 };
-RTYPE_ECS_COMPONENT(Velocity, "example.Velocity", x);
+AYLO_ECS_COMPONENT(Velocity, "example.Velocity", x);
 
 struct Time {
     float delta;
 };
-RTYPE_ECS_RESOURCE(Time, "example.Time", delta);
+AYLO_ECS_RESOURCE(Time, "example.Time", delta);
 
 struct Moved {
     int count;
 };
-RTYPE_ECS_EVENT(Moved, "example.Moved", count);
+AYLO_ECS_EVENT(Moved, "example.Moved", count);
 
 /// @brief Writes Position, reads Velocity and Time, sends Moved.
 void movement(Query<Position, const Velocity> query, Res<Time> time, EventWriter<Moved> moved) {

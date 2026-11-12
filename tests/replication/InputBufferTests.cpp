@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** InputBufferTests
 */
@@ -9,12 +9,12 @@
 
 #include <cstdint>
 
-#include "rtype/replication/input/InputBuffer.hpp"
-#include "rtype/replication/input/InputMessage.hpp"
+#include "aylo/replication/input/InputBuffer.hpp"
+#include "aylo/replication/input/InputMessage.hpp"
 
 namespace {
-using rtype::replication::input::InputBuffer;
-using rtype::replication::input::InputSample;
+using aylo::replication::input::InputBuffer;
+using aylo::replication::input::InputSample;
 
 InputSample makeSample(const std::uint32_t sequence) {
     InputSample sample;

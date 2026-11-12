@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** PluginLoaderTests
 */
@@ -14,26 +14,26 @@
 #include <string>
 #include <system_error>
 
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/app/PluginEntry.hpp"
+#include "aylo/ecs/app/PluginRegistry.hpp"
+#include "aylo/engine/Exceptions.hpp"
+#include "aylo/engine/plugin/PluginLoader.hpp"
+#include "aylo/engine/plugin/SharedLibrary.hpp"
 #include "core/library/LibraryEntry.hpp"
 #include "core/system/ExecutablePath.hpp"
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/app/PluginEntry.hpp"
-#include "rtype/ecs/app/PluginRegistry.hpp"
-#include "rtype/engine/Exceptions.hpp"
-#include "rtype/engine/plugin/PluginLoader.hpp"
-#include "rtype/engine/plugin/SharedLibrary.hpp"
 
-using rtype::engine::exceptions::RuntimeError;
-using rtype::engine::plugin::PluginLoader;
-using rtype::engine::plugin::SharedLibrary;
+using aylo::engine::exceptions::RuntimeError;
+using aylo::engine::plugin::PluginLoader;
+using aylo::engine::plugin::SharedLibrary;
 
 namespace {
 /// @return The file name of the fixture library.
 std::string fixtureName() {
 #ifdef _WIN32
-    return std::format("rtype-test-plugin{}", SharedLibrary::getExtension());
+    return std::format("aylo-test-plugin{}", SharedLibrary::getExtension());
 #else
-    return std::format("librtype-test-plugin{}", SharedLibrary::getExtension());
+    return std::format("libaylo-test-plugin{}", SharedLibrary::getExtension());
 #endif
 }
 
@@ -51,12 +51,12 @@ class PluginLoaderTest : public ::testing::Test {
 
     /// @brief Copies the fixture library to @p directory.
     static void addFixture(const std::filesystem::path& directory) {
-        std::filesystem::copy_file(rtype::core::system::getExecutableDirectory() / "plugins" / fixtureName(),
+        std::filesystem::copy_file(aylo::core::system::getExecutableDirectory() / "plugins" / fixtureName(),
                                    directory / fixtureName());
     }
 
     std::filesystem::path _root{std::filesystem::temp_directory_path() /
-                                std::format("rtype_plugin_loader_{:08x}", std::random_device{}())};
+                                std::format("aylo_plugin_loader_{:08x}", std::random_device{}())};
     std::filesystem::path _first{_root / "first"};
     std::filesystem::path _second{_root / "second"};
 };
@@ -68,9 +68,9 @@ TEST_F(PluginLoaderTest, LoadsALibraryAndRegistersItsPlugins) {
     loader.load(_first);
     EXPECT_EQ(loader.getCount(), 1U);
 
-    rtype::ecs::App app;
-    rtype::core::library::LibraryRegistrar registrar;
-    registrar.provide(rtype::ecs::kPluginRegistryService, app.getPluginRegistry());
+    aylo::ecs::App app;
+    aylo::core::library::LibraryRegistrar registrar;
+    registrar.provide(aylo::ecs::kPluginRegistryService, app.getPluginRegistry());
     loader.registerInto(registrar);
     ASSERT_TRUE(app.getPluginRegistry().has("test.Loaded"));
     app.addPlugin(app.getPluginRegistry().create("test.Loaded"));
@@ -79,12 +79,12 @@ TEST_F(PluginLoaderTest, LoadsALibraryAndRegistersItsPlugins) {
 
 TEST_F(PluginLoaderTest, KeepsTheCodeOfALibraryOnceItsLoaderIsGone) {
     addFixture(_first);
-    rtype::ecs::App app;
+    aylo::ecs::App app;
     {
         PluginLoader loader;
         loader.load(_first);
-        rtype::core::library::LibraryRegistrar registrar;
-        registrar.provide(rtype::ecs::kPluginRegistryService, app.getPluginRegistry());
+        aylo::core::library::LibraryRegistrar registrar;
+        registrar.provide(aylo::ecs::kPluginRegistryService, app.getPluginRegistry());
         loader.registerInto(registrar);
     }
     // The factory is code of the library: an unloaded library would crash here, as an exception it threw would in main.

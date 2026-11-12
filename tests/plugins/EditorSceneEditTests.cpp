@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** EditorSceneEditTests
 */
@@ -16,6 +16,13 @@
 #include <system_error>
 #include <vector>
 
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/command/Commands.hpp"
+#include "aylo/ecs/component/ComponentTraits.hpp"
+#include "aylo/ecs/entity/Entity.hpp"
+#include "aylo/ecs/entity/Name.hpp"
+#include "aylo/ecs/hierarchy/Children.hpp"
+#include "aylo/ecs/resource/Resources.hpp"
 #include "editor/scene/SceneEdit.hpp"
 #include "plugins/AssetDirectory.hpp"
 #include "plugins/capsule/Capsule.hpp"
@@ -24,25 +31,18 @@
 #include "plugins/capsule/Capsules.hpp"
 #include "plugins/capsule/LoadedCapsule.hpp"
 #include "plugins/capsule/exceptions/CapsuleException.hpp"
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/command/Commands.hpp"
-#include "rtype/ecs/component/ComponentTraits.hpp"
-#include "rtype/ecs/entity/Entity.hpp"
-#include "rtype/ecs/entity/Name.hpp"
-#include "rtype/ecs/hierarchy/Children.hpp"
-#include "rtype/ecs/resource/Resources.hpp"
 
-namespace rtype::test::scene_edit {
+namespace aylo::test::scene_edit {
 struct Health {
     std::int32_t value{0};
 };
-RTYPE_ECS_COMPONENT(Health, "test.sceneEdit.Health", value);
-}  // namespace rtype::test::scene_edit
+AYLO_ECS_COMPONENT(Health, "test.sceneEdit.Health", value);
+}  // namespace aylo::test::scene_edit
 
 namespace {
-namespace capsule = rtype::plugins::capsule;
-namespace scene = rtype::editor::scene;
-using rtype::test::scene_edit::Health;
+namespace capsule = aylo::plugins::capsule;
+namespace scene = aylo::editor::scene;
+using aylo::test::scene_edit::Health;
 
 /// @brief An App with the capsule plugin over a game folder of its own, and a boss: a root with Left (and its Gun)
 /// and Right.
@@ -50,7 +50,7 @@ class SceneEditTest : public ::testing::Test {
   protected:
     void SetUp() override {
         std::filesystem::create_directories(_assets);
-        app.insertResource(rtype::plugins::AssetDirectory{.path = _assets});
+        app.insertResource(aylo::plugins::AssetDirectory{.path = _assets});
         static_cast<void>(app.getWorld().getComponents().registerType<Health>());
         app.addPlugin(capsule::CapsulePlugin{});
         app.finishPlugins();
@@ -90,8 +90,8 @@ class SceneEditTest : public ::testing::Test {
         return capsule.getNodes()[node].values.get<Health>(app.getWorld().getComponents())->value;
     }
 
-    const std::filesystem::path _assets{std::filesystem::temp_directory_path() / "rtype-editor-scene-edit" / "assets"};
-    rtype::ecs::App app;  ///< The App holding the capsules.
+    const std::filesystem::path _assets{std::filesystem::temp_directory_path() / "aylo-editor-scene-edit" / "assets"};
+    aylo::ecs::App app;  ///< The App holding the capsules.
 };
 }  // namespace
 
@@ -185,9 +185,9 @@ TEST_F(SceneEditTest, RenamesANodeUnlessASiblingHasTheName) {
 
 TEST_F(SceneEditTest, ShowsACapsuleAsTheLevelAndRespawnsItWhenCommitted) {
     ASSERT_EQ(scene::open(app.getWorld(), boss().getId()), std::nullopt);
-    const rtype::ecs::Entity root = app.getWorld().getResources().get<capsule::LoadedCapsule>()->root;
+    const aylo::ecs::Entity root = app.getWorld().getResources().get<capsule::LoadedCapsule>()->root;
     ASSERT_TRUE(app.getWorld().isAlive(root));
-    EXPECT_EQ(app.getWorld().getComponents().get<rtype::ecs::Name>(root)->value.view(), "boss");
+    EXPECT_EQ(app.getWorld().getComponents().get<aylo::ecs::Name>(root)->value.view(), "boss");
 
     capsule::Capsule changed = scene::copyCapsule(boss(), app.getWorld().getComponents(), {.removed = 3});
     set(changed, 0, 7);
@@ -195,7 +195,7 @@ TEST_F(SceneEditTest, ShowsACapsuleAsTheLevelAndRespawnsItWhenCommitted) {
     app.runFrame();
     ASSERT_TRUE(app.getWorld().isAlive(root));
     EXPECT_EQ(app.getWorld().getComponents().get<Health>(root)->value, 7);
-    EXPECT_EQ(app.getWorld().getComponents().get<rtype::ecs::Children>(root)->entities.size(), 1U);  // Left only
+    EXPECT_EQ(app.getWorld().getComponents().get<aylo::ecs::Children>(root)->entities.size(), 1U);  // Left only
 }
 
 TEST_F(SceneEditTest, TellsWhyACapsuleCannotBeShown) {

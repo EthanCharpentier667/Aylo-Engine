@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** SystemAccessTests
 */
@@ -10,11 +10,11 @@
 #include <span>
 #include <vector>
 
-#include "rtype/ecs/system/SystemAccess.hpp"
+#include "aylo/ecs/system/SystemAccess.hpp"
 
 namespace {
-using rtype::ecs::SystemAccess;
-using rtype::ecs::TypeAccess;
+using aylo::ecs::SystemAccess;
+using aylo::ecs::TypeAccess;
 
 /// @return The accesses as a vector, to compare them.
 std::vector<TypeAccess> toVector(std::span<const TypeAccess> accesses) { return {accesses.begin(), accesses.end()}; }

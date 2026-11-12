@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** RuntimeTests
 */
@@ -13,20 +13,20 @@
 #include <string_view>
 #include <utility>
 
-#include "rtype/luau/ErrorKind.hpp"
-#include "rtype/luau/Runtime.hpp"
-#include "rtype/luau/RuntimeConfig.hpp"
-#include "rtype/luau/Value.hpp"
-#include "rtype/luau/ValuePack.hpp"
+#include "aylo/luau/ErrorKind.hpp"
+#include "aylo/luau/Runtime.hpp"
+#include "aylo/luau/RuntimeConfig.hpp"
+#include "aylo/luau/Value.hpp"
+#include "aylo/luau/ValuePack.hpp"
 
 namespace {
-constexpr rtype::luau::RuntimeConfig kStandardConfig{
-    .libs = rtype::luau::RuntimeConfig::Libs::kStandard,
-    .optimizationLevel = rtype::luau::RuntimeConfig::OptimizationLevel::kStandard,
+constexpr aylo::luau::RuntimeConfig kStandardConfig{
+    .libs = aylo::luau::RuntimeConfig::Libs::kStandard,
+    .optimizationLevel = aylo::luau::RuntimeConfig::OptimizationLevel::kStandard,
 };
 
-rtype::luau::Runtime makeRuntime(const rtype::luau::RuntimeConfig config = kStandardConfig) {
-    auto runtime = rtype::luau::Runtime::create(config);
+aylo::luau::Runtime makeRuntime(const aylo::luau::RuntimeConfig config = kStandardConfig) {
+    auto runtime = aylo::luau::Runtime::create(config);
     EXPECT_TRUE(runtime);
     return std::move(*runtime);
 }
@@ -56,9 +56,9 @@ TEST(Runtime, CallGivesTheScriptItsArgumentsAndReturnsItsValues) {
     const auto runtime = makeRuntime();
     auto script = runtime.load("sum", "local a, b = ...; return a + b, 'done'");
     ASSERT_TRUE(script);
-    rtype::luau::ValuePack arguments;
-    arguments.add(rtype::luau::Value{2.0});
-    arguments.add(rtype::luau::Value{3.0});
+    aylo::luau::ValuePack arguments;
+    arguments.add(aylo::luau::Value{2.0});
+    arguments.add(aylo::luau::Value{3.0});
 
     const auto returned = runtime.call(*script, arguments);
 
@@ -76,41 +76,41 @@ TEST(Runtime, CallReturnsTheErrorOfTheScript) {
     const auto returned = runtime.call(*script, {});
 
     ASSERT_FALSE(returned);
-    EXPECT_EQ(returned.error().kind(), rtype::luau::ErrorKind::kRuntime);
+    EXPECT_EQ(returned.error().kind(), aylo::luau::ErrorKind::kRuntime);
     EXPECT_NE(returned.error().message().find("broken"), std::string_view::npos);
 }
 
 TEST(Runtime, CreateReturnsRuntime) {
-    const auto runtime = rtype::luau::Runtime::create(kStandardConfig);
+    const auto runtime = aylo::luau::Runtime::create(kStandardConfig);
 
     EXPECT_TRUE(runtime);
 }
 
 TEST(Runtime, CreateWithNoLibrariesSucceeds) {
-    const auto runtime = rtype::luau::Runtime::create({
-        .libs = rtype::luau::RuntimeConfig::Libs::kNone,
-        .optimizationLevel = rtype::luau::RuntimeConfig::OptimizationLevel::kDisabled,
+    const auto runtime = aylo::luau::Runtime::create({
+        .libs = aylo::luau::RuntimeConfig::Libs::kNone,
+        .optimizationLevel = aylo::luau::RuntimeConfig::OptimizationLevel::kDisabled,
     });
 
     EXPECT_TRUE(runtime);
 }
 
 TEST(Runtime, CreateWithPartialLibrariesOpensOnlyThose) {
-    auto runtime = rtype::luau::Runtime::create({
-        .libs = rtype::luau::RuntimeConfig::Libs::kBase | rtype::luau::RuntimeConfig::Libs::kMath,
-        .optimizationLevel = rtype::luau::RuntimeConfig::OptimizationLevel::kStandard,
+    auto runtime = aylo::luau::Runtime::create({
+        .libs = aylo::luau::RuntimeConfig::Libs::kBase | aylo::luau::RuntimeConfig::Libs::kMath,
+        .optimizationLevel = aylo::luau::RuntimeConfig::OptimizationLevel::kStandard,
     });
 
     ASSERT_TRUE(runtime);
     const auto globals = runtime->globals();
-    EXPECT_TRUE(rtype::luau::expect(globals.has("math")));
-    EXPECT_FALSE(rtype::luau::expect(globals.has("table")));
+    EXPECT_TRUE(aylo::luau::expect(globals.has("math")));
+    EXPECT_FALSE(aylo::luau::expect(globals.has("table")));
 }
 
 TEST(Runtime, IsMovable) {
     auto runtime = makeRuntime();
 
-    rtype::luau::Runtime moved{std::move(runtime)};
+    aylo::luau::Runtime moved{std::move(runtime)};
     auto other = makeRuntime();
     other = std::move(moved);
 
@@ -134,7 +134,7 @@ TEST(Runtime, LoadSyntaxErrorReturnsCompilationError) {
     const auto script = runtime.load("broken", "local = = 1");
 
     ASSERT_FALSE(script);
-    EXPECT_EQ(script.error().kind(), rtype::luau::ErrorKind::kCompilation);
+    EXPECT_EQ(script.error().kind(), aylo::luau::ErrorKind::kCompilation);
 }
 
 TEST(Runtime, CompilationErrorMessageEndsWithTheErrorAndNothingMore) {
@@ -159,31 +159,31 @@ TEST(Runtime, LoadDoesNotRunTheScript) {
 
 TEST(Runtime, LoadFromFileNamesScriptAfterFilename) {
     const auto runtime = makeRuntime();
-    const TempFile file{"rtype_runtime_tests_load.luau", "local x = 1"};
+    const TempFile file{"aylo_runtime_tests_load.luau", "local x = 1"};
 
     const auto script = runtime.load(file.path());
 
     ASSERT_TRUE(script);
-    EXPECT_EQ(script->name(), "rtype_runtime_tests_load.luau");
+    EXPECT_EQ(script->name(), "aylo_runtime_tests_load.luau");
 }
 
 TEST(Runtime, LoadMissingFileReturnsError) {
     const auto runtime = makeRuntime();
 
-    const auto script = runtime.load(std::filesystem::temp_directory_path() / "rtype_runtime_tests_missing.luau");
+    const auto script = runtime.load(std::filesystem::temp_directory_path() / "aylo_runtime_tests_missing.luau");
 
     ASSERT_FALSE(script);
-    EXPECT_EQ(script.error().kind(), rtype::luau::ErrorKind::kUnknown);
+    EXPECT_EQ(script.error().kind(), aylo::luau::ErrorKind::kUnknown);
 }
 
 TEST(Runtime, LoadFileWithSyntaxErrorReturnsCompilationError) {
     const auto runtime = makeRuntime();
-    const TempFile file{"rtype_runtime_tests_broken.luau", "local = = 1"};
+    const TempFile file{"aylo_runtime_tests_broken.luau", "local = = 1"};
 
     const auto script = runtime.load(file.path());
 
     ASSERT_FALSE(script);
-    EXPECT_EQ(script.error().kind(), rtype::luau::ErrorKind::kCompilation);
+    EXPECT_EQ(script.error().kind(), aylo::luau::ErrorKind::kCompilation);
 }
 
 TEST(Runtime, RunValidScriptSucceeds) {
@@ -219,7 +219,7 @@ TEST(Runtime, RunRaisingScriptReturnsRuntimeError) {
     const auto result = runtime.run(*script);
 
     ASSERT_FALSE(result);
-    EXPECT_EQ(result.error().kind(), rtype::luau::ErrorKind::kRuntime);
+    EXPECT_EQ(result.error().kind(), aylo::luau::ErrorKind::kRuntime);
     EXPECT_NE(result.error().message().find("boom"), std::string_view::npos);
 }
 
@@ -244,8 +244,8 @@ TEST(Runtime, StandardLibrariesAreAvailable) {
 
 TEST(Runtime, NoLibrariesLeavesGlobalsEmpty) {
     const auto runtime = makeRuntime({
-        .libs = rtype::luau::RuntimeConfig::Libs::kNone,
-        .optimizationLevel = rtype::luau::RuntimeConfig::OptimizationLevel::kStandard,
+        .libs = aylo::luau::RuntimeConfig::Libs::kNone,
+        .optimizationLevel = aylo::luau::RuntimeConfig::OptimizationLevel::kStandard,
     });
     const auto script = runtime.load("nolibs", "local m = math\nlocal _ = m.max");
     ASSERT_TRUE(script);
@@ -253,7 +253,7 @@ TEST(Runtime, NoLibrariesLeavesGlobalsEmpty) {
     const auto result = runtime.run(*script);
 
     ASSERT_FALSE(result);
-    EXPECT_EQ(result.error().kind(), rtype::luau::ErrorKind::kRuntime);
+    EXPECT_EQ(result.error().kind(), aylo::luau::ErrorKind::kRuntime);
 }
 
 TEST(Runtime, ScriptRunsInItsOwnThread) {
@@ -312,7 +312,7 @@ TEST(Runtime, SandboxIsIdempotent) {
 
 TEST(Runtime, GlobalsSetBeforeSandboxAreSeenByEveryScript) {
     auto runtime = makeRuntime();
-    ASSERT_TRUE(runtime.globals().set("engine", rtype::luau::Value{42.0}));
+    ASSERT_TRUE(runtime.globals().set("engine", aylo::luau::Value{42.0}));
     runtime.sandbox();
     const auto first = runtime.load("first", "assert(engine == 42)");
     const auto second = runtime.load("second", "assert(engine == 42)");
@@ -333,20 +333,20 @@ TEST(Runtime, AScriptGlobalStaysInItsThread) {
 
     const auto value = runtime.globals().get("mine");
     ASSERT_TRUE(value);
-    EXPECT_TRUE(value->is<rtype::luau::Value::Nil>());
+    EXPECT_TRUE(value->is<aylo::luau::Value::Nil>());
 }
 
 TEST(Runtime, SettingAGlobalAfterSandboxFails) {
     auto runtime = makeRuntime();
     runtime.sandbox();
 
-    const auto result = runtime.globals().set("late", rtype::luau::Value{1.0});
+    const auto result = runtime.globals().set("late", aylo::luau::Value{1.0});
 
     ASSERT_FALSE(result);
-    EXPECT_EQ(result.error().kind(), rtype::luau::ErrorKind::kRuntime);
+    EXPECT_EQ(result.error().kind(), aylo::luau::ErrorKind::kRuntime);
     const auto value = runtime.globals().get("late");
     ASSERT_TRUE(value);
-    EXPECT_TRUE(value->is<rtype::luau::Value::Nil>());
+    EXPECT_TRUE(value->is<aylo::luau::Value::Nil>());
 }
 
 TEST(Runtime, ScriptKeepsItsOwnGlobalsBetweenRuns) {
@@ -367,15 +367,15 @@ TEST(Runtime, ScriptCannotModifyStandardLibraries) {
     const auto result = runtime.run(*script);
 
     ASSERT_FALSE(result);
-    EXPECT_EQ(result.error().kind(), rtype::luau::ErrorKind::kRuntime);
+    EXPECT_EQ(result.error().kind(), aylo::luau::ErrorKind::kRuntime);
 }
 
 TEST(Runtime, AllOptimizationLevelsRunScripts) {
-    for (const auto level : {rtype::luau::RuntimeConfig::OptimizationLevel::kDisabled,
-                             rtype::luau::RuntimeConfig::OptimizationLevel::kStandard,
-                             rtype::luau::RuntimeConfig::OptimizationLevel::kAggressive}) {
+    for (const auto level : {aylo::luau::RuntimeConfig::OptimizationLevel::kDisabled,
+                             aylo::luau::RuntimeConfig::OptimizationLevel::kStandard,
+                             aylo::luau::RuntimeConfig::OptimizationLevel::kAggressive}) {
         const auto runtime =
-            makeRuntime({.libs = rtype::luau::RuntimeConfig::Libs::kStandard, .optimizationLevel = level});
+            makeRuntime({.libs = aylo::luau::RuntimeConfig::Libs::kStandard, .optimizationLevel = level});
         const auto script = runtime.load("opt", "local function f(a) return a * 2 end assert(f(2) == 4)");
         ASSERT_TRUE(script);
 
@@ -387,12 +387,12 @@ TEST(Runtime, LoadsAPrecompiledChunkAsItsSource) {
     const auto runtime = makeRuntime();
     const auto chunk = runtime.precompile("local a, b = ...; return a * b");
     ASSERT_TRUE(chunk);
-    EXPECT_TRUE(std::string_view{*chunk}.starts_with(rtype::luau::Runtime::kBytecodeHeader));
+    EXPECT_TRUE(std::string_view{*chunk}.starts_with(aylo::luau::Runtime::kBytecodeHeader));
     auto script = runtime.load("product", *chunk);
     ASSERT_TRUE(script);
-    rtype::luau::ValuePack arguments;
-    arguments.add(rtype::luau::Value{4.0});
-    arguments.add(rtype::luau::Value{5.0});
+    aylo::luau::ValuePack arguments;
+    arguments.add(aylo::luau::Value{4.0});
+    arguments.add(aylo::luau::Value{5.0});
 
     const auto returned = runtime.call(*script, arguments);
 
@@ -419,5 +419,5 @@ TEST(Runtime, PrecompileReturnsTheCompilationError) {
     const auto chunk = runtime.precompile("local = ");
 
     ASSERT_FALSE(chunk);
-    EXPECT_EQ(chunk.error().kind(), rtype::luau::ErrorKind::kCompilation);
+    EXPECT_EQ(chunk.error().kind(), aylo::luau::ErrorKind::kCompilation);
 }

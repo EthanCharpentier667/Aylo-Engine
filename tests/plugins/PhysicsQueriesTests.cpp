@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** PhysicsQueriesTests
 */
@@ -12,22 +12,22 @@
 #include <optional>
 #include <vector>
 
+#include "aylo/ecs/entity/Entity.hpp"
 #include "plugins/physics/Collider.hpp"
 #include "plugins/physics/PhysicsSettings.hpp"
 #include "plugins/physics/PhysicsWorld.hpp"
 #include "plugins/physics/QueryFilter.hpp"
 #include "plugins/physics/exceptions/PhysicsExceptions.hpp"
 #include "plugins/transform/Transform.hpp"
-#include "rtype/ecs/entity/Entity.hpp"
 
-using rtype::ecs::Entity;
-using rtype::plugins::physics::Collider;
-using rtype::plugins::physics::PhysicsSettings;
-using rtype::plugins::physics::PhysicsWorld;
-using rtype::plugins::physics::QueryFilter;
-using rtype::plugins::physics::ShapeType;
-using rtype::plugins::physics::exceptions::PhysicsException;
-using rtype::plugins::transform::Transform;
+using aylo::ecs::Entity;
+using aylo::plugins::physics::Collider;
+using aylo::plugins::physics::PhysicsSettings;
+using aylo::plugins::physics::PhysicsWorld;
+using aylo::plugins::physics::QueryFilter;
+using aylo::plugins::physics::ShapeType;
+using aylo::plugins::physics::exceptions::PhysicsException;
+using aylo::plugins::transform::Transform;
 
 namespace {
 constexpr float kTolerance = 0.05F;

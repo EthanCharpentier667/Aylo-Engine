@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** AppTests
 */
@@ -11,63 +11,63 @@
 #include <memory>
 #include <string_view>
 
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/app/AppExit.hpp"
-#include "rtype/ecs/app/MinimalPlugins.hpp"
-#include "rtype/ecs/app/Plugin.hpp"
-#include "rtype/ecs/app/PluginGroup.hpp"
-#include "rtype/ecs/resource/ResourceTraits.hpp"
-#include "rtype/ecs/schedule/Phase.hpp"
-#include "rtype/ecs/schedule/RunMode.hpp"
-#include "rtype/ecs/system/EventWriter.hpp"
-#include "rtype/ecs/system/ResourceParam.hpp"
-#include "rtype/ecs/system/Side.hpp"
-#include "rtype/ecs/time/FixedTimestep.hpp"
-#include "rtype/ecs/time/Time.hpp"
-#include "rtype/ecs/time/TimeClock.hpp"
-#include "rtype/ecs/time/TimePlugin.hpp"
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/app/AppExit.hpp"
+#include "aylo/ecs/app/MinimalPlugins.hpp"
+#include "aylo/ecs/app/Plugin.hpp"
+#include "aylo/ecs/app/PluginGroup.hpp"
+#include "aylo/ecs/resource/ResourceTraits.hpp"
+#include "aylo/ecs/schedule/Phase.hpp"
+#include "aylo/ecs/schedule/RunMode.hpp"
+#include "aylo/ecs/system/EventWriter.hpp"
+#include "aylo/ecs/system/ResourceParam.hpp"
+#include "aylo/ecs/system/Side.hpp"
+#include "aylo/ecs/time/FixedTimestep.hpp"
+#include "aylo/ecs/time/Time.hpp"
+#include "aylo/ecs/time/TimeClock.hpp"
+#include "aylo/ecs/time/TimePlugin.hpp"
 
-namespace rtype::test::app {
+namespace aylo::test::app {
 /// @brief Frames run so far, and when the counting system asks to stop.
 struct Frames {
     int count;
     int exitAfter;  ///< Frames to run before sending AppExit.
     int code;       ///< The code to send.
 };
-RTYPE_ECS_RESOURCE(Frames, "test.app.Frames", count, exitAfter, code);
+AYLO_ECS_RESOURCE(Frames, "test.app.Frames", count, exitAfter, code);
 
 /// @brief Startup runs, to check it runs once and first.
 struct Started {
     int count;
     int framesBefore;  ///< Frames counted when Startup ran.
 };
-RTYPE_ECS_RESOURCE(Started, "test.app.Started", count, framesBefore);
+AYLO_ECS_RESOURCE(Started, "test.app.Started", count, framesBefore);
 
 struct FixedRuns {
     int count;
 };
-RTYPE_ECS_RESOURCE(FixedRuns, "test.app.FixedRuns", count);
-}  // namespace rtype::test::app
+AYLO_ECS_RESOURCE(FixedRuns, "test.app.FixedRuns", count);
+}  // namespace aylo::test::app
 
 namespace {
-using rtype::ecs::App;
-using rtype::ecs::AppExit;
-using rtype::ecs::EventWriter;
-using rtype::ecs::FixedTimestep;
-using rtype::ecs::MinimalPlugins;
-using rtype::ecs::Phase;
-using rtype::ecs::Plugin;
-using rtype::ecs::PluginGroup;
-using rtype::ecs::Res;
-using rtype::ecs::ResMut;
-using rtype::ecs::RunMode;
-using rtype::ecs::Side;
-using rtype::ecs::Time;
-using rtype::ecs::TimeClock;
-using rtype::ecs::TimePlugin;
-using rtype::test::app::FixedRuns;
-using rtype::test::app::Frames;
-using rtype::test::app::Started;
+using aylo::ecs::App;
+using aylo::ecs::AppExit;
+using aylo::ecs::EventWriter;
+using aylo::ecs::FixedTimestep;
+using aylo::ecs::MinimalPlugins;
+using aylo::ecs::Phase;
+using aylo::ecs::Plugin;
+using aylo::ecs::PluginGroup;
+using aylo::ecs::Res;
+using aylo::ecs::ResMut;
+using aylo::ecs::RunMode;
+using aylo::ecs::Side;
+using aylo::ecs::Time;
+using aylo::ecs::TimeClock;
+using aylo::ecs::TimePlugin;
+using aylo::test::app::FixedRuns;
+using aylo::test::app::Frames;
+using aylo::test::app::Started;
 
 void countFrame(ResMut<Frames> frames, EventWriter<AppExit> exit) {
     ++frames->count;

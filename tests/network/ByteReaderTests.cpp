@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ByteReaderTests
 */
@@ -15,10 +15,10 @@
 #include <limits>
 #include <string>
 
-#include "rtype/network/bytes/ByteReader.hpp"
-#include "rtype/network/bytes/ByteWriter.hpp"
+#include "aylo/network/bytes/ByteReader.hpp"
+#include "aylo/network/bytes/ByteWriter.hpp"
 
-namespace bytes = rtype::network::bytes;
+namespace bytes = aylo::network::bytes;
 
 namespace {
 
@@ -355,7 +355,7 @@ TEST(ByteReader, RoundTripWithByteWriter) {
     writer.writeI64(-6400000000LL);
     writer.writeF32(3.5F);
     writer.writeF64(-2.25);
-    writer.writeString("rtype");
+    writer.writeString("aylo");
     writer.writeZeros(2);
     ASSERT_TRUE(writer.isValid());
 
@@ -371,7 +371,7 @@ TEST(ByteReader, RoundTripWithByteWriter) {
     EXPECT_EQ(reader.readI64(), -6400000000LL);
     EXPECT_EQ(reader.readF32(), 3.5F);
     EXPECT_EQ(reader.readF64(), -2.25);
-    EXPECT_EQ(reader.readString(), "rtype");
+    EXPECT_EQ(reader.readString(), "aylo");
     EXPECT_EQ(reader.readU16(), 0U);
     EXPECT_TRUE(reader.isFinished());
 }

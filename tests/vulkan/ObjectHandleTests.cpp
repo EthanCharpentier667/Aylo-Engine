@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ObjectHandleTests
 */
@@ -12,7 +12,7 @@
 
 #include "render/vulkan/core/Device.hpp"
 
-using rtype::render::vulkan::core::objectHandleOf;
+using aylo::render::vulkan::core::objectHandleOf;
 
 TEST(ObjectHandle, IsZeroForANullHandle) {
     EXPECT_EQ(objectHandleOf(vk::Buffer{}), 0U);

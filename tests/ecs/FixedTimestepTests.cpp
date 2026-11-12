@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** FixedTimestepTests
 */
@@ -11,10 +11,10 @@
 #include <cstdint>
 #include <vector>
 
-#include "rtype/ecs/time/FixedTimestep.hpp"
+#include "aylo/ecs/time/FixedTimestep.hpp"
 
 namespace {
-using rtype::ecs::FixedTimestep;
+using aylo::ecs::FixedTimestep;
 using std::chrono::milliseconds;
 
 /// @return The ticks each of `frames` frames of `frame` gives.

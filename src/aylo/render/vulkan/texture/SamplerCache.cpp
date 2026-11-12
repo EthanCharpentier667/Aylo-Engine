@@ -1,0 +1,79 @@
+/*
+** EPITECH PROJECT, 2026
+** aylo
+** File description:
+** SamplerCache
+*/
+
+#include "SamplerCache.hpp"
+
+#include <algorithm>
+#include <array>
+#include <cstddef>
+#include <string_view>
+#include <vulkan/vulkan_raii.hpp>
+
+#include "aylo/contract/renderer/drawing/Texture.hpp"
+#include "render/vulkan/core/Device.hpp"
+#include "render/vulkan/core/PhysicalDevice.hpp"
+
+namespace aylo::render::vulkan::texture {
+
+namespace {
+
+/// @brief Most anisotropy a linear sampler asks for: beyond 16x, no visible gain.
+constexpr float kMaxAnisotropy = 16.0F;
+
+/// @return A sampler reading with @p filter, repeating or clamping; anisotropic if @p anisotropy is above 1.
+vk::raii::Sampler createSampler(const core::Device& device, contract::renderer::TextureFilter filter, bool repeat,
+                                float anisotropy) {
+    const bool linear = filter == contract::renderer::TextureFilter::kLinear;
+    const vk::Filter vkFilter = linear ? vk::Filter::eLinear : vk::Filter::eNearest;
+    const vk::SamplerAddressMode address =
+        repeat ? vk::SamplerAddressMode::eRepeat : vk::SamplerAddressMode::eClampToEdge;
+    const bool anisotropic = linear && anisotropy > 1.0F;
+    return vk::raii::Sampler{device.getDevice(), vk::SamplerCreateInfo{}
+                                                     .setMagFilter(vkFilter)
+                                                     .setMinFilter(vkFilter)
+                                                     .setMipmapMode(linear ? vk::SamplerMipmapMode::eLinear
+                                                                           : vk::SamplerMipmapMode::eNearest)
+                                                     .setAddressModeU(address)
+                                                     .setAddressModeV(address)
+                                                     .setAddressModeW(address)
+                                                     .setAnisotropyEnable(anisotropic ? vk::True : vk::False)
+                                                     .setMaxAnisotropy(anisotropic ? anisotropy : 1.0F)
+                                                     .setMinLod(0.0F)
+                                                     .setMaxLod(0.0F)};
+}
+
+/// @return The anisotropy linear samplers use: up to kMaxAnisotropy when the device enabled it, 1 (none) otherwise.
+float anisotropyOf(const core::PhysicalDevice& physicalDevice) {
+    return physicalDevice.getOptionalFeatures().samplerAnisotropy
+               ? std::min(kMaxAnisotropy, physicalDevice.getLimits().maxSamplerAnisotropy)
+               : 1.0F;
+}
+
+}  // namespace
+
+SamplerCache::SamplerCache(const core::Device& device, const core::PhysicalDevice& physicalDevice)
+    : _samplers{createSampler(device, contract::renderer::TextureFilter::kNearest, false, anisotropyOf(physicalDevice)),
+                createSampler(device, contract::renderer::TextureFilter::kNearest, true, anisotropyOf(physicalDevice)),
+                createSampler(device, contract::renderer::TextureFilter::kLinear, false, anisotropyOf(physicalDevice)),
+                createSampler(device, contract::renderer::TextureFilter::kLinear, true, anisotropyOf(physicalDevice))} {
+    constexpr std::array<std::string_view, kSamplerCount> kNames{"Nearest clamped sampler", "Nearest repeating sampler",
+                                                                 "Linear clamped sampler", "Linear repeating sampler"};
+    for (std::size_t index = 0; index < kSamplerCount; ++index) {
+        device.setName(*_samplers.at(index), kNames.at(index));
+    }
+}
+
+const vk::raii::Sampler& SamplerCache::get(contract::renderer::TextureFilter filter, bool repeat) const {
+    return _samplers.at(indexOf(filter, repeat));
+}
+
+std::size_t SamplerCache::indexOf(contract::renderer::TextureFilter filter, bool repeat) {
+    const std::size_t linear = filter == contract::renderer::TextureFilter::kLinear ? 1 : 0;
+    return (linear * 2) + (repeat ? 1 : 0);
+}
+
+}  // namespace aylo::render::vulkan::texture

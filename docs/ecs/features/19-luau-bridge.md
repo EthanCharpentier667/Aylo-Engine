@@ -4,7 +4,7 @@
 
 The bridge is the layer that lets **Luau scripts declare and run game code on the ECS**: components
 (as Luau types), systems (as Luau classes), plugins, events, resources, input actions and
-entities; capsules (actors and levels) are files, which scripts spawn through engine calls. It sits between Charles's `rtype-luau` runtime and the ECS's type-erased API, in the engine's
+entities; capsules (actors and levels) are files, which scripts spawn through engine calls. It sits between Charles's `aylo-luau` runtime and the ECS's type-erased API, in the engine's
 `ScriptPlugin` / `LuauPlugin`.
 
 This doc is the **contract** the ECS offers; the binding code itself belongs to the scripting side
@@ -34,7 +34,7 @@ This doc is the **contract** the ECS offers; the binding code itself belongs to 
 - **Systems = Luau classes** with declared access.
 - **Plugins = Luau modules** with a `build(app)` method.
 - Everything goes through the ECS's **type-erased, non-throwing API**; errors come back to Luau through
-  `rtype::luau::Result` / `Error`.
+  `aylo::luau::Result` / `Error`.
 
 ## How it works
 
@@ -88,7 +88,7 @@ declare class ShieldComponent
     owner: Entity
 end
 
-type ComponentName = "rtype.Transform" | "rtype.SpriteRenderer" | "game.Shield" | "game.Health"
+type ComponentName = "aylo.Transform" | "aylo.SpriteRenderer" | "game.Shield" | "game.Health"
 type CapsulePath = "actors/bydo.actor" | "scenes/level1.scene"
 ```
 
@@ -101,8 +101,8 @@ Editors then autocomplete component fields, and the type checker flags a typo li
 local ShieldRegen = ecs.system("game.ShieldRegen", {
     phase = "FixedUpdate",             -- default
     side = "server",                   -- default; see the side rule
-    query = { write = { "game.Shield" }, without = { "rtype.Dead" } },
-    after = { "rtype.movement" },
+    query = { write = { "game.Shield" }, without = { "aylo.Dead" } },
+    after = { "aylo.movement" },
 })
 
 function ShieldRegen:run(ctx)
@@ -154,18 +154,18 @@ adds run on clients):
 
 | Plugin | Calls |
 |---|---|
-| Sprite | `rtype.sprite.loadAtlas`, `rtype.sprite.createAtlas`, `rtype.sprite.addFrame`, `rtype.sprite.addAnimation` ([Sprites](../../Sprites.md#from-scripts)) |
-| Backend | `rtype.backend.loadTexture` |
-| Text | `rtype.text.loadFont` ([Text](../../Text.md#from-scripts)) |
-| Tilemap | `rtype.tilemap.load`, `rtype.tilemap.spawn` ([Tilemaps](../../Tilemap.md#from-scripts)) |
-| Particle | `rtype.particle.beginEffect`, `rtype.particle.addBurst`, `rtype.particle.addColorKey`, `rtype.particle.addCurveKey`, `rtype.particle.addEffect` (clients) ([Particles](../../particles/design.md#12-luau)) |
-| Http | `rtype.http.request`, `rtype.http.cancel` ([HTTP](../../Http.md#from-scripts)) |
-| Json | `rtype.json.encode`, `rtype.json.decode` ([JSON](../../Json.md#from-scripts)) |
-| Audio | `rtype.audio.loadSound`, `rtype.audio.playSound` ([Audio](../../audio/design.md#from-scripts)) |
-| Input | `rtype.input.addAction`, `rtype.input.bind`, `rtype.input.bindAxis`, `rtype.input.bindVector`, `rtype.input.read` ([Input](../../Input.md#from-scripts)) |
-| Physics | `rtype.physics.raycast`, `rtype.physics.shapeCast`, `rtype.physics.overlap`, `rtype.physics.moveAndSlide`, `rtype.physics.applyForce`, `rtype.physics.applyImpulse`, `rtype.physics.applyTorque`, `rtype.physics.setGravity` ([Physics](../../physics/design.md#from-scripts)) |
-| Capsule | `rtype.capsule.spawn`, `rtype.capsule.load`, `rtype.capsule.reload` ([Capsules](18-capsules.md#from-scripts)) |
-| Replication | `rtype.replication.addInput`, `rtype.replication.readInput`, `rtype.replication.localClient` (clients) ([Replication](20-replication.md)) |
+| Sprite | `aylo.sprite.loadAtlas`, `aylo.sprite.createAtlas`, `aylo.sprite.addFrame`, `aylo.sprite.addAnimation` ([Sprites](../../Sprites.md#from-scripts)) |
+| Backend | `aylo.backend.loadTexture` |
+| Text | `aylo.text.loadFont` ([Text](../../Text.md#from-scripts)) |
+| Tilemap | `aylo.tilemap.load`, `aylo.tilemap.spawn` ([Tilemaps](../../Tilemap.md#from-scripts)) |
+| Particle | `aylo.particle.beginEffect`, `aylo.particle.addBurst`, `aylo.particle.addColorKey`, `aylo.particle.addCurveKey`, `aylo.particle.addEffect` (clients) ([Particles](../../particles/design.md#12-luau)) |
+| Http | `aylo.http.request`, `aylo.http.cancel` ([HTTP](../../Http.md#from-scripts)) |
+| Json | `aylo.json.encode`, `aylo.json.decode` ([JSON](../../Json.md#from-scripts)) |
+| Audio | `aylo.audio.loadSound`, `aylo.audio.playSound` ([Audio](../../audio/design.md#from-scripts)) |
+| Input | `aylo.input.addAction`, `aylo.input.bind`, `aylo.input.bindAxis`, `aylo.input.bindVector`, `aylo.input.read` ([Input](../../Input.md#from-scripts)) |
+| Physics | `aylo.physics.raycast`, `aylo.physics.shapeCast`, `aylo.physics.overlap`, `aylo.physics.moveAndSlide`, `aylo.physics.applyForce`, `aylo.physics.applyImpulse`, `aylo.physics.applyTorque`, `aylo.physics.setGravity` ([Physics](../../physics/design.md#from-scripts)) |
+| Capsule | `aylo.capsule.spawn`, `aylo.capsule.load`, `aylo.capsule.reload` ([Capsules](18-capsules.md#from-scripts)) |
+| Replication | `aylo.replication.addInput`, `aylo.replication.readInput`, `aylo.replication.localClient` (clients) ([Replication](20-replication.md)) |
 
 ### Setup forms
 
@@ -202,28 +202,28 @@ engine.input.action("fire", "button", { bind = { "Space", "GamepadSouth" } })
 
 | Form | Calls | Returns |
 |---|---|---|
-| `engine.assets.texture(path, {linear, wrap})` | `rtype.backend.loadTexture` | the texture's `AssetId` |
-| `engine.assets.sound(path, {stream})` | `rtype.audio.loadSound` | the sound's `AssetId` |
-| `engine.assets.shader(path)` | `rtype.shader.load` | the shader's `AssetId` |
-| `engine.assets.material({name, shader, values, textures})` | `rtype.shader.addMaterial`, then `rtype.shader.setMaterialValue` and `rtype.shader.setMaterialTexture` | the material's `AssetId` |
-| `engine.assets.font(path)` | `rtype.text.loadFont` | the font's `AssetId` |
-| `engine.assets.tilemap(path)` | `rtype.tilemap.load` | the map's `AssetId` |
-| `engine.assets.atlas{path \| texture, name, linear, grid, frames, animations}` | `rtype.sprite.loadAtlas` (a `path`) or `rtype.sprite.createAtlas` (a `texture`, named after it unless `name` is given), then `rtype.sprite.addFrame` per frame and `rtype.sprite.addAnimation` per animation, by name | the atlas's `AssetId` |
-| `engine.assets.particle({name, ...})` | `rtype.particle.beginEffect` (every key but the lists), then `rtype.particle.addBurst` per burst, `rtype.particle.addColorKey` per `colorOverLife` key and `rtype.particle.addCurveKey` per `sizeOverLife` and `speedOverLife` key, then `rtype.particle.addEffect` | the effect's `AssetId` |
-| `engine.http.request(ctx, {url, method, headers, body, timeout})` | `rtype.http.request` (with `ctx.call`, or `engine.call` when `ctx` is nil), `headers` written as `Name: value` lines sorted by name | the request's id |
-| `engine.json.encode(value)`, `decode(text)`, `tryDecode(text)`, `map(entries)` | `rtype.json.encode` / `rtype.json.decode` (with `engine.call`; no `ctx` needed, the calls take no system resource), a value or a parsed text flattened into a node stream ([JSON](../../Json.md#from-scripts)) | the text, the value, the value or `nil` and a message, `entries` (the `{ key, value }` list) marked as an ordered object |
-| `engine.input.action(name, type, {bind})` | `rtype.input.addAction` (`type`: `"button"` by default, `"axis"` or `"vector2"`), then one bind call per binding, in order | nothing |
-| `engine.capsule.spawn(ctx, path, overrides)`, `engine.capsule.load(ctx, path, overrides)` (in a system) | `rtype.capsule.spawn` / `load` through `ctx.call`, then `ctx.commands:patch` of the root per override | the root `Entity` |
-| `engine.capsule.reload(ctx, root)` (in a system) | `rtype.capsule.reload` through `ctx.call` | `true` if `root` was a capsule's root |
+| `engine.assets.texture(path, {linear, wrap})` | `aylo.backend.loadTexture` | the texture's `AssetId` |
+| `engine.assets.sound(path, {stream})` | `aylo.audio.loadSound` | the sound's `AssetId` |
+| `engine.assets.shader(path)` | `aylo.shader.load` | the shader's `AssetId` |
+| `engine.assets.material({name, shader, values, textures})` | `aylo.shader.addMaterial`, then `aylo.shader.setMaterialValue` and `aylo.shader.setMaterialTexture` | the material's `AssetId` |
+| `engine.assets.font(path)` | `aylo.text.loadFont` | the font's `AssetId` |
+| `engine.assets.tilemap(path)` | `aylo.tilemap.load` | the map's `AssetId` |
+| `engine.assets.atlas{path \| texture, name, linear, grid, frames, animations}` | `aylo.sprite.loadAtlas` (a `path`) or `aylo.sprite.createAtlas` (a `texture`, named after it unless `name` is given), then `aylo.sprite.addFrame` per frame and `aylo.sprite.addAnimation` per animation, by name | the atlas's `AssetId` |
+| `engine.assets.particle({name, ...})` | `aylo.particle.beginEffect` (every key but the lists), then `aylo.particle.addBurst` per burst, `aylo.particle.addColorKey` per `colorOverLife` key and `aylo.particle.addCurveKey` per `sizeOverLife` and `speedOverLife` key, then `aylo.particle.addEffect` | the effect's `AssetId` |
+| `engine.http.request(ctx, {url, method, headers, body, timeout})` | `aylo.http.request` (with `ctx.call`, or `engine.call` when `ctx` is nil), `headers` written as `Name: value` lines sorted by name | the request's id |
+| `engine.json.encode(value)`, `decode(text)`, `tryDecode(text)`, `map(entries)` | `aylo.json.encode` / `aylo.json.decode` (with `engine.call`; no `ctx` needed, the calls take no system resource), a value or a parsed text flattened into a node stream ([JSON](../../Json.md#from-scripts)) | the text, the value, the value or `nil` and a message, `entries` (the `{ key, value }` list) marked as an ordered object |
+| `engine.input.action(name, type, {bind})` | `aylo.input.addAction` (`type`: `"button"` by default, `"axis"` or `"vector2"`), then one bind call per binding, in order | nothing |
+| `engine.capsule.spawn(ctx, path, overrides)`, `engine.capsule.load(ctx, path, overrides)` (in a system) | `aylo.capsule.spawn` / `load` through `ctx.call`, then `ctx.commands:patch` of the root per override | the root `Entity` |
+| `engine.capsule.reload(ctx, root)` (in a system) | `aylo.capsule.reload` through `ctx.call` | `true` if `root` was a capsule's root |
 
 - An atlas's `grid` takes `frameSize` and `count` (both needed), `spacing`, `columns` and `offset`; a frame takes a
   `position` and a `size`, and an optional `name` (its index otherwise) and `origin` (its centre otherwise). `grid`,
   `frames` and `name` make an atlas from a `texture`, not from a `path`.
-- An animation's `frames` lists frame indices (from 0, as `rtype.sprite.addFrame` returns them) that follow each other,
+- An animation's `frames` lists frame indices (from 0, as `aylo.sprite.addFrame` returns them) that follow each other,
   `{0, 1, 2}`, since an animation is a range of frames; `first` and `count` say the same (`count` 0 or absent: up to the
   last frame). It also takes `frameDuration`, `direction` and `plays` (0: forever).
-- A binding is a control name (`rtype.input.bind`), `{control, scale}` (`rtype.input.bind` with a scale),
-  `{negative, positive}` (`rtype.input.bindAxis`), `{up, down, left, right}` or `{x, y}` (`rtype.input.bindVector`).
+- A binding is a control name (`aylo.input.bind`), `{control, scale}` (`aylo.input.bind` with a scale),
+  `{negative, positive}` (`aylo.input.bindAxis`), `{up, down, left, right}` or `{x, y}` (`aylo.input.bindVector`).
 
 A form checks its whole table on every side: an unknown key, a value of the wrong type or a binding of no known shape
 is a Luau error naming the form and the part of it (`engine.assets.atlas: frame 2: 'size': missing 'y'`). Then, when
@@ -235,12 +235,12 @@ direction, is checked where the plugin runs, and a call's error is prefixed with
 ### Plugins
 
 ```luau
-local RtypePlugin = ecs.plugin("rtype.Game")
+local RtypePlugin = ecs.plugin("aylo.Game")
 
 function RtypePlugin:build(app)
     app:load("components/Shield.luau")       -- by path: no require() across files
     app:load("systems/ShieldRegen.luau")
-    app:addPlugin("scripts/rtype/weapons/plugin.luau")
+    app:addPlugin("scripts/aylo/weapons/plugin.luau")
     app:state("game.Phase", { "Menu", "Lobby", "Playing", "GameOver" })
     app:event("game.BossDefeated", { type = "BossDefeated" })
     app:resource("game.Score", { type = "Score", replication = "everyChange" })
@@ -264,19 +264,19 @@ engine.input.action("fire", "button", { bind = { "Space", "GamepadSouth" } })
 ```
 
 The form forwards them to `Input::addAction()` / `InputAction::bind...()` on clients, and, where the replication
-plugin is added, declares them in the network `InputLayout` on both sides (`rtype.replication.addInput`), which the
-manifest checks. On a client run by the `Engine`, a system (`rtype.engine.networkInput`) copies each of them from
+plugin is added, declares them in the network `InputLayout` on both sides (`aylo.replication.addInput`), which the
+manifest checks. On a client run by the `Engine`, a system (`aylo.engine.networkInput`) copies each of them from
 `Input` into the `PlayerInput` sent to the server; a server script reads it by name with
-`rtype.replication.readInput`:
+`aylo.replication.readInput`:
 
 ```luau
 engine.ecs.system("game.Ships", {
     phase = "FixedUpdate",
-    query = { write = { "rtype.Transform" }, with = { "net.PlayerInput" } },
-    calls = { "rtype.replication.readInput" },
+    query = { write = { "aylo.Transform" }, with = { "net.PlayerInput" } },
+    calls = { "aylo.replication.readInput" },
     run = function(ctx)
         for ship, transform in ctx.query do
-            local move = ctx.call("rtype.replication.readInput", { entity = ship, action = "move" }).vector
+            local move = ctx.call("aylo.replication.readInput", { entity = ship, action = "move" }).vector
             transform.position = { x = transform.position.x + move.x * 4, y = transform.position.y - move.y * 4 }
         end
     end,
@@ -302,7 +302,7 @@ System sides decide what runs where: `server` (gameplay, default), `client` (pre
 
 A system is declared on both sides, whatever its side, and only its engine calls may be missing on the side it does not
 run on: its components, resources and events must exist there, and the systems it is ordered against too. A script that
-names what only one side has (the sprites, the audio, `net.applyInputs`) lives in files only that side's entry requires (`server/main`, `client/main`), as `examples/games/rtype_duel/game/scripts/` does; a test of `engine.isClient` is the way to share one file:
+names what only one side has (the sprites, the audio, `net.applyInputs`) lives in files only that side's entry requires (`server/main`, `client/main`), as `examples/games/aylo_duel/game/scripts/` does; a test of `engine.isClient` is the way to share one file:
 
 ```luau
 engine.ecs.component("game.Explosion", { fields = {}, presence = "clientOnly" }) -- on both sides
@@ -318,7 +318,7 @@ engine.ecs.system("game.RemoveExplosions", { side = "client", ... })
   [Systems](12-systems.md), [Commands](09-commands.md), [Events](11-events.md),
   [Resources](10-resources.md), [Capsules](18-capsules.md), [Reflection](15-reflection-and-serialization.md),
   [App and plugins](14-app-and-plugins.md).
-- External: Charles's `rtype::luau::Runtime`, `Result`, `Error`, `generateTypes()`; Ethan's `Input` /
+- External: Charles's `aylo::luau::Runtime`, `Result`, `Error`, `generateTypes()`; Ethan's `Input` /
   `InputAction`.
 
 ## Pitfalls

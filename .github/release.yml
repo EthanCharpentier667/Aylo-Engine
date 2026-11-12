@@ -1,5 +1,5 @@
 # The notes `gh release create --generate-notes` writes (.github/workflows/release.yml): pull requests grouped by label.
-# Priority and size are not labels (project "R-Type"), so the area and kind labels are all there is to group by.
+# Priority and size are not labels (project "Aylo Engine"), so the area and kind labels are all there is to group by.
 changelog:
   categories:
     - title: Breaking changes

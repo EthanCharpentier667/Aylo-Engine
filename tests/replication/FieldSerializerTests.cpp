@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** FieldSerializerTests
 */
@@ -16,31 +16,31 @@
 #include <vector>
 
 #include "ServerFixtures.hpp"
-#include "rtype/ecs/entity/Entity.hpp"
-#include "rtype/ecs/type/Field.hpp"
-#include "rtype/ecs/type/String.hpp"
-#include "rtype/ecs/type/TypeInfo.hpp"
-#include "rtype/ecs/type/TypeTraits.hpp"
-#include "rtype/ecs/world/World.hpp"
-#include "rtype/network/bytes/ByteReader.hpp"
-#include "rtype/network/bytes/ByteWriter.hpp"
-#include "rtype/replication/component/Owner.hpp"
-#include "rtype/replication/serialization/EntityMapper.hpp"
-#include "rtype/replication/serialization/FieldSerializer.hpp"
+#include "aylo/ecs/entity/Entity.hpp"
+#include "aylo/ecs/type/Field.hpp"
+#include "aylo/ecs/type/String.hpp"
+#include "aylo/ecs/type/TypeInfo.hpp"
+#include "aylo/ecs/type/TypeTraits.hpp"
+#include "aylo/ecs/world/World.hpp"
+#include "aylo/network/bytes/ByteReader.hpp"
+#include "aylo/network/bytes/ByteWriter.hpp"
+#include "aylo/replication/component/Owner.hpp"
+#include "aylo/replication/serialization/EntityMapper.hpp"
+#include "aylo/replication/serialization/FieldSerializer.hpp"
 
 namespace {
-using rtype::ecs::Entity;
-using rtype::ecs::FieldInfo;
-using rtype::ecs::FieldType;
-using rtype::ecs::TypeInfo;
-using rtype::network::bytes::ByteReader;
-using rtype::network::bytes::ByteWriter;
-using rtype::replication::serialization::computeWireSize;
-using rtype::replication::serialization::EntityMapper;
-using rtype::replication::serialization::isSerializable;
-using rtype::replication::serialization::isVariableSize;
-using rtype::replication::serialization::readFields;
-using rtype::replication::serialization::writeFields;
+using aylo::ecs::Entity;
+using aylo::ecs::FieldInfo;
+using aylo::ecs::FieldType;
+using aylo::ecs::TypeInfo;
+using aylo::network::bytes::ByteReader;
+using aylo::network::bytes::ByteWriter;
+using aylo::replication::serialization::computeWireSize;
+using aylo::replication::serialization::EntityMapper;
+using aylo::replication::serialization::isSerializable;
+using aylo::replication::serialization::isVariableSize;
+using aylo::replication::serialization::readFields;
+using aylo::replication::serialization::writeFields;
 
 /// @brief The one entity the test mapper tracks.
 constexpr Entity kTracked{5, 1};
@@ -171,8 +171,8 @@ TypeInfo makeSmallInfo() {
 TypeInfo makeScalarInfo(FieldType type) {
     TypeInfo info;
     info.name = "test.Scalar";
-    info.size = rtype::ecs::getFieldLayout(type).size;
-    info.alignment = rtype::ecs::getFieldLayout(type).alignment;
+    info.size = aylo::ecs::getFieldLayout(type).size;
+    info.alignment = aylo::ecs::getFieldLayout(type).alignment;
     info.fields = {makeField("value", type, 0)};
     return info;
 }
@@ -223,7 +223,7 @@ struct Letter {
     std::string body;
     std::int32_t stamp{0};
 };
-RTYPE_ECS_COMPONENT(Letter, "test.serializer.Letter", body, stamp);
+AYLO_ECS_COMPONENT(Letter, "test.serializer.Letter", body, stamp);
 
 /// @brief A component with lists around a plain field.
 struct Crate {
@@ -231,16 +231,16 @@ struct Crate {
     std::int32_t label{0};
     std::vector<Entity> owners;
 };
-RTYPE_ECS_COMPONENT(Crate, "test.serializer.Crate", numbers, label, owners);
+AYLO_ECS_COMPONENT(Crate, "test.serializer.Crate", numbers, label, owners);
 
 /// @return The bytes of @p crate.
 std::span<std::byte> bytesOf(Crate& crate) { return std::as_writable_bytes(std::span{&crate, 1}); }
 
 /// @return @p crate as written on the wire.
-std::vector<std::byte> encodeCrate(Crate& crate, const rtype::ecs::TypeInfo& info) {
+std::vector<std::byte> encodeCrate(Crate& crate, const aylo::ecs::TypeInfo& info) {
     TestMapper mapper;
     std::vector<std::byte> buffer(computeWireSize(info, bytesOf(crate)));
-    rtype::network::bytes::ByteWriter writer{buffer};
+    aylo::network::bytes::ByteWriter writer{buffer};
     writeFields(writer, info, bytesOf(crate), mapper);
     EXPECT_TRUE(writer.isValid());
     buffer.resize(writer.bytesWritten());
@@ -340,7 +340,7 @@ TEST(FieldSerializer, RejectsNanAndInfinityInEveryVectorComponent) {
                                          std::numeric_limits<float>::infinity(),
                                          -std::numeric_limits<float>::infinity()};
     for (const FieldType type : {FieldType::kVec2, FieldType::kVec3, FieldType::kVec4}) {
-        const std::size_t length = rtype::ecs::getFieldLayout(type).size / sizeof(float);
+        const std::size_t length = aylo::ecs::getFieldLayout(type).size / sizeof(float);
         EXPECT_TRUE(accepts(makeScalarInfo(type), f32Bytes(1.0F, length)));
         for (const float bad : badFloats) {
             for (std::size_t component = 0; component < length; ++component) {
@@ -417,7 +417,7 @@ TEST(FieldSerializer, ReadsNetworkIdsAsLocalEntities) {
 TEST(FieldSerializer, PlainDataWithFieldsIsSerializable) {
     EXPECT_TRUE(isSerializable(makeAllTypesInfo()));
     // Owner has a default member initializer, so a construct hook: it is still plain data.
-    const TypeInfo owner = rtype::ecs::TypeTraits<rtype::replication::component::Owner>::makeTypeInfo();
+    const TypeInfo owner = aylo::ecs::TypeTraits<aylo::replication::component::Owner>::makeTypeInfo();
     EXPECT_NE(owner.hooks.construct, nullptr);
     EXPECT_TRUE(isSerializable(owner));
 }
@@ -441,7 +441,7 @@ TEST(FieldSerializer, ATypeWithLifecycleHooksIsNotSerializable) {
 namespace {
 /// @brief A value with a string, then a number, to check that what follows the string is read at its place.
 struct Named {
-    rtype::ecs::String name;
+    aylo::ecs::String name;
     std::uint8_t level{0};
 };
 
@@ -521,27 +521,27 @@ TEST(FieldSerializer, RefusesAStringCutShort) {
 }
 
 TEST(FieldList, IsSerializableAndOfVariableSize) {
-    const rtype::ecs::TypeInfo info = rtype::ecs::TypeTraits<Crate>::makeTypeInfo();
+    const aylo::ecs::TypeInfo info = aylo::ecs::TypeTraits<Crate>::makeTypeInfo();
     EXPECT_TRUE(isSerializable(info));
     EXPECT_TRUE(isVariableSize(info));
 }
 
 TEST(FieldList, GivesTheSizeOfAValueOnTheWire) {
-    const rtype::ecs::TypeInfo info = rtype::ecs::TypeTraits<Crate>::makeTypeInfo();
+    const aylo::ecs::TypeInfo info = aylo::ecs::TypeTraits<Crate>::makeTypeInfo();
     EXPECT_EQ(computeWireSize(info), 8U);  // two counts and the label
     Crate crate{.numbers = {1, 2, 3}, .label = 7, .owners = {kTracked}};
     EXPECT_EQ(computeWireSize(info, bytesOf(crate)), 24U);
 }
 
 TEST(FieldList, ComesBackFromTheWire) {
-    const rtype::ecs::TypeInfo info = rtype::ecs::TypeTraits<Crate>::makeTypeInfo();
+    const aylo::ecs::TypeInfo info = aylo::ecs::TypeTraits<Crate>::makeTypeInfo();
     Crate crate{.numbers = {1, 2, 3}, .label = 7, .owners = {kTracked}};
     const std::vector<std::byte> wire = encodeCrate(crate, info);
     EXPECT_EQ(wire.size(), 24U);
 
     TestMapper mapper;
     Crate read;
-    rtype::network::bytes::ByteReader reader{wire};
+    aylo::network::bytes::ByteReader reader{wire};
     ASSERT_TRUE(readFields(reader, info, bytesOf(read), mapper));
     EXPECT_TRUE(reader.isFinished());
     EXPECT_EQ(read.numbers, crate.numbers);
@@ -550,52 +550,52 @@ TEST(FieldList, ComesBackFromTheWire) {
 }
 
 TEST(FieldList, ComesBackEmpty) {
-    const rtype::ecs::TypeInfo info = rtype::ecs::TypeTraits<Crate>::makeTypeInfo();
+    const aylo::ecs::TypeInfo info = aylo::ecs::TypeTraits<Crate>::makeTypeInfo();
     Crate crate;
     const std::vector<std::byte> wire = encodeCrate(crate, info);
     TestMapper mapper;
     Crate read{.numbers = {9}};
-    rtype::network::bytes::ByteReader reader{wire};
+    aylo::network::bytes::ByteReader reader{wire};
     ASSERT_TRUE(readFields(reader, info, bytesOf(read), mapper));
     EXPECT_TRUE(read.numbers.empty());
 }
 
 TEST(FieldList, LeavesOutTheEntitiesTheOtherSideDoesNotKnow) {
-    const rtype::ecs::TypeInfo info = rtype::ecs::TypeTraits<Crate>::makeTypeInfo();
+    const aylo::ecs::TypeInfo info = aylo::ecs::TypeTraits<Crate>::makeTypeInfo();
     Crate crate{.owners = {Entity{9, 1}, kTracked, Entity{}}};
     const std::vector<std::byte> wire = encodeCrate(crate, info);
     TestMapper mapper;
     Crate read;
-    rtype::network::bytes::ByteReader reader{wire};
+    aylo::network::bytes::ByteReader reader{wire};
     ASSERT_TRUE(readFields(reader, info, bytesOf(read), mapper));
     EXPECT_EQ(read.owners, std::vector<Entity>{kTracked});
 }
 
 TEST(FieldList, RefusesACountTheBytesCannotHold) {
-    const rtype::ecs::TypeInfo info = rtype::ecs::TypeTraits<Crate>::makeTypeInfo();
+    const aylo::ecs::TypeInfo info = aylo::ecs::TypeTraits<Crate>::makeTypeInfo();
     std::vector<std::byte> wire(4);
-    rtype::network::bytes::ByteWriter writer{wire};
+    aylo::network::bytes::ByteWriter writer{wire};
     writer.writeU16(0xFFFF);  // a hostile message: no value follows
     TestMapper mapper;
     Crate read;
-    rtype::network::bytes::ByteReader reader{wire};
+    aylo::network::bytes::ByteReader reader{wire};
     EXPECT_FALSE(readFields(reader, info, bytesOf(read), mapper));
     EXPECT_TRUE(read.numbers.empty());
 }
 
 TEST(FieldList, RefusesAMessageCutInTheMiddleOfAList) {
-    const rtype::ecs::TypeInfo info = rtype::ecs::TypeTraits<Crate>::makeTypeInfo();
+    const aylo::ecs::TypeInfo info = aylo::ecs::TypeTraits<Crate>::makeTypeInfo();
     Crate crate{.numbers = {1, 2, 3}};
     std::vector<std::byte> wire = encodeCrate(crate, info);
     wire.resize(6);
     TestMapper mapper;
     Crate read;
-    rtype::network::bytes::ByteReader reader{wire};
+    aylo::network::bytes::ByteReader reader{wire};
     EXPECT_FALSE(readFields(reader, info, bytesOf(read), mapper));
 }
 
 TEST(FieldText, ComesBackFromTheWireWhateverItsLength) {
-    const rtype::ecs::TypeInfo info = rtype::ecs::TypeTraits<Letter>::makeTypeInfo();
+    const aylo::ecs::TypeInfo info = aylo::ecs::TypeTraits<Letter>::makeTypeInfo();
     EXPECT_TRUE(isSerializable(info));
     EXPECT_TRUE(isVariableSize(info));
     Letter letter{.body = std::string(600, 'z'), .stamp = 3};
@@ -603,35 +603,35 @@ TEST(FieldText, ComesBackFromTheWireWhateverItsLength) {
     TestMapper mapper;
     std::vector<std::byte> wire(computeWireSize(info, bytes));
     EXPECT_EQ(wire.size(), 2U + 600U + 4U);
-    rtype::network::bytes::ByteWriter writer{wire};
+    aylo::network::bytes::ByteWriter writer{wire};
     writeFields(writer, info, bytes, mapper);
     ASSERT_TRUE(writer.isValid());
 
     Letter read;
-    rtype::network::bytes::ByteReader reader{wire};
+    aylo::network::bytes::ByteReader reader{wire};
     ASSERT_TRUE(readFields(reader, info, std::as_writable_bytes(std::span{&read, 1}), mapper));
     EXPECT_EQ(read.body, letter.body);
     EXPECT_EQ(read.stamp, 3);
 }
 
 TEST(ManifestHash, IsTheLayoutHashWithoutAList) {
-    rtype::ecs::World world;
-    static_cast<void>(world.getComponents().registerType<rtype::test::server::Position>());
-    const auto& type = world.getComponents().getRegistry().find<rtype::test::server::Position>()->type;
-    EXPECT_EQ(rtype::replication::serialization::computeManifestHash(type), type.layoutHash);
+    aylo::ecs::World world;
+    static_cast<void>(world.getComponents().registerType<aylo::test::server::Position>());
+    const auto& type = world.getComponents().getRegistry().find<aylo::test::server::Position>()->type;
+    EXPECT_EQ(aylo::replication::serialization::computeManifestHash(type), type.layoutHash);
 }
 
 TEST(ManifestHash, DoesNotDependOnTheSizeOfAList) {
-    rtype::ecs::TypeInfo info = rtype::ecs::TypeTraits<Letter>::makeTypeInfo();
-    const std::uint64_t hash = rtype::replication::serialization::computeManifestHash(info);
+    aylo::ecs::TypeInfo info = aylo::ecs::TypeTraits<Letter>::makeTypeInfo();
+    const std::uint64_t hash = aylo::replication::serialization::computeManifestHash(info);
     info.size += 8;  // as with another standard library, where `std::string` has another size
     info.fields.back().offset += 8;
-    EXPECT_EQ(rtype::replication::serialization::computeManifestHash(info), hash);
+    EXPECT_EQ(aylo::replication::serialization::computeManifestHash(info), hash);
 }
 
 TEST(ManifestHash, ChangesWithTheFields) {
-    rtype::ecs::TypeInfo info = rtype::ecs::TypeTraits<Letter>::makeTypeInfo();
-    const std::uint64_t hash = rtype::replication::serialization::computeManifestHash(info);
+    aylo::ecs::TypeInfo info = aylo::ecs::TypeTraits<Letter>::makeTypeInfo();
+    const std::uint64_t hash = aylo::replication::serialization::computeManifestHash(info);
     info.fields.back().name = "other";
-    EXPECT_NE(rtype::replication::serialization::computeManifestHash(info), hash);
+    EXPECT_NE(aylo::replication::serialization::computeManifestHash(info), hash);
 }

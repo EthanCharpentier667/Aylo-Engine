@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** FieldListTests
 */
@@ -12,21 +12,21 @@
 #include <span>
 #include <vector>
 
-#include "rtype/ecs/command/Commands.hpp"
-#include "rtype/ecs/component/ComponentInfo.hpp"
-#include "rtype/ecs/component/ComponentRegistry.hpp"
-#include "rtype/ecs/component/ComponentTraits.hpp"
-#include "rtype/ecs/entity/Entity.hpp"
-#include "rtype/ecs/type/Field.hpp"
-#include "rtype/ecs/type/TypeInfo.hpp"
-#include "rtype/ecs/type/TypeTraits.hpp"
-#include "rtype/ecs/world/World.hpp"
+#include "aylo/ecs/command/Commands.hpp"
+#include "aylo/ecs/component/ComponentInfo.hpp"
+#include "aylo/ecs/component/ComponentRegistry.hpp"
+#include "aylo/ecs/component/ComponentTraits.hpp"
+#include "aylo/ecs/entity/Entity.hpp"
+#include "aylo/ecs/type/Field.hpp"
+#include "aylo/ecs/type/TypeInfo.hpp"
+#include "aylo/ecs/type/TypeTraits.hpp"
+#include "aylo/ecs/world/World.hpp"
 
-using rtype::ecs::Entity;
-using rtype::ecs::FieldInfo;
-using rtype::ecs::FieldType;
-using rtype::ecs::TypeTraits;
-using rtype::ecs::World;
+using aylo::ecs::Entity;
+using aylo::ecs::FieldInfo;
+using aylo::ecs::FieldType;
+using aylo::ecs::TypeTraits;
+using aylo::ecs::World;
 
 namespace {
 /// @brief A component with a list of numbers and a list of entities around a plain field.
@@ -35,20 +35,20 @@ struct Inventory {
     std::int32_t gold{0};
     std::vector<Entity> owners;
 };
-RTYPE_ECS_COMPONENT(Inventory, "test.list.Inventory", items, gold, owners);
+AYLO_ECS_COMPONENT(Inventory, "test.list.Inventory", items, gold, owners);
 
 /// @brief The same fields without the lists: its layout hash must not depend on a list it does not have.
 struct Purse {
     std::int32_t gold{0};
 };
-RTYPE_ECS_COMPONENT(Purse, "test.list.Purse", gold);
+AYLO_ECS_COMPONENT(Purse, "test.list.Purse", gold);
 
 /// @return The field of @p info called @p name.
-const FieldInfo& fieldOf(const rtype::ecs::TypeInfo& info, std::size_t index) { return info.fields.at(index); }
+const FieldInfo& fieldOf(const aylo::ecs::TypeInfo& info, std::size_t index) { return info.fields.at(index); }
 }  // namespace
 
 TEST(FieldList, ReflectsAVectorAsAListOfItsValues) {
-    const rtype::ecs::TypeInfo info = TypeTraits<Inventory>::makeTypeInfo();
+    const aylo::ecs::TypeInfo info = TypeTraits<Inventory>::makeTypeInfo();
     ASSERT_EQ(info.fields.size(), 3U);
     EXPECT_EQ(fieldOf(info, 0).type, FieldType::kU32);
     EXPECT_NE(fieldOf(info, 0).list, nullptr);
@@ -128,7 +128,7 @@ TEST(FieldList, MarksTheValueChangedOnlyWhenAnEntityLeft) {
 TEST(FieldList, KeepsItsValuesThroughCommands) {
     World world;
     const Entity holder = world.spawn();
-    rtype::ecs::Commands commands{world};
+    aylo::ecs::Commands commands{world};
     commands.entity(holder).add(Inventory{.items = {3, 4}});
     commands.flush();
     EXPECT_EQ(world.getComponents().get<Inventory>(holder)->items, (std::vector<std::uint32_t>{3, 4}));

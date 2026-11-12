@@ -4,13 +4,12 @@
 
 The engine builds one generic program, `aylo-runtime`, and copies it to the repository root. It runs a game folder:
 `game/` in the current directory, or the folder you give as first argument. It runs the client by default and the server
-(no window, no graphics) with `--server`. At the repository root, the scripts `r-type_server` and `r-type_client`
-(`.bat` files on Windows) start it for you on the matching side, so `./r-type_server` is `./aylo-runtime --server`.
+(no window, no graphics) with `--server`.
 
 ```sh
 xmake build -y
-./aylo-runtime --server examples/games/rtype_duel/game
-./aylo-runtime examples/games/rtype_duel/game      # one per player
+./aylo-runtime --server examples/games/aylo_duel/game
+./aylo-runtime examples/games/aylo_duel/game      # one per player
 ```
 
 The folder must contain a `project.luau`. A client also needs the `assets/` folder and refuses to start without it; a
@@ -115,24 +114,24 @@ When your game is ready, [Shipping your game](shipping.md) explains what to give
 
 ## Stopping the game and running a test
 
-To know that the player closed the window, read the event `rtype.Closed` in a system (declare it under `events = { read = { "rtype.Closed" } }`). The engine does not stop the game by itself: send `rtype.AppExit` in answer, after saving for example.
+To know that the player closed the window, read the event `aylo.Closed` in a system (declare it under `events = { read = { "aylo.Closed" } }`). The engine does not stop the game by itself: send `aylo.AppExit` in answer, after saving for example.
 
-A script stops the process with the event `rtype.AppExit`. The game finishes the frame it was sent in, and `aylo-runtime`
+A script stops the process with the event `aylo.AppExit`. The game finishes the frame it was sent in, and `aylo-runtime`
 returns `code` as its exit code (`0` is success; send another number to fail):
 
 ```luau
 engine.ecs.system("game.Quit", {
 	phase = "Update",
 	query = {},
-	events = { send = { "rtype.AppExit" } },
+	events = { send = { "aylo.AppExit" } },
 	run = function(ctx)
-		ctx.events.send("rtype.AppExit", { code = 1 })
+		ctx.events.send("aylo.AppExit", { code = 1 })
 	end,
 })
 ```
 
 If several are sent, the first one read gives the code. `--ticks <n>` runs at most `n` frames and then exits with `0`,
-unless an `rtype.AppExit` came first: with it a test game checks its rules in a system and sends `AppExit` with a
+unless an `aylo.AppExit` came first: with it a test game checks its rules in a system and sends `AppExit` with a
 non-zero code when one fails, so a CI job just checks the exit status:
 
 ```sh

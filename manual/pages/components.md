@@ -22,7 +22,7 @@ engine.ecs.component("game.MisfireTimer", { fields = { remaining = "f32" }, pres
 | `replication` | `"none"` (default), `"everyChange"` (sent whenever it changes) or `"spawnOnly"` (sent once, when the entity appears). A replicated component needs at least one field: a tag cannot be sent, and the server stops at start naming it. |
 | `presence` | `"both"` (default), `"serverOnly"` or `"clientOnly"`: which side the component exists on. |
 
-Any other option is an error. Names are conventionally `game.Name`; the `rtype.` and `net.` prefixes belong to the
+Any other option is an error. Names are conventionally `game.Name`; the `aylo.` and `net.` prefixes belong to the
 engine.
 
 ## Field types
@@ -43,9 +43,9 @@ declared the same components, and refuses a client that differs, naming the comp
 ## Engine components
 
 The engine's own components are declared by its plugins and used by name, with the same views as yours:
-`rtype.Name` (`value`, a text: what the editor shows an entity as, given by a [capsule](capsules.md) to each entity it
-spawns), `rtype.Transform`, `rtype.Camera`, `rtype.SpriteRenderer`, `rtype.TextRenderer`, `rtype.ShapeRenderer`,
-`rtype.AudioListener`, `rtype.Collider`, `rtype.RigidBody`, `rtype.Velocity`, and the network ones `net.Owner` and
+`aylo.Name` (`value`, a text: what the editor shows an entity as, given by a [capsule](capsules.md) to each entity it
+spawns), `aylo.Transform`, `aylo.Camera`, `aylo.SpriteRenderer`, `aylo.TextRenderer`, `aylo.ShapeRenderer`,
+`aylo.AudioListener`, `aylo.Collider`, `aylo.RigidBody`, `aylo.Velocity`, and the network ones `net.Owner` and
 `net.PlayerInput`. Fields are written the same way (`size = { x = 48, y = 48 }`). Enum-like fields are numbers; for
 example the physics `shape` is `0` box, `1` circle, `2` capsule. What exists depends on the plugins the program and
 `project.luau` add: a server has no sprites.

@@ -22,24 +22,24 @@ This file is for C++ work under `src/`, `tests/` and `examples/`. It is read thr
 
 - Named in PascalCase after their class: `Window.hpp`, `Window.cpp`. Headers are `.hpp`, sources `.cpp`, template
   implementations `.tpp`.
-- Every source and header file starts with the Epitech header, with the current year, the project name (`rtype`) and the
+- Every source and header file starts with the Epitech header, with the current year, the project name (`aylo`) and the
   file name without extension as the description:
 
   ```cpp
   /*
   ** EPITECH PROJECT, 2026
-  ** rtype
+  ** aylo
   ** File description:
   ** Window
   */
   ```
 
 - Headers use `#pragma once`, right after the Epitech header. Never `#ifndef` guards.
-- Namespaces mirror the directory path under `src/rtype/` (`rtype::contract::platform::input`,
-  `rtype::platform::glfw`, `rtype::render::vulkan`). The exceptions are listed in the `AGENTS.md` of the module that has
+- Namespaces mirror the directory path under `src/aylo/` (`aylo::contract::platform::input`,
+  `aylo::platform::glfw`, `aylo::render::vulkan`). The exceptions are listed in the `AGENTS.md` of the module that has
   them (the ECS feature folders and the themes of the renderer contract).
 - Includes: a sibling file (same folder) by its bare name (`"Window.hpp"`); anything else from the `src/` root as
-  `"rtype/<module>/..."`. Never a relative path going up the tree (`"../MyInclude.hpp"`), as much as possible really.
+  `"aylo/<module>/..."`. Never a relative path going up the tree (`"../MyInclude.hpp"`), as much as possible really.
 
 ### Classes
 
@@ -75,18 +75,18 @@ inline in the `.hpp`. The `.hpp` only declares the template and ends by includin
 Epitech header and `#pragma once`, and is never included from anywhere else. A `.tpp` may, and should, `#include` the
 standard and project headers its code uses, instead of relying on what its `.hpp` happens to include. Because it must
 never be included directly, it has, right after `#pragma once`, a check that fails when its `.hpp` is not the includer:
-the `.hpp` defines `RTYPE_<NAME>_INCLUDING_TPP` around the include and the `.tpp` tests it.
+the `.hpp` defines `AYLO_<NAME>_INCLUDING_TPP` around the include and the `.tpp` tests it.
 
 ```cpp
 // Pool.hpp
-#define RTYPE_POOL_INCLUDING_TPP
+#define AYLO_POOL_INCLUDING_TPP
 #include "Pool.tpp"  // IWYU pragma: export
-#undef RTYPE_POOL_INCLUDING_TPP
+#undef AYLO_POOL_INCLUDING_TPP
 
 // Pool.tpp (after the Epitech header)
 #pragma once
 
-#ifndef RTYPE_POOL_INCLUDING_TPP
+#ifndef AYLO_POOL_INCLUDING_TPP
 #error "Pool.tpp is an implementation detail of Pool.hpp: include Pool.hpp instead"
 #endif
 
@@ -112,11 +112,11 @@ the `.hpp` defines `RTYPE_<NAME>_INCLUDING_TPP` around the include and the `.tpp
 
 ### Exports
 
-Exported symbols of a shared library use that library's own macro, named after the target: `RTYPE_ECS_API`,
-`RTYPE_NETWORK_API`, `RTYPE_REPLICATION_API`, `RTYPE_ENGINE_API`, `RTYPE_SCRIPTING_API`,
-`RTYPE_CONTRACT_<NAME>_API`, `RTYPE_PLUGIN_<NAME>_API`, `RTYPE_RENDER_VULKAN_API`, and so on
+Exported symbols of a shared library use that library's own macro, named after the target: `AYLO_ECS_API`,
+`AYLO_NETWORK_API`, `AYLO_REPLICATION_API`, `AYLO_ENGINE_API`, `AYLO_SCRIPTING_API`,
+`AYLO_CONTRACT_<NAME>_API`, `AYLO_PLUGIN_<NAME>_API`, `AYLO_RENDER_VULKAN_API`, and so on
 (`__declspec(dllexport)` on Windows). A type with no code of its own (an interface, an exception) takes
-`RTYPE_HEADER_ONLY_API` from `rtype/core/Export.hpp` instead. `core` is static and exports nothing.
+`AYLO_HEADER_ONLY_API` from `aylo/core/Export.hpp` instead. `core` is static and exports nothing.
 
 ## Portability and dependencies
 

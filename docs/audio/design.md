@@ -9,7 +9,7 @@ added later without touching gameplay code.
 > Status: **the plugin is implemented and tested (steps 1 to 4 of the [plan](#11-implementation-plan)), with a
 > console example, [`examples/plugins/sound/AudioBasics`](../../examples/plugins/sound/AudioBasics/src/main.cpp); the
 > miniaudio backend and the engine wiring are next.** Snippets omit the Epitech header and most `[[nodiscard]]`/
-> `noexcept` for brevity. Names are relative to `rtype::plugins::audio` unless qualified. Decisions and what is still
+> `noexcept` for brevity. Names are relative to `aylo::plugins::audio` unless qualified. Decisions and what is still
 > open are in [Open questions](#12-open-questions).
 
 ## Contents
@@ -63,7 +63,7 @@ its own config section, so a game can have a window without sound, or sound with
 ## 3. Where it lives
 
 ```
-src/rtype/plugins/audio/            namespace rtype::plugins::audio   (target plugin-audio)
+src/aylo/plugins/audio/            namespace aylo::plugins::audio   (target plugin-audio)
 ├── AudioPlugin.hpp/.cpp            the plugin: registers, inserts the resources, adds the systems
 ├── AudioRegistry.hpp/.cpp          backends by name; "null" is always registered
 ├── AudioConfig.hpp/.cpp            the common `audio` section, typed and checked
@@ -72,20 +72,20 @@ src/rtype/plugins/audio/            namespace rtype::plugins::audio   (target pl
 ├── AudioSource.hpp                 a sound attached to an entity (component)
 ├── AudioListener.hpp               where the player hears from (component)
 ├── AudioEvents.hpp                 PlaySound, PlayMusic, StopMusic
-├── AudioResources.hpp              the "rtype.Audio" and "rtype.AudioSetup" resources
+├── AudioResources.hpp              the "aylo.Audio" and "aylo.AudioSetup" resources
 ├── NullAudioDevice.hpp/.cpp        the silent backend
 └── exceptions/AudioExceptions.hpp  AudioBackendException, AudioLoadException
 
-src/rtype/audio/miniaudio/          namespace rtype::audio::miniaudio  (target audio-miniaudio)
+src/aylo/audio/miniaudio/          namespace aylo::audio::miniaudio  (target audio-miniaudio)
 ├── MiniaudioDevice.hpp/.cpp        IAudioDevice on ma_engine, ma_sound, ma_sound_group
 ├── Registration.hpp/.cpp           registerAudio(AudioDeviceRegistry&) → "miniaudio"
 ├── exceptions/                     MiniaudioException
 └── xmake.lua                       add_requires("miniaudio")
 
-src/rtype/audio/fmod/               later, same shape, behind an xmake option (see FMOD)
+src/aylo/audio/fmod/               later, same shape, behind an xmake option (see FMOD)
 ```
 
-- **`audio-miniaudio` is a static library** (`rtype-audio-miniaudio`), like `platform-glfw`: it links `plugins` for the
+- **`audio-miniaudio` is a static library** (`aylo-audio-miniaudio`), like `platform-glfw`: it links `plugins` for the
   contract and nothing else. Only its own files include `miniaudio.h`: `MiniaudioDevice.hpp` is internal, the
   executable includes `Registration.hpp` only.
 - **Dependency rules** gain one line, with the same direction as the platforms and renderers:
@@ -108,7 +108,7 @@ backend named after it, handed to that backend's factory only (as `vulkan = { ..
 return {
     platform = "glfw",
     renderer = "vulkan",
-    window = { title = "R-Type", size = { 1280, 720 } },
+    window = { title = "AYLO", size = { 1280, 720 } },
 
     audio = {
         backend = "miniaudio",   -- a registered name: "miniaudio", "null", later "fmod"
@@ -279,20 +279,20 @@ class AudioRegistry {
 The executable fills it, next to the backend registry:
 
 ```cpp
-auto audio = std::make_unique<rtype::plugins::audio::AudioRegistry>();
-rtype::audio::miniaudio::registerAudio(audio->devices);
-app.addPlugin(rtype::plugins::audio::AudioPlugin{std::move(audio), settings});
+auto audio = std::make_unique<aylo::plugins::audio::AudioRegistry>();
+aylo::audio::miniaudio::registerAudio(audio->devices);
+app.addPlugin(aylo::plugins::audio::AudioPlugin{std::move(audio), settings});
 ```
 
 ## 7. Sounds as assets: `AudioAssets`
 
-The resource `"rtype.AudioAssets"` works as `TextureAssets` does, so gameplay code reads the same for both:
+The resource `"aylo.AudioAssets"` works as `TextureAssets` does, so gameplay code reads the same for both:
 
 ```cpp
-void spawnShip(rtype::ecs::Commands& commands, rtype::ecs::ResMut<rtype::plugins::audio::AudioAssets> sounds)
+void spawnShip(aylo::ecs::Commands& commands, aylo::ecs::ResMut<aylo::plugins::audio::AudioAssets> sounds)
 {
-    const rtype::core::asset::AssetId engine = sounds->load("assets/sounds/engine.ogg");
-    commands.spawn(rtype::plugins::audio::AudioSource{.sound = engine, .loop = true});
+    const aylo::core::asset::AssetId engine = sounds->load("assets/sounds/engine.ogg");
+    commands.spawn(aylo::plugins::audio::AudioSource{.sound = engine, .loop = true});
 }
 ```
 
@@ -310,10 +310,10 @@ void spawnShip(rtype::ecs::Commands& commands, rtype::ecs::ResMut<rtype::plugins
 
 | Resource | Kind | What it holds |
 |---|---|---|
-| `"rtype.Audio"` | main thread | `std::unique_ptr<IAudioDevice>`, created at Startup |
-| `"rtype.AudioSetup"` | plain | the registry and the settings, handed to the Startup system (as `BackendSetup`) |
-| `"rtype.AudioAssets"` | plain | the sounds by `AssetId` |
-| `"rtype.AudioVolumes"` | plain | `master`, `music`, `effects`; starts from the config, applied when it changes |
+| `"aylo.Audio"` | main thread | `std::unique_ptr<IAudioDevice>`, created at Startup |
+| `"aylo.AudioSetup"` | plain | the registry and the settings, handed to the Startup system (as `BackendSetup`) |
+| `"aylo.AudioAssets"` | plain | the sounds by `AssetId` |
+| `"aylo.AudioVolumes"` | plain | `master`, `music`, `effects`; starts from the config, applied when it changes |
 
 ### Components
 
@@ -332,7 +332,7 @@ struct AudioSource {
 struct AudioListener {};
 ```
 
-The plugin keeps the voice of each source in the `"rtype.Audio"` resource, by entity: each frame, the sources it no
+The plugin keeps the voice of each source in the `"aylo.Audio"` resource, by entity: each frame, the sources it no
 longer finds (component removed, entity despawned) get their voice stopped. A map rather than an internal component,
 because the ECS has no removal hook, and a component would go with its entity before the plugin could stop its voice.
 
@@ -365,8 +365,8 @@ with `SoundDesc{.stream = true}`.
 
 ### From scripts
 
-The plugin registers two [engine calls](../ecs/features/19-luau-bridge.md#engine-calls): `rtype.audio.loadSound { path,
-stream }` returns the sound's id, and `rtype.audio.playSound { sound, bus, volume, pitch, position }` sends a
+The plugin registers two [engine calls](../ecs/features/19-luau-bridge.md#engine-calls): `aylo.audio.loadSound { path,
+stream }` returns the sound's id, and `aylo.audio.playSound { sound, bus, volume, pitch, position }` sends a
 `PlaySound`, which scripts cannot send through `ctx.events` because its `position` is optional (a `position` left out
 plays centred). `PlayMusic` and `StopMusic` are plain data: scripts send them as events.
 
@@ -376,11 +376,11 @@ All are client systems (`setSide(ecs::Side::kClient)`), as the graphics plugin's
 
 | Phase | Name | What it does |
 |---|---|---|
-| Startup | `rtype.audio.create` | `AudioRegistry::createDevice()` into `"rtype.Audio"`, applies `AudioVolumes` |
-| PostUpdate | `rtype.audio.sounds` | `updateSounds()`: loads the queued sounds, destroys the unloaded ones |
-| PostUpdate | `rtype.audio.play` | plays `PlaySound`, then `StopMusic`, then `PlayMusic` (a play sent with a stop wins); after `rtype.audio.sounds` |
-| PostUpdate | `rtype.audio.sources` | starts new `AudioSource`s, stops removed ones, updates pan and volume; after `rtype.Transform.Propagate` |
-| PostUpdate | `rtype.audio.update` | applies `AudioVolumes` if changed, then `IAudioDevice::update()`; last |
+| Startup | `aylo.audio.create` | `AudioRegistry::createDevice()` into `"aylo.Audio"`, applies `AudioVolumes` |
+| PostUpdate | `aylo.audio.sounds` | `updateSounds()`: loads the queued sounds, destroys the unloaded ones |
+| PostUpdate | `aylo.audio.play` | plays `PlaySound`, then `StopMusic`, then `PlayMusic` (a play sent with a stop wins); after `aylo.audio.sounds` |
+| PostUpdate | `aylo.audio.sources` | starts new `AudioSource`s, stops removed ones, updates pan and volume; after `aylo.Transform.Propagate` |
+| PostUpdate | `aylo.audio.update` | applies `AudioVolumes` if changed, then `IAudioDevice::update()`; last |
 
 Running in PostUpdate, after the transform propagation, means a sound asked for during this frame's Update is heard in
 this frame, from where its entity is now. An entity spawned this frame has no `GlobalTransform` yet (the
@@ -429,7 +429,7 @@ Hands out ids and tracks the voices' state (a looping voice plays until stopped,
 
 ## 10. Threading, errors and the server
 
-- **Main thread only.** `"rtype.Audio"` is a main-thread resource and every `IAudioDevice` call comes from the main
+- **Main thread only.** `"aylo.Audio"` is a main-thread resource and every `IAudioDevice` call comes from the main
   thread. The backends' audio threads stay inside them: no callback reaches the ECS, ended voices are found by
   polling in `update()`.
 - **Errors.** `AudioBackendException` for a missing or unknown backend, or a device that cannot open while required;
@@ -463,10 +463,10 @@ Each step builds and is tested on its own, in this order:
 
 Settled:
 
-1. **`Settings`** moved, with `SettingsException`, to `core/config/` (`rtype::core::config`), in the `core` library,
+1. **`Settings`** moved, with `SettingsException`, to `core/config/` (`aylo::core::config`), in the `core` library,
    which depends on no other target. It was first in `core/config/`, but it is not a plugin.
-   `BackendException` stays in `rtype/contract/platform/exceptions/BackendExceptions.hpp`.
-2. **`AssetId`** moved to `core/asset/` (`rtype::core::asset`).
+   `BackendException` stays in `aylo/contract/platform/exceptions/BackendExceptions.hpp`.
+2. **`AssetId`** moved to `core/asset/` (`aylo::core::asset`).
 3. **Buses** are a fixed enum (music, effects) for now.
 4. **A device that cannot open** falls back to `"null"` with a warning, unless `audio.required` is true. A mistake in
    the config (`SettingsException`) is always thrown.

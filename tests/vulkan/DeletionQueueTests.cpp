@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** DeletionQueueTests
 */
@@ -37,12 +37,12 @@ class Tracked {
 }  // namespace
 
 TEST(DeletionQueue, RejectsZeroFrames) {
-    EXPECT_THROW(rtype::render::vulkan::core::DeletionQueue{0}, std::invalid_argument);
+    EXPECT_THROW(aylo::render::vulkan::core::DeletionQueue{0}, std::invalid_argument);
 }
 
 TEST(DeletionQueue, KeepsResourcesUntilTheirFrameIsFlushed) {
     std::vector<int> log;
-    rtype::render::vulkan::core::DeletionQueue queue{2};
+    aylo::render::vulkan::core::DeletionQueue queue{2};
     queue.defer(0, Tracked{1, log});
     queue.defer(1, Tracked{2, log});
     EXPECT_TRUE(log.empty());
@@ -56,7 +56,7 @@ TEST(DeletionQueue, KeepsResourcesUntilTheirFrameIsFlushed) {
 
 TEST(DeletionQueue, FlushesLastDeferredFirst) {
     std::vector<int> log;
-    rtype::render::vulkan::core::DeletionQueue queue{1};
+    aylo::render::vulkan::core::DeletionQueue queue{1};
     queue.defer(0, Tracked{1, log});
     queue.deferCall(0, [&log] { log.push_back(2); });
     queue.defer(0, Tracked{3, log});
@@ -67,7 +67,7 @@ TEST(DeletionQueue, FlushesLastDeferredFirst) {
 
 TEST(DeletionQueue, FlushAllEmptiesEveryFrame) {
     std::vector<int> log;
-    rtype::render::vulkan::core::DeletionQueue queue{3};
+    aylo::render::vulkan::core::DeletionQueue queue{3};
     queue.defer(0, Tracked{1, log});
     queue.defer(2, Tracked{2, log});
 
@@ -81,7 +81,7 @@ TEST(DeletionQueue, FlushAllEmptiesEveryFrame) {
 TEST(DeletionQueue, DestructionFlushesPendingResources) {
     std::vector<int> log;
     {
-        rtype::render::vulkan::core::DeletionQueue queue{2};
+        aylo::render::vulkan::core::DeletionQueue queue{2};
         queue.defer(1, Tracked{1, log});
     }
     EXPECT_EQ(log, (std::vector<int>{1}));
@@ -89,7 +89,7 @@ TEST(DeletionQueue, DestructionFlushesPendingResources) {
 
 TEST(DeletionQueue, RejectsFramesOutOfRange) {
     std::vector<int> log;
-    rtype::render::vulkan::core::DeletionQueue queue{2};
+    aylo::render::vulkan::core::DeletionQueue queue{2};
     EXPECT_THROW(queue.defer(2, Tracked{1, log}), std::out_of_range);
     EXPECT_THROW(queue.flush(2), std::out_of_range);
     EXPECT_THROW((void)queue.getPendingCount(2), std::out_of_range);

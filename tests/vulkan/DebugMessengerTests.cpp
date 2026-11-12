@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** DebugMessengerTests
 */
@@ -12,7 +12,7 @@
 
 #include "render/vulkan/core/DebugMessenger.hpp"
 
-using rtype::render::vulkan::core::DebugMessenger;
+using aylo::render::vulkan::core::DebugMessenger;
 
 TEST(DebugMessenger, DescribesNothingWithoutLabelsOrObjects) {
     EXPECT_TRUE(DebugMessenger::describeContext(vk::DebugUtilsMessengerCallbackDataEXT{}).empty());

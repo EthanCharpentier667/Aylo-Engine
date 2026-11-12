@@ -54,18 +54,18 @@ engine.ecs.system("game.SpawnPlayers", {
 
 `net.ClientDisconnected` has the same `client` field. `net.Owner { client }` ties an entity to a client and is
 replicated, so a client can find its own entities; `net.PlayerInput` receives that client's inputs on the server. A
-client learns its own id with `rtype.replication.localClient`, which returns `{ connected, client }`.
+client learns its own id with `aylo.replication.localClient`, which returns `{ connected, client }`.
 
 ## Inputs
 
 1. Declare the actions with `engine.input.action` in a file both sides load. The actions are part of the network
    layout; the client and the server must declare the same ones.
 2. On a client, the engine fills the input it sends from the actions of the same names. You write no input code.
-3. On the server, read a player's action with `rtype.replication.readInput`, in a system that lists the call and
+3. On the server, read a player's action with `aylo.replication.readInput`, in a system that lists the call and
    queries entities with `net.PlayerInput`:
 
 ```luau
-local move = ctx.call("rtype.replication.readInput", { entity = entity, action = "move" })
+local move = ctx.call("aylo.replication.readInput", { entity = entity, action = "move" })
 -- move.held, move.pressed, move.released, move.axis, move.vector
 if move.vector.x > 0 then ... end
 ```
@@ -125,8 +125,8 @@ says it does not.
 ### Sending
 
 `engine.net.sendToServer(ctx, name, values)` sends a `toServer` packet from a client system that lists
-`"rtype.net.sendToServer"` under `calls`. `engine.net.sendToClients(ctx, name, values, client?)` sends a `toClients`
-packet from a server system that lists `"rtype.net.sendToClients"`, to every client or only to `client` (an id from
+`"aylo.net.sendToServer"` under `calls`. `engine.net.sendToClients(ctx, name, values, client?)` sends a `toClients`
+packet from a server system that lists `"aylo.net.sendToClients"`, to every client or only to `client` (an id from
 `net.ClientConnected` or a packet's `sender`). `values` is a table with every field of the packet.
 
 ```luau
@@ -134,10 +134,10 @@ engine.ecs.system("game.PickTeam", {
 	phase = "Update",
 	side = "client",
 	query = {},
-	events = { read = { "rtype.UiClicked" } },
-	calls = { "rtype.net.sendToServer" },
+	events = { read = { "aylo.UiClicked" } },
+	calls = { "aylo.net.sendToServer" },
 	run = function(ctx)
-		for click in ctx.events.read("rtype.UiClicked") do
+		for click in ctx.events.read("aylo.UiClicked") do
 			if click.action == "menu.red" then
 				engine.net.sendToServer(ctx, "game.Join", { team = 1, name = "Alice" })
 			end
@@ -204,8 +204,8 @@ sides. A networked game runs there **unchanged**; the engine plays the server wi
 
 - You are **client 1**. `net.ClientConnected { client = 1 }` is raised once when the game starts, so your server
   system spawns the player's entity as it does for a real client, with `net.Owner { client = 1 }`.
-- `rtype.replication.localClient` returns `{ connected = true, client = 1 }` at once.
-- Your keyboard and gamepad are the input of the entity client 1 owns: `rtype.replication.readInput` gives the same
+- `aylo.replication.localClient` returns `{ connected = true, client = 1 }` at once.
+- Your keyboard and gamepad are the input of the entity client 1 owns: `aylo.replication.readInput` gives the same
   held, pressed and released as on a server, in the same order (after `net.applyInputs`).
 - Packets loop back inside the world, one frame later, checked like network ones (a wrong field is the same script
   error). `engine.net.sendToServer` arrives with `sender = 1`. `engine.net.sendToClients` arrives with `sender = 0`; it

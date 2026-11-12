@@ -1,0 +1,59 @@
+/*
+** EPITECH PROJECT, 2026
+** aylo
+** File description:
+** TextPlugin
+*/
+
+#pragma once
+
+#include <span>
+#include <string_view>
+
+#include "aylo/ecs/app/Plugin.hpp"
+#include "plugins/text/Export.hpp"
+
+namespace aylo::ecs {
+class App;
+}  // namespace aylo::ecs
+
+namespace aylo::plugins::text {
+
+/// @brief Text drawn from MSDF font atlases: inserts the FontAssets resource, registers TextRenderer, and draws the
+/// texts with the sprites.
+///
+/// @details Two systems:
+/// - Render "aylo.Text.Textures", on the client, before the GraphicsPlugin loads the textures: hands the atlas images
+///   of the fonts loaded since the last frame to TextureAssets, so a font loaded during Update is drawn in that frame.
+///   It runs after the TilemapPlugin's "aylo.Tilemap.Textures", which also writes TextureAssets.
+/// - Render "aylo.Text.Draw", on the client, after the GraphicsPlugin's camera and before its sprites: lays out each
+///   TextRenderer whose font and atlas are loaded (layoutText()) and pushes it to the SpriteQueue as a
+///   contract::renderer::Text, at its entity's GlobalTransform, so it is sorted with the sprites by
+///   TextRenderer::layer. It runs after the TilemapPlugin's "aylo.Tilemap.Draw", which pushes to the same queue (the
+///   schedule needs them ordered; the order only breaks the ties of the sort).
+/// It requires the GraphicsPlugin and the ShaderPlugin. Its Render systems are ordered against the GraphicsPlugin's, so
+/// an App without a window (a server) does not add it: it inserts FontAssets itself to measure texts.
+class AYLO_PLUGIN_TEXT_API TextPlugin : public ecs::Plugin {
+  public:
+    static constexpr std::string_view kName = "aylo.Text";                     ///< The plugin's name.
+    static constexpr std::string_view kTexturesSystem = "aylo.Text.Textures";  ///< Queues the atlas images.
+    static constexpr std::string_view kDrawSystem = "aylo.Text.Draw";          ///< Draws the texts.
+
+    TextPlugin() = default;
+    ~TextPlugin() override = default;
+    TextPlugin(const TextPlugin& other) = default;
+    TextPlugin& operator=(const TextPlugin& other) = default;
+    TextPlugin(TextPlugin&& other) noexcept = default;
+    TextPlugin& operator=(TextPlugin&& other) noexcept = default;
+
+    /// @return "aylo.Text".
+    [[nodiscard]] std::string_view getName() const noexcept override;
+
+    /// @return The plugins this one needs.
+    [[nodiscard]] std::span<const std::string_view> getDependencies() const noexcept override;
+
+    /// @brief Inserts the resources, registers the component and adds the systems.
+    void build(ecs::App& app) override;
+};
+
+}  // namespace aylo::plugins::text

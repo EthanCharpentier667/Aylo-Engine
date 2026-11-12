@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** SetupFormsTests
 */
@@ -12,30 +12,30 @@
 #include <string>
 #include <utility>
 
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/app/PluginEntry.hpp"
+#include "aylo/ecs/schedule/RunMode.hpp"
+#include "aylo/engine/Engine.hpp"
+#include "aylo/engine/plugin/PluginLoader.hpp"
+#include "aylo/scripting/ScriptHost.hpp"
 #include "core/asset/AssetId.hpp"
 #include "core/library/LibraryEntry.hpp"
 #include "core/system/ExecutablePath.hpp"
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/app/PluginEntry.hpp"
-#include "rtype/ecs/schedule/RunMode.hpp"
-#include "rtype/engine/Engine.hpp"
-#include "rtype/engine/plugin/PluginLoader.hpp"
-#include "rtype/scripting/ScriptHost.hpp"
 
 namespace {
 /// @brief A server App with the plugin libraries loaded but no plugin added, as on a dedicated server: it has the
 /// setup forms, which find none of their calls.
 struct BareApp {
-    rtype::engine::plugin::PluginLoader loader;
-    rtype::ecs::App app{rtype::ecs::RunMode::kServer};
-    std::unique_ptr<rtype::scripting::ScriptHost> host;
+    aylo::engine::plugin::PluginLoader loader;
+    aylo::ecs::App app{aylo::ecs::RunMode::kServer};
+    std::unique_ptr<aylo::scripting::ScriptHost> host;
 
     BareApp() {
-        loader.load(rtype::core::system::getExecutableDirectory() / rtype::engine::Engine::kPluginsDirectory);
-        rtype::core::library::LibraryRegistrar registrar;
-        registrar.provide(rtype::ecs::kPluginRegistryService, app.getPluginRegistry());
+        loader.load(aylo::core::system::getExecutableDirectory() / aylo::engine::Engine::kPluginsDirectory);
+        aylo::core::library::LibraryRegistrar registrar;
+        registrar.provide(aylo::ecs::kPluginRegistryService, app.getPluginRegistry());
         loader.registerInto(registrar);
-        auto created = rtype::scripting::ScriptHost::create(app, {.isServer = true});
+        auto created = aylo::scripting::ScriptHost::create(app, {.isServer = true});
         EXPECT_TRUE(created) << (created ? "" : std::string{created.error().message()});
         host = std::move(*created);
     }
@@ -49,7 +49,7 @@ struct BareApp {
 
 /// @return How a script prints the id of the asset at @p path.
 std::string printedId(const std::string& path) {
-    return std::format("AssetId({:016x})", rtype::core::asset::AssetId::fromPath(path).value);
+    return std::format("AssetId({:016x})", aylo::core::asset::AssetId::fromPath(path).value);
 }
 }  // namespace
 

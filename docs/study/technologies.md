@@ -27,7 +27,7 @@ description of each type (`ecs::TypeInfo`) remove most of the template machinery
 | **xmake** | xmake | **xrepo** (built in) | **One tool and one language (Lua) for build and packages**, ~1500 packages, per-package options (`configs`), cross-platform toolchains, compile commands for clang-tidy | Smaller community than CMake; some IDEs need a plugin |
 
 **Choice: xmake.** A dependency is one `add_requires` line next to the target that uses it, with its options; a module
-rule (`rtype.static_modules`) enforces the dependency rules at build time. Packages are built from source into a
+rule (`aylo.static_modules`) enforces the dependency rules at build time. Packages are built from source into a
 per-user cache, never installed on the system (C1). The CI caches that folder between runs.
 
 ## Graphics API: Vulkan

@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** LuauPluginTests
 */
@@ -11,18 +11,18 @@
 #include <string>
 #include <string_view>
 
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/schedule/Phase.hpp"
-#include "rtype/scripting/ScriptHost.hpp"
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/schedule/Phase.hpp"
+#include "aylo/scripting/ScriptHost.hpp"
 
 namespace {
 /// @brief A bare App and a host on it.
 struct Fixture {
-    rtype::ecs::App app;
-    std::unique_ptr<rtype::scripting::ScriptHost> host;
+    aylo::ecs::App app;
+    std::unique_ptr<aylo::scripting::ScriptHost> host;
 
     Fixture() {
-        auto created = rtype::scripting::ScriptHost::create(app, {});
+        auto created = aylo::scripting::ScriptHost::create(app, {});
         EXPECT_TRUE(created) << (created ? "" : std::string{created.error().message()});
         host = std::move(*created);
     }
@@ -34,7 +34,7 @@ struct Fixture {
     }
 
     [[nodiscard]] bool hasSystem(const std::string_view name) const {
-        return app.getSchedules().getSchedule(rtype::ecs::Phase::kUpdate).findSystem(name) != nullptr;
+        return app.getSchedules().getSchedule(aylo::ecs::Phase::kUpdate).findSystem(name) != nullptr;
     }
 };
 }  // namespace

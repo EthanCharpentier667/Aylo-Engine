@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** main
 */
@@ -13,37 +13,37 @@
 #include <iostream>
 #include <memory>
 
-#include "rtype/ecs/exceptions/MissingResourceException.hpp"
-#include "rtype/ecs/resource/ResourceTraits.hpp"
-#include "rtype/ecs/resource/Resources.hpp"
-#include "rtype/ecs/system/ResourceParam.hpp"
-#include "rtype/ecs/system/System.hpp"
-#include "rtype/ecs/world/World.hpp"
+#include "aylo/ecs/exceptions/MissingResourceException.hpp"
+#include "aylo/ecs/resource/ResourceTraits.hpp"
+#include "aylo/ecs/resource/Resources.hpp"
+#include "aylo/ecs/system/ResourceParam.hpp"
+#include "aylo/ecs/system/System.hpp"
+#include "aylo/ecs/world/World.hpp"
 
-using namespace rtype::ecs;
+using namespace aylo::ecs;
 
 namespace {
 struct Score {
     int value;
 };
-RTYPE_ECS_RESOURCE(Score, "example.Score", value);
+AYLO_ECS_RESOURCE(Score, "example.Score", value);
 
 struct Settings {
     int pointsPerKill;
 };
-RTYPE_ECS_RESOURCE(Settings, "example.Settings", pointsPerKill);
+AYLO_ECS_RESOURCE(Settings, "example.Settings", pointsPerKill);
 
 /// @brief A main-thread-only resource (a window handle would be one): it may even be move-only.
 struct Window {
     std::unique_ptr<int> handle;  ///< Stands for the platform's window.
 };
-RTYPE_ECS_RESOURCE(Window, "example.Window");
+AYLO_ECS_RESOURCE(Window, "example.Window");
 
 /// @brief A resource nobody inserted.
 struct Leaderboard {
     int best;
 };
-RTYPE_ECS_RESOURCE(Leaderboard, "example.Leaderboard", best);
+AYLO_ECS_RESOURCE(Leaderboard, "example.Leaderboard", best);
 
 /// @brief Reads the settings, writes the score.
 void scoreAKill(ResMut<Score> score, Res<Settings> settings) {

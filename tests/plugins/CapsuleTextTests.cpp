@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** CapsuleTextTests
 */
@@ -15,6 +15,12 @@
 #include <string_view>
 #include <vector>
 
+#include "aylo/ecs/component/ComponentTraits.hpp"
+#include "aylo/ecs/component/Components.hpp"
+#include "aylo/ecs/entity/Entity.hpp"
+#include "aylo/ecs/system/Side.hpp"
+#include "aylo/ecs/type/String.hpp"
+#include "aylo/ecs/world/World.hpp"
 #include "core/asset/AssetId.hpp"
 #include "plugins/AssetIdReflection.hpp"  // IWYU pragma: keep
 #include "plugins/GlmReflection.hpp"      // IWYU pragma: keep
@@ -22,31 +28,25 @@
 #include "plugins/capsule/Capsules.hpp"
 #include "plugins/capsule/exceptions/CapsuleException.hpp"
 #include "plugins/capsule/format/CapsuleText.hpp"
-#include "rtype/ecs/component/ComponentTraits.hpp"
-#include "rtype/ecs/component/Components.hpp"
-#include "rtype/ecs/entity/Entity.hpp"
-#include "rtype/ecs/system/Side.hpp"
-#include "rtype/ecs/type/String.hpp"
-#include "rtype/ecs/world/World.hpp"
 
-namespace rtype::test::capsule_text {
+namespace aylo::test::capsule_text {
 struct Health {
     std::int32_t value{1};
 };
-RTYPE_ECS_COMPONENT(Health, "test.text.Health", value);
+AYLO_ECS_COMPONENT(Health, "test.text.Health", value);
 
 struct Pose {
     glm::vec2 position{0.F};
     float rotation{0.F};
 };
-RTYPE_ECS_COMPONENT(Pose, "test.text.Pose", position, rotation);
+AYLO_ECS_COMPONENT(Pose, "test.text.Pose", position, rotation);
 
 struct Sprite {
     core::asset::AssetId texture;
     std::int16_t layer{0};
     bool flip{false};
 };
-RTYPE_ECS_COMPONENT(Sprite, "test.text.Sprite", texture, layer, flip);
+AYLO_ECS_COMPONENT(Sprite, "test.text.Sprite", texture, layer, flip);
 
 struct Label {
     std::string text;
@@ -54,34 +54,34 @@ struct Label {
     std::array<float, 2> pair{};
     ecs::String tag;
 };
-RTYPE_ECS_COMPONENT(Label, "test.text.Label", text, points, pair, tag);
+AYLO_ECS_COMPONENT(Label, "test.text.Label", text, points, pair, tag);
 
 struct Wide {
     double big{0.0};
     std::uint8_t small{0};
     std::int64_t negative{0};
 };
-RTYPE_ECS_COMPONENT(Wide, "test.text.Wide", big, small, negative);
+AYLO_ECS_COMPONENT(Wide, "test.text.Wide", big, small, negative);
 
 struct Target {
     ecs::Entity entity;
 };
-RTYPE_ECS_COMPONENT(Target, "test.text.Target", entity);
+AYLO_ECS_COMPONENT(Target, "test.text.Target", entity);
 
 struct Enemy {};
-RTYPE_ECS_COMPONENT(Enemy, "test.text.Enemy");
-}  // namespace rtype::test::capsule_text
+AYLO_ECS_COMPONENT(Enemy, "test.text.Enemy");
+}  // namespace aylo::test::capsule_text
 
-namespace capsule = rtype::plugins::capsule;
-namespace format = rtype::plugins::capsule::format;
-namespace tt = rtype::test::capsule_text;
+namespace capsule = aylo::plugins::capsule;
+namespace format = aylo::plugins::capsule::format;
+namespace tt = aylo::test::capsule_text;
 
 namespace {
 /// @brief A world with the test components registered, and capsules to read into.
 class CapsuleTextTest : public ::testing::Test {
   protected:
     void SetUp() override {
-        rtype::ecs::Components& components = world.getComponents();
+        aylo::ecs::Components& components = world.getComponents();
         static_cast<void>(components.registerType<tt::Health>());
         static_cast<void>(components.registerType<tt::Pose>());
         static_cast<void>(components.registerType<tt::Sprite>());
@@ -112,7 +112,7 @@ class CapsuleTextTest : public ::testing::Test {
         return read.getNodes()[node].values.get<T>(world.getComponents());
     }
 
-    rtype::ecs::World world;     ///< Holds the components.
+    aylo::ecs::World world;      ///< Holds the components.
     capsule::Capsules capsules;  ///< Instanced capsules and asset paths.
 };
 }  // namespace
@@ -139,12 +139,12 @@ TEST_F(CapsuleTextTest, ReadsTheNodesAndTheirValues) {
     EXPECT_EQ(nodes[1].name, "Turret");
     ASSERT_TRUE(nodes[1].instance);
     EXPECT_EQ(nodes[1].instance->path, "actors/turret.actor");  // normalized
-    EXPECT_EQ(nodes[1].side, rtype::ecs::Side::kBoth);
+    EXPECT_EQ(nodes[1].side, aylo::ecs::Side::kBoth);
     EXPECT_FLOAT_EQ(get<tt::Pose>(boss, 1)->position.x, -40.F);
     EXPECT_FLOAT_EQ(get<tt::Pose>(boss, 1)->position.y, 0.5F);
     EXPECT_FLOAT_EQ(get<tt::Pose>(boss, 1)->rotation, 1.25F);
     EXPECT_EQ(nodes[2].parent, 1U);
-    EXPECT_EQ(nodes[2].side, rtype::ecs::Side::kClient);
+    EXPECT_EQ(nodes[2].side, aylo::ecs::Side::kClient);
     const tt::Label* label = get<tt::Label>(boss, 2);
     ASSERT_NE(label, nullptr);
     EXPECT_EQ(label->text, "fire \"now\"");
@@ -189,7 +189,7 @@ test.text.Sprite = { texture = "sprites/./ship.png", layer = -3, flip = true }
 [node path="Raw"]
 test.text.Sprite = { texture = 0x2a })");
     const tt::Sprite* sprite = get<tt::Sprite>(read, 0);
-    EXPECT_EQ(sprite->texture, rtype::core::asset::AssetId::fromPath("sprites/ship.png"));
+    EXPECT_EQ(sprite->texture, aylo::core::asset::AssetId::fromPath("sprites/ship.png"));
     EXPECT_EQ(sprite->layer, -3);
     EXPECT_TRUE(sprite->flip);
     ASSERT_NE(capsules.findAssetPath(sprite->texture), nullptr);

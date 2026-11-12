@@ -1,0 +1,13 @@
+[capsule format=1]
+
+[node path="."]
+aylo.Transform = {}
+
+[node path="TopWall" instance="actors/wall.actor"]
+aylo.Transform = { position = (419.4, 140) }
+
+[node path="Rock" instance="actors/rock.actor"]
+aylo.Transform = { position = (400, 300) }
+
+[node path="BottomWall" instance="actors/wall.actor"]
+aylo.Transform = { position = (400, 460) }

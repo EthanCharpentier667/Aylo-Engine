@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** EditorConsoleTests
 */
@@ -22,7 +22,7 @@
 #include "editor/shell/TextEditor.hpp"
 
 namespace {
-namespace console = rtype::editor::console;
+namespace console = aylo::editor::console;
 
 /// @return The texts of @p log's lines.
 std::vector<std::string> textsOf(const console::ConsoleLog& log) {
@@ -84,26 +84,26 @@ TEST(EditorConsole, CapturesWhatTheProgramWritesWithCAndCpp) {
 
 TEST(EditorTextEditor, RunsTheEditorOnTheFileInTheBackground) {
 #ifdef _WIN32
-    EXPECT_EQ(rtype::editor::shell::buildOpenCommand("code", "C:/game/a b.actor"),
+    EXPECT_EQ(aylo::editor::shell::buildOpenCommand("code", "C:/game/a b.actor"),
               "start \"\" code \"C:/game/a b.actor\" >NUL 2>&1");
 #else
-    EXPECT_EQ(rtype::editor::shell::buildOpenCommand("code", "/game/a b.actor"),
+    EXPECT_EQ(aylo::editor::shell::buildOpenCommand("code", "/game/a b.actor"),
               "code '/game/a b.actor' >/dev/null 2>&1 &");
-    EXPECT_EQ(rtype::editor::shell::buildOpenCommand("vim", "/game/it's.actor"),
+    EXPECT_EQ(aylo::editor::shell::buildOpenCommand("vim", "/game/it's.actor"),
               "vim '/game/it'\\''s.actor' >/dev/null 2>&1 &");
 #endif
 }
 
 TEST(EditorTextEditor, DefaultsToAnEditorThatCanRun) {
-    const std::string editor = rtype::editor::shell::defaultTextEditor();
+    const std::string editor = aylo::editor::shell::defaultTextEditor();
     EXPECT_TRUE(editor.contains("ode") || editor == "codium" || editor == "xdg-open") << editor;
 }
 
 TEST(EditorTextEditor, RefusesACommandThatDoesNotExist) {
 #ifndef _WIN32
-    EXPECT_FALSE(rtype::editor::shell::isCommandAvailable("no-such-editor-for-the-tests"));
-    EXPECT_FALSE(rtype::editor::shell::openInTextEditor("no-such-editor-for-the-tests", "/game/a.actor"));
-    EXPECT_TRUE(rtype::editor::shell::isCommandAvailable("sh -c"));
+    EXPECT_FALSE(aylo::editor::shell::isCommandAvailable("no-such-editor-for-the-tests"));
+    EXPECT_FALSE(aylo::editor::shell::openInTextEditor("no-such-editor-for-the-tests", "/game/a.actor"));
+    EXPECT_TRUE(aylo::editor::shell::isCommandAvailable("sh -c"));
 #endif
 }
 

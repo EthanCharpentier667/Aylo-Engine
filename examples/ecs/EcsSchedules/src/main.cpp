@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** main
 */
@@ -15,24 +15,24 @@
 #include <memory>
 #include <string_view>
 
-#include "rtype/ecs/component/ComponentTraits.hpp"
-#include "rtype/ecs/exceptions/ScheduleException.hpp"
-#include "rtype/ecs/query/Query.hpp"
-#include "rtype/ecs/schedule/Phase.hpp"
-#include "rtype/ecs/schedule/RunMode.hpp"
-#include "rtype/ecs/schedule/Schedules.hpp"
-#include "rtype/ecs/system/Side.hpp"
-#include "rtype/ecs/time/FixedTimestep.hpp"
-#include "rtype/ecs/time/TimeClock.hpp"
-#include "rtype/ecs/world/World.hpp"
+#include "aylo/ecs/component/ComponentTraits.hpp"
+#include "aylo/ecs/exceptions/ScheduleException.hpp"
+#include "aylo/ecs/query/Query.hpp"
+#include "aylo/ecs/schedule/Phase.hpp"
+#include "aylo/ecs/schedule/RunMode.hpp"
+#include "aylo/ecs/schedule/Schedules.hpp"
+#include "aylo/ecs/system/Side.hpp"
+#include "aylo/ecs/time/FixedTimestep.hpp"
+#include "aylo/ecs/time/TimeClock.hpp"
+#include "aylo/ecs/world/World.hpp"
 
-using namespace rtype::ecs;
+using namespace aylo::ecs;
 
 namespace {
 struct Health {
     int value;
 };
-RTYPE_ECS_COMPONENT(Health, "example.Health", value);
+AYLO_ECS_COMPONENT(Health, "example.Health", value);
 
 void noop() {}
 void writeHealth(Query<Health> /*healths*/) {}

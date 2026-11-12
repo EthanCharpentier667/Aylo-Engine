@@ -15,7 +15,7 @@ The editor is its own program, `aylo-editor`. You make your game in it, and you 
 
 Nothing changes in your project. The editor runs both sides of the game in one process, the server's gameplay included,
 with no network, and it is always a debug run: `engine.isDebug` is `true`, even in a release build. Your scenes are
-[capsules](capsules.md), so list `rtype.Capsule`; the editor adds it if you forget. A networked game works there as it
+[capsules](capsules.md), so list `aylo.Capsule`; the editor adds it if you forget. A networked game works there as it
 is: you are client 1 of your own server, see [Standalone and the editor](networking.md#standalone-and-the-editor).
 
 To open a scene at once, name it in `project.luau`:
@@ -80,7 +80,7 @@ Ctrl+S. The file is written by the engine, as described in
 [Reading and writing capsule files](capsule-files.md#when-the-engine-writes-a-file): only what differs from the
 defaults is written, and the comments of a file you wrote by hand are lost.
 
-Each entity a capsule spawns is named after its node (the file's name for the root), in the component `rtype.Name`.
+Each entity a capsule spawns is named after its node (the file's name for the root), in the component `aylo.Name`.
 The editor shows those names; your scripts can read them, and give names to the entities they spawn.
 
 ### Edit an actor alone

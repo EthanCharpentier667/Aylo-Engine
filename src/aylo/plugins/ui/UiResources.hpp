@@ -1,0 +1,37 @@
+/*
+** EPITECH PROJECT, 2026
+** aylo
+** File description:
+** UiResources
+*/
+
+#pragma once
+
+#include <glm/ext/vector_float2.hpp>
+
+#include "aylo/ecs/entity/Entity.hpp"
+#include "aylo/ecs/resource/ResourceTraits.hpp"
+#include "plugins/GlmReflection.hpp"  // IWYU pragma: keep
+
+namespace aylo::plugins::ui {
+
+/// @brief The pointer as the UI sees it, as the ECS resource "aylo.UiPointer".
+struct UiPointer {
+    glm::vec2 position{0.0F};  ///< In view pixels.
+    bool overUi = false;       ///< It is over something of the UI: gameplay should ignore clicks. Nothing blocks them.
+    ecs::Entity hovered;       ///< The UiInteraction node under it, or null.
+    ecs::Entity pressed;       ///< The UiInteraction node it holds down, or null.
+    ecs::Entity clicked;       ///< The UiInteraction node it activated in this frame, or null.
+};
+AYLO_ECS_RESOURCE(UiPointer, "aylo.UiPointer", position, overUi, hovered, pressed, clicked);
+
+/// @brief What has the keyboard and the gamepad, as the ECS resource "aylo.UiFocus".
+struct UiFocus {
+    ecs::Entity focused;     ///< The focused UiInteraction node, or null.
+    bool typing = false;     ///< It is a UiTextInput: gameplay should ignore the keyboard.
+    bool activated = false;  ///< The keyboard or the gamepad activated it in this frame.
+    float adjust = 0.0F;     ///< Left or right was pressed on a slider in this frame: -1 or 1.
+};
+AYLO_ECS_RESOURCE(UiFocus, "aylo.UiFocus", focused, typing, activated, adjust);
+
+}  // namespace aylo::plugins::ui

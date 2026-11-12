@@ -1,6 +1,6 @@
 # Luau sandbox and table freeze
 
-How `rtype::luau::Runtime` isolates scripts from each other and from the standard libraries. Nothing in the engine
+How `aylo::luau::Runtime` isolates scripts from each other and from the standard libraries. Nothing in the engine
 turns it on yet: a game script cannot see it (`ScriptHost` will call `sandbox()` once `require` lands, see the
 epic "[Luau] require() for game scripts").
 

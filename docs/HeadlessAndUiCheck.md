@@ -6,21 +6,21 @@ Checked against `main` at `ca0b15aa`, by reading `src/`, `docs/` and `tests/`. N
 
 | Capability | Status | Evidence |
 |---|---|---|
-| Luau game code with no window or renderer | Supported on the server side: `aylo-runtime --server --game <dir>` registers no backend | `src/rtype/runtime/main.cpp`, `docs/engine/design.md` (Executables) |
+| Luau game code with no window or renderer | Supported on the server side: `aylo-runtime --server --game <dir>` registers no backend | `src/aylo/runtime/main.cpp`, `docs/engine/design.md` (Executables) |
 | `require()` in game scripts | Supported: string paths, `@scripts`/`@self` aliases, entry points `scripts.main/server/client`, sandbox sealed | `ScriptHost.cpp` (`ModuleLoader`, `sandbox()`), `ScriptResolver`, `tests/scripting/ScriptRequireTests.cpp`, `docs/scripting/plan.md` D10 |
-| Stop the process from a script with a code | Supported (GR5-35): a script sends `rtype.AppExit { code }` (registered by `App`), `Engine::run` returns the code of the first one | `ecs/app/App.cpp`, `tests/scripting/ScriptSystemRunTests.cpp` |
+| Stop the process from a script with a code | Supported (GR5-35): a script sends `aylo.AppExit { code }` (registered by `App`), `Engine::run` returns the code of the first one | `ecs/app/App.cpp`, `tests/scripting/ScriptSystemRunTests.cpp` |
 | Dedicated test-runner mode (run N frames, exit non-zero on failure) | Supported (GR5-35): `aylo-runtime --ticks <n>` stops with 0 after `n` **frames** (not fixed-timestep ticks: a frame runs `FixedUpdate` zero or several times, so the flag gives no tick count); an `AppExit` wins over the limit and a game sends one with a non-zero code to fail; a hot reload whose build fails ends the run with 84; `--ticks` given twice, or with a value that is not a whole number fitting a `size_t`, is refused before the engine starts. A limit in fixed ticks is **not provided** | `runtime/main.cpp`, `CommandLine.cpp` (`takeFrameLimit`), `Engine::run(maxFrames)` |
 | Headless client (client-side systems, no window) | Missing: client mode needs the backends `project.luau` names, and the UI and graphics plugins are `Side::kClient`. UI logic cannot be tested without a window | `UiPlugin.cpp` |
 
 Stale docs: `docs/luau/modules.md` and `docs/luau/sandbox.md` still say `ScriptHost` does not expose `require` yet. The code and `docs/scripting/plan.md` say it does.
 
-## UI plugin (`rtype.Ui`) for the debug panel
+## UI plugin (`aylo.Ui`) for the debug panel
 
 | Need | Status |
 |---|---|
 | Panel (layout, background, borders, scroll) | Supported: flexbox via Yoga, `UiBackground`, `UiScroll` |
-| Buttons | Supported: `UiButton`, event `rtype.UiClicked` |
-| Toggles | Supported: `UiToggle`, event `rtype.UiValueChanged` |
+| Buttons | Supported: `UiButton`, event `aylo.UiClicked` |
+| Toggles | Supported: `UiToggle`, event `aylo.UiValueChanged` |
 | Text | Supported: `UiText`, wrapping on word boundaries |
 | Text fields | Supported, single line: `UiTextInput`, events `UiTextChanged`/`UiTextSubmitted` |
 | Sliders | Supported (horizontal) |

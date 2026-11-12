@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** PluginEntryTests
 */
@@ -12,17 +12,17 @@
 #include <string_view>
 #include <utility>
 
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/app/Plugin.hpp"
+#include "aylo/ecs/app/PluginEntry.hpp"
+#include "aylo/ecs/app/PluginRegistry.hpp"
 #include "core/config/Settings.hpp"
 #include "core/library/LibraryEntry.hpp"
 #include "core/library/exceptions/LibraryException.hpp"
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/app/Plugin.hpp"
-#include "rtype/ecs/app/PluginEntry.hpp"
-#include "rtype/ecs/app/PluginRegistry.hpp"
 
 namespace {
 /// @brief A plugin that keeps a setting, as one read by a factory.
-class ConfiguredPlugin final : public rtype::ecs::Plugin {
+class ConfiguredPlugin final : public aylo::ecs::Plugin {
   public:
     explicit ConfiguredPlugin(std::string level) : _level{std::move(level)} {}
     ~ConfiguredPlugin() override = default;
@@ -33,54 +33,54 @@ class ConfiguredPlugin final : public rtype::ecs::Plugin {
 
     [[nodiscard]] const std::string& getLevel() const noexcept { return _level; }
     [[nodiscard]] std::string_view getName() const noexcept override { return "test.configured"; }
-    void build(rtype::ecs::App& /*app*/) override {}
+    void build(aylo::ecs::App& /*app*/) override {}
 
   private:
     std::string _level;  ///< The setting read.
 };
 }  // namespace
 
-RTYPE_PLUGIN_LIBRARY(registrar) {
-    registrar.getPlugins().add("test.configured", [](const rtype::core::config::Settings& settings) {
+AYLO_PLUGIN_LIBRARY(registrar) {
+    registrar.getPlugins().add("test.configured", [](const aylo::core::config::Settings& settings) {
         return std::make_unique<ConfiguredPlugin>(settings.getString("test.level", "none"));
     });
 }
 
 TEST(PluginEntry, ALibraryPassesItsOwnCheck) {
-    EXPECT_NO_THROW(rtype::core::library::checkLibrary(*rtypeLibrary(), "test"));
+    EXPECT_NO_THROW(aylo::core::library::checkLibrary(*ayloLibrary(), "test"));
 }
 
 TEST(PluginEntry, ALibraryRegistersItsPluginsWithTheSettings) {
-    rtype::ecs::PluginRegistry registry;
-    rtype::core::config::Settings settings;
+    aylo::ecs::PluginRegistry registry;
+    aylo::core::config::Settings settings;
     settings.set("test.level", "hard");
     registry.setSettings(settings);
-    rtype::core::library::LibraryRegistrar registrar;
-    registrar.provide(rtype::ecs::kPluginRegistryService, registry);
-    rtypeLibrary()->registerLibrary(registrar);
+    aylo::core::library::LibraryRegistrar registrar;
+    registrar.provide(aylo::ecs::kPluginRegistryService, registry);
+    ayloLibrary()->registerLibrary(registrar);
 
-    const std::unique_ptr<rtype::ecs::Plugin> plugin = registry.create("test.configured");
+    const std::unique_ptr<aylo::ecs::Plugin> plugin = registry.create("test.configured");
     ASSERT_NE(plugin, nullptr);
     EXPECT_EQ(dynamic_cast<ConfiguredPlugin&>(*plugin).getLevel(), "hard");
 }
 
 TEST(PluginEntry, RefusesAnotherVersionAndNamesTheFile) {
-    rtype::core::library::LibraryEntry library = *rtypeLibrary();
-    library.abiVersion = rtype::core::library::kLibraryAbiVersion + 1;
+    aylo::core::library::LibraryEntry library = *ayloLibrary();
+    library.abiVersion = aylo::core::library::kLibraryAbiVersion + 1;
     try {
-        rtype::core::library::checkLibrary(library, "boss.so");
+        aylo::core::library::checkLibrary(library, "boss.so");
         FAIL() << "the library was accepted";
-    } catch (const rtype::core::library::exceptions::LibraryException& error) {
+    } catch (const aylo::core::library::exceptions::LibraryException& error) {
         EXPECT_TRUE(std::string_view{error.what()}.contains("boss.so"));
     }
 }
 
 TEST(PluginEntry, RefusesAnotherToolchain) {
-    rtype::core::library::LibraryEntry library = *rtypeLibrary();
+    aylo::core::library::LibraryEntry library = *ayloLibrary();
     library.toolchain = "another compiler";
-    EXPECT_THROW(rtype::core::library::checkLibrary(library, "boss.so"),
-                 rtype::core::library::exceptions::LibraryException);
+    EXPECT_THROW(aylo::core::library::checkLibrary(library, "boss.so"),
+                 aylo::core::library::exceptions::LibraryException);
     library.toolchain = nullptr;
-    EXPECT_THROW(rtype::core::library::checkLibrary(library, "boss.so"),
-                 rtype::core::library::exceptions::LibraryException);
+    EXPECT_THROW(aylo::core::library::checkLibrary(library, "boss.so"),
+                 aylo::core::library::exceptions::LibraryException);
 }

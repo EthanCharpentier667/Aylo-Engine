@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** TiledJsonTests
 */
@@ -15,15 +15,15 @@
 #include <string_view>
 #include <vector>
 
+#include "aylo/contract/renderer/drawing/Color.hpp"
 #include "plugins/tilemap/Tilemap.hpp"
 #include "plugins/tilemap/detail/TiledJson.hpp"
 #include "plugins/tilemap/exceptions/TilemapExceptions.hpp"
-#include "rtype/contract/renderer/drawing/Color.hpp"
 
-using rtype::plugins::tilemap::LayerKind;
-using rtype::plugins::tilemap::MapLayer;
-using rtype::plugins::tilemap::Tilemap;
-using rtype::plugins::tilemap::exceptions::TilemapException;
+using aylo::plugins::tilemap::LayerKind;
+using aylo::plugins::tilemap::MapLayer;
+using aylo::plugins::tilemap::Tilemap;
+using aylo::plugins::tilemap::exceptions::TilemapException;
 
 namespace {
 /// @brief A map with an embedded and an external tileset, an image layer, a group holding a tile layer, and an object
@@ -55,13 +55,13 @@ constexpr std::string_view kProps = R"({ "name": "props", "image": "props.png", 
 
 /// @return The map of @p text, read from assets/levels/level.tmj, its external tilesets from @p tilesets.
 Tilemap parse(std::string_view text, std::vector<std::filesystem::path>* asked = nullptr) {
-    return rtype::plugins::tilemap::detail::parseTiledMap(text, "assets/levels/level.tmj",
-                                                          [asked](const std::filesystem::path& path) {
-                                                              if (asked != nullptr) {
-                                                                  asked->push_back(path);
-                                                              }
-                                                              return std::string{kProps};
-                                                          });
+    return aylo::plugins::tilemap::detail::parseTiledMap(text, "assets/levels/level.tmj",
+                                                         [asked](const std::filesystem::path& path) {
+                                                             if (asked != nullptr) {
+                                                                 asked->push_back(path);
+                                                             }
+                                                             return std::string{kProps};
+                                                         });
 }
 
 /// @return A map whose layers are @p layers, a JSON array.
@@ -98,7 +98,7 @@ TEST(TiledJson, ReadsAnImageLayer) {
     EXPECT_TRUE(sky.repeatX);
     EXPECT_FALSE(sky.repeatY);
     EXPECT_EQ(sky.parallax, (glm::vec2{0.5F, 1.0F}));
-    EXPECT_EQ(sky.tint, (rtype::contract::renderer::Color{1.0F, 0.0F, 0.0F, 1.0F}));
+    EXPECT_EQ(sky.tint, (aylo::contract::renderer::Color{1.0F, 0.0F, 0.0F, 1.0F}));
 }
 
 TEST(TiledJson, FlattensGroupsIntoTheirLayers) {
@@ -119,7 +119,7 @@ TEST(TiledJson, ReadsTheTilesWithTheirFlags) {
     EXPECT_EQ(walls.getTile({0, 0}), 1U);
     EXPECT_EQ(walls.getTile({1, 0}), 0U);
     EXPECT_EQ(walls.getTile({2, 0}), 2U);
-    EXPECT_EQ(walls.getTile({1, 1}), 3U | rtype::plugins::tilemap::kFlipHorizontal);
+    EXPECT_EQ(walls.getTile({1, 1}), 3U | aylo::plugins::tilemap::kFlipHorizontal);
 }
 
 TEST(TiledJson, ReadsTheChunksOfAnInfiniteMap) {

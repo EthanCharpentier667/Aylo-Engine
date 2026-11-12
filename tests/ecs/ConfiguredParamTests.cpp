@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ConfiguredParamTests
 */
@@ -9,23 +9,23 @@
 
 #include <memory>
 
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/resource/ResourceTraits.hpp"
-#include "rtype/ecs/schedule/Phase.hpp"
-#include "rtype/ecs/schedule/RunMode.hpp"
-#include "rtype/ecs/schedule/Schedule.hpp"
-#include "rtype/ecs/schedule/Schedules.hpp"
-#include "rtype/ecs/system/ResourceParam.hpp"
-#include "rtype/ecs/system/System.hpp"
-#include "rtype/ecs/system/SystemAccess.hpp"
-#include "rtype/ecs/system/SystemParam.hpp"
-#include "rtype/ecs/world/World.hpp"
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/resource/ResourceTraits.hpp"
+#include "aylo/ecs/schedule/Phase.hpp"
+#include "aylo/ecs/schedule/RunMode.hpp"
+#include "aylo/ecs/schedule/Schedule.hpp"
+#include "aylo/ecs/schedule/Schedules.hpp"
+#include "aylo/ecs/system/ResourceParam.hpp"
+#include "aylo/ecs/system/System.hpp"
+#include "aylo/ecs/system/SystemAccess.hpp"
+#include "aylo/ecs/system/SystemParam.hpp"
+#include "aylo/ecs/world/World.hpp"
 
-namespace rtype::test::configured {
+namespace aylo::test::configured {
 struct Score {
     int value;
 };
-RTYPE_ECS_RESOURCE(Score, "test.configured.Score", value);
+AYLO_ECS_RESOURCE(Score, "test.configured.Score", value);
 
 /// @brief A parameter configured when the system is added: the bonus each run adds.
 struct Bonus {
@@ -46,9 +46,9 @@ struct Factor {
 struct FactorConfig {
     int value;
 };
-}  // namespace rtype::test::configured
+}  // namespace aylo::test::configured
 
-namespace rtype::ecs {
+namespace aylo::ecs {
 /// @brief Bonus keeps the value its configuration gave, and accesses nothing.
 template <>
 struct SystemParam<test::configured::Bonus> {
@@ -82,19 +82,19 @@ struct SystemParam<test::configured::Factor> {
 
     static void addAccess(const State& /*state*/, SystemAccess& /*access*/) noexcept {}
 };
-}  // namespace rtype::ecs
+}  // namespace aylo::ecs
 
 namespace {
-using rtype::ecs::Phase;
-using rtype::ecs::ResMut;
-using rtype::ecs::RunMode;
-using rtype::ecs::System;
-using rtype::ecs::World;
-using rtype::test::configured::Bonus;
-using rtype::test::configured::BonusConfig;
-using rtype::test::configured::Factor;
-using rtype::test::configured::FactorConfig;
-using rtype::test::configured::Score;
+using aylo::ecs::Phase;
+using aylo::ecs::ResMut;
+using aylo::ecs::RunMode;
+using aylo::ecs::System;
+using aylo::ecs::World;
+using aylo::test::configured::Bonus;
+using aylo::test::configured::BonusConfig;
+using aylo::test::configured::Factor;
+using aylo::test::configured::FactorConfig;
+using aylo::test::configured::Score;
 
 void addBonus(ResMut<Score> score, Bonus bonus) { score->value += bonus.value; }
 
@@ -107,8 +107,8 @@ BonusConfig bonusOf(int value) { return BonusConfig{.value = std::make_unique<in
 int scoreOf(const World& world) { return world.getResources().require<Score>().value; }
 }  // namespace
 
-static_assert(rtype::ecs::ConfiguredParameter<Bonus>);
-static_assert(!rtype::ecs::ConfiguredParameter<ResMut<Score>>);
+static_assert(aylo::ecs::ConfiguredParameter<Bonus>);
+static_assert(!aylo::ecs::ConfiguredParameter<ResMut<Score>>);
 
 TEST(ConfiguredParam, ReceivesItsConfiguration) {
     World world;
@@ -149,19 +149,19 @@ TEST(ConfiguredParam, WorksWithALambda) {
 TEST(ConfiguredParam, IsForwardedByAddSystem) {
     World world;
     world.getResources().insert(Score{.value = 0});
-    rtype::ecs::Schedule schedule{world, RunMode::kStandalone, Phase::kUpdate};
+    aylo::ecs::Schedule schedule{world, RunMode::kStandalone, Phase::kUpdate};
     schedule.addSystem("test.schedule", &addBonus, bonusOf(1));
     schedule.run();
     EXPECT_EQ(scoreOf(world), 1);
 
-    rtype::ecs::Schedules schedules{world, RunMode::kStandalone};
+    aylo::ecs::Schedules schedules{world, RunMode::kStandalone};
     schedules.addSystem(Phase::kUpdate, "test.schedules", &addBonus, bonusOf(10));
     schedules.run(Phase::kUpdate);
     EXPECT_EQ(scoreOf(world), 11);
 }
 
 TEST(ConfiguredParam, IsForwardedByTheApp) {
-    rtype::ecs::App app;
+    aylo::ecs::App app;
     app.insertResource(Score{.value = 0});
     app.addSystem(Phase::kUpdate, "test.app", &addScaledBonus, FactorConfig{.value = 2}, bonusOf(7));
     app.runFrame();

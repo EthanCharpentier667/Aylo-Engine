@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** TimeClockTests
 */
@@ -10,37 +10,37 @@
 #include <chrono>
 #include <memory>
 
-#include "rtype/ecs/resource/ResourceTraits.hpp"
-#include "rtype/ecs/schedule/Phase.hpp"
-#include "rtype/ecs/schedule/RunMode.hpp"
-#include "rtype/ecs/schedule/Schedules.hpp"
-#include "rtype/ecs/system/ResourceParam.hpp"
-#include "rtype/ecs/time/FixedTimestep.hpp"
-#include "rtype/ecs/time/Time.hpp"
-#include "rtype/ecs/time/TimeClock.hpp"
-#include "rtype/ecs/world/World.hpp"
+#include "aylo/ecs/resource/ResourceTraits.hpp"
+#include "aylo/ecs/schedule/Phase.hpp"
+#include "aylo/ecs/schedule/RunMode.hpp"
+#include "aylo/ecs/schedule/Schedules.hpp"
+#include "aylo/ecs/system/ResourceParam.hpp"
+#include "aylo/ecs/time/FixedTimestep.hpp"
+#include "aylo/ecs/time/Time.hpp"
+#include "aylo/ecs/time/TimeClock.hpp"
+#include "aylo/ecs/world/World.hpp"
 
-namespace rtype::test::time_clock {
+namespace aylo::test::time_clock {
 /// @brief What the systems saw of Time.
 struct Seen {
     int ticks;  ///< Time::tick + 1 for each FixedUpdate run, one digit each.
     float fixedDeltaAtStartup;
     float alphaInUpdate;
 };
-RTYPE_ECS_RESOURCE(Seen, "test.timeClock.Seen", ticks, fixedDeltaAtStartup, alphaInUpdate);
-}  // namespace rtype::test::time_clock
+AYLO_ECS_RESOURCE(Seen, "test.timeClock.Seen", ticks, fixedDeltaAtStartup, alphaInUpdate);
+}  // namespace aylo::test::time_clock
 
 namespace {
-using rtype::ecs::FixedTimestep;
-using rtype::ecs::Phase;
-using rtype::ecs::Res;
-using rtype::ecs::ResMut;
-using rtype::ecs::RunMode;
-using rtype::ecs::Schedules;
-using rtype::ecs::Time;
-using rtype::ecs::TimeClock;
-using rtype::ecs::World;
-using rtype::test::time_clock::Seen;
+using aylo::ecs::FixedTimestep;
+using aylo::ecs::Phase;
+using aylo::ecs::Res;
+using aylo::ecs::ResMut;
+using aylo::ecs::RunMode;
+using aylo::ecs::Schedules;
+using aylo::ecs::Time;
+using aylo::ecs::TimeClock;
+using aylo::ecs::World;
+using aylo::test::time_clock::Seen;
 using std::chrono::milliseconds;
 
 void seeFixedDelta(Res<Time> time, ResMut<Seen> seen) { seen->fixedDeltaAtStartup = time->fixedDelta; }

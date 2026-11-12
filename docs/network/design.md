@@ -1,7 +1,7 @@
 # Network Design
 
-This document specifies the network of the AYLO Engine: the transport library (`rtype-network`), the
-replication library that connects it to the ECS (`rtype-replication`), and the `client` and `server`
+This document specifies the network of the AYLO Engine: the transport library (`aylo-network`), the
+replication library that connects it to the ECS (`aylo-replication`), and the `client` and `server`
 executables. Nothing here is implemented yet. For a shorter first read, see [`overview.md`](overview.md).
 
 It builds on the ECS design, which already decides *what* is replicated and *why*:
@@ -22,8 +22,8 @@ something the ECS docs say, the change is listed in [Differences with the ECS do
 3. [Targets and dependencies](#3-targets-and-dependencies)
 4. [Topology and run modes](#4-topology-and-run-modes)
 5. [Threads](#5-threads)
-6. [Transport: `rtype-network`](#6-transport-rtype-network)
-7. [Replication: `rtype-replication`](#7-replication-rtype-replication)
+6. [Transport: `aylo-network`](#6-transport-aylo-network)
+7. [Replication: `aylo-replication`](#7-replication-aylo-replication)
 8. [Custom packets](#8-custom-packets)
 9. [Lobby and rooms](#9-lobby-and-rooms)
 10. [Robustness and security](#10-robustness-and-security)
@@ -54,8 +54,8 @@ something the ECS docs say, the change is listed in [Differences with the ECS do
   intentions (custom packets), never authoritative world state. The server never trusts what a client sends
   beyond that. The client may *predict* the result of its own inputs to feel instant, but the server's state
   always wins ([7.6](#76-client-prediction-and-reconciliation)).
-- **The transport knows nothing about the ECS.** `rtype-network` moves bytes and messages between endpoints.
-  Only `rtype-replication` knows both sides.
+- **The transport knows nothing about the ECS.** `aylo-network` moves bytes and messages between endpoints.
+  Only `aylo-replication` knows both sides.
 - **One owner per piece of data.** Every variable is written by exactly one thread. Threads talk through
   queues, never through shared variables.
 - **Send states, not differences.** A snapshot says "health is 40", never "health lost 10". Receiving a state
@@ -99,9 +99,9 @@ An arrow means "is used by".
 
 | Target | Kind | Folder / namespace | Contains | Depends on |
 |---|---|---|---|---|
-| `network` | static library (`rtype-network`) | `src/rtype/network/`, `rtype::network` | UDP socket and I/O thread, handshake and sessions, sequence numbers and acks, reliable channel, message packing, `ByteWriter` / `ByteReader`, lobby routing | Asio only. No ECS, no engine. |
-| `replication` | static library (`rtype-replication`) | `src/rtype/replication/`, `rtype::replication` | `ReplicationPlugin` (shared types, `InputLayout`), `ServerPlugin` / `ClientPlugin` and their systems, `NetworkId` / `Owner` / `PlayerInput` / `Interpolated`, manifest, snapshot writer and reader, per-client ack bookkeeping, input buffers, custom packet registry | `ecs`, `network` |
-| `engine` | library (today the executable) | `src/rtype/engine/` | The engine shared by both executables | `plugins`, `ecs`, `luau` |
+| `network` | static library (`aylo-network`) | `src/aylo/network/`, `aylo::network` | UDP socket and I/O thread, handshake and sessions, sequence numbers and acks, reliable channel, message packing, `ByteWriter` / `ByteReader`, lobby routing | Asio only. No ECS, no engine. |
+| `replication` | static library (`aylo-replication`) | `src/aylo/replication/`, `aylo::replication` | `ReplicationPlugin` (shared types, `InputLayout`), `ServerPlugin` / `ClientPlugin` and their systems, `NetworkId` / `Owner` / `PlayerInput` / `Interpolated`, manifest, snapshot writer and reader, per-client ack bookkeeping, input buffers, custom packet registry | `ecs`, `network` |
+| `engine` | library (today the executable) | `src/aylo/engine/` | The engine shared by both executables | `plugins`, `ecs`, `luau` |
 | `client` | executable | | The game with a window. Can also host a game ([listen server](#4-topology-and-run-modes)). | `engine`, `replication`, `platform-glfw`, `render-vulkan` |
 | `server` | executable, headless | | The dedicated server | `engine`, `replication`. **Never** `platform-glfw` or `render-vulkan`, so it starts on a machine with no display or GPU. |
 
@@ -109,7 +109,7 @@ Rules, in the spirit of the existing dependency rules:
 
 - `network` and `ecs` never include each other's headers. The glue lives in `replication`.
 - `network` is declared with `add_requires("asio 1.36.x")` in its own `xmake.lua`. Exported symbols use
-  `RTYPE_NETWORK_API` / `RTYPE_REPLICATION_API`, like `ecs` and `luau`: both libraries are shared for now (they
+  `AYLO_NETWORK_API` / `AYLO_REPLICATION_API`, like `ecs` and `luau`: both libraries are shared for now (they
   can be switched to static later, as `ecs` allows).
 - The Luau `net` bindings (`net.packet`, `ctx.net`) live in the engine's Luau plugin, which depends on `luau` and
   `replication`. `luau` and `replication` never include each other's headers.
@@ -212,13 +212,13 @@ still has its own I/O and room threads.
 ### Two different ticks
 
 - The **server tick** counts fixed updates (60 per second). It numbers snapshots.
-- The ECS **`Tick`** ([`change/Tick.hpp`](../../src/rtype/ecs/change/Tick.hpp)) counts system runs. It stamps
+- The ECS **`Tick`** ([`change/Tick.hpp`](../../src/aylo/ecs/change/Tick.hpp)) counts system runs. It stamps
   component changes.
 
 When the server sends the snapshot of server tick 101, it records the ECS tick of that moment (say 5432).
 "Changed since this snapshot" then means "change tick greater than 5432".
 
-## 6. Transport: `rtype-network`
+## 6. Transport: `aylo-network`
 
 ### 6.1 Bytes on the wire
 
@@ -229,7 +229,7 @@ When the server sends the snapshot of server tick 101, it records the ECS tick o
   reader cover every need:
 
 ```c++
-namespace rtype::network {
+namespace aylo::network {
 /// @brief Writes little-endian values into a fixed buffer. Once a write overflows, it is invalid for good.
 class ByteWriter {
   public:
@@ -258,7 +258,7 @@ class ByteReader {
     [[nodiscard]] bool isValid() const noexcept;
     [[nodiscard]] std::size_t getRemaining() const noexcept;
 };
-}  // namespace rtype::network
+}  // namespace aylo::network
 ```
 
 A parser reads every field, then checks `isValid()` once. A truncated packet can never read out of bounds.
@@ -269,7 +269,7 @@ Every datagram starts with a **packet kind** byte.
 
 | Value | Kind | Direction | Content after the kind byte |
 |---|---|---|---|
-| `0x01` | `kConnectRequest` | C → S | protocol id `u32` (`0x52545950`, "RTYP"), protocol version `u16`, resume client id `u32` and resume token `u64` (both 0 for a new connection, [6.8](#68-reconnecting-after-a-connection-loss)), zero padding up to 64 bytes in total |
+| `0x01` | `kConnectRequest` | C → S | protocol id `u32` (`0x41594C4F`, "AYLO"), protocol version `u16`, resume client id `u32` and resume token `u64` (both 0 for a new connection, [6.8](#68-reconnecting-after-a-connection-loss)), zero padding up to 64 bytes in total |
 | `0x02` | `kChallenge` | S → C | challenge `u64` |
 | `0x03` | `kChallengeResponse` | C → S | challenge `u64`, zero padding up to 64 bytes in total |
 | `0x04` | `kAccepted` | S → C | session token `u32`, client id `u32`, resume token `u64` |
@@ -382,8 +382,8 @@ kData datagram (≤ 1200 bytes)
 ```
 
 The transport never looks inside a payload. The first payload byte is the **message type**, defined by the
-layer that owns it: `0x00`–`0x1F` by `rtype-network` (lobby, [9](#9-lobby-and-rooms)), `0x20`–`0xFF` by
-`rtype-replication` ([7](#7-replication-rtype-replication)).
+layer that owns it: `0x00`–`0x1F` by `aylo-network` (lobby, [9](#9-lobby-and-rooms)), `0x20`–`0xFF` by
+`aylo-replication` ([7](#7-replication-aylo-replication)).
 
 **Two channels:**
 
@@ -529,9 +529,9 @@ back ([9](#9-lobby-and-rooms)), next to `kClientLeft` when it is gone for good. 
 `ClientLost{clientId}` / `ClientReconnected{clientId}` ECS event, so a game shows a "player X lost connection"
 notice with an ordinary system and no custom packet. A game that does not want it ignores the events.
 
-## 7. Replication: `rtype-replication`
+## 7. Replication: `aylo-replication`
 
-This library implements [`20-replication.md`](../ecs/features/20-replication.md) on top of `rtype-network`.
+This library implements [`20-replication.md`](../ecs/features/20-replication.md) on top of `aylo-network`.
 The ECS side (components, resources, systems, replication modes) is described there; this section fixes
 the wire format and the bookkeeping.
 
@@ -704,7 +704,7 @@ or more), which feels sluggish in a shooter. The client therefore **predicts its
 with the server's answer. Every other entity stays interpolated. The server stays authoritative: prediction is a
 local guess that is replaced as soon as the truth arrives.
 
-**What is predicted.** Only entities that carry the `Predicted` marker, which `rtype-replication` adds on the
+**What is predicted.** Only entities that carry the `Predicted` marker, which `aylo-replication` adds on the
 client to the entity whose `Owner` is the local client id. Only the movement of that entity is predicted, by
 systems declared as predictable (`predicted = true`, next to the `side` of
 [`12-systems.md`](../ecs/features/12-systems.md)). They run on the server and on the client from the same code,
@@ -764,17 +764,17 @@ and never reconcile.
 
 A standalone world (`RunMode::kStandalone`: the editor, single player) is a server with one client, **client 1**, in
 the same world and with no socket, so a networked game written once runs unchanged. The `StandalonePlugin`
-(`src/rtype/replication/standalone/`) adds the `ReplicationPlugin` (the whole vocabulary: components, events, calls,
+(`src/aylo/replication/standalone/`) adds the `ReplicationPlugin` (the whole vocabulary: components, events, calls,
 the `engine.net` forms) and a `LocalSession` resource, and these systems:
 
 - `net.receive` (PreUpdate) raises `net.ClientConnected { client = 1 }` once, so the server side spawns the player as
   for a real client, and delivers the packets sent since the last frame.
 - `net.applyInputs` (FixedUpdate, the name of the server's) writes the local input in the `PlayerInput` of the entities
   `net.Owner` gives to client 1, setting `previousButtons` first, so pressed and released edges are right on the fixed
-  step. The input is read by `rtype.engine.networkInput` (PostUpdate, `engine/NetworkInput`) from the same actions and
+  step. The input is read by `aylo.engine.networkInput` (PostUpdate, `engine/NetworkInput`) from the same actions and
   the same `InputLayout` as a client, and kept in the `LocalSession`.
-- `rtype.replication.localClient` answers `{ connected = true, client = 1 }`.
-- `rtype.net.sendToServer` and `rtype.net.sendToClients` check the packet like the network path (same schema and
+- `aylo.replication.localClient` answers `{ connected = true, client = 1 }`.
+- `aylo.net.sendToServer` and `aylo.net.sendToClients` check the packet like the network path (same schema and
   `parseValues`), encode it, and queue it in the `LocalSession`; `net.receive` decodes it with the same `decodePacket`
   and raises `net.PacketReceived`, one frame later. A packet to the server has `sender = 1`, one to the clients
   `sender = 0`; `sendToClients` to a client other than 1 returns false.
@@ -836,7 +836,7 @@ Rules:
 
 **Schema hash.** It hashes the packet's name, direction, channel and every field (name, type,
 `maxLength`) in order, with the 64-bit FNV-1a of `core/hash` (`hashString` / `hashInteger` in
-[`NameHash.hpp`](../../src/rtype/core/hash/NameHash.hpp)). It goes in the manifest: a client whose
+[`NameHash.hpp`](../../src/aylo/core/hash/NameHash.hpp)). It goes in the manifest: a client whose
 script declares the packet differently is refused at connection, instead of silently misreading every
 packet after it.
 
@@ -844,15 +844,15 @@ packet after it.
 3-byte message header on the reliable channel (and its 2-byte id).
 
 C++ packets use the same descriptor (name, direction, channel, fields) and the same serializer. A C++ struct
-declares its fields with a macro that mirrors `RTYPE_ECS_COMPONENT`, so there is one way to describe a type
+declares its fields with a macro that mirrors `AYLO_ECS_COMPONENT`, so there is one way to describe a type
 for the engine:
 
 ```c++
 struct PlayerKilled {
-    rtype::ecs::Entity victim;
-    rtype::ecs::Entity killer;
+    aylo::ecs::Entity victim;
+    aylo::ecs::Entity killer;
 };
-RTYPE_REPLICATION_PACKET(PlayerKilled, "game.PlayerKilled", kToClients, kReliable, victim, killer);
+AYLO_REPLICATION_PACKET(PlayerKilled, "game.PlayerKilled", kToClients, kReliable, victim, killer);
 ```
 
 The macro builds the `FieldInfo` list from the members (types deduced, `Entity` written as a `NetworkId`) and
@@ -918,8 +918,8 @@ app:inputAction("fire", "button", { key = "Space", gamepad = "South" })
 function Shoot:run(ctx)
     for entity, transform, input in ctx.query do
         if input:isHeld("fire") then
-            local bullet = ctx.call("rtype.capsule.spawn", { capsule = "actors/bullet.actor" })
-            ctx.commands:add(bullet, "rtype.Transform", { position = transform.position })
+            local bullet = ctx.call("aylo.capsule.spawn", { capsule = "actors/bullet.actor" })
+            ctx.commands:add(bullet, "aylo.Transform", { position = transform.position })
         end
     end
 end
@@ -1028,7 +1028,7 @@ cryptography.
 ### Admin channel
 
 A tool that runs next to the server (the editor) reads and controls it through a separate channel, so game traffic and
-the rules of the game port stay untouched. It lives in `rtype/network/admin/` and knows no ECS.
+the rules of the game port stay untouched. It lives in `aylo/network/admin/` and knows no ECS.
 
 - **Socket.** A `UdpSocket` bound to `127.0.0.1` (`loopbackOnly`), opened by `ServerState::start()` only when
   `ServerPlugin::setAdmin(AdminSettings{port, token})` was called with a token that is not empty. The engine calls it
@@ -1085,7 +1085,7 @@ the rules of the game port stay untouched. It lives in `rtype/network/admin/` an
   *SetField* reads the value as the field's type (numbers must fit, floats must be finite, a vector has 2, 3 or 4
   numbers separated by spaces or commas); an entity field, a list (but a text) and the components `Parent` and
   `Children` are refused with `kBadValue`, an unknown name with `kUnknownComponent` or `kUnknownField`, a dead entity
-  with `kUnknownEntity`. *Spawn* gives the entity a `rtype.Name` (`Entity` when empty), since an entity without a
+  with `kUnknownEntity`. *Spawn* gives the entity a `aylo.Name` (`Entity` when empty), since an entity without a
   component cannot be listed. *Run* acts on the `Schedules` as the editor's own pause does (`setPaused`, `step`).
 
   **When it happens.** A read is answered from the world as it is. SetField, Spawn and Despawn are recorded in the
@@ -1170,7 +1170,7 @@ later:
 | `20-replication.md`, server systems | `net.snapshot` and `net.send` as two systems | One `net.snapshot` system builds and hands the snapshots to `NetServer`; `net.send` returns with the I/O thread ([NET-24](implementation.md#net-24--io-thread-and-room-queues)) |
 | `20-replication.md`, update layout | Field mask per update | Whole components in v1, field masks later |
 | `20-replication.md`, inputs | Inputs numbered by tick | Inputs numbered by a client input sequence; the message also carries the snapshot confirmation |
-| `20-replication.md`, open questions | Transport details, packet size, encryption | Settled: [6](#6-transport-rtype-network), 1200 bytes, no encryption |
+| `20-replication.md`, open questions | Transport details, packet size, encryption | Settled: [6](#6-transport-aylo-network), 1200 bytes, no encryption |
 | `20-replication.md` / [`14-app-and-plugins.md`](../ecs/features/14-app-and-plugins.md), rooms | Rooms as separate Apps or one App with several worlds? | One `App` per room, each on its own thread |
 | [`19-luau-bridge.md`](../ecs/features/19-luau-bridge.md), components from types | Luau components read from `export type` with `Luau.Ast` | AST parsing is dropped for now: packets use schema tables, and Luau components are expected to follow |
 | [`11-events.md`](../ecs/features/11-events.md), open question | Should some events be replicated? | Custom packets are network events, read with `ctx.events` ([8.3](#83-receiving)) |
@@ -1229,7 +1229,7 @@ later:
 | Library kind of `network` and `replication` | Shared libraries, like `ecs` and `luau`, for now; can change later ([3](#3-targets-and-dependencies)) |
 | Snapshot rate | A setting, not fixed in code; default 60 Hz ([Configuration](#configuration), [7.4](#74-snapshots-server--client)) |
 | Local player's ship latency | Client prediction with server reconciliation ([7.6](#76-client-prediction-and-reconciliation)) |
-| How C++ structs declare packet fields | `RTYPE_REPLICATION_PACKET` macro, mirroring `RTYPE_ECS_COMPONENT` ([8.1](#81-declaring-a-packet)) |
+| How C++ structs declare packet fields | `AYLO_REPLICATION_PACKET` macro, mirroring `AYLO_ECS_COMPONENT` ([8.1](#81-declaring-a-packet)) |
 | Where the Luau `net` bindings live | In the engine's Luau plugin, not in `luau` or `replication` ([3](#3-targets-and-dependencies)) |
 | Maximum players per room and maximum rooms | Settings, not hardcoded ([Configuration](#configuration)) |
 | Different games in different rooms | No: one server hosts one game (one manifest) for now |

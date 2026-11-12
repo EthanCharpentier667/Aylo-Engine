@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** PhysicsSyncTests
 */
@@ -12,6 +12,15 @@
 #include <optional>
 #include <string>
 
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/component/Components.hpp"
+#include "aylo/ecs/entity/Entity.hpp"
+#include "aylo/ecs/query/Query.hpp"
+#include "aylo/ecs/query/QueryTerms.hpp"
+#include "aylo/ecs/resource/ResourceTraits.hpp"
+#include "aylo/ecs/schedule/Phase.hpp"
+#include "aylo/ecs/system/ResourceParam.hpp"
+#include "aylo/ecs/time/Time.hpp"
 #include "plugins/physics/Collider.hpp"
 #include "plugins/physics/PhysicsPlugin.hpp"
 #include "plugins/physics/PhysicsSettings.hpp"
@@ -19,25 +28,16 @@
 #include "plugins/physics/RigidBody.hpp"
 #include "plugins/transform/Transform.hpp"
 #include "plugins/transform/TransformPlugin.hpp"
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/component/Components.hpp"
-#include "rtype/ecs/entity/Entity.hpp"
-#include "rtype/ecs/query/Query.hpp"
-#include "rtype/ecs/query/QueryTerms.hpp"
-#include "rtype/ecs/resource/ResourceTraits.hpp"
-#include "rtype/ecs/schedule/Phase.hpp"
-#include "rtype/ecs/system/ResourceParam.hpp"
-#include "rtype/ecs/time/Time.hpp"
 
-using rtype::ecs::Entity;
-using rtype::plugins::physics::BodyType;
-using rtype::plugins::physics::Collider;
-using rtype::plugins::physics::PhysicsPlugin;
-using rtype::plugins::physics::PhysicsSettings;
-using rtype::plugins::physics::PhysicsWorld;
-using rtype::plugins::physics::RigidBody;
-using rtype::plugins::physics::ShapeType;
-using rtype::plugins::transform::Transform;
+using aylo::ecs::Entity;
+using aylo::plugins::physics::BodyType;
+using aylo::plugins::physics::Collider;
+using aylo::plugins::physics::PhysicsPlugin;
+using aylo::plugins::physics::PhysicsSettings;
+using aylo::plugins::physics::PhysicsWorld;
+using aylo::plugins::physics::RigidBody;
+using aylo::plugins::physics::ShapeType;
+using aylo::plugins::transform::Transform;
 
 namespace {
 constexpr float kFixedDelta = 1.0F / 60.0F;
@@ -47,11 +47,11 @@ constexpr float kUnitsPerMeter = 100.0F;
 struct ChangedTransforms {
     std::uint32_t count = 0;  ///< Changed Transforms seen since the start.
 };
-RTYPE_ECS_RESOURCE(ChangedTransforms, "test.ChangedTransforms", count);
+AYLO_ECS_RESOURCE(ChangedTransforms, "test.ChangedTransforms", count);
 
 /// @brief FixedUpdate, after the physics: counts the Transforms changed since it last ran.
-void countChanged(rtype::ecs::ResMut<ChangedTransforms> counter,
-                  rtype::ecs::Query<const Transform, rtype::ecs::Changed<Transform>> changed) {
+void countChanged(aylo::ecs::ResMut<ChangedTransforms> counter,
+                  aylo::ecs::Query<const Transform, aylo::ecs::Changed<Transform>> changed) {
     for ([[maybe_unused]] auto [entity, transform] : changed) {
         ++counter->count;
     }
@@ -69,25 +69,25 @@ PhysicsSettings settingsWith(glm::vec2 gravity) {
 
 /// @brief An App with the PhysicsPlugin, ticked by hand.
 struct PhysicsApp {
-    rtype::ecs::App app;  ///< The App under test.
+    aylo::ecs::App app;  ///< The App under test.
 
     explicit PhysicsApp(glm::vec2 gravity = {0.0F, 0.0F}) {
-        app.addPlugin(rtype::plugins::transform::TransformPlugin{});
+        app.addPlugin(aylo::plugins::transform::TransformPlugin{});
         app.addPlugin(PhysicsPlugin{settingsWith(gravity)});
-        app.getWorld().getResources().insert(rtype::ecs::Time{.fixedDelta = kFixedDelta});
+        app.getWorld().getResources().insert(aylo::ecs::Time{.fixedDelta = kFixedDelta});
         app.getWorld().getResources().insert(ChangedTransforms{});
-        app.addSystem(rtype::ecs::Phase::kFixedUpdate, "test.CountChanged", &countChanged)
+        app.addSystem(aylo::ecs::Phase::kFixedUpdate, "test.CountChanged", &countChanged)
             .after(std::string{PhysicsPlugin::kSyncFromPhysicsSystem});
     }
 
     /// @brief Runs the given number of fixed ticks.
     void tick(int count = 1) {
         for (int index = 0; index < count; ++index) {
-            app.getSchedules().run(rtype::ecs::Phase::kFixedUpdate);
+            app.getSchedules().run(aylo::ecs::Phase::kFixedUpdate);
         }
     }
 
-    [[nodiscard]] rtype::ecs::Components& components() { return app.getWorld().getComponents(); }
+    [[nodiscard]] aylo::ecs::Components& components() { return app.getWorld().getComponents(); }
     [[nodiscard]] const PhysicsWorld& world() const { return app.getWorld().getResources().require<PhysicsWorld>(); }
     [[nodiscard]] Transform transformOf(Entity entity) { return *components().get<Transform>(entity); }
     [[nodiscard]] std::uint32_t changedCount() const {

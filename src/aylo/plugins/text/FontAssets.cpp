@@ -1,0 +1,61 @@
+/*
+** EPITECH PROJECT, 2026
+** aylo
+** File description:
+** FontAssets
+*/
+
+#include "plugins/text/FontAssets.hpp"
+
+#include <cstddef>
+#include <filesystem>
+#include <memory>
+#include <string>
+#include <utility>
+#include <vector>
+
+#include "core/asset/AssetId.hpp"
+#include "core/asset/AssetStore.hpp"
+#include "core/vfs/FileSource.hpp"
+#include "plugins/text/Font.hpp"
+#include "plugins/text/detail/FontJson.hpp"
+
+namespace aylo::plugins::text {
+
+void FontAssets::setDirectory(std::filesystem::path directory) { _fonts.setDirectory(std::move(directory)); }
+
+void FontAssets::setSource(std::shared_ptr<const core::vfs::FileSource> source) { _fonts.setSource(std::move(source)); }
+
+std::size_t FontAssets::getCount() const noexcept { return _fonts.getCount(); }
+
+core::asset::AssetId FontAssets::load(const std::filesystem::path& path) {
+    const auto stored = _fonts.load(path, &detail::parseFontJson);
+    if (stored.added != nullptr) {
+        requestTexture(*stored.added);
+    }
+    return stored.id;
+}
+
+core::asset::AssetId FontAssets::add(const std::string& name, Font font) {
+    const auto stored = _fonts.add(name, std::move(font));
+    if (stored.added != nullptr) {
+        requestTexture(*stored.added);
+    }
+    return stored.id;
+}
+
+const Font* FontAssets::get(core::asset::AssetId id) const { return _fonts.get(id); }
+
+const FontAssets::Entry* FontAssets::getEntry(core::asset::AssetId id) const { return _fonts.getEntry(id); }
+
+bool FontAssets::unload(core::asset::AssetId id) { return _fonts.unload(id); }
+
+std::vector<FontAssets::TextureRequest> FontAssets::takeTextureRequests() {
+    return std::exchange(_textureRequests, {});
+}
+
+void FontAssets::requestTexture(const Font& font) {
+    _textureRequests.push_back(TextureRequest{.path = font.getTexturePath(), .desc = font.getTextureDesc()});
+}
+
+}  // namespace aylo::plugins::text

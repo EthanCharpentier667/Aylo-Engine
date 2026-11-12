@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** CallContextTests
 */
@@ -10,26 +10,26 @@
 #include <string>
 #include <utility>
 
-#include "rtype/luau/CallContext.hpp"
-#include "rtype/luau/ErrorKind.hpp"
-#include "rtype/luau/Function.hpp"
-#include "rtype/luau/Ref.hpp"
-#include "rtype/luau/Runtime.hpp"
-#include "rtype/luau/RuntimeConfig.hpp"
-#include "rtype/luau/Value.hpp"
-#include "rtype/luau/ValuePack.hpp"
-#include "rtype/luau/detail/RawState.hpp"
-#include "rtype/luau/detail/Stack.hpp"
+#include "aylo/luau/CallContext.hpp"
+#include "aylo/luau/ErrorKind.hpp"
+#include "aylo/luau/Function.hpp"
+#include "aylo/luau/Ref.hpp"
+#include "aylo/luau/Runtime.hpp"
+#include "aylo/luau/RuntimeConfig.hpp"
+#include "aylo/luau/Value.hpp"
+#include "aylo/luau/ValuePack.hpp"
+#include "aylo/luau/detail/RawState.hpp"
+#include "aylo/luau/detail/Stack.hpp"
 
 namespace {
-using CallContext = rtype::luau::CallContext;
-using ValuePack = rtype::luau::ValuePack;
+using CallContext = aylo::luau::CallContext;
+using ValuePack = aylo::luau::ValuePack;
 
 /// @brief Creates a runtime with the standard libraries, failing the test if it cannot be created.
-rtype::luau::Runtime makeRuntime() {
-    auto runtime = rtype::luau::Runtime::create({
-        .libs = rtype::luau::RuntimeConfig::Libs::kStandard,
-        .optimizationLevel = rtype::luau::RuntimeConfig::OptimizationLevel::kStandard,
+aylo::luau::Runtime makeRuntime() {
+    auto runtime = aylo::luau::Runtime::create({
+        .libs = aylo::luau::RuntimeConfig::Libs::kStandard,
+        .optimizationLevel = aylo::luau::RuntimeConfig::OptimizationLevel::kStandard,
     });
     EXPECT_TRUE(runtime);
     return std::move(*runtime);
@@ -71,9 +71,9 @@ TEST(CallContext, FromStackReadsWholeStackInOrder) {
     pushed.add({std::string{"first"}});
     pushed.add({2.0});
     pushed.add({true});
-    ASSERT_EQ(rtype::luau::detail::pushValuePack(rtype::luau::detail::rawState(runtime), pushed).value(), 3U);
+    ASSERT_EQ(aylo::luau::detail::pushValuePack(aylo::luau::detail::rawState(runtime), pushed).value(), 3U);
 
-    const auto context = rtype::luau::detail::readCallContext(rtype::luau::detail::rawState(runtime));
+    const auto context = aylo::luau::detail::readCallContext(aylo::luau::detail::rawState(runtime));
 
     ASSERT_TRUE(context);
     ASSERT_EQ(context->argCount(), 3U);
@@ -85,7 +85,7 @@ TEST(CallContext, FromStackReadsWholeStackInOrder) {
 TEST(CallContext, FromStackOfEmptyStackHasNoArguments) {
     const auto runtime = makeRuntime();
 
-    const auto context = rtype::luau::detail::readCallContext(rtype::luau::detail::rawState(runtime));
+    const auto context = aylo::luau::detail::readCallContext(aylo::luau::detail::rawState(runtime));
 
     ASSERT_TRUE(context);
     EXPECT_EQ(context->argCount(), 0U);
@@ -93,7 +93,7 @@ TEST(CallContext, FromStackOfEmptyStackHasNoArguments) {
 
 TEST(CallContext, FromStackFailsForUnreadableArgument) {
     const auto runtime = makeRuntime();
-    auto native = rtype::luau::Function::create(runtime, "native");
+    auto native = aylo::luau::Function::create(runtime, "native");
     bool handlerRan{false};
     native.setHandler([&handlerRan](const CallContext&) -> ValuePack {
         handlerRan = true;
@@ -102,13 +102,13 @@ TEST(CallContext, FromStackFailsForUnreadableArgument) {
     // A thread cannot be read yet: the native closure builds its CallContext from the stack and fails.
     const auto script = runtime.load("chunk", "return native(coroutine.create(function() end))");
     ASSERT_TRUE(script);
-    script->closure().push(rtype::luau::detail::rawState(runtime));
+    script->closure().push(aylo::luau::detail::rawState(runtime));
     const auto caller =
-        rtype::luau::Function::fromRef(rtype::luau::Ref::pop(rtype::luau::detail::rawState(runtime)), "chunk");
+        aylo::luau::Function::fromRef(aylo::luau::Ref::pop(aylo::luau::detail::rawState(runtime)), "chunk");
 
     const auto result = caller.call();
 
     ASSERT_FALSE(result);
-    EXPECT_EQ(result.error().kind(), rtype::luau::ErrorKind::kRuntime);
+    EXPECT_EQ(result.error().kind(), aylo::luau::ErrorKind::kRuntime);
     EXPECT_FALSE(handlerRan);
 }

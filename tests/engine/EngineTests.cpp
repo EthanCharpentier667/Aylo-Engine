@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** EngineTests
 */
@@ -24,38 +24,38 @@
 #include <utility>
 #include <vector>
 
+#include "aylo/core/config/Settings.hpp"
+#include "aylo/core/config/exceptions/ConfigExceptions.hpp"
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/app/AppExit.hpp"
+#include "aylo/ecs/resource/ResourceTraits.hpp"
+#include "aylo/ecs/schedule/Phase.hpp"
+#include "aylo/ecs/schedule/RunMode.hpp"
+#include "aylo/ecs/system/EventWriter.hpp"
+#include "aylo/ecs/system/ResourceParam.hpp"
+#include "aylo/ecs/system/Side.hpp"
+#include "aylo/engine/Engine.hpp"
+#include "aylo/engine/EngineConfig.hpp"
+#include "aylo/engine/Exceptions.hpp"
+#include "aylo/replication/ReplicationPlugin.hpp"
+#include "aylo/replication/server/ServerPlugin.hpp"
 #include "core/system/ExecutablePath.hpp"
 #include "plugins/AssetDirectory.hpp"
 #include "plugins/capsule/LoadedCapsule.hpp"
-#include "rtype/core/config/Settings.hpp"
-#include "rtype/core/config/exceptions/ConfigExceptions.hpp"
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/app/AppExit.hpp"
-#include "rtype/ecs/resource/ResourceTraits.hpp"
-#include "rtype/ecs/schedule/Phase.hpp"
-#include "rtype/ecs/schedule/RunMode.hpp"
-#include "rtype/ecs/system/EventWriter.hpp"
-#include "rtype/ecs/system/ResourceParam.hpp"
-#include "rtype/ecs/system/Side.hpp"
-#include "rtype/engine/Engine.hpp"
-#include "rtype/engine/EngineConfig.hpp"
-#include "rtype/engine/Exceptions.hpp"
-#include "rtype/replication/ReplicationPlugin.hpp"
-#include "rtype/replication/server/ServerPlugin.hpp"
 
-namespace rtype::test::engine {
+namespace aylo::test::engine {
 /// @brief The build of the App a system runs in: 1 for the first one, then one more per reload.
 struct Build {
     std::int32_t number;
 };
-RTYPE_ECS_RESOURCE(Build, "test.engine.Build", number);
-}  // namespace rtype::test::engine
+AYLO_ECS_RESOURCE(Build, "test.engine.Build", number);
+}  // namespace aylo::test::engine
 
 namespace {
-using rtype::engine::Engine;
-using rtype::engine::EngineConfig;
-using rtype::engine::exceptions::RuntimeError;
-using rtype::test::engine::Build;
+using aylo::engine::Engine;
+using aylo::engine::EngineConfig;
+using aylo::engine::exceptions::RuntimeError;
+using aylo::test::engine::Build;
 
 /// @brief The project settings of the test games: a server on a port the system picks, so tests never collide.
 constexpr std::string_view kProject = R"(engine.settings.network.port = engine.args.port or 0)";
@@ -95,19 +95,19 @@ class GameDirectory {
 
 /// @return A headless server config that runs @p game.
 EngineConfig serverConfig(const GameDirectory& game, std::vector<std::string> args = {}) {
-    return {.mode = rtype::ecs::RunMode::kServer, .game = game.path(), .args = std::move(args)};
+    return {.mode = aylo::ecs::RunMode::kServer, .game = game.path(), .args = std::move(args)};
 }
 
 /// @brief Update: stops the App once it runs in its second build.
-void exitOnSecondBuild(rtype::ecs::Res<Build> build, rtype::ecs::EventWriter<rtype::ecs::AppExit> exit) {
+void exitOnSecondBuild(aylo::ecs::Res<Build> build, aylo::ecs::EventWriter<aylo::ecs::AppExit> exit) {
     if (build->number == 2) {
-        exit.send(rtype::ecs::AppExit{.code = build->number});
+        exit.send(aylo::ecs::AppExit{.code = build->number});
     }
 }
 
 /// @brief Update: stops the App at once.
-void exitAtOnce(rtype::ecs::Res<Build> build, rtype::ecs::EventWriter<rtype::ecs::AppExit> exit) {
-    exit.send(rtype::ecs::AppExit{.code = build->number});
+void exitAtOnce(aylo::ecs::Res<Build> build, aylo::ecs::EventWriter<aylo::ecs::AppExit> exit) {
+    exit.send(aylo::ecs::AppExit{.code = build->number});
 }
 
 /// @return A setup that numbers the builds in @p builds and adds @p system.
@@ -115,21 +115,21 @@ template <typename System>
 auto countingSetup(std::int32_t& builds, System system) {
     return [&builds, system](Engine& engine) {
         engine.app().insertResource(Build{.number = ++builds});
-        engine.app().addSystem(rtype::ecs::Phase::kUpdate, "test.exit", system).setSide(rtype::ecs::Side::kBoth);
+        engine.app().addSystem(aylo::ecs::Phase::kUpdate, "test.exit", system).setSide(aylo::ecs::Side::kBoth);
     };
 }
 }  // namespace
 
 TEST(Engine, FailsWithoutAProjectFile) {
-    const GameDirectory game{"rtype-engine-no-project"};
+    const GameDirectory game{"aylo-engine-no-project"};
     std::filesystem::remove(game.path() / Engine::kProjectFile);
 
     EXPECT_THROW(Engine{serverConfig(game)}, RuntimeError);
 }
 
 TEST(Engine, FindsTheGameGivenAsTheFirstArgument) {
-    const GameDirectory game{"rtype-engine-game-argument"};
-    const EngineConfig config{.mode = rtype::ecs::RunMode::kServer,
+    const GameDirectory game{"aylo-engine-game-argument"};
+    const EngineConfig config{.mode = aylo::ecs::RunMode::kServer,
                               .game = game.path() / "missing",
                               .args = {game.path().string(), "--port", "4243"}};
 
@@ -141,8 +141,8 @@ TEST(Engine, FindsTheGameGivenAsTheFirstArgument) {
 }
 
 TEST(Engine, KeepsTheConfiguredGameWhenTheCommandLineStartsWithAFlag) {
-    const GameDirectory game{"rtype-engine-flag-first"};
-    const EngineConfig config{.mode = rtype::ecs::RunMode::kServer, .game = game.path(), .args = {"--port", "4243"}};
+    const GameDirectory game{"aylo-engine-flag-first"};
+    const EngineConfig config{.mode = aylo::ecs::RunMode::kServer, .game = game.path(), .args = {"--port", "4243"}};
 
     const Engine engine{config};
 
@@ -151,9 +151,9 @@ TEST(Engine, KeepsTheConfiguredGameWhenTheCommandLineStartsWithAFlag) {
 }
 
 TEST(Engine, TreatsGameAsAnOrdinaryFlag) {
-    const GameDirectory game{"rtype-engine-game-is-a-flag"};
+    const GameDirectory game{"aylo-engine-game-is-a-flag"};
     const EngineConfig config{
-        .mode = rtype::ecs::RunMode::kServer, .game = game.path(), .args = {"--game", "elsewhere"}};
+        .mode = aylo::ecs::RunMode::kServer, .game = game.path(), .args = {"--game", "elsewhere"}};
 
     const Engine engine{config};
 
@@ -162,14 +162,14 @@ TEST(Engine, TreatsGameAsAnOrdinaryFlag) {
 }
 
 TEST(Engine, MakesTheGameDirectoryAbsolute) {
-    const GameDirectory game{"rtype-engine-absolute"};
+    const GameDirectory game{"aylo-engine-absolute"};
     // Work from the game's parent so the path is relative on every platform (on Windows the temporary directory can
     // be on another drive than the working directory, and no relative path exists between them).
     const std::filesystem::path previous = std::filesystem::current_path();
     std::filesystem::current_path(game.path().parent_path());
 
     {
-        const Engine engine{{.mode = rtype::ecs::RunMode::kServer, .game = game.path().filename()}};
+        const Engine engine{{.mode = aylo::ecs::RunMode::kServer, .game = game.path().filename()}};
 
         EXPECT_TRUE(engine.gameDirectory().is_absolute());
         EXPECT_TRUE(std::filesystem::equivalent(engine.gameDirectory(), game.path()));
@@ -179,13 +179,13 @@ TEST(Engine, MakesTheGameDirectoryAbsolute) {
 }
 
 TEST(Engine, RejectsAnInvalidCommandLine) {
-    const GameDirectory game{"rtype-engine-bad-args"};
+    const GameDirectory game{"aylo-engine-bad-args"};
 
     EXPECT_THROW(Engine{serverConfig(game, {"server"})}, RuntimeError);
 }
 
 TEST(Engine, TakesTheAdminChannelFlagsInADebugRun) {
-    const GameDirectory game{"rtype-engine-admin"};
+    const GameDirectory game{"aylo-engine-admin"};
     EngineConfig config = serverConfig(game, {"--admin-port", "47123", "--admin-token", "secret"});
     config.debug = true;
 
@@ -193,7 +193,7 @@ TEST(Engine, TakesTheAdminChannelFlagsInADebugRun) {
 }
 
 TEST(Engine, RefusesTheAdminChannelOutsideADebugRun) {
-    const GameDirectory game{"rtype-engine-admin-release"};
+    const GameDirectory game{"aylo-engine-admin-release"};
     EngineConfig config = serverConfig(game, {"--admin-port", "47123", "--admin-token", "secret"});
     config.debug = false;
 
@@ -201,7 +201,7 @@ TEST(Engine, RefusesTheAdminChannelOutsideADebugRun) {
 }
 
 TEST(Engine, RefusesHalfAnAdminChannelOrABadAdminPort) {
-    const GameDirectory game{"rtype-engine-admin-bad"};
+    const GameDirectory game{"aylo-engine-admin-bad"};
     const std::vector<std::vector<std::string>> bad{{"--admin-port", "47123"},
                                                     {"--admin-token", "secret"},
                                                     {"--admin-port", "0", "--admin-token", "secret"},
@@ -216,7 +216,7 @@ TEST(Engine, RefusesHalfAnAdminChannelOrABadAdminPort) {
 }
 
 TEST(Engine, TheDebugOverrideSetsEngineIsDebugEitherWay) {
-    const GameDirectory game{"rtype-engine-debug", R"(
+    const GameDirectory game{"aylo-engine-debug", R"(
         engine.settings.network.port = 0
         engine.settings.debug = engine.isDebug
     )"};
@@ -224,7 +224,7 @@ TEST(Engine, TheDebugOverrideSetsEngineIsDebugEitherWay) {
         bool seen = !debug;
         EngineConfig config = serverConfig(game);
         config.debug = debug;
-        config.addPlugins = [&seen](rtype::ecs::App&, const rtype::core::config::Settings& settings) {
+        config.addPlugins = [&seen](aylo::ecs::App&, const aylo::core::config::Settings& settings) {
             seen = settings.getBool("debug", !seen);
         };
 
@@ -235,41 +235,41 @@ TEST(Engine, TheDebugOverrideSetsEngineIsDebugEitherWay) {
 }
 
 TEST(Engine, AddsThePluginsTheSettingsNameFromTheirLibraries) {
-    const GameDirectory game{"rtype-engine-listed", R"(
+    const GameDirectory game{"aylo-engine-listed", R"(
         engine.settings.network.port = 0
-        engine.settings.plugins = { "test.Loaded", "rtype.Physics" }
+        engine.settings.plugins = { "test.Loaded", "aylo.Physics" }
         engine.settings.physics.gravity = { 0, 0 }
     )"};
     Engine engine{serverConfig(game)};
     EXPECT_TRUE(engine.app().hasPlugin("test.Loaded"));
-    EXPECT_TRUE(engine.app().hasPlugin("rtype.Physics"));
+    EXPECT_TRUE(engine.app().hasPlugin("aylo.Physics"));
 }
 
 TEST(Engine, AddsTheExtraPluginsAfterTheListedOnes) {
-    const GameDirectory game{"rtype-engine-extra", R"(
+    const GameDirectory game{"aylo-engine-extra", R"(
         engine.settings.network.port = 0
         engine.settings.plugins = { "test.Loaded" }
     )"};
     EngineConfig config = serverConfig(game);
-    config.extraPlugins = {"rtype.Capsule"};
+    config.extraPlugins = {"aylo.Capsule"};
     Engine engine{std::move(config)};
     EXPECT_TRUE(engine.app().hasPlugin("test.Loaded"));
-    EXPECT_TRUE(engine.app().hasPlugin("rtype.Capsule"));
+    EXPECT_TRUE(engine.app().hasPlugin("aylo.Capsule"));
 }
 
 TEST(Engine, DoesNotAddAnExtraPluginTheProjectAlreadyLists) {
-    const GameDirectory game{"rtype-engine-extra-listed", R"(
+    const GameDirectory game{"aylo-engine-extra-listed", R"(
         engine.settings.network.port = 0
-        engine.settings.plugins = { "rtype.Capsule" }
+        engine.settings.plugins = { "aylo.Capsule" }
     )"};
     EngineConfig config = serverConfig(game);
-    config.extraPlugins = {"rtype.Capsule"};
+    config.extraPlugins = {"aylo.Capsule"};
     const Engine engine{std::move(config)};
-    EXPECT_TRUE(engine.app().hasPlugin("rtype.Capsule"));
+    EXPECT_TRUE(engine.app().hasPlugin("aylo.Capsule"));
 }
 
 TEST(Engine, RefusesAnExtraPluginNoLibraryRegisters) {
-    const GameDirectory game{"rtype-engine-extra-missing", R"(
+    const GameDirectory game{"aylo-engine-extra-missing", R"(
         engine.settings.network.port = 0
     )"};
     EngineConfig config = serverConfig(game);
@@ -283,21 +283,21 @@ TEST(Engine, RefusesAnExtraPluginNoLibraryRegisters) {
 }
 
 TEST(Engine, AddsTheCapsulePluginFromItsLibrary) {
-    const GameDirectory game{"rtype-engine-capsules", R"(
+    const GameDirectory game{"aylo-engine-capsules", R"(
         engine.settings.network.port = 0
-        engine.settings.plugins = { "rtype.Capsule" }
+        engine.settings.plugins = { "aylo.Capsule" }
     )"};
     Engine engine{serverConfig(game)};
-    EXPECT_TRUE(engine.app().hasPlugin("rtype.Capsule"));
-    EXPECT_TRUE(engine.app().getWorld().getResources().find("rtype.Capsules"));
-    EXPECT_TRUE(engine.app().getWorld().getResources().find("rtype.LoadedCapsule"));
-    EXPECT_NE(engine.app().getWorld().getCalls().findByName("rtype.capsule.spawn"), nullptr);
+    EXPECT_TRUE(engine.app().hasPlugin("aylo.Capsule"));
+    EXPECT_TRUE(engine.app().getWorld().getResources().find("aylo.Capsules"));
+    EXPECT_TRUE(engine.app().getWorld().getResources().find("aylo.LoadedCapsule"));
+    EXPECT_NE(engine.app().getWorld().getCalls().findByName("aylo.capsule.spawn"), nullptr);
 }
 
 TEST(Engine, ReadsTheGamesCapsuleFilesAfterItsScripts) {
-    const GameDirectory game{"rtype-engine-capsule-files", R"(
+    const GameDirectory game{"aylo-engine-capsule-files", R"(
         engine.settings.network.port = 0
-        engine.settings.plugins = { "rtype.Capsule" }
+        engine.settings.plugins = { "aylo.Capsule" }
     )"};
     // The file names a component a script declares: it is read once every plugin, scripts included, is built.
     game.write("assets/actors/bydo.actor", "[node path=\".\"]\ngame.Health = { value = 3 }\n");
@@ -307,20 +307,20 @@ TEST(Engine, ReadsTheGamesCapsuleFilesAfterItsScripts) {
         engine.ecs.system("game.Start", {
             phase = "Update",
             query = {},
-            calls = { "rtype.capsule.load" },
+            calls = { "aylo.capsule.load" },
             run = function(ctx)
                 if loaded then return end
                 loaded = true
-                ctx.call("rtype.capsule.load", { capsule = "actors/bydo.actor" })
+                ctx.call("aylo.capsule.load", { capsule = "actors/bydo.actor" })
             end,
         })
     )");
     Engine engine{serverConfig(game)};
     engine.app().runFrame();
-    const rtype::ecs::World& world = engine.app().getWorld();
+    const aylo::ecs::World& world = engine.app().getWorld();
     const auto health = world.getComponents().find("game.Health");
     ASSERT_TRUE(health);
-    const auto* loaded = world.getResources().get<rtype::plugins::capsule::LoadedCapsule>();
+    const auto* loaded = world.getResources().get<aylo::plugins::capsule::LoadedCapsule>();
     ASSERT_NE(loaded, nullptr);
     ASSERT_TRUE(world.isAlive(loaded->root));
     const std::span<const std::byte> value = world.getComponents().get(loaded->root, *health);
@@ -331,7 +331,7 @@ TEST(Engine, ReadsTheGamesCapsuleFilesAfterItsScripts) {
 }
 
 TEST(Engine, RefusesAPluginNoLibraryRegisters) {
-    const GameDirectory game{"rtype-engine-unknown-plugin", R"(
+    const GameDirectory game{"aylo-engine-unknown-plugin", R"(
         engine.settings.network.port = 0
         engine.settings.plugins = { "game.Missing" }
     )"};
@@ -344,12 +344,12 @@ TEST(Engine, RefusesAPluginNoLibraryRegisters) {
 }
 
 TEST(Engine, LoadsThePluginsOfTheGame) {
-    const GameDirectory game{"rtype-engine-game-plugin", R"(
+    const GameDirectory game{"aylo-engine-game-plugin", R"(
         engine.settings.network.port = 0
     )"};
     const std::filesystem::path plugins = game.path() / Engine::kPluginsDirectory;
     std::filesystem::create_directories(plugins);
-    const std::filesystem::path library = rtype::core::system::getExecutableDirectory() / Engine::kPluginsDirectory;
+    const std::filesystem::path library = aylo::core::system::getExecutableDirectory() / Engine::kPluginsDirectory;
     for (const std::filesystem::directory_entry& entry : std::filesystem::directory_iterator{library}) {
         if (entry.path().filename().string().contains("test-plugin")) {
             // A plugin of the same file name as one of the engine is refused, not silently preferred.
@@ -365,25 +365,25 @@ TEST(Engine, LoadsThePluginsOfTheGame) {
 }
 
 TEST(Engine, LoadsTheBackendsAGameNames) {
-    const GameDirectory game{"rtype-engine-backends", R"(
+    const GameDirectory game{"aylo-engine-backends", R"(
         engine.settings.platform = "glfw"
         engine.settings.renderer = "vulkan"
     )"};
     std::filesystem::create_directories(game.path() / Engine::kAssetsDirectory);
-    const EngineConfig standalone{.mode = rtype::ecs::RunMode::kStandalone, .game = game.path()};
+    const EngineConfig standalone{.mode = aylo::ecs::RunMode::kStandalone, .game = game.path()};
     EXPECT_NO_THROW(Engine{standalone});
 }
 
 TEST(Engine, GivesThePluginsTheAssetDirectory) {
-    const GameDirectory game{"rtype-engine-assets"};
+    const GameDirectory game{"aylo-engine-assets"};
     Engine engine{serverConfig(game)};
-    EXPECT_EQ(rtype::plugins::assetDirectoryOf(engine.app().getWorld().getResources()),
+    EXPECT_EQ(aylo::plugins::assetDirectoryOf(engine.app().getWorld().getResources()),
               engine.gameDirectory() / Engine::kAssetsDirectory);
 }
 
 TEST(Engine, AClientNeedsAnAssetsDirectoryAndAServerDoesNot) {
-    const GameDirectory game{"rtype-engine-no-assets"};
-    EngineConfig standalone{.mode = rtype::ecs::RunMode::kStandalone, .game = game.path()};
+    const GameDirectory game{"aylo-engine-no-assets"};
+    EngineConfig standalone{.mode = aylo::ecs::RunMode::kStandalone, .game = game.path()};
     EXPECT_THROW(Engine{standalone}, RuntimeError);
     EXPECT_NO_THROW(Engine{serverConfig(game)});
 
@@ -392,7 +392,7 @@ TEST(Engine, AClientNeedsAnAssetsDirectoryAndAServerDoesNot) {
 }
 
 TEST(Engine, GivesTheProjectItsModeAndCommandLine) {
-    const GameDirectory game{"rtype-engine-project", R"(
+    const GameDirectory game{"aylo-engine-project", R"(
         engine.settings.network.port = 0
         engine.settings.seen.isServer = engine.isServer
         engine.settings.seen.isClient = engine.isClient
@@ -401,15 +401,15 @@ TEST(Engine, GivesTheProjectItsModeAndCommandLine) {
 
     const Engine engine{serverConfig(game, {"--level", "3"})};
 
-    const rtype::core::config::Settings& settings = engine.settings();
+    const aylo::core::config::Settings& settings = engine.settings();
     EXPECT_TRUE(settings.getBool("seen.isServer", false));
     EXPECT_FALSE(settings.getBool("seen.isClient", true));
     EXPECT_EQ(settings.getNumber("seen.level", 0.0), 3.0);
-    EXPECT_EQ(engine.mode(), rtype::ecs::RunMode::kServer);
+    EXPECT_EQ(engine.mode(), aylo::ecs::RunMode::kServer);
 }
 
 TEST(Engine, RejectsAPortOutOfRange) {
-    const GameDirectory game{"rtype-engine-port-range"};
+    const GameDirectory game{"aylo-engine-port-range"};
 
     EXPECT_THROW(Engine{serverConfig(game, {"--port", "65536"})}, RuntimeError);
     EXPECT_THROW(Engine{serverConfig(game, {"--port", "-1"})}, RuntimeError);
@@ -417,22 +417,22 @@ TEST(Engine, RejectsAPortOutOfRange) {
 }
 
 TEST(Engine, RejectsAnUnknownNetworkSetting) {
-    const GameDirectory game{"rtype-engine-network-keys", R"(engine.settings.network.prot = 4242)"};
+    const GameDirectory game{"aylo-engine-network-keys", R"(engine.settings.network.prot = 4242)"};
 
-    EXPECT_THROW(Engine{serverConfig(game)}, rtype::core::config::exceptions::SettingsException);
+    EXPECT_THROW(Engine{serverConfig(game)}, aylo::core::config::exceptions::SettingsException);
 }
 
 TEST(Engine, RunsTheSetupBeforeTheScriptsAndTheNetwork) {
-    const GameDirectory game{"rtype-engine-order"};
+    const GameDirectory game{"aylo-engine-order"};
     bool replicationBefore = false;
     bool scriptingBefore = true;
     bool serverBefore = true;
     EngineConfig config = serverConfig(game);
     config.setup = [&](Engine& engine) {
-        const rtype::ecs::App& app = engine.app();
-        replicationBefore = app.hasPlugin(rtype::replication::ReplicationPlugin::kName);
-        scriptingBefore = app.hasPlugin("rtype.scripting");
-        serverBefore = app.hasPlugin(rtype::replication::server::ServerPlugin::kName);
+        const aylo::ecs::App& app = engine.app();
+        replicationBefore = app.hasPlugin(aylo::replication::ReplicationPlugin::kName);
+        scriptingBefore = app.hasPlugin("aylo.scripting");
+        serverBefore = app.hasPlugin(aylo::replication::server::ServerPlugin::kName);
     };
 
     const Engine engine{std::move(config)};
@@ -440,12 +440,12 @@ TEST(Engine, RunsTheSetupBeforeTheScriptsAndTheNetwork) {
     EXPECT_TRUE(replicationBefore);  // so the game can declare its inputs
     EXPECT_FALSE(scriptingBefore);   // so the scripts can use what the game registers
     EXPECT_FALSE(serverBefore);      // so the server replicates what the game and the scripts register
-    EXPECT_TRUE(engine.app().hasPlugin("rtype.scripting"));
-    EXPECT_TRUE(engine.app().hasPlugin(rtype::replication::server::ServerPlugin::kName));
+    EXPECT_TRUE(engine.app().hasPlugin("aylo.scripting"));
+    EXPECT_TRUE(engine.app().hasPlugin(aylo::replication::server::ServerPlugin::kName));
 }
 
 TEST(Engine, LoadsTheScriptsOfTheGame) {
-    const GameDirectory game{"rtype-engine-scripts"};
+    const GameDirectory game{"aylo-engine-scripts"};
     game.write("scripts/main.luau", R"(engine.ecs.component("game.Shield", { fields = {} }))");
 
     const Engine engine{serverConfig(game)};
@@ -454,7 +454,7 @@ TEST(Engine, LoadsTheScriptsOfTheGame) {
 }
 
 TEST(Engine, TheScriptsOfAGameRequireEachOtherThroughTheScriptsAlias) {
-    const GameDirectory game{"rtype-engine-require"};
+    const GameDirectory game{"aylo-engine-require"};
     game.write("scripts/shared/config.luau", "return { name = 'Configured' }");
     game.write("scripts/main.luau", R"(
         local config = require("@scripts/shared/config")
@@ -467,7 +467,7 @@ TEST(Engine, TheScriptsOfAGameRequireEachOtherThroughTheScriptsAlias) {
 }
 
 TEST(Engine, ScriptsRequireThroughAnAliasTheSettingsDeclare) {
-    const GameDirectory game{"rtype-engine-alias", R"(
+    const GameDirectory game{"aylo-engine-alias", R"(
         engine.settings.network.port = 0
         engine.settings.scripts.aliases = { shared = "shared" }
     )"};
@@ -484,7 +484,7 @@ TEST(Engine, ScriptsRequireThroughAnAliasTheSettingsDeclare) {
 
 /// @return What building a game whose project is @p project throws, empty if nothing.
 std::string buildError(const std::string_view name, const std::string_view project,
-                       const rtype::ecs::RunMode mode = rtype::ecs::RunMode::kServer) {
+                       const aylo::ecs::RunMode mode = aylo::ecs::RunMode::kServer) {
     const GameDirectory game{name, project};
     game.write("scripts/main.luau", "return 1");
     try {
@@ -504,7 +504,7 @@ TEST(Engine, EntryComesFromTheProjectPerSide) {
         engine.settings.scripts.server = "server/main"
         engine.settings.scripts.client = "client/main"
     )";
-    const auto build = [&](const std::string_view name, const rtype::ecs::RunMode mode) {
+    const auto build = [&](const std::string_view name, const aylo::ecs::RunMode mode) {
         const GameDirectory game{name, kEntries};
         game.write("scripts/shared/main.luau", R"(engine.ecs.component("game.Main", { fields = {} }))");
         game.write("scripts/server/main.luau", R"(engine.ecs.component("game.Server", { fields = {} }))");
@@ -518,12 +518,12 @@ TEST(Engine, EntryComesFromTheProjectPerSide) {
                           components.find("game.Client").has_value()};
     };
 
-    EXPECT_EQ(build("rtype-engine-entry-server", rtype::ecs::RunMode::kServer), (std::array{true, true, false}));
-    EXPECT_EQ(build("rtype-engine-entry-standalone", rtype::ecs::RunMode::kStandalone), (std::array{true, true, true}));
+    EXPECT_EQ(build("aylo-engine-entry-server", aylo::ecs::RunMode::kServer), (std::array{true, true, false}));
+    EXPECT_EQ(build("aylo-engine-entry-standalone", aylo::ecs::RunMode::kStandalone), (std::array{true, true, true}));
 }
 
 TEST(Engine, AMissingExplicitEntryFailsTheBuildNamingItsSetting) {
-    const std::string message = buildError("rtype-engine-entry-missing", R"(
+    const std::string message = buildError("aylo-engine-entry-missing", R"(
         engine.settings.network.port = 0
         engine.settings.scripts.server = "server/main"
     )");
@@ -531,7 +531,7 @@ TEST(Engine, AMissingExplicitEntryFailsTheBuildNamingItsSetting) {
 }
 
 TEST(Engine, AMissingDefaultEntryOnlyWarns) {
-    const GameDirectory game{"rtype-engine-entry-default"};
+    const GameDirectory game{"aylo-engine-entry-default"};
 
     testing::internal::CaptureStderr();
     const Engine engine{serverConfig(game)};
@@ -541,7 +541,7 @@ TEST(Engine, AMissingDefaultEntryOnlyWarns) {
 }
 
 TEST(Engine, RejectsAScriptsAliasOutsideTheScripts) {
-    const std::string message = buildError("rtype-engine-alias-outside", R"(
+    const std::string message = buildError("aylo-engine-alias-outside", R"(
         engine.settings.network.port = 0
         engine.settings.scripts.aliases = { escape = "../assets" }
     )");
@@ -550,7 +550,7 @@ TEST(Engine, RejectsAScriptsAliasOutsideTheScripts) {
 }
 
 TEST(Engine, RejectsAReservedScriptsAlias) {
-    const std::string message = buildError("rtype-engine-alias-reserved", R"(
+    const std::string message = buildError("aylo-engine-alias-reserved", R"(
         engine.settings.network.port = 0
         engine.settings.scripts.aliases = { self = "shared" }
     )");
@@ -559,7 +559,7 @@ TEST(Engine, RejectsAReservedScriptsAlias) {
 }
 
 TEST(Engine, RejectsAScriptsAliasThatIsNotAString) {
-    const std::string message = buildError("rtype-engine-alias-type", R"(
+    const std::string message = buildError("aylo-engine-alias-type", R"(
         engine.settings.network.port = 0
         engine.settings.scripts.aliases = { shared = 3 }
     )");
@@ -568,7 +568,7 @@ TEST(Engine, RejectsAScriptsAliasThatIsNotAString) {
 }
 
 TEST(Engine, RejectsAnUnknownScriptsSetting) {
-    const std::string message = buildError("rtype-engine-scripts-key", R"(
+    const std::string message = buildError("aylo-engine-scripts-key", R"(
         engine.settings.network.port = 0
         engine.settings.scripts.alias = { shared = "shared" }
     )");
@@ -577,7 +577,7 @@ TEST(Engine, RejectsAnUnknownScriptsSetting) {
 }
 
 TEST(Engine, RunsUntilAppExit) {
-    const GameDirectory game{"rtype-engine-run"};
+    const GameDirectory game{"aylo-engine-run"};
     std::int32_t builds = 0;
     EngineConfig config = serverConfig(game);
     config.setup = countingSetup(builds, &exitAtOnce);
@@ -589,17 +589,17 @@ TEST(Engine, RunsUntilAppExit) {
 }
 
 TEST(Engine, StopsWithCodeZeroAfterTheFramesItWasGiven) {
-    const GameDirectory game{"rtype-engine-max-frames"};
+    const GameDirectory game{"aylo-engine-max-frames"};
     std::int32_t builds = 0;
     EngineConfig config = serverConfig(game);
-    config.setup = countingSetup(builds, [](rtype::ecs::Res<Build>) {});
+    config.setup = countingSetup(builds, [](aylo::ecs::Res<Build>) {});
     Engine engine{std::move(config)};
 
     EXPECT_EQ(engine.run(3), 0);
 }
 
 TEST(Engine, RunsNoFrameWithAZeroFrameLimit) {
-    const GameDirectory game{"rtype-engine-max-frames-zero"};
+    const GameDirectory game{"aylo-engine-max-frames-zero"};
     std::int32_t builds = 0;
     EngineConfig config = serverConfig(game);
     config.setup = countingSetup(builds, &exitAtOnce);
@@ -609,7 +609,7 @@ TEST(Engine, RunsNoFrameWithAZeroFrameLimit) {
 }
 
 TEST(Engine, RunsTheLastFrameOfTheLimit) {
-    const GameDirectory game{"rtype-engine-max-frames-last"};
+    const GameDirectory game{"aylo-engine-max-frames-last"};
     std::int32_t builds = 0;
     EngineConfig config = serverConfig(game);
     config.setup = countingSetup(builds, &exitAtOnce);
@@ -619,7 +619,7 @@ TEST(Engine, RunsTheLastFrameOfTheLimit) {
 }
 
 TEST(Engine, AnAppExitBeatsTheFrameLimit) {
-    const GameDirectory game{"rtype-engine-max-frames-exit"};
+    const GameDirectory game{"aylo-engine-max-frames-exit"};
     std::int32_t builds = 0;
     EngineConfig config = serverConfig(game);
     config.setup = countingSetup(builds, &exitAtOnce);
@@ -629,7 +629,7 @@ TEST(Engine, AnAppExitBeatsTheFrameLimit) {
 }
 
 TEST(Engine, ReloadsBetweenTwoFrames) {
-    const GameDirectory game{"rtype-engine-reload"};
+    const GameDirectory game{"aylo-engine-reload"};
     std::int32_t builds = 0;
     EngineConfig config = serverConfig(game);
     config.setup = countingSetup(builds, &exitOnSecondBuild);
@@ -643,7 +643,7 @@ TEST(Engine, ReloadsBetweenTwoFrames) {
 }
 
 TEST(Engine, ReadsTheProjectAgainOnAReload) {
-    const GameDirectory game{"rtype-engine-reload-project", R"(
+    const GameDirectory game{"aylo-engine-reload-project", R"(
         engine.settings.network.port = 0
         engine.settings.version = 1
     )"};
@@ -663,50 +663,50 @@ TEST(Engine, ReadsTheProjectAgainOnAReload) {
 }
 
 TEST(Engine, ReloadsInTheModeAndWithTheFlagsItIsAskedFor) {
-    const GameDirectory game{"rtype-engine-reload-mode"};
+    const GameDirectory game{"aylo-engine-reload-mode"};
     std::filesystem::create_directories(game.path() / Engine::kAssetsDirectory);  // a client needs them
     std::int32_t builds = 0;
     EngineConfig config = serverConfig(game, {"--name", "first"});
     config.setup = countingSetup(builds, &exitOnSecondBuild);
     Engine engine{std::move(config)};
-    ASSERT_EQ(engine.mode(), rtype::ecs::RunMode::kServer);
+    ASSERT_EQ(engine.mode(), aylo::ecs::RunMode::kServer);
 
-    engine.requestReload(rtype::ecs::RunMode::kStandalone, {"--name", "second"});
+    engine.requestReload(aylo::ecs::RunMode::kStandalone, {"--name", "second"});
 
     EXPECT_EQ(engine.run(), 2);
-    EXPECT_EQ(engine.mode(), rtype::ecs::RunMode::kStandalone);
+    EXPECT_EQ(engine.mode(), aylo::ecs::RunMode::kStandalone);
     EXPECT_EQ(engine.commandLine().get("name"), "second");
     EXPECT_EQ(engine.gameDirectory(), game.path().lexically_normal());
 }
 
 TEST(Engine, GoesBackToItsModeWhenTheNewOneCannotBeBuilt) {
-    const GameDirectory game{"rtype-engine-reload-mode-fails"};  // no assets: a client cannot be built
+    const GameDirectory game{"aylo-engine-reload-mode-fails"};  // no assets: a client cannot be built
     std::int32_t builds = 0;
     EngineConfig config = serverConfig(game, {"--name", "first"});
     config.setup = countingSetup(builds, &exitOnSecondBuild);
     Engine engine{std::move(config)};
 
-    engine.requestReload(rtype::ecs::RunMode::kClient, {"--name", "second"});
+    engine.requestReload(aylo::ecs::RunMode::kClient, {"--name", "second"});
     testing::internal::CaptureStderr();
     const int code = engine.run();
     const std::string log = testing::internal::GetCapturedStderr();
 
     EXPECT_EQ(code, 2) << "the game was built again in its old mode";
-    EXPECT_EQ(engine.mode(), rtype::ecs::RunMode::kServer);
+    EXPECT_EQ(engine.mode(), aylo::ecs::RunMode::kServer);
     EXPECT_EQ(engine.commandLine().get("name"), "first");
     EXPECT_NE(log.find("cannot be built in the new mode"), std::string::npos) << log;
 }
 
 TEST(Engine, RefusesAReloadWithAnInvalidCommandLine) {
-    const GameDirectory game{"rtype-engine-reload-mode-args"};
+    const GameDirectory game{"aylo-engine-reload-mode-args"};
     Engine engine{serverConfig(game)};
 
-    EXPECT_THROW(engine.requestReload(rtype::ecs::RunMode::kServer, {"--name", "a", "b"}), RuntimeError);
-    EXPECT_EQ(engine.mode(), rtype::ecs::RunMode::kServer);
+    EXPECT_THROW(engine.requestReload(aylo::ecs::RunMode::kServer, {"--name", "a", "b"}), RuntimeError);
+    EXPECT_EQ(engine.mode(), aylo::ecs::RunMode::kServer);
 }
 
 TEST(Engine, ExitsBeforeAReloadRequestedInTheSameFrame) {
-    const GameDirectory game{"rtype-engine-exit-first"};
+    const GameDirectory game{"aylo-engine-exit-first"};
     std::int32_t builds = 0;
     EngineConfig config = serverConfig(game);
     config.setup = countingSetup(builds, &exitAtOnce);
@@ -730,16 +730,16 @@ std::string quitScript(const int code) {
     return R"(engine.ecs.system("game.Quit", {
         phase = "Update",
         query = {},
-        events = { send = { "rtype.AppExit" } },
+        events = { send = { "aylo.AppExit" } },
         run = function(ctx) )" +
-           (code == 0 ? std::string{} : "ctx.events.send(\"rtype.AppExit\", { code = " + std::to_string(code) + " })") +
+           (code == 0 ? std::string{} : "ctx.events.send(\"aylo.AppExit\", { code = " + std::to_string(code) + " })") +
            R"( end,
     }))";
 }
 }  // namespace
 
 TEST(EngineHotReload, BuildsTheGameAgainWhenTheProjectChanges) {
-    const GameDirectory game{"rtype-engine-hot-project", kHotProject};
+    const GameDirectory game{"aylo-engine-hot-project", kHotProject};
     std::int32_t builds = 0;
     EngineConfig config = serverConfig(game);
     config.setup = countingSetup(builds, &exitOnSecondBuild);
@@ -757,14 +757,14 @@ TEST(EngineHotReload, BuildsTheGameAgainWhenTheProjectChanges) {
 }
 
 TEST(EngineHotReload, SwapsTheSystemsOfAChangedScriptWithoutBuildingTheGameAgain) {
-    const GameDirectory game{"rtype-engine-hot-scripts", kHotProject};
+    const GameDirectory game{"aylo-engine-hot-scripts", kHotProject};
     game.write("scripts/main.luau", "require('./quit')");
     game.write("scripts/quit.luau", quitScript(0));
     std::int32_t builds = 0;
     EngineConfig config = serverConfig(game);
     config.setup = [&builds](Engine& engine) {
         engine.app().insertResource(Build{.number = ++builds});
-        static_cast<void>(engine.app().getWorld().getEvents().registerType<rtype::ecs::AppExit>());  // scripts send it
+        static_cast<void>(engine.app().getWorld().getEvents().registerType<aylo::ecs::AppExit>());  // scripts send it
     };
     Engine engine{std::move(config)};
     game.write("scripts/quit.luau", quitScript(7));
@@ -786,9 +786,9 @@ std::string configuredQuitScript(const std::string_view name) {
     return "local config = require('./config')\nengine.ecs.system(\"" + std::string{name} + R"(", {
         phase = "Update",
         query = {},
-        events = { send = { "rtype.AppExit" } },
+        events = { send = { "aylo.AppExit" } },
         run = function(ctx)
-            if config.code ~= 0 then ctx.events.send("rtype.AppExit", { code = config.code }) end
+            if config.code ~= 0 then ctx.events.send("aylo.AppExit", { code = config.code }) end
         end,
     }))";
 }
@@ -805,12 +805,12 @@ std::string otherScript(const int code) {
 
 /// @brief Setup that registers the exit event scripts send.
 void registerExit(Engine& engine) {
-    static_cast<void>(engine.app().getWorld().getEvents().registerType<rtype::ecs::AppExit>());
+    static_cast<void>(engine.app().getWorld().getEvents().registerType<aylo::ecs::AppExit>());
 }
 }  // namespace
 
 TEST(EngineHotReload, ReRunsTheDependentsOfAChangedModule) {
-    const GameDirectory game{"rtype-engine-hot-dependents", kHotProject};
+    const GameDirectory game{"aylo-engine-hot-dependents", kHotProject};
     game.write("scripts/main.luau", "require('./quit')");
     game.write("scripts/config.luau", "return { code = 0 }");
     game.write("scripts/quit.luau", configuredQuitScript("game.Quit"));
@@ -829,7 +829,7 @@ TEST(EngineHotReload, ReRunsTheDependentsOfAChangedModule) {
 }
 
 TEST(EngineHotReload, DoesNotReRunTheModulesThatDoNotRequireTheChangedOne) {
-    const GameDirectory game{"rtype-engine-hot-unrelated", kHotProject};
+    const GameDirectory game{"aylo-engine-hot-unrelated", kHotProject};
     game.write("scripts/main.luau", "require('./quit')\nrequire('./other')");
     game.write("scripts/config.luau", "return { code = 0 }");
     game.write("scripts/quit.luau", configuredQuitScript("game.Quit"));
@@ -849,7 +849,7 @@ TEST(EngineHotReload, DoesNotReRunTheModulesThatDoNotRequireTheChangedOne) {
 }
 
 TEST(EngineHotReload, IgnoresAChangedFileNoModuleRequires) {
-    const GameDirectory game{"rtype-engine-hot-ignored", kHotProject};
+    const GameDirectory game{"aylo-engine-hot-ignored", kHotProject};
     game.write("scripts/main.luau", "require('./quit')");
     game.write("scripts/quit.luau", quitScript(0));
     game.write("scripts/unused.luau", "return 1");
@@ -869,7 +869,7 @@ TEST(EngineHotReload, IgnoresAChangedFileNoModuleRequires) {
 }
 
 TEST(EngineHotReload, BuildsTheGameAgainWhenAScriptCannotBeSwappedInPlace) {
-    const GameDirectory game{"rtype-engine-hot-layout", kHotProject};
+    const GameDirectory game{"aylo-engine-hot-layout", kHotProject};
     game.write("scripts/main.luau", "require('./thing')");
     game.write("scripts/thing.luau", R"(engine.ecs.component("game.Thing", { fields = { a = "f32" } }))");
     std::int32_t builds = 0;
@@ -888,8 +888,8 @@ TEST(EngineHotReload, BuildsTheGameAgainWhenAScriptCannotBeSwappedInPlace) {
 }
 
 TEST(EngineHotReload, RespawnsWhatACapsuleFileSpawnedWhenItIsSaved) {
-    const GameDirectory game{"rtype-engine-hot-capsule",
-                             std::string{kHotProject} + "engine.settings.plugins = { \"rtype.Capsule\" }\n"};
+    const GameDirectory game{"aylo-engine-hot-capsule",
+                             std::string{kHotProject} + "engine.settings.plugins = { \"aylo.Capsule\" }\n"};
     game.write("assets/actors/bydo.actor", "[node path=\".\"]\ngame.Health = { value = 3 }\n");
     game.write("scripts/main.luau", R"(
         engine.ecs.component("game.Health", { fields = { value = "i32" } })
@@ -897,21 +897,21 @@ TEST(EngineHotReload, RespawnsWhatACapsuleFileSpawnedWhenItIsSaved) {
         engine.ecs.system("game.Start", {
             phase = "Update",
             query = {},
-            calls = { "rtype.capsule.load" },
+            calls = { "aylo.capsule.load" },
             run = function(ctx)
                 if loaded then return end
                 loaded = true
-                ctx.call("rtype.capsule.load", { capsule = "actors/bydo.actor" })
+                ctx.call("aylo.capsule.load", { capsule = "actors/bydo.actor" })
             end,
         })
         engine.ecs.system("game.Quit", {
             phase = "Update",
             query = { read = { "game.Health" } },
-            events = { send = { "rtype.AppExit" } },
+            events = { send = { "aylo.AppExit" } },
             run = function(ctx)
                 for _, health in ctx.query do
                     if health.value == 42 then
-                        ctx.events.send("rtype.AppExit", { code = 42 })
+                        ctx.events.send("aylo.AppExit", { code = 42 })
                     end
                 end
             end,
@@ -919,7 +919,7 @@ TEST(EngineHotReload, RespawnsWhatACapsuleFileSpawnedWhenItIsSaved) {
     )");
     EngineConfig config = serverConfig(game);
     config.setup = [](Engine& engine) {
-        static_cast<void>(engine.app().getWorld().getEvents().registerType<rtype::ecs::AppExit>());  // scripts send it
+        static_cast<void>(engine.app().getWorld().getEvents().registerType<aylo::ecs::AppExit>());  // scripts send it
     };
     Engine engine{std::move(config)};
     engine.app().runFrame();  // loads the capsule
@@ -936,7 +936,7 @@ TEST(EngineHotReload, RespawnsWhatACapsuleFileSpawnedWhenItIsSaved) {
 }
 
 TEST(EngineHotReload, WaitsForAFixWhenTheNewGameCannotBeBuilt) {
-    const GameDirectory game{"rtype-engine-hot-wait", kHotProject};
+    const GameDirectory game{"aylo-engine-hot-wait", kHotProject};
     std::int32_t builds = 0;
     EngineConfig config = serverConfig(game);
     config.setup = countingSetup(builds, &exitOnSecondBuild);
@@ -959,7 +959,7 @@ TEST(EngineHotReload, WaitsForAFixWhenTheNewGameCannotBeBuilt) {
 }
 
 TEST(EngineHotReload, StopsARunWithAFrameLimitWhenTheNewGameCannotBeBuilt) {
-    const GameDirectory game{"rtype-engine-hot-bounded", kHotProject};
+    const GameDirectory game{"aylo-engine-hot-bounded", kHotProject};
     std::int32_t builds = 0;
     EngineConfig config = serverConfig(game);
     config.setup = countingSetup(builds, &exitOnSecondBuild);

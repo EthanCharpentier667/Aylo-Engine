@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ScriptContextTests
 */
@@ -16,48 +16,48 @@
 #include <vector>
 
 #include "ScriptProbe.hpp"
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/app/PluginRegistry.hpp"
-#include "rtype/ecs/event/EventCursor.hpp"
-#include "rtype/ecs/event/EventTraits.hpp"
-#include "rtype/ecs/resource/ResourceTraits.hpp"
-#include "rtype/ecs/schedule/Phase.hpp"
-#include "rtype/ecs/time/FixedTimestep.hpp"
-#include "rtype/ecs/time/TimePlugin.hpp"
-#include "rtype/scripting/ScriptHost.hpp"
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/app/PluginRegistry.hpp"
+#include "aylo/ecs/event/EventCursor.hpp"
+#include "aylo/ecs/event/EventTraits.hpp"
+#include "aylo/ecs/resource/ResourceTraits.hpp"
+#include "aylo/ecs/schedule/Phase.hpp"
+#include "aylo/ecs/time/FixedTimestep.hpp"
+#include "aylo/ecs/time/TimePlugin.hpp"
+#include "aylo/scripting/ScriptHost.hpp"
 
-namespace rtype::test::script_context {
+namespace aylo::test::script_context {
 /// @brief A plain-data resource scripts read and write.
 struct Score {
     float value;
     std::int32_t count;
 };
-RTYPE_ECS_RESOURCE(Score, "test.ctx.Score", value, count);
+AYLO_ECS_RESOURCE(Score, "test.ctx.Score", value, count);
 
 /// @brief A resource that owns memory: scripts cannot be given its bytes.
 struct Bag {
     std::vector<int> items;
 };
-RTYPE_ECS_RESOURCE(Bag, "test.ctx.Bag");
+AYLO_ECS_RESOURCE(Bag, "test.ctx.Bag");
 
 /// @brief A plain-data resource that never gets a value.
 struct Empty {
     float value;
 };
-RTYPE_ECS_RESOURCE(Empty, "test.ctx.Empty", value);
+AYLO_ECS_RESOURCE(Empty, "test.ctx.Empty", value);
 
 /// @brief A plain-data event.
 struct Boom {
     std::int32_t power;
     float size{2.F};
 };
-RTYPE_ECS_EVENT(Boom, "test.ctx.Boom", power, size);
+AYLO_ECS_EVENT(Boom, "test.ctx.Boom", power, size);
 
 /// @brief An event that owns memory.
 struct Crowd {
     std::vector<int> members;
 };
-RTYPE_ECS_EVENT(Crowd, "test.ctx.Crowd");
+AYLO_ECS_EVENT(Crowd, "test.ctx.Crowd");
 
 /// @brief An event with a text and a list, as an HTTP response or an AI's reply carries.
 struct Message {
@@ -65,35 +65,35 @@ struct Message {
     std::vector<int> members;
     int priority{1};
 };
-RTYPE_ECS_EVENT(Message, "test.ctx.Message", text, members, priority);
+AYLO_ECS_EVENT(Message, "test.ctx.Message", text, members, priority);
 
 /// @brief An event that cannot be copied, so a script can neither get nor send a copy of it.
 struct Handle {
     std::unique_ptr<int> value;
 };
-RTYPE_ECS_EVENT(Handle, "test.ctx.Handle");
-}  // namespace rtype::test::script_context
+AYLO_ECS_EVENT(Handle, "test.ctx.Handle");
+}  // namespace aylo::test::script_context
 
 namespace {
-using rtype::test::script_context::Boom;
-using rtype::test::script_context::Score;
+using aylo::test::script_context::Boom;
+using aylo::test::script_context::Score;
 
 /// @brief An App with a manual clock, the C++ resources and events scripts use, and a host on it.
 struct Fixture {
-    rtype::ecs::App app;
-    std::unique_ptr<rtype::scripting::ScriptHost> host;
+    aylo::ecs::App app;
+    std::unique_ptr<aylo::scripting::ScriptHost> host;
 
     Fixture() {
-        app.addPlugin(rtype::ecs::TimePlugin::manual(std::chrono::seconds{1}, rtype::ecs::FixedTimestep{1, 5}));
+        app.addPlugin(aylo::ecs::TimePlugin::manual(std::chrono::seconds{1}, aylo::ecs::FixedTimestep{1, 5}));
         app.getWorld().getResources().insert(Score{.value = 0.F, .count = 0});
-        app.getWorld().getResources().registerType<rtype::test::script_context::Empty>();
-        app.getWorld().getResources().insert(rtype::test::script_context::Bag{});
+        app.getWorld().getResources().registerType<aylo::test::script_context::Empty>();
+        app.getWorld().getResources().insert(aylo::test::script_context::Bag{});
         app.getWorld().getEvents().registerType<Boom>();
-        app.getWorld().getEvents().registerType<rtype::test::script_context::Crowd>();
-        app.getWorld().getEvents().registerType<rtype::test::script_context::Message>();
-        app.getWorld().getEvents().registerType<rtype::test::script_context::Handle>();
-        app.getPluginRegistry().addScriptForms("test.Probe", rtype::tests::kProbeForms);
-        auto created = rtype::scripting::ScriptHost::create(app, {});
+        app.getWorld().getEvents().registerType<aylo::test::script_context::Crowd>();
+        app.getWorld().getEvents().registerType<aylo::test::script_context::Message>();
+        app.getWorld().getEvents().registerType<aylo::test::script_context::Handle>();
+        app.getPluginRegistry().addScriptForms("test.Probe", aylo::tests::kProbeForms);
+        auto created = aylo::scripting::ScriptHost::create(app, {});
         EXPECT_TRUE(created) << (created ? "" : std::string{created.error().message()});
         host = std::move(*created);
     }
@@ -115,9 +115,9 @@ TEST(ScriptContext, AScriptReadsTheTimeResource) {
         engine.ecs.system("game.ReadTime", {
             phase = "Update",
             query = {},
-            resources = { read = { "rtype.Time" }, write = { "test.ctx.Score" } },
+            resources = { read = { "aylo.Time" }, write = { "test.ctx.Score" } },
             run = function(ctx)
-                local time = ctx.resources["rtype.Time"]
+                local time = ctx.resources["aylo.Time"]
                 ctx.resources["test.ctx.Score"].value = time.delta + time.fixedDelta
             end,
         })
@@ -135,9 +135,9 @@ TEST(ScriptContext, WritingAResourceDeclaredReadRaisesAnError) {
         engine.ecs.system("game.WriteTime", {
             phase = "Update",
             query = {},
-            resources = { read = { "rtype.Time" }, write = { "test.ctx.Score" } },
+            resources = { read = { "aylo.Time" }, write = { "test.ctx.Score" } },
             run = function(ctx)
-                local ok, message = pcall(function() ctx.resources["rtype.Time"].delta = 5 end)
+                local ok, message = pcall(function() ctx.resources["aylo.Time"].delta = 5 end)
                 assert(not ok and string.find(message, "read%-only"), message)
                 ctx.resources["test.ctx.Score"].count = 1
             end,
@@ -199,7 +199,7 @@ TEST(ScriptContext, AResourceThatWasNotDeclaredRaisesAnError) {
             query = {},
             resources = { write = { "test.ctx.Score" } },
             run = function(ctx)
-                local ok, message = pcall(function() return ctx.resources["rtype.Time"] end)
+                local ok, message = pcall(function() return ctx.resources["aylo.Time"] end)
                 assert(not ok and string.find(message, "not declared"), message)
                 ctx.resources["test.ctx.Score"].count = 1
             end,
@@ -284,7 +284,7 @@ TEST(ScriptContext, AnEventThatCannotBeCopiedIsRefusedWhenTheScriptLoads) {
 }
 
 TEST(ScriptContext, AnEventThatOwnsMemoryGoesBothWaysWhole) {
-    using rtype::test::script_context::Message;
+    using aylo::test::script_context::Message;
     Fixture fixture;
     ASSERT_EQ(fixture.run(R"(
         probe.lengths = {}
@@ -305,7 +305,7 @@ TEST(ScriptContext, AnEventThatOwnsMemoryGoesBothWaysWhole) {
     )"),
               "");
     fixture.app.getWorld().getEvents().send(Message{.text = std::string(10000, 'q'), .members = {10, 20, 30}});
-    rtype::ecs::EventCursor cursor;
+    aylo::ecs::EventCursor cursor;
     fixture.app.runFrame();  // the script reads the C++ event and answers
     std::vector<Message> answers;
     for (const Message& message : fixture.app.getWorld().getEvents().read<Message>(cursor)) {
@@ -322,7 +322,7 @@ TEST(ScriptContext, BadResourceAndEventDeclarationsNameTheSystem) {
     Fixture fixture;
     EXPECT_NE(fixture
                   .run(R"(
-        engine.ecs.system("game.C", { phase = "Update", query = {}, resources = { send = { "rtype.Time" } },
+        engine.ecs.system("game.C", { phase = "Update", query = {}, resources = { send = { "aylo.Time" } },
                                       run = function(ctx) end })
     )")
                   .find("System 'game.C': unknown key 'send' in 'resources' (expected 'read' or 'write')"),
@@ -360,7 +360,7 @@ TEST(ScriptContext, AScriptSendsAnEventACppSystemReads) {
 
     fixture.app.runFrame();
 
-    rtype::ecs::EventCursor cursor;
+    aylo::ecs::EventCursor cursor;
     const auto booms = fixture.app.getWorld().getEvents().read<Boom>(cursor);
     ASSERT_EQ(booms.size(), 2U);
     auto boom = booms.begin();
@@ -476,7 +476,7 @@ TEST(ScriptContext, SendingEventsChecksTheFields) {
     fixture.app.runFrame();
 
     EXPECT_EQ(fixture.score().count, 1);
-    rtype::ecs::EventCursor cursor;
+    aylo::ecs::EventCursor cursor;
     EXPECT_TRUE(fixture.app.getWorld().getEvents().read<Boom>(cursor).empty());  // a refused send sends nothing
 }
 
@@ -486,19 +486,19 @@ TEST(ScriptContext, TheSchedulerSeesTheResourceAndEventAccessOfAScriptSystem) {
         engine.ecs.system("game.Access", {
             phase = "Update",
             query = {},
-            resources = { read = { "rtype.Time" }, write = { "test.ctx.Score" } },
+            resources = { read = { "aylo.Time" }, write = { "test.ctx.Score" } },
             events = { read = { "test.ctx.Boom" }, send = { "test.ctx.Boom" } },
             run = function(ctx) end,
         })
     )"),
               "");
 
-    const auto* system = fixture.app.getSchedules().getSchedule(rtype::ecs::Phase::kUpdate).findSystem("game.Access");
+    const auto* system = fixture.app.getSchedules().getSchedule(aylo::ecs::Phase::kUpdate).findSystem("game.Access");
     ASSERT_NE(system, nullptr);
     const auto& registry = fixture.app.getWorld().getResources().getRegistry();
     const auto resources = system->getAccess().getResources();
     // Res<Time>, which every script system takes for ctx.delta, and the declared ones.
-    const auto find = [&resources](const rtype::ecs::ResourceId id) {
+    const auto find = [&resources](const aylo::ecs::ResourceId id) {
         for (const auto& access : resources) {
             if (access.id == id) {
                 return access.write ? 2 : 1;
@@ -506,7 +506,7 @@ TEST(ScriptContext, TheSchedulerSeesTheResourceAndEventAccessOfAScriptSystem) {
         }
         return 0;
     };
-    EXPECT_EQ(find(registry.findByName("rtype.Time")->type.id), 1);
+    EXPECT_EQ(find(registry.findByName("aylo.Time")->type.id), 1);
     EXPECT_EQ(find(registry.findByName("test.ctx.Score")->type.id), 2);
     EXPECT_EQ(find(registry.findByName("test.ctx.Empty")->type.id), 0);
     const auto events = system->getAccess().getEvents();

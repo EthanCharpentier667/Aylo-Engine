@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ScriptResolverTests
 */
@@ -14,20 +14,20 @@
 #include <string_view>
 
 #include "ScriptsDirectory.hpp"
+#include "aylo/scripting/ErrorKind.hpp"
+#include "aylo/scripting/exceptions/ScriptLoadException.hpp"
+#include "aylo/scripting/modules/ScriptResolver.hpp"
 #include "core/vfs/FileSource.hpp"
 #include "core/vfs/Pack.hpp"
-#include "rtype/scripting/ErrorKind.hpp"
-#include "rtype/scripting/exceptions/ScriptLoadException.hpp"
-#include "rtype/scripting/modules/ScriptResolver.hpp"
 
-using rtype::scripting::ErrorKind;
-using rtype::scripting::exceptions::ScriptLoadException;
-using rtype::scripting::modules::ScriptResolver;
-using rtype::tests::ScriptsDirectory;
+using aylo::scripting::ErrorKind;
+using aylo::scripting::exceptions::ScriptLoadException;
+using aylo::scripting::modules::ScriptResolver;
+using aylo::tests::ScriptsDirectory;
 
 namespace {
 /// @brief Expects the resolution to fail with @p kind and a message containing @p text.
-void expectError(const rtype::scripting::Result<rtype::luau::ModuleSource>& result, const ErrorKind kind,
+void expectError(const aylo::scripting::Result<aylo::luau::ModuleSource>& result, const ErrorKind kind,
                  const std::string_view text) {
     ASSERT_FALSE(result) << "resolved to " << result->key;
     EXPECT_EQ(result.error().kind(), kind) << result.error().message();
@@ -36,7 +36,7 @@ void expectError(const rtype::scripting::Result<rtype::luau::ModuleSource>& resu
 }  // namespace
 
 TEST(ScriptResolver, ResolvesAFile) {
-    const ScriptsDirectory scripts{"rtype-resolver-file"};
+    const ScriptsDirectory scripts{"aylo-resolver-file"};
     scripts.write("config/player.luau", "return 1");
     scripts.write("main.luau", "");
     const ScriptResolver resolver{scripts.path()};
@@ -49,7 +49,7 @@ TEST(ScriptResolver, ResolvesAFile) {
 }
 
 TEST(ScriptResolver, ResolvesAFolderWithAnInit) {
-    const ScriptsDirectory scripts{"rtype-resolver-init"};
+    const ScriptsDirectory scripts{"aylo-resolver-init"};
     scripts.write("ui/init.luau", "return 'ui'");
     const ScriptResolver resolver{scripts.path()};
 
@@ -60,7 +60,7 @@ TEST(ScriptResolver, ResolvesAFolderWithAnInit) {
 }
 
 TEST(ScriptResolver, AFileAndAnInitTogetherAreAmbiguous) {
-    const ScriptsDirectory scripts{"rtype-resolver-ambiguous"};
+    const ScriptsDirectory scripts{"aylo-resolver-ambiguous"};
     scripts.write("a.luau", "");
     scripts.write("a/init.luau", "");
     const ScriptResolver resolver{scripts.path()};
@@ -69,7 +69,7 @@ TEST(ScriptResolver, AFileAndAnInitTogetherAreAmbiguous) {
 }
 
 TEST(ScriptResolver, ANotFoundNamesBothCandidates) {
-    const ScriptsDirectory scripts{"rtype-resolver-missing"};
+    const ScriptsDirectory scripts{"aylo-resolver-missing"};
     scripts.write("main.luau", "");
     const ScriptResolver resolver{scripts.path()};
 
@@ -78,7 +78,7 @@ TEST(ScriptResolver, ANotFoundNamesBothCandidates) {
 }
 
 TEST(ScriptResolver, AFolderNamedLikeAFileIsNotAModule) {
-    const ScriptsDirectory scripts{"rtype-resolver-folder-file"};
+    const ScriptsDirectory scripts{"aylo-resolver-folder-file"};
     scripts.write("a.luau/x.txt", "");
     const ScriptResolver resolver{scripts.path()};
 
@@ -86,7 +86,7 @@ TEST(ScriptResolver, AFolderNamedLikeAFileIsNotAModule) {
 }
 
 TEST(ScriptResolver, ResolvesFromTheFolderOfTheRequester) {
-    const ScriptsDirectory scripts{"rtype-resolver-relative"};
+    const ScriptsDirectory scripts{"aylo-resolver-relative"};
     scripts.write("a/b/main.luau", "");
     scripts.write("a/b/sibling.luau", "");
     scripts.write("a/up.luau", "");
@@ -99,7 +99,7 @@ TEST(ScriptResolver, ResolvesFromTheFolderOfTheRequester) {
 }
 
 TEST(ScriptResolver, ARootRequireIsRelativeToScripts) {
-    const ScriptsDirectory scripts{"rtype-resolver-root-require"};
+    const ScriptsDirectory scripts{"aylo-resolver-root-require"};
     scripts.write("server/main.luau", "");
     const ScriptResolver resolver{scripts.path()};
 
@@ -107,20 +107,20 @@ TEST(ScriptResolver, ARootRequireIsRelativeToScripts) {
 }
 
 TEST(ScriptResolver, RefusesToLeaveScripts) {
-    const ScriptsDirectory scripts{"rtype-resolver-escape"};
+    const ScriptsDirectory scripts{"aylo-resolver-escape"};
     scripts.write("a/main.luau", "");
-    scripts.write("../rtype-resolver-escape-secret.luau", "return 'secret'");
+    scripts.write("../aylo-resolver-escape-secret.luau", "return 'secret'");
     const ScriptResolver resolver{scripts.path()};
 
-    expectError(resolver("a/main.luau", "../../rtype-resolver-escape-secret"), ErrorKind::kOutsideScripts,
+    expectError(resolver("a/main.luau", "../../aylo-resolver-escape-secret"), ErrorKind::kOutsideScripts,
                 "escapes scripts/");
     expectError(resolver("", "../project"), ErrorKind::kOutsideScripts, "escapes scripts/");
     expectError(resolver("main.luau", "../x"), ErrorKind::kOutsideScripts, "escapes scripts/");
-    std::filesystem::remove(scripts.path() / ".." / "rtype-resolver-escape-secret.luau");
+    std::filesystem::remove(scripts.path() / ".." / "aylo-resolver-escape-secret.luau");
 }
 
 TEST(ScriptResolver, RefusesTheInvalidForms) {
-    const ScriptsDirectory scripts{"rtype-resolver-invalid"};
+    const ScriptsDirectory scripts{"aylo-resolver-invalid"};
     scripts.write("a.luau", "");
     const ScriptResolver resolver{scripts.path()};
 
@@ -135,7 +135,7 @@ TEST(ScriptResolver, RefusesTheInvalidForms) {
 }
 
 TEST(ScriptResolver, TheScriptsAliasIsTheRoot) {
-    const ScriptsDirectory scripts{"rtype-resolver-scripts-alias"};
+    const ScriptsDirectory scripts{"aylo-resolver-scripts-alias"};
     scripts.write("a/b/main.luau", "");
     scripts.write("shared/util.luau", "");
     const ScriptResolver resolver{scripts.path()};
@@ -145,7 +145,7 @@ TEST(ScriptResolver, TheScriptsAliasIsTheRoot) {
 }
 
 TEST(ScriptResolver, ABareScriptsAliasIsTheRootInit) {
-    const ScriptsDirectory scripts{"rtype-resolver-bare-scripts"};
+    const ScriptsDirectory scripts{"aylo-resolver-bare-scripts"};
     scripts.write("init.luau", "return 'root'");
     const ScriptResolver resolver{scripts.path()};
 
@@ -154,12 +154,12 @@ TEST(ScriptResolver, ABareScriptsAliasIsTheRootInit) {
     EXPECT_EQ(module->key, "init.luau");
     EXPECT_EQ(module->chunkName, "scripts/init.luau");
 
-    const ScriptsDirectory empty{"rtype-resolver-bare-scripts-empty"};
+    const ScriptsDirectory empty{"aylo-resolver-bare-scripts-empty"};
     expectError(ScriptResolver{empty.path()}("", "@scripts"), ErrorKind::kModuleNotFound, "scripts/init.luau");
 }
 
 TEST(ScriptResolver, SelfIsTheFolderOfAFile) {
-    const ScriptsDirectory scripts{"rtype-resolver-self-file"};
+    const ScriptsDirectory scripts{"aylo-resolver-self-file"};
     scripts.write("config/main.luau", "");
     scripts.write("config/player.luau", "");
     const ScriptResolver resolver{scripts.path()};
@@ -168,7 +168,7 @@ TEST(ScriptResolver, SelfIsTheFolderOfAFile) {
 }
 
 TEST(ScriptResolver, SelfIsTheFolderOfAnInit) {
-    const ScriptsDirectory scripts{"rtype-resolver-self-init"};
+    const ScriptsDirectory scripts{"aylo-resolver-self-init"};
     scripts.write("ui/init.luau", "");
     scripts.write("ui/button.luau", "");
     scripts.write("button.luau", "");
@@ -178,14 +178,14 @@ TEST(ScriptResolver, SelfIsTheFolderOfAnInit) {
 }
 
 TEST(ScriptResolver, SelfNeedsARequester) {
-    const ScriptsDirectory scripts{"rtype-resolver-self-root"};
+    const ScriptsDirectory scripts{"aylo-resolver-self-root"};
     const ScriptResolver resolver{scripts.path()};
 
     expectError(resolver("", "@self/a"), ErrorKind::kInvalidPath, "@self");
 }
 
 TEST(ScriptResolver, InAnInitDotMeansTheSiblingsOfItsFolder) {
-    const ScriptsDirectory scripts{"rtype-resolver-init-siblings"};
+    const ScriptsDirectory scripts{"aylo-resolver-init-siblings"};
     scripts.write("ui/init.luau", "");
     scripts.write("ui/button.luau", "");
     scripts.write("theme.luau", "");
@@ -199,7 +199,7 @@ TEST(ScriptResolver, InAnInitDotMeansTheSiblingsOfItsFolder) {
 }
 
 TEST(ScriptResolver, UnknownAliasListsTheKnownOnes) {
-    const ScriptsDirectory scripts{"rtype-resolver-unknown-alias"};
+    const ScriptsDirectory scripts{"aylo-resolver-unknown-alias"};
     const ScriptResolver resolver{scripts.path(), {{"shared", "shared"}, {"Assets", "assets"}}};
 
     const auto result = resolver("", "@nope/a");
@@ -209,7 +209,7 @@ TEST(ScriptResolver, UnknownAliasListsTheKnownOnes) {
 }
 
 TEST(ScriptResolver, AliasesIgnoreCase) {
-    const ScriptsDirectory scripts{"rtype-resolver-alias-case"};
+    const ScriptsDirectory scripts{"aylo-resolver-alias-case"};
     scripts.write("shared/util.luau", "");
     const ScriptResolver resolver{scripts.path(), {{"Shared", "shared"}}};
 
@@ -218,7 +218,7 @@ TEST(ScriptResolver, AliasesIgnoreCase) {
 }
 
 TEST(ScriptResolver, AnExtraAliasPointsToAFolder) {
-    const ScriptsDirectory scripts{"rtype-resolver-extra-alias"};
+    const ScriptsDirectory scripts{"aylo-resolver-extra-alias"};
     scripts.write("lib/shared/util.luau", "");
     scripts.write("lib/shared/init.luau", "");
     const ScriptResolver resolver{scripts.path(), {{"shared", "lib/shared/"}}};
@@ -228,7 +228,7 @@ TEST(ScriptResolver, AnExtraAliasPointsToAFolder) {
 }
 
 TEST(ScriptResolver, RejectsBadAliasesAtConstruction) {
-    const ScriptsDirectory scripts{"rtype-resolver-bad-alias"};
+    const ScriptsDirectory scripts{"aylo-resolver-bad-alias"};
     using Aliases = std::map<std::string, std::string>;
     EXPECT_THROW((ScriptResolver{scripts.path(), Aliases{{"a/b", "x"}}}), ScriptLoadException);
     EXPECT_THROW((ScriptResolver{scripts.path(), Aliases{{"", "x"}}}), ScriptLoadException);
@@ -243,8 +243,8 @@ TEST(ScriptResolver, RejectsBadAliasesAtConstruction) {
 }
 
 TEST(ScriptResolver, RejectsAnAliasThroughALinkPointingOut) {
-    const ScriptsDirectory scripts{"rtype-resolver-alias-link"};
-    const ScriptsDirectory outside{"rtype-resolver-alias-link-outside"};
+    const ScriptsDirectory scripts{"aylo-resolver-alias-link"};
+    const ScriptsDirectory outside{"aylo-resolver-alias-link-outside"};
     if (!scripts.link("out", outside.path())) {
         GTEST_SKIP() << "symbolic links cannot be created here";
     }
@@ -252,7 +252,7 @@ TEST(ScriptResolver, RejectsAnAliasThroughALinkPointingOut) {
 }
 
 TEST(ScriptResolver, RefusesAFileWhoseCaseDiffers) {
-    const ScriptsDirectory scripts{"rtype-resolver-case-file"};
+    const ScriptsDirectory scripts{"aylo-resolver-case-file"};
     scripts.write("Config.luau", "");
     const ScriptResolver resolver{scripts.path()};
 
@@ -261,7 +261,7 @@ TEST(ScriptResolver, RefusesAFileWhoseCaseDiffers) {
 }
 
 TEST(ScriptResolver, RefusesAFolderWhoseCaseDiffers) {
-    const ScriptsDirectory scripts{"rtype-resolver-case-folder"};
+    const ScriptsDirectory scripts{"aylo-resolver-case-folder"};
     scripts.write("Shared/util.luau", "");
     const ScriptResolver resolver{scripts.path()};
 
@@ -270,8 +270,8 @@ TEST(ScriptResolver, RefusesAFolderWhoseCaseDiffers) {
 }
 
 TEST(ScriptResolver, RefusesALinkedFileOutsideScripts) {
-    const ScriptsDirectory scripts{"rtype-resolver-link-out"};
-    const ScriptsDirectory outside{"rtype-resolver-link-out-target"};
+    const ScriptsDirectory scripts{"aylo-resolver-link-out"};
+    const ScriptsDirectory outside{"aylo-resolver-link-out-target"};
     outside.write("secret.luau", "return 'secret'");
     if (!scripts.link("secret.luau", outside.path() / "secret.luau") || !scripts.link("dir", outside.path())) {
         GTEST_SKIP() << "symbolic links cannot be created here";
@@ -283,7 +283,7 @@ TEST(ScriptResolver, RefusesALinkedFileOutsideScripts) {
 }
 
 TEST(ScriptResolver, FollowsALinkInsideScripts) {
-    const ScriptsDirectory scripts{"rtype-resolver-link-in"};
+    const ScriptsDirectory scripts{"aylo-resolver-link-in"};
     scripts.write("real/util.luau", "return 1");
     if (!scripts.link("alias.luau", scripts.path() / "real" / "util.luau")) {
         GTEST_SKIP() << "symbolic links cannot be created here";
@@ -297,7 +297,7 @@ TEST(ScriptResolver, FollowsALinkInsideScripts) {
 }
 
 TEST(ScriptResolver, ResolvesAnEntry) {
-    const ScriptsDirectory scripts{"rtype-resolver-entry"};
+    const ScriptsDirectory scripts{"aylo-resolver-entry"};
     scripts.write("server/main.luau", "return 'server'");
     scripts.write("main.luau", "");
     const ScriptResolver resolver{scripts.path()};
@@ -311,7 +311,7 @@ TEST(ScriptResolver, ResolvesAnEntry) {
 }
 
 TEST(ScriptResolver, RefusesInvalidEntries) {
-    const ScriptsDirectory scripts{"rtype-resolver-bad-entry"};
+    const ScriptsDirectory scripts{"aylo-resolver-bad-entry"};
     scripts.write("main.luau", "");
     const ScriptResolver resolver{scripts.path()};
 
@@ -328,22 +328,21 @@ TEST(ScriptResolver, RefusesInvalidEntries) {
 
 namespace {
 /// @return The scripts of a pack written to @p file, as the scripting plugin reads them from an exported game.
-std::shared_ptr<const rtype::core::vfs::FileSource> packedScripts(const std::filesystem::path& file) {
-    using rtype::core::vfs::PackEntry;
-    rtype::core::vfs::writePack(file,
-                                {
-                                    PackEntry{.path = "project.luau", .data = std::string{""}},
-                                    PackEntry{.path = "scripts/config/player.luau", .data = std::string{"return 1"}},
-                                    PackEntry{.path = "scripts/ui/init.luau", .data = std::string{"return 2"}},
-                                    PackEntry{.path = "scripts/Enemy.luau", .data = std::string{"return 3"}},
-                                });
-    return std::make_shared<rtype::core::vfs::SubSource>(std::make_shared<rtype::core::vfs::PackSource>(file),
-                                                         "scripts");
+std::shared_ptr<const aylo::core::vfs::FileSource> packedScripts(const std::filesystem::path& file) {
+    using aylo::core::vfs::PackEntry;
+    aylo::core::vfs::writePack(file,
+                               {
+                                   PackEntry{.path = "project.luau", .data = std::string{""}},
+                                   PackEntry{.path = "scripts/config/player.luau", .data = std::string{"return 1"}},
+                                   PackEntry{.path = "scripts/ui/init.luau", .data = std::string{"return 2"}},
+                                   PackEntry{.path = "scripts/Enemy.luau", .data = std::string{"return 3"}},
+                               });
+    return std::make_shared<aylo::core::vfs::SubSource>(std::make_shared<aylo::core::vfs::PackSource>(file), "scripts");
 }
 }  // namespace
 
 TEST(ScriptResolver, ResolvesTheScriptsOfASource) {
-    const ScriptsDirectory scripts{"rtype-resolver-source"};
+    const ScriptsDirectory scripts{"aylo-resolver-source"};
     const ScriptResolver resolver{packedScripts(scripts.path() / "game.pak"), {{"cfg", "config"}}};
 
     const auto player = resolver("", "@scripts/config/player");
@@ -361,7 +360,7 @@ TEST(ScriptResolver, ResolvesTheScriptsOfASource) {
 }
 
 TEST(ScriptResolver, KeepsTheCaseRulesInASource) {
-    const ScriptsDirectory scripts{"rtype-resolver-source-case"};
+    const ScriptsDirectory scripts{"aylo-resolver-source-case"};
     const ScriptResolver resolver{packedScripts(scripts.path() / "game.pak")};
 
     expectError(resolver("", "@scripts/enemy"), ErrorKind::kCaseMismatch, "'Enemy.luau'");

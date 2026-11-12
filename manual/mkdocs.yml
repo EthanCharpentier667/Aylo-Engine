@@ -1,6 +1,6 @@
 site_name: AYLO Engine Manual
 site_description: How to make a game with the AYLO Engine, in Luau.
-repo_url: https://github.com/Charles-Mahoudeau/rtype
+repo_url: https://github.com/EthanCharpentier667/Aylo-Engine
 docs_dir: pages
 site_dir: site
 
@@ -41,4 +41,4 @@ nav:
   - Native plugins: native-plugins.md
   - Shipping your game: shipping.md
   - Accessibility: accessibility.md
-  - Walkthrough, R-Type Duel: duel-walkthrough.md
+  - Walkthrough, AYLO Duel: duel-walkthrough.md

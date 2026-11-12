@@ -4,7 +4,7 @@
 |---|---|
 | **Status** | Implemented (`kProtocolVersion = 1`) |
 | **Transport** | UDP, one port (default `4242`) |
-| **Source of truth** | `src/rtype/network/protocol/`, `src/rtype/network/connection/Connection.cpp`, `src/rtype/replication/` |
+| **Source of truth** | `src/aylo/network/protocol/`, `src/aylo/network/connection/Connection.cpp`, `src/aylo/replication/` |
 | **Background** | [overview.md](overview.md) (the short story), [design.md](design.md) (the reasons) |
 
 This document specifies the bytes a client and a server exchange, precisely enough to write a new client for an AYLO
@@ -74,7 +74,7 @@ The first byte of every datagram is its **kind**:
 | Offset | Size | Field | Value |
 |---|---|---|---|
 | 0 | 1 | kind | `0x01` |
-| 1 | 4 | protocolId | `0x52545950` ("RTYP", written little-endian: `50 59 54 52`) |
+| 1 | 4 | protocolId | `0x41594C4F` ("AYLO", written little-endian: `4F 4C 59 41`) |
 | 5 | 2 | version | `1` |
 | 7 | 4 | resumeClient | `0` for a new session, or the client id to resume (4.7) |
 | 11 | 8 | resumeToken | `0`, or the resume token of that client |
@@ -244,7 +244,7 @@ a list **sorted by name**, so both sides compute the same ones.
 |---|---|
 | 1 | type `0x20` |
 | 2 | shortId: the component's position, from 0 |
-| 1 + n | name (`string8`), for instance `rtype.Transform` or `game.Health` |
+| 1 + n | name (`string8`), for instance `aylo.Transform` or `game.Health` |
 | 8 | wireHash: identifies the component's layout (section 8.4) |
 
 ### 8.2 ManifestInputAction
@@ -362,7 +362,7 @@ sample per tick and repeats the last one when none arrived.
 ## 11. CustomPacket (both ways)
 
 Packets the game declares in Luau (`net.packet`, see the manual's
-[Networking](https://charles-mahoudeau.github.io/rtype/networking/) page), for what is not state: a chat line, a "ready"
+[Networking](https://ethancharpentier667.github.io/Aylo-Engine/networking/) page), for what is not state: a chat line, a "ready"
 button, a kill feed.
 
 | Size | Field |

@@ -96,18 +96,18 @@ engine.ecs.system("demo.ReadMenu", {
 	phase = "Update",
 	side = "client",
 	query = {},
-	events = { read = { "rtype.UiClicked", "rtype.UiValueChanged", "rtype.UiTextSubmitted" }, send = { "rtype.AppExit" } },
+	events = { read = { "aylo.UiClicked", "aylo.UiValueChanged", "aylo.UiTextSubmitted" }, send = { "aylo.AppExit" } },
 	run = function(ctx)
-		for click in ctx.events.read("rtype.UiClicked") do
+		for click in ctx.events.read("aylo.UiClicked") do
 			print(`clicked {click.action}`)
 			if click.action == "menu.quit" then
-				ctx.events.send("rtype.AppExit", { code = 0 })
+				ctx.events.send("aylo.AppExit", { code = 0 })
 			end
 		end
-		for change in ctx.events.read("rtype.UiValueChanged") do
+		for change in ctx.events.read("aylo.UiValueChanged") do
 			print(`{change.action} = {change.value}`)
 		end
-		for submit in ctx.events.read("rtype.UiTextSubmitted") do
+		for submit in ctx.events.read("aylo.UiTextSubmitted") do
 			print(`submitted {submit.action}`)
 		end
 	end,

@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** DependencyGraphTests
 */
@@ -13,10 +13,10 @@
 #include <string_view>
 #include <vector>
 
-#include "rtype/ecs/schedule/DependencyGraph.hpp"
+#include "aylo/ecs/schedule/DependencyGraph.hpp"
 
 namespace {
-using rtype::ecs::detail::DependencyGraph;
+using aylo::ecs::detail::DependencyGraph;
 using Order = std::vector<std::size_t>;
 }  // namespace
 

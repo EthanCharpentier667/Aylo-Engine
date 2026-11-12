@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ClientCoreTests
 */
@@ -16,21 +16,21 @@
 
 #include "FakeClock.hpp"
 #include "SimulatedLink.hpp"
-#include "rtype/network/NetworkSettings.hpp"
-#include "rtype/network/Types.hpp"
-#include "rtype/network/client/ClientCore.hpp"
-#include "rtype/network/client/ClientEvent.hpp"
-#include "rtype/network/io/Address.hpp"
-#include "rtype/network/protocol/Constants.hpp"
-#include "rtype/network/protocol/Packets.hpp"
-#include "rtype/network/server/RoomMessages.hpp"
-#include "rtype/network/server/ServerCore.hpp"
+#include "aylo/network/NetworkSettings.hpp"
+#include "aylo/network/Types.hpp"
+#include "aylo/network/client/ClientCore.hpp"
+#include "aylo/network/client/ClientEvent.hpp"
+#include "aylo/network/io/Address.hpp"
+#include "aylo/network/protocol/Constants.hpp"
+#include "aylo/network/protocol/Packets.hpp"
+#include "aylo/network/server/RoomMessages.hpp"
+#include "aylo/network/server/ServerCore.hpp"
 
-namespace network = rtype::network;
-namespace protocol = rtype::network::protocol;
-namespace client = rtype::network::client;
-namespace server = rtype::network::server;
-namespace tests = rtype::network::tests;
+namespace network = aylo::network;
+namespace protocol = aylo::network::protocol;
+namespace client = aylo::network::client;
+namespace server = aylo::network::server;
+namespace tests = aylo::network::tests;
 
 namespace {
 constexpr std::uint8_t kGameType = 0x20;

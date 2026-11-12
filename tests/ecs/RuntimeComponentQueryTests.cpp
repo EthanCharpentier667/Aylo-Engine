@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** RuntimeComponentQueryTests
 */
@@ -13,44 +13,44 @@
 #include <span>
 #include <vector>
 
-#include "rtype/ecs/component/ComponentInfo.hpp"
-#include "rtype/ecs/component/ComponentTraits.hpp"
-#include "rtype/ecs/component/Components.hpp"
-#include "rtype/ecs/entity/Entity.hpp"
-#include "rtype/ecs/query/DynamicQuery.hpp"
-#include "rtype/ecs/query/QueryBuilder.hpp"
-#include "rtype/ecs/query/QueryIteration.hpp"
-#include "rtype/ecs/query/QueryMatch.hpp"
-#include "rtype/ecs/type/Field.hpp"
-#include "rtype/ecs/world/World.hpp"
+#include "aylo/ecs/component/ComponentInfo.hpp"
+#include "aylo/ecs/component/ComponentTraits.hpp"
+#include "aylo/ecs/component/Components.hpp"
+#include "aylo/ecs/entity/Entity.hpp"
+#include "aylo/ecs/query/DynamicQuery.hpp"
+#include "aylo/ecs/query/QueryBuilder.hpp"
+#include "aylo/ecs/query/QueryIteration.hpp"
+#include "aylo/ecs/query/QueryMatch.hpp"
+#include "aylo/ecs/type/Field.hpp"
+#include "aylo/ecs/world/World.hpp"
 
-namespace rtype::test::runtime_query {
+namespace aylo::test::runtime_query {
 struct Position {
     float x;
     float y;
 };
-RTYPE_ECS_COMPONENT(Position, "test.runtimeQuery.Position", x, y);
-}  // namespace rtype::test::runtime_query
+AYLO_ECS_COMPONENT(Position, "test.runtimeQuery.Position", x, y);
+}  // namespace aylo::test::runtime_query
 
 namespace {
-using rtype::ecs::ComponentId;
-using rtype::ecs::DynamicQuery;
-using rtype::ecs::Entity;
-using rtype::ecs::QueryBuilder;
-using rtype::ecs::QueryMatch;
-using rtype::test::runtime_query::Position;
+using aylo::ecs::ComponentId;
+using aylo::ecs::DynamicQuery;
+using aylo::ecs::Entity;
+using aylo::ecs::QueryBuilder;
+using aylo::ecs::QueryMatch;
+using aylo::test::runtime_query::Position;
 
 constexpr std::size_t kStrength = 0;  ///< Offset of the shield's `strength` field.
 constexpr std::size_t kRegen = 4;     ///< Offset of the shield's `regen` field.
 
 /// @return A component described at run time, as the Luau bridge registers one: no C++ type behind it.
-rtype::ecs::ComponentInfo makeShield() {
-    return rtype::ecs::ComponentInfo{
+aylo::ecs::ComponentInfo makeShield() {
+    return aylo::ecs::ComponentInfo{
         .type = {.name = "test.runtimeQuery.Shield",
                  .size = 8,
                  .alignment = 4,
-                 .fields = {{.name = "strength", .type = rtype::ecs::FieldType::kF32, .offset = kStrength},
-                            {.name = "regen", .type = rtype::ecs::FieldType::kF32, .offset = kRegen}}}};
+                 .fields = {{.name = "strength", .type = aylo::ecs::FieldType::kF32, .offset = kStrength},
+                            {.name = "regen", .type = aylo::ecs::FieldType::kF32, .offset = kRegen}}}};
 }
 
 /// @return The bytes of a shield value.
@@ -69,7 +69,7 @@ float floatAt(std::span<const std::byte> bytes, std::size_t offset) {
 }
 
 /// @return The entities `query` matches since `lastRun`, by index.
-std::vector<Entity> entitiesOf(const DynamicQuery& query, rtype::ecs::Tick lastRun = 0) {
+std::vector<Entity> entitiesOf(const DynamicQuery& query, aylo::ecs::Tick lastRun = 0) {
     std::vector<Entity> entities;
     for (const QueryMatch& match : query.iter(lastRun)) {
         entities.push_back(match.getEntity());
@@ -88,8 +88,8 @@ class RuntimeComponentQuery : public ::testing::Test {
         ASSERT_TRUE(components.add(onlyPosition, Position{.x = 3.F, .y = 4.F}));
     }
 
-    rtype::ecs::World world;                                     ///< The world under test.
-    rtype::ecs::Components& components{world.getComponents()};   ///< Its components.
+    aylo::ecs::World world;                                      ///< The world under test.
+    aylo::ecs::Components& components{world.getComponents()};    ///< Its components.
     ComponentId shield{*components.registerType(makeShield())};  ///< The runtime component.
     ComponentId position{components.registerType<Position>()};   ///< The C++ component.
     Entity both{world.spawn()};                                  ///< Has a shield and a position.
@@ -99,7 +99,7 @@ class RuntimeComponentQuery : public ::testing::Test {
 }  // namespace
 
 TEST_F(RuntimeComponentQuery, ReadsItsValues) {
-    const rtype::ecs::Result<DynamicQuery> query = QueryBuilder{}.read(shield).build(components);
+    const aylo::ecs::Result<DynamicQuery> query = QueryBuilder{}.read(shield).build(components);
     ASSERT_TRUE(query);
     float total = 0.F;
     for (const QueryMatch& match : query->iter(0)) {
@@ -110,7 +110,7 @@ TEST_F(RuntimeComponentQuery, ReadsItsValues) {
 }
 
 TEST_F(RuntimeComponentQuery, WritesItNextToACppComponent) {
-    const rtype::ecs::Result<DynamicQuery> query = QueryBuilder{}.read(position).write(shield).build(components);
+    const aylo::ecs::Result<DynamicQuery> query = QueryBuilder{}.read(position).write(shield).build(components);
     ASSERT_TRUE(query);
     for (QueryMatch& match : query->iter(0)) {
         const float strength = floatAt(match.get(1), kStrength) + floatAt(match.get(0), 0);
@@ -121,17 +121,17 @@ TEST_F(RuntimeComponentQuery, WritesItNextToACppComponent) {
 }
 
 TEST_F(RuntimeComponentQuery, FiltersOnIt) {
-    const rtype::ecs::Result<DynamicQuery> shieldOnly = QueryBuilder{}.with(shield).without(position).build(components);
+    const aylo::ecs::Result<DynamicQuery> shieldOnly = QueryBuilder{}.with(shield).without(position).build(components);
     ASSERT_TRUE(shieldOnly);
     EXPECT_EQ(entitiesOf(*shieldOnly), (std::vector<Entity>{onlyShield}));
 
-    const rtype::ecs::Result<DynamicQuery> unshielded = QueryBuilder{}.read(position).without(shield).build(components);
+    const aylo::ecs::Result<DynamicQuery> unshielded = QueryBuilder{}.read(position).without(shield).build(components);
     ASSERT_TRUE(unshielded);
     EXPECT_EQ(entitiesOf(*unshielded), (std::vector<Entity>{onlyPosition}));
 }
 
 TEST_F(RuntimeComponentQuery, ReadsItAsAnOptionalTerm) {
-    const rtype::ecs::Result<DynamicQuery> query = QueryBuilder{}.read(position).optionalRead(shield).build(components);
+    const aylo::ecs::Result<DynamicQuery> query = QueryBuilder{}.read(position).optionalRead(shield).build(components);
     ASSERT_TRUE(query);
     for (const QueryMatch& match : query->iter(0)) {
         EXPECT_EQ(match.get(1).empty(), match.getEntity() == onlyPosition);  // no shield: an empty value
@@ -140,16 +140,16 @@ TEST_F(RuntimeComponentQuery, ReadsItAsAnOptionalTerm) {
 
 TEST_F(RuntimeComponentQuery, TracksItsChanges) {
     world.advanceChangeTick(5);
-    const rtype::ecs::Result<DynamicQuery> writer = QueryBuilder{}.write(shield).with(position).build(components);
+    const aylo::ecs::Result<DynamicQuery> writer = QueryBuilder{}.write(shield).with(position).build(components);
     ASSERT_TRUE(writer);
     for (QueryMatch& match : writer->iter(0)) {
         static_cast<void>(match.getMut(0));  // write access stamps the tick
     }
-    const rtype::ecs::Result<DynamicQuery> changed = QueryBuilder{}.read(shield).changed(shield).build(components);
+    const aylo::ecs::Result<DynamicQuery> changed = QueryBuilder{}.read(shield).changed(shield).build(components);
     ASSERT_TRUE(changed);
     EXPECT_EQ(entitiesOf(*changed, 3), (std::vector<Entity>{both}));  // written at 5, after tick 3
 
-    const rtype::ecs::Result<DynamicQuery> added = QueryBuilder{}.read(shield).added(shield).build(components);
+    const aylo::ecs::Result<DynamicQuery> added = QueryBuilder{}.read(shield).added(shield).build(components);
     ASSERT_TRUE(added);
     EXPECT_TRUE(entitiesOf(*added, 3).empty());  // added at 0
 }

@@ -6,7 +6,7 @@ so it is correct and fast even on a large body. Add it on every side that needs 
 
 ```luau
 -- project.luau
-engine.settings.plugins = { "rtype.Json" }
+engine.settings.plugins = { "aylo.Json" }
 ```
 
 ## Encode

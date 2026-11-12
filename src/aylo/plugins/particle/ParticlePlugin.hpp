@@ -1,0 +1,63 @@
+/*
+** EPITECH PROJECT, 2026
+** aylo
+** File description:
+** ParticlePlugin
+*/
+
+#pragma once
+
+#include <span>
+#include <string_view>
+
+#include "aylo/ecs/app/Plugin.hpp"
+#include "plugins/particle/Export.hpp"
+
+namespace aylo::ecs {
+class App;
+}  // namespace aylo::ecs
+
+namespace aylo::plugins::particle {
+
+/// @brief Particle effects: inserts the ParticleEffectAssets, ParticleEffectDrafts and ParticleSystems resources,
+/// registers ParticleEmitter and ParticleOneShot, the particle events and the engine calls of `engine.assets.particle`
+/// (addParticleCalls()), and plays the emitters, on the CPU or the GPU (docs/particles/).
+///
+/// @details Four systems, all on the client:
+/// - PostUpdate "aylo.Particle.Spawn": spawns a one-shot emitter (ParticleOneShot) for each SpawnParticles event; it
+///   plays from the next frame, once its commands are applied.
+/// - PostUpdate "aylo.Particle.Update", after the TransformPlugin's propagation: starts the emitters with a
+///   GlobalTransform whose effect is loaded (restarting the ones whose effect changed), picking the CPU or the GPU
+///   (the emitter's override, else the effect's choice; the CPU when the renderer cannot, reported once per effect
+///   that asked for the GPU), stops the ones whose ParticleEmitter is gone, destroying their GPU system, counts what
+///   each one spawns (computeSpawnCount()) and runs the CPU simulations. It sends ParticlesFinished once a one-shot
+///   emitter is done, and despawns it if it has ParticleOneShot.
+/// - Render "aylo.Particle.Draw", after the GraphicsPlugin's camera and the TextPlugin's texts, before its sprites:
+///   gives the GPU systems their emission (IRenderer::simulate()), then pushes each emitter whose texture is loaded to
+///   the SpriteQueue as a ParticleDraw, sorted with the sprites by ParticleEmitter::layer.
+/// It requires the GraphicsPlugin and the ShaderPlugin.
+class AYLO_PLUGIN_PARTICLE_API ParticlePlugin : public ecs::Plugin {
+  public:
+    static constexpr std::string_view kName = "aylo.Particle";                 ///< The plugin's name.
+    static constexpr std::string_view kSpawnSystem = "aylo.Particle.Spawn";    ///< Spawns the one-shot emitters.
+    static constexpr std::string_view kUpdateSystem = "aylo.Particle.Update";  ///< Plays the emitters.
+    static constexpr std::string_view kDrawSystem = "aylo.Particle.Draw";      ///< Draws the emitters.
+
+    ParticlePlugin() = default;
+    ~ParticlePlugin() override = default;
+    ParticlePlugin(const ParticlePlugin& other) = default;
+    ParticlePlugin& operator=(const ParticlePlugin& other) = default;
+    ParticlePlugin(ParticlePlugin&& other) noexcept = default;
+    ParticlePlugin& operator=(ParticlePlugin&& other) noexcept = default;
+
+    /// @return "aylo.Particle".
+    [[nodiscard]] std::string_view getName() const noexcept override;
+
+    /// @return The plugins this one needs.
+    [[nodiscard]] std::span<const std::string_view> getDependencies() const noexcept override;
+
+    /// @brief Inserts the resources, registers the components and events, and adds the systems.
+    void build(ecs::App& app) override;
+};
+
+}  // namespace aylo::plugins::particle

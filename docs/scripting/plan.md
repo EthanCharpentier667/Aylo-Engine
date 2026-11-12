@@ -13,15 +13,15 @@ recommendation, not an obligation.
 | #  | Decision                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | Why                                                                                                                                                                                               |
 |----|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | D1 | **No AST parsing.** A component is described by a plain Luau table of field types (`fields = { strength = "f32" }`), read at runtime. The `export type` and the generated `.d.luau` are not needed to run.                                                                                                                                                                                                                                                                                                                                                                                                                                                       | Decided by the team. Cheapest way to get a real layout.                                                                                                                                           |
-| D2 | **The bridge is its own library**, the `scripting` target (`src/rtype/scripting/`, `rtype-scripting`, namespace `rtype::scripting`), depending on `core`, `ecs` and `luau`. It holds the bridge itself (`ScriptHost`: runtime, layout, usertypes, the `engine.ecs` Luau library, registration on an `App`) and, in `plugin/`, a thin `ScriptingPlugin` (an `ecs::Plugin`) that calls it from `build()`. The executable (or `engine`) adds the plugin. Not to be confused with the Luau plugins of SCR-03 (`engine.ecs.plugin`), which are Luau modules. `luau` stays free of the ECS, and `plugins` never depends on `luau`. `SettingsLoader` stays in `engine`. | `plugins/` cannot depend on `luau` (dependency rules), and `engine` should not grow the bridge. `../Modules.md` gets one line for the new target.                                               |
-| D3 | **Usertypes are implemented** in `rtype-luau` (LUA-00). A system receives each component as a **userdata view** that reads and writes the component bytes in place.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | Removes the table copies and the write-back. A view is only valid during the `run` that received it (see D9): a late access raises a Luau error.                                                  |
+| D2 | **The bridge is its own library**, the `scripting` target (`src/aylo/scripting/`, `aylo-scripting`, namespace `aylo::scripting`), depending on `core`, `ecs` and `luau`. It holds the bridge itself (`ScriptHost`: runtime, layout, usertypes, the `engine.ecs` Luau library, registration on an `App`) and, in `plugin/`, a thin `ScriptingPlugin` (an `ecs::Plugin`) that calls it from `build()`. The executable (or `engine`) adds the plugin. Not to be confused with the Luau plugins of SCR-03 (`engine.ecs.plugin`), which are Luau modules. `luau` stays free of the ECS, and `plugins` never depends on `luau`. `SettingsLoader` stays in `engine`. | `plugins/` cannot depend on `luau` (dependency rules), and `engine` should not grow the bridge. `../Modules.md` gets one line for the new target.                                               |
+| D3 | **Usertypes are implemented** in `aylo-luau` (LUA-00). A system receives each component as a **userdata view** that reads and writes the component bytes in place.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | Removes the table copies and the write-back. A view is only valid during the `run` that received it (see D9): a late access raises a Luau error.                                                  |
 | D4 | **`Entity` is a userdata handle** (`__eq`, `__tostring`, usable as a table key through its bits).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | No 53-bit limit; scripts hold handles, not pointers.                                                                                                                                              |
 | D5 | **Systems are `ScriptCallable`s** holding a `luau::FunctionRef`, using `DynamicQueries` and `Commands&` as parameters.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | That is exactly what `ScriptCallable` was made for.                                                                                                                                               |
 | D6 | **Files are loaded by the bridge, not with `require`.** *(Fully superseded by D10, epic [#489](https://github.com/Charles-Mahoudeau/rtype/issues/489): no scan, no sorted order; files are loaded from the entry points.)*                                                                                                                                                                                                                                                                                                                                                                                                                                                  | `require` is a non-goal of the Luau proposal. Sorted order makes the load order the same on every machine.                                                                                        |
 | D7 | **A system declares `run` as a field** of its declaration table (`run = function(ctx) ... end`).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | One registration step, and errors point at the faulty call. A method form (`function Sys:run(ctx)`) would need the registration to wait for the end of the chunk; it can be added later as sugar. |
 | D8 | **A Luau error in `run` is logged and the system is skipped for that tick.** The app keeps running.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | One broken script must not take the game down.                                                                                                                                                    |
 | D9 | **Views are validated by a generation counter.** Each script system owns a heap-allocated `ViewScope { generation }`; a view stores the scope and the generation it was created with, and the bridge increments the generation when `run` returns. A script must not keep a view; keeping an `Entity` across ticks is allowed.                                                                                                                                                                                                                                                                                                                                   | No allocation per call, correct when the callable is moved. Views of earlier matches stay valid until `run` ends, because structural changes are deferred in `Commands`.                          |
-| D10 | **Files require each other by string** (epic #489, reverses the D6 non-goal). `require("./x")`, `"../x"` and `"@alias/x"` follow the Luau require-by-string rules: `/` separators, no extension, a path resolves to `x.luau` or `x/init.luau` (both existing is an error). `@scripts` is the game's `scripts/` (alone: `scripts/init.luau`), `@self` the folder of the requiring file; in an `init.luau`, `./` means the siblings of its folder. Extra aliases come from the settings (`scripts` and `self` are reserved, names ignore case, targets stay inside `scripts/`). | The path logic is `ScriptPath` (pure parser) and `ScriptResolver` (`src/rtype/scripting/modules/`, namespace `rtype::scripting::modules`), the callback of `luau::ModuleLoader`. Nothing outside `scripts/` is reachable: no `..` past the root, no absolute path, no link pointing out (`core::asset::isInsideDirectory`, the check of `resolveAssetPath`). Every segment is compared with the real name in the folder listing, so a case mismatch is an error naming the real name on Linux, macOS and Windows alike. The cache key is the path relative to `scripts/` with its extension, the chunk name `scripts/<key>`. A root require (an entry point such as `server/main`) resolves `./x` from `scripts/`. **Entry points.** Nothing is auto-loaded: `scripts.main` (default `"main"`), `scripts.server` and `scripts.client` name entries (paths in `scripts/`, no extension, resolved by `ScriptResolver::resolveEntry`). A process requires `main`, then `server` if it is a server, then `client` if it is a client (standalone: all three); a module several entries require runs once. A missing default entry only warns; a missing explicit one fails the build naming `scripts.<key>`. The root set of the host is the entries; a changed file no module requires is ignored (`setAdoptsNewFiles(false)`). **Sandbox.** `ScriptHost::seal()` runs before the first module: it loads the plugins' setup forms, calls `Runtime::sandbox()` and deep-freezes the `engine` tree. Each file then has its own globals (`shareGlobals = false`), read-only standard libraries and `engine`; files share data only through `require`. Forms registered after sealing are an error. | The seal is lazy (first script run), so hosts created before their plugins (tests) still load all forms. |
+| D10 | **Files require each other by string** (epic #489, reverses the D6 non-goal). `require("./x")`, `"../x"` and `"@alias/x"` follow the Luau require-by-string rules: `/` separators, no extension, a path resolves to `x.luau` or `x/init.luau` (both existing is an error). `@scripts` is the game's `scripts/` (alone: `scripts/init.luau`), `@self` the folder of the requiring file; in an `init.luau`, `./` means the siblings of its folder. Extra aliases come from the settings (`scripts` and `self` are reserved, names ignore case, targets stay inside `scripts/`). | The path logic is `ScriptPath` (pure parser) and `ScriptResolver` (`src/aylo/scripting/modules/`, namespace `aylo::scripting::modules`), the callback of `luau::ModuleLoader`. Nothing outside `scripts/` is reachable: no `..` past the root, no absolute path, no link pointing out (`core::asset::isInsideDirectory`, the check of `resolveAssetPath`). Every segment is compared with the real name in the folder listing, so a case mismatch is an error naming the real name on Linux, macOS and Windows alike. The cache key is the path relative to `scripts/` with its extension, the chunk name `scripts/<key>`. A root require (an entry point such as `server/main`) resolves `./x` from `scripts/`. **Entry points.** Nothing is auto-loaded: `scripts.main` (default `"main"`), `scripts.server` and `scripts.client` name entries (paths in `scripts/`, no extension, resolved by `ScriptResolver::resolveEntry`). A process requires `main`, then `server` if it is a server, then `client` if it is a client (standalone: all three); a module several entries require runs once. A missing default entry only warns; a missing explicit one fails the build naming `scripts.<key>`. The root set of the host is the entries; a changed file no module requires is ignored (`setAdoptsNewFiles(false)`). **Sandbox.** `ScriptHost::seal()` runs before the first module: it loads the plugins' setup forms, calls `Runtime::sandbox()` and deep-freezes the `engine` tree. Each file then has its own globals (`shareGlobals = false`), read-only standard libraries and `engine`; files share data only through `require`. Forms registered after sealing are an error. | The seal is lazy (first script run), so hosts created before their plugins (tests) still load all forms. |
 
 ## 2. What a script looks like (target of the first version)
 
@@ -51,8 +51,8 @@ local ecs = engine.ecs
 
 ecs.system("game.ShieldRegen", {
 	phase = "FixedUpdate",
-	query = { write = { "game.Shield" }, without = { "rtype.Dead" } },
-	after = { "rtype.movement" },
+	query = { write = { "game.Shield" }, without = { "aylo.Dead" } },
+	after = { "aylo.movement" },
 	run = function(ctx)
 		for entity, shield in ctx.query do
 			shield.strength = math.min(shield.strength + shield.regen * ctx.fixedDelta, 100)
@@ -90,7 +90,7 @@ Supported in the first version:
 - Scripts can read components declared in C++ (they are in the registry), as long as their fields use the types above.
   A `std::vector` field of a C++ component reads as a table, a copy, and is replaced from an array; a `std::string`
   field reads and writes as a string of any length. Components declared in Luau have neither: they hold no memory of
-  their own. `rtype.Parent` and `rtype.Children` cannot be `write` terms: `commands:setParent()` changes a hierarchy.
+  their own. `aylo.Parent` and `aylo.Children` cannot be `write` terms: `commands:setParent()` changes a hierarchy.
 
 ## 3. Starting point
 
@@ -227,7 +227,7 @@ Each task is one issue and one pull request. Ids `LUA-xx`. Tests go in `tests/sc
 
 **What to build**
 
-- The `scripting` target: `../../xmake.lua`, `Export.hpp` (`RTYPE_SCRIPTING_API`), `tests/scripting/`, and its line in
+- The `scripting` target: `../../xmake.lua`, `Export.hpp` (`AYLO_SCRIPTING_API`), `tests/scripting/`, and its line in
   the
   dependency rules of `AGENTS.md` (detail in `../Modules.md`).
 - `ScriptHost`: knows no `Plugin`, can be used and tested with a bare `App`. It owns the `Runtime` and builds the
@@ -285,7 +285,7 @@ Each task is one issue and one pull request. Ids `LUA-xx`. Tests go in `tests/sc
 **Done when**
 
 - [ ] The `ShieldRegen` example above raises `strength` on every FixedUpdate tick, in a test.
-- [ ] An entity with `rtype.Dead` is skipped by the `without` term.
+- [ ] An entity with `aylo.Dead` is skipped by the `without` term.
 - [ ] An error in `run` is logged once per tick and the other systems keep running.
 
 #### LUA-07: `ctx.commands`
@@ -300,8 +300,8 @@ Each task is one issue and one pull request. Ids `LUA-xx`. Tests go in `tests/sc
 **What to build**
 
 - `commands:spawn({ ["game.Shield"] = { strength = 10 }, ... })`: returns the reserved `Entity`. (Since SCR-10 a
-  component may also be a C++ one, such as `rtype.Collider`, built from its C++ defaults; one that owns memory, such as
-  `rtype.TextRenderer`, is constructed, filled and copied into the command buffer.)
+  component may also be a C++ one, such as `aylo.Collider`, built from its C++ defaults; one that owns memory, such as
+  `aylo.TextRenderer`, is constructed, filled and copied into the command buffer.)
 - `commands:add(entity, "game.Shield", {...})`.
 - `commands:despawn(entity)`, which despawns its children too.
 - `commands:setParent(child, parent)` and `commands:removeParent(child)`.
@@ -345,7 +345,7 @@ Checked against the code on 2026-11-03. What the ECS already offers, and what it
 | Events and resources from scripts                               | By bytes and id: `Events::send(EventId, span)`, `RawEventRange`, `Resources::find/get/getMut(ResourceId)`. `ScriptCallable` receives `DynamicQueries` and `Commands` only, so it needs access to them. |
 | Systems by side                                                 | `Side`, `System::setSide`, `RunMode`. Done.                                                                                                                                                            |
 | Client systems write only `kClientOnly` components              | **Not enforced.** `Presence` exists on types, but nothing reads it when a system is added.                                                                                                             |
-| Capsules (feature 18) | **Implemented** in `plugin-capsule`: files describe them, scripts spawn, load and reload them through `rtype.capsule.*` calls. |
+| Capsules (feature 18) | **Implemented** in `plugin-capsule`: files describe them, scripts spawn, load and reload them through `aylo.capsule.*` calls. |
 | States and run conditions (feature 13 v2) | **Not implemented.** Only described in the docs.                                                                                                                                                       |
 | Replication of script components                                | The manifest carries `layoutHash`; whether it accepts components registered at runtime is **not checked**.                                                                                             |
 
@@ -371,10 +371,10 @@ Ids follow the order the tasks are best done in. Weights are set when the issues
 - **Enums and bitmasks.** The ECS reflects an enum field (`Collider::shape`, `TextRenderer::align`) as its underlying
   integer (`FieldTypeOf`), so a script already sees a number; a bitmask (`Collider::layer`, `mask`) is a plain `u32`.
   What is missing is names: let a plugin expose the enumerators of a reflected enum (ECS side: the field description
-  would carry them), and give scripts `engine.ecs.enum("rtype.ShapeType").kBox` or a string accepted on write
+  would carry them), and give scripts `engine.ecs.enum("aylo.ShapeType").kBox` or a string accepted on write
   (`shape = "box"`). Bit operations are `bit32` (Luau has it).
 - **Strings.** The ECS can *store* a component that holds a `std::string` (the type hooks construct, move and destroy
-  it), but it cannot *reflect* one: there is no `FieldType` for it, and `RTYPE_ECS_COMPONENT(TextRenderer, ...)` stops
+  it), but it cannot *reflect* one: there is no `FieldType` for it, and `AYLO_ECS_COMPONENT(TextRenderer, ...)` stops
   before `text`. Views, `spawn` tables, the layout hash and replication all work from reflected fields, so a script
   cannot read or write `TextRenderer::text` (a spawned one stays empty).
   **ECS prerequisite (not numbered):** an `ecs::String` and a `FieldType::kString`.
@@ -459,16 +459,16 @@ Ids follow the order the tasks are best done in. Weights are set when the issues
   writes, so the access set stays truthful for the scheduler. Done as the `DynamicResources` and `DynamicEvents`
   parameters (`docs/ecs/features/12-systems.md`), configured with a `ResourceList` and an `EventList`; the script
   declares them with `resources = { read, write }` and `events = { read, send }`.
-- `ctx.resources["rtype.Input"]`: a `ComponentView` over the resource bytes (read-only unless declared as written),
+- `ctx.resources["aylo.Input"]`: a `ComponentView` over the resource bytes (read-only unless declared as written),
   with the same generation check as component views.
 - A system that only uses resources and events may declare an empty `query`: it has no query, and `ctx.query` ends
   at once.
-- `ctx.events.send("game.Explosion", {...})` and `for event in ctx.events.read("rtype.Collision")`.
+- `ctx.events.send("game.Explosion", {...})` and `for event in ctx.events.read("aylo.Collision")`.
 - Resources that are not plain data (main-thread, non-standard-layout) are refused with an error, not skipped.
 
 **Done when**
 
-- [x] A script reads `rtype.Time` in a test. (`rtype.Input` holds maps, so it is refused as not plain data: it
+- [x] A script reads `aylo.Time` in a test. (`aylo.Input` holds maps, so it is refused as not plain data: it
   needs a dedicated engine call, see SCR-10.)
 - [x] A script sends an event that a C++ system reads, and the reverse.
 - [x] Writing a resource declared as read raises an error.
@@ -483,11 +483,11 @@ Ids follow the order the tasks are best done in. Weights are set when the issues
 
 **Goal.** One place for the time values (`ctx.time.delta`, `fixedDelta`, `elapsed`, `tick`).
 
-Small: it can be folded into SCR-04 if the `rtype.Time` view is enough. Keep `ctx.delta` and `ctx.fixedDelta` working.
+Small: it can be folded into SCR-04 if the `aylo.Time` view is enough. Keep `ctx.delta` and `ctx.fixedDelta` working.
 
 **Done when**
 
-- [x] `ctx.time` gives the values of `rtype.Time` and the old fields still work.
+- [x] `ctx.time` gives the values of `aylo.Time` and the old fields still work.
 
 #### SCR-06: `side` and `presence` in declarations
 
@@ -643,8 +643,8 @@ this plan is A: it exists in the design, and it needs no change to the ECS rule.
 
 **Goal.** Scripts use capsules. *Done differently than first planned:* actors and scenes became one concept,
 capsules, described by files (`.actor`, `.scene`, `.capsule` under `assets/`, read by the plugin and reloaded when
-saved) rather than declared from Luau, so scripts declare nothing: they call `rtype.capsule.spawn`,
-`rtype.capsule.load` and `rtype.capsule.reload` (see [Capsules](../ecs/features/18-capsules.md)).
+saved) rather than declared from Luau, so scripts declare nothing: they call `aylo.capsule.spawn`,
+`aylo.capsule.load` and `aylo.capsule.reload` (see [Capsules](../ecs/features/18-capsules.md)).
 
 Not startable: the ECS part has to exist first. Create it as an `ecs` issue (feature 18, v2) and block this one on it.
 
@@ -677,13 +677,13 @@ Not startable, for the same reason as SCR-08.
 | Blocked by | SCR-04 (resources), SCR-06 (a setup runs on a side); the design point below needs a team decision first               |
 
 **Goal.** A game's own setup is written in Luau: the executable only registers backends and adds the generic plugins,
-and everything specific to the game (assets, inputs, spawns, rules) lives in `game/scripts/`. `rtype_duel` needed C++
+and everything specific to the game (assets, inputs, spawns, rules) lives in `game/scripts/`. `aylo_duel` needed C++
 for these (`GameAtlases`, `GameSounds`, `declareInputs`, `registerGame`).
-*Done:* `rtype_duel` is written in Luau (`examples/games/rtype_duel/game/scripts/`: `shared/` for what both sides require, `server/` and
+*Done:* `aylo_duel` is written in Luau (`examples/games/aylo_duel/game/scripts/`: `shared/` for what both sides require, `server/` and
 `client/`, each with a `main.luau` entry), and `aylo-runtime` runs it with `--game`. What it needed on the way: the backend plugin
 draws a `ShapeRenderer` component (its obstacles) and reflects `SpriteRenderer::source` (its planets), and the
-replication plugin registers `rtype.replication.localClient` on clients (who won), and `ctx.commands` builds the C++
-components that own memory, such as the `rtype.TextRenderer` of its texts (the players' names, the winner).
+replication plugin registers `aylo.replication.localClient` on clients (who won), and `ctx.commands` builds the C++
+components that own memory, such as the `aylo.TextRenderer` of its texts (the players' names, the winner).
 
 **Why M2 alone is not enough.** SCR-04 gives scripts the *bytes* of a plain-data resource. The setup of the duel is
 *calls*: `AtlasAssets::load()` / `grid()`, `TextureAssets::load()`, `FontAssets`, `AudioAssets`, `InputLayout::add()`,
@@ -692,19 +692,19 @@ their bytes would be wrong anyway.
 
 **What to build**
 
-- **A registry of named engine calls, in `ecs`.** A plugin registers `("rtype.AtlasAssets.load", signature, function)`
+- **A registry of named engine calls, in `ecs`.** A plugin registers `("aylo.AtlasAssets.load", signature, function)`
   on the `App`; the signature is made of `FieldType`s, so `ecs` stays free of Luau, and `plugins` never depends on
   `luau` (dependency rules). `scripting` exposes each call under `engine`, converting arguments with the SCR-01
   conversions (an `assetId` takes a path). A call runs where it is declared (`side`, SCR-06) and on the thread that
   owns the resource.
   *Done:* `App::addCall(name, function)` registers a C++ function whose parameters are system parameters and an
-  optional `const Args&`, `Args` and its result being plain-data structs declared with `RTYPE_ECS_CALL_DATA` (so the
+  optional `const Args&`, `Args` and its result being plain-data structs declared with `AYLO_ECS_CALL_DATA` (so the
   signature is a `TypeInfo` of `FieldType`s). Scripts call it with `engine.call(name, { field = value })` while they
   load, and with `ctx.call(name, {...})` in a system that lists it under `calls = {...}`; the system takes the call's
   access (and its main-thread need), so the scheduler orders it like any other. A call the system does not list is a
   Luau error; an unknown call is refused when the script loads, unless the system does not run in that `App`'s mode.
-  The asset, input and audio plugins register their calls (`rtype.sprite.createAtlas`, `rtype.input.bindVector`,
-  `rtype.audio.playSound`...; see the list in `docs/ecs/features/19-luau-bridge.md`). Controls are named with text
+  The asset, input and audio plugins register their calls (`aylo.sprite.createAtlas`, `aylo.input.bindVector`,
+  `aylo.audio.playSound`...; see the list in `docs/ecs/features/19-luau-bridge.md`). Controls are named with text
   (`plugins/input/ControlNames.hpp`).
 - **Declarative forms for the common setup**, written in `scripting` on top of the calls, so scripts do not juggle
   handles: `engine.input.action("move", "vector2")`, `engine.assets.atlas{ path = ..., grid = {...}, animations =
@@ -720,19 +720,19 @@ their bytes would be wrong anyway.
   `PhysicsDebugSettings::fromSettings()`); see "Generic plugins" in `docs/engine/design.md`.
 - **Physics.** Expose `Collider`, `RigidBody` and `Velocity` (SCR-01 covers their enums), the collision events
   (SCR-04) and the scene queries as engine calls.
-  *Done:* `ctx.commands` spawns and adds the plain-data C++ components of the world (`rtype.Collider`,
-  `rtype.Transform`...) from their C++ defaults, not only script ones, with the same client rule (and, since the
-  duel's texts, those that own memory, such as `rtype.TextRenderer`). The physics plugin
-  registers `rtype.physics.raycast`, `shapeCast`, `overlap` (a count and one entity: call data holds no list),
+  *Done:* `ctx.commands` spawns and adds the plain-data C++ components of the world (`aylo.Collider`,
+  `aylo.Transform`...) from their C++ defaults, not only script ones, with the same client rule (and, since the
+  duel's texts, those that own memory, such as `aylo.TextRenderer`). The physics plugin
+  registers `aylo.physics.raycast`, `shapeCast`, `overlap` (a count and one entity: call data holds no list),
   `moveAndSlide` (an entity's `Collider`), `applyForce`, `applyImpulse`, `applyTorque` and `setGravity`
   (`plugins/physics/PhysicsCalls.hpp`, see "From scripts" in `docs/physics/design.md`); velocity and position are
   component writes.
 - Replication components (`Owner`, `PlayerInput`) and `ClientConnected`: readable and writable like any component and
   event; check their layouts are plain data.
   *Done:* they are plain data; the `axes` array of `PlayerInput` is not script-readable, so the replication plugin
-  registers `rtype.replication.readInput` (`{held, pressed, released, axis, vector}` of an action, by name) and
-  `rtype.replication.addInput`, which `engine.input.action` makes on both sides so the network `InputLayout` comes
-  from the scripts. On clients the `Engine` adds `rtype.engine.networkInput` (`engine/NetworkInput`), which fills the
+  registers `aylo.replication.readInput` (`{held, pressed, released, axis, vector}` of an action, by name) and
+  `aylo.replication.addInput`, which `engine.input.action` makes on both sides so the network `InputLayout` comes
+  from the scripts. On clients the `Engine` adds `aylo.engine.networkInput` (`engine/NetworkInput`), which fills the
   sent `PlayerInput` from the `Input` actions of the same names, so a game needs no `ClientState::setInput` of its own.
 
 **Open point for the team (blocks the start).** Bound calls (above) or only declarative forms? The first is general and
@@ -744,7 +744,7 @@ both: the registry for the plugins, forms for the setup everybody writes.
 - [x] A script loads an atlas, a sound and a font, and sets inputs, without C++ code in the game.
 - [x] A game's server and client scripts spawn ships and lasers with colliders, and a collision event reaches a script.
 - [x] `plugins` and `ecs` still include nothing of `luau`.
-- [x] `rtype_duel`'s `src/` holds the generic executable only; its rules are in `game/scripts/`.
+- [x] `aylo_duel`'s `src/` holds the generic executable only; its rules are in `game/scripts/`.
 - [x] An unknown engine call, or a wrong argument type, is an error naming the call and the script.
 
 #### Existing issue not in this list

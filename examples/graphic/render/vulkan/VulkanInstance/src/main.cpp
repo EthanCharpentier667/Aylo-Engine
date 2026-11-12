@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** main
 */
@@ -11,18 +11,18 @@
 #include <variant>
 #include <vector>
 
+#include "aylo/contract/platform/event/Event.hpp"
+#include "aylo/contract/platform/input/Key.hpp"
 #include "core/config/Settings.hpp"
 #include "platform/glfw/Registration.hpp"
 #include "plugins/graphics/BackendRegistry.hpp"
 #include "render/vulkan/Registration.hpp"
-#include "rtype/contract/platform/event/Event.hpp"
-#include "rtype/contract/platform/input/Key.hpp"
 
-using namespace rtype::contract::platform::event;
-using rtype::contract::platform::input::Key;
-using rtype::core::config::Settings;
-using rtype::plugins::graphics::Backend;
-using rtype::plugins::graphics::BackendRegistry;
+using namespace aylo::contract::platform::event;
+using aylo::contract::platform::input::Key;
+using aylo::core::config::Settings;
+using aylo::plugins::graphics::Backend;
+using aylo::plugins::graphics::BackendRegistry;
 
 /// @warning FOR MACOS ONLY: brew install molten-vk vulkan-loader (+ vulkan-validationlayers in debug builds)
 
@@ -31,11 +31,11 @@ int main() {
         /// @note 1. Register the backends. Each module adds its own under a name: "glfw" for the platform module,
         /// "vulkan" for the renderer module. The code never names a backend class.
         BackendRegistry registry;
-        rtype::platform::glfw::registerPlatform(registry.platforms);
-        rtype::render::vulkan::registerRenderer(registry.renderers);
+        aylo::platform::glfw::registerPlatform(registry.platforms);
+        aylo::render::vulkan::registerRenderer(registry.renderers);
 
         /// @note 2. The config picks the pair and sets them up. "window" is for every platform; "vulkan" only for
-        /// the vulkan renderer (see rtype::render::vulkan::registerRenderer). Filled in code here; a config file later.
+        /// the vulkan renderer (see aylo::render::vulkan::registerRenderer). Filled in code here; a config file later.
         Settings config;
         config.set("platform", "glfw");
         config.set("renderer", "vulkan");

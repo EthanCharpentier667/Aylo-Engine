@@ -1,0 +1,75 @@
+/*
+** EPITECH PROJECT, 2026
+** aylo
+** File description:
+** PluginLoader
+*/
+
+#pragma once
+
+#include <cstddef>
+#include <filesystem>
+#include <functional>
+#include <vector>
+
+#include "aylo/engine/Export.hpp"
+#include "aylo/engine/plugin/SharedLibrary.hpp"
+#include "core/library/LibraryEntry.hpp"
+
+namespace aylo::engine::plugin {
+/// @brief The plugin libraries of a program: opens those of a folder, checks them, and keeps them loaded.
+///
+/// @details It outlives every App built from the libraries, as their systems and hooks are code of the libraries. An
+/// App built again after a reload registers the same libraries, which are not opened twice.
+class AYLO_ENGINE_API PluginLoader {
+  public:
+    /// @brief What a folder's libraries must pass before they are opened.
+    using Verifier = std::function<void(const std::filesystem::path&)>;
+
+    PluginLoader() = default;
+    ~PluginLoader() = default;
+    PluginLoader(const PluginLoader& other) = delete;
+    PluginLoader& operator=(const PluginLoader& other) = delete;
+    PluginLoader(PluginLoader&& other) noexcept = default;
+    PluginLoader& operator=(PluginLoader&& other) noexcept = default;
+
+    /// @return The number of libraries loaded.
+    [[nodiscard]] std::size_t getCount() const noexcept;
+
+    /// @brief Opens every shared library directly in @p directory, in the order of their names. A folder that does not
+    /// exist has none. A folder given twice is read once.
+    /// @throws exceptions::RuntimeError If a library cannot be opened, has no entry point, or has the file name of a
+    /// library of another folder.
+    /// @throws core::library::exceptions::LibraryException If a library was built for another engine.
+    void load(const std::filesystem::path& directory);
+
+    /// @brief As load(), but refuses a library before opening it if @p verify throws.
+    /// @param directory The folder.
+    /// @param verify Checks a library's file, and throws to refuse it.
+    void load(const std::filesystem::path& directory, const Verifier& verify);
+
+    /// @brief Calls the registration of every library, in the order they were loaded.
+    void registerInto(core::library::LibraryRegistrar& registrar) const;
+
+    /// @brief As registerInto(), and calls @p registered after each library, with its file: what reads what each
+    /// library brought (the game export) compares the registries before and after.
+    /// @param registrar What the libraries exchange.
+    /// @param registered Called once per library, in the order they were loaded, after it registered.
+    void registerInto(core::library::LibraryRegistrar& registrar,
+                      const std::function<void(const std::filesystem::path&)>& registered) const;
+
+  private:
+    /// @brief One library, loaded and checked.
+    struct Loaded {
+        std::filesystem::path file;                ///< Its file.
+        SharedLibrary library;                     ///< Keeps it in memory.
+        const core::library::LibraryEntry* entry;  ///< What it exports.
+    };
+
+    /// @brief Opens and checks the library @p file.
+    void loadFile(const std::filesystem::path& file, const Verifier& verify);
+
+    std::vector<std::filesystem::path> _directories;  ///< The folders read.
+    std::vector<Loaded> _libraries;                   ///< The libraries, in the order loaded.
+};
+}  // namespace aylo::engine::plugin

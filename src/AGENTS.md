@@ -6,7 +6,7 @@ Read the root `AGENTS.md` first, then the `AGENTS.md` of the module you work in.
 
 ## Layout
 
-- `rtype/<module>/` holds one module each, with its own `xmake.lua` (included from the root `xmake.lua`). Sources are
+- `aylo/<module>/` holds one module each, with its own `xmake.lua` (included from the root `xmake.lua`). Sources are
   found by glob in the module's folder, so a new source file needs no build-file change; a new dependency goes through
   `add_requires` in the module's `xmake.lua` (a package several modules use is declared once in the root).
 - Inside a module, one folder per feature, created only when a file goes in it.
@@ -14,11 +14,11 @@ Read the root `AGENTS.md` first, then the `AGENTS.md` of the module you work in.
 
 ## Rules that apply everywhere
 
-- Includes: a sibling by its bare name, anything else from this folder as `rtype/<module>/...`. Never `../`.
-- Namespaces mirror the folder path under `rtype/`, except the exceptions a module's `AGENTS.md` states.
-- Every shared library marks what it exports with its own `RTYPE_<LIB>_API` macro; a type with no code of its own
+- Includes: a sibling by its bare name, anything else from this folder as `aylo/<module>/...`. Never `../`.
+- Namespaces mirror the folder path under `aylo/`, except the exceptions a module's `AGENTS.md` states.
+- Every shared library marks what it exports with its own `AYLO_<LIB>_API` macro; a type with no code of its own
   (an interface, an exception) uses the header-only macro of `core`. A static module (`luau`, `network`, `replication`,
-  `scripting`, `engine`) keeps the macro and defines `RTYPE_<LIB>_STATIC` publicly, so it expands to nothing.
+  `scripting`, `engine`) keeps the macro and defines `AYLO_<LIB>_STATIC` publicly, so it expands to nothing.
 - Failures a correct program can hit are returned as results (`luau`, `scripting`); misuse and construction failures
   throw exceptions derived from `std::runtime_error`, kept in an `exceptions/` folder next to the code that throws them.
 - A third-party package is private to the module that wraps it: no public header includes it.

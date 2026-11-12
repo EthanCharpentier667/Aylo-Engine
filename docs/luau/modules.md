@@ -1,6 +1,6 @@
 # Luau module loader
 
-`rtype::luau::ModuleLoader` gives scripts `require(path)`. It is free of the engine: it knows no file, folder, game or
+`aylo::luau::ModuleLoader` gives scripts `require(path)`. It is free of the engine: it knows no file, folder, game or
 plugin. The host tells it how a path becomes source code; the loader does the rest. Nothing in the engine uses it yet, so
 a game script cannot see it (`ScriptHost` will, see the epic "[Luau] require() for game scripts").
 

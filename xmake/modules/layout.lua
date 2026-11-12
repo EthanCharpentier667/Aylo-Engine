@@ -1,5 +1,5 @@
 -- The names of the folders and files the build, the release and the engine agree on, as the build writes them. The
--- engine writes the same names in C++, in src/rtype/core/layout/Layout.hpp: change both together (the release's smoke
+-- engine writes the same names in C++, in src/aylo/core/layout/Layout.hpp: change both together (the release's smoke
 -- test checks the layout end to end).
 
 -- @return The names, as a table: `local layout = import("layout").names()`.

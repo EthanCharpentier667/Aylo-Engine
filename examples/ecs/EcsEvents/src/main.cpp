@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** main
 */
@@ -12,28 +12,28 @@
 #include <format>
 #include <iostream>
 
-#include "rtype/ecs/event/EventCursor.hpp"
-#include "rtype/ecs/event/EventTraits.hpp"
-#include "rtype/ecs/event/Events.hpp"
-#include "rtype/ecs/resource/ResourceTraits.hpp"
-#include "rtype/ecs/system/EventReader.hpp"
-#include "rtype/ecs/system/EventWriter.hpp"
-#include "rtype/ecs/system/ResourceParam.hpp"
-#include "rtype/ecs/system/System.hpp"
-#include "rtype/ecs/world/World.hpp"
+#include "aylo/ecs/event/EventCursor.hpp"
+#include "aylo/ecs/event/EventTraits.hpp"
+#include "aylo/ecs/event/Events.hpp"
+#include "aylo/ecs/resource/ResourceTraits.hpp"
+#include "aylo/ecs/system/EventReader.hpp"
+#include "aylo/ecs/system/EventWriter.hpp"
+#include "aylo/ecs/system/ResourceParam.hpp"
+#include "aylo/ecs/system/System.hpp"
+#include "aylo/ecs/world/World.hpp"
 
-using namespace rtype::ecs;
+using namespace aylo::ecs;
 
 namespace {
 struct Hit {
     int damage;
 };
-RTYPE_ECS_EVENT(Hit, "example.Hit", damage);
+AYLO_ECS_EVENT(Hit, "example.Hit", damage);
 
 struct DamageTaken {
     int total;
 };
-RTYPE_ECS_RESOURCE(DamageTaken, "example.DamageTaken", total);
+AYLO_ECS_RESOURCE(DamageTaken, "example.DamageTaken", total);
 
 /// @brief Sends two hits.
 void shoot(EventWriter<Hit> hits) {

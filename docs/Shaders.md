@@ -1,8 +1,8 @@
 # Shaders
 
 A game shader is a small GLSL file: a `fragment()` function, a `vertex()` function, or both, written in a dialect the
-engine defines. The game never writes a pipeline or a binding. The shader plugin (`src/rtype/plugins/shader/`,
-`rtype::plugins::shader`) compiles the file and hands the result to the renderer. The game adds it, after `GraphicsPlugin`, which it requires.
+engine defines. The game never writes a pipeline or a binding. The shader plugin (`src/aylo/plugins/shader/`,
+`aylo::plugins::shader`) compiles the file and hands the result to the renderer. The game adds it, after `GraphicsPlugin`, which it requires.
 
 ## Writing a shader
 
@@ -47,7 +47,7 @@ One declaration per line, outside any function:
 - `uniform sampler2D <name>;`: an extra texture of the material, readable in both stages.
 
 The types are `float`, `vec2`, `vec3`, `vec4` and `int`. A default is a number or a `vecN(...)` of numbers (one number
-fills every component), and 0 when omitted. A shader cannot declare a built-in, nor a name starting with `rtype`, which
+fills every component), and 0 when omitted. A shader cannot declare a built-in, nor a name starting with `aylo`, which
 the engine keeps for itself.
 
 ### Targets
@@ -90,13 +90,13 @@ void spawnEnemy(ecs::ResMut<ShaderAssets> shaders, ecs::ResMut<MaterialAssets> m
 }
 ```
 
-- **`ShaderAssets`** (the resource `rtype.ShaderAssets`) keeps the shaders by `AssetId`. `load()` reads and compiles a
+- **`ShaderAssets`** (the resource `aylo.ShaderAssets`) keeps the shaders by `AssetId`. `load()` reads and compiles a
   file, and `add()` a shader written in code. Both give an id at once. A shader that does not compile is recorded as
   failed: `get()` gives nullptr and `getEntry()` the error, with its line in the file.
 - **`MaterialAssets`** keeps the materials: a shader and the values of its `uniform`s and textures, shared by every
   drawing that uses it. What a material does not set keeps the shader's defaults.
 - **`SpriteRenderer::material`** names the material of a sprite.
-- **`MaterialInstance`** (the component `rtype.MaterialInstance`) holds an entity's own `instance uniform` values.
+- **`MaterialInstance`** (the component `aylo.MaterialInstance`) holds an entity's own `instance uniform` values.
   Without it, the entity gets the declared defaults. Sprites that share a material and a texture stay in one batch,
   whatever their values, so one enemy flashes without a material of its own.
 - **`ShaderHandles`** creates the shaders and materials in the renderer, in the Render phase, before the frame begins.
@@ -138,7 +138,7 @@ relative to the working directory.
 ## Hot reload
 
 With hot reload on, saving a shader changes the running game. The `ShaderPlugin` adds a `ShaderReloadable` to the
-engine's `HotReloader` (the `rtype.HotReload` resource, `engine/design.md`, *Reloading*), which looks at
+engine's `HotReloader` (the `aylo.HotReload` resource, `engine/design.md`, *Reloading*), which looks at
 `<game>/assets/shaders` and its subfolders by the files' modification times and logs each reload:
 `[HotReload] shaders: applied in 4.1 ms (modified assets/shaders/flash.glsl): shader shaders/flash.glsl`.
 
@@ -184,7 +184,7 @@ both in `contract/renderer/`:
   textures, their offsets and defaults. `IRenderer::createShader()` takes it, and `createMaterial()` a shader, the bytes
   of its block and its textures.
 - **The shaders ABI** (`shaders/*.glsl`): the GLSL a shader is assembled in. A stage is made of `common.glsl`, the
-  target's other files and the shader's code, placed where the `#pragma rtype_shader` and `#pragma rtype_main` markers
+  target's other files and the shader's code, placed where the `#pragma aylo_shader` and `#pragma aylo_main` markers
   are. Those markers are ignored by GLSL.
 
 The **default shader** of a target is the ABI with no game code: the same files, compiled as they are. A backend gets
@@ -204,7 +204,7 @@ A backend feeds these resources:
 | Particle instances                  | Attributes 0 to 5                                                 |
 | A particle draw's constants         | A push constant block, instance values at offset 48               |
 
-Instance values only exist for a shader that declares some: the assembler then defines `RTYPE_INSTANCE_VALUES`.
+Instance values only exist for a shader that declares some: the assembler then defines `AYLO_INSTANCE_VALUES`.
 
 SPIR-V is the format every backend starts from. A backend for another API translates it, for example with SPIRV-Cross,
 mapping each set and binding to its own resources.

@@ -1,6 +1,6 @@
 ---
 name: commit-split
-description: Split pending changes into atomic Conventional Commits in the R-Type repository and commit them. Use when committing, when asked to "commit", "split the commits", "write the commit messages", or before pushing a branch with several changes.
+description: Split pending changes into atomic Conventional Commits in the Aylo-Engine repository and commit them. Use when committing, when asked to "commit", "split the commits", "write the commit messages", or before pushing a branch with several changes.
 ---
 
 # Atomic commits

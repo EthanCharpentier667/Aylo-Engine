@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** main
 */
@@ -12,15 +12,15 @@
 #include <format>
 #include <iostream>
 
-#include "rtype/ecs/change/Mut.hpp"
-#include "rtype/ecs/component/ComponentInfo.hpp"
-#include "rtype/ecs/component/ComponentTraits.hpp"
-#include "rtype/ecs/component/Components.hpp"
-#include "rtype/ecs/entity/Entity.hpp"
-#include "rtype/ecs/type/Field.hpp"
-#include "rtype/ecs/world/World.hpp"
+#include "aylo/ecs/change/Mut.hpp"
+#include "aylo/ecs/component/ComponentInfo.hpp"
+#include "aylo/ecs/component/ComponentTraits.hpp"
+#include "aylo/ecs/component/Components.hpp"
+#include "aylo/ecs/entity/Entity.hpp"
+#include "aylo/ecs/type/Field.hpp"
+#include "aylo/ecs/world/World.hpp"
 
-using namespace rtype::ecs;
+using namespace aylo::ecs;
 
 namespace {
 /// @brief A component with data: its fields are listed after the name, so Luau and the network can see them.
@@ -28,17 +28,17 @@ struct Position {
     float x;
     float y;
 };
-RTYPE_ECS_COMPONENT(Position, "example.Position", x, y);
+AYLO_ECS_COMPONENT(Position, "example.Position", x, y);
 
 struct Velocity {
     float x;
     float y;
 };
-RTYPE_ECS_COMPONENT(Velocity, "example.Velocity", x, y);
+AYLO_ECS_COMPONENT(Velocity, "example.Velocity", x, y);
 
 /// @brief A tag: no data, only "this entity is a player".
 struct Player {};
-RTYPE_ECS_COMPONENT(Player, "example.Player");
+AYLO_ECS_COMPONENT(Player, "example.Player");
 
 /// @brief Runs the example, printing each step.
 void run() {

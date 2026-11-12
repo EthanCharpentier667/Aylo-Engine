@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** PhysicsComponentsTests
 */
@@ -13,24 +13,24 @@
 #include <string_view>
 #include <utility>
 
+#include "aylo/ecs/component/ComponentTraits.hpp"
+#include "aylo/ecs/type/Field.hpp"
 #include "plugins/physics/Collider.hpp"
 #include "plugins/physics/RigidBody.hpp"
 #include "plugins/physics/Velocity.hpp"
-#include "rtype/ecs/component/ComponentTraits.hpp"
-#include "rtype/ecs/type/Field.hpp"
 
-using rtype::ecs::FieldType;
-using rtype::plugins::physics::BodyType;
-using rtype::plugins::physics::Collider;
-using rtype::plugins::physics::RigidBody;
-using rtype::plugins::physics::ShapeType;
-using rtype::plugins::physics::Velocity;
+using aylo::ecs::FieldType;
+using aylo::plugins::physics::BodyType;
+using aylo::plugins::physics::Collider;
+using aylo::plugins::physics::RigidBody;
+using aylo::plugins::physics::ShapeType;
+using aylo::plugins::physics::Velocity;
 
 namespace {
 /// @brief Checks the reflected fields of `T`, in order: their names and types.
 template <typename T, std::size_t N>
 void expectFields(const std::array<std::pair<std::string_view, FieldType>, N>& expected) {
-    const auto& fields = rtype::ecs::ComponentTraits<T>::kFields;
+    const auto& fields = aylo::ecs::ComponentTraits<T>::kFields;
     ASSERT_EQ(fields.size(), N);
     for (std::size_t index = 0; index < N; ++index) {
         EXPECT_EQ(fields.at(index).name, expected.at(index).first) << index;
@@ -40,7 +40,7 @@ void expectFields(const std::array<std::pair<std::string_view, FieldType>, N>& e
 }  // namespace
 
 TEST(RigidBody, ReflectsItsFields) {
-    EXPECT_EQ(rtype::ecs::ComponentTraits<RigidBody>::kName, "rtype.RigidBody");
+    EXPECT_EQ(aylo::ecs::ComponentTraits<RigidBody>::kName, "aylo.RigidBody");
     expectFields<RigidBody, 7>({{{"type", FieldType::kU8},
                                  {"mass", FieldType::kF32},
                                  {"linearDamping", FieldType::kF32},
@@ -60,7 +60,7 @@ TEST(RigidBody, DefaultsToADynamicBodyUnderGravity) {
 }
 
 TEST(Collider, ReflectsItsFields) {
-    EXPECT_EQ(rtype::ecs::ComponentTraits<Collider>::kName, "rtype.Collider");
+    EXPECT_EQ(aylo::ecs::ComponentTraits<Collider>::kName, "aylo.Collider");
     expectFields<Collider, 10>({{{"shape", FieldType::kU8},
                                  {"size", FieldType::kVec2},
                                  {"radius", FieldType::kF32},
@@ -84,12 +84,12 @@ TEST(Collider, DefaultsToASolidCenteredBox) {
 TEST(Collider, DefaultsToTheFirstCategoryCollidingWithAll) {
     const Collider collider;
     EXPECT_EQ(collider.layer, 1U);
-    EXPECT_EQ(collider.mask, rtype::plugins::physics::kAllLayers);
-    EXPECT_EQ(rtype::plugins::physics::kAllLayers, 0x7FFFU);
+    EXPECT_EQ(collider.mask, aylo::plugins::physics::kAllLayers);
+    EXPECT_EQ(aylo::plugins::physics::kAllLayers, 0x7FFFU);
 }
 
 TEST(Velocity, ReflectsItsFields) {
-    EXPECT_EQ(rtype::ecs::ComponentTraits<Velocity>::kName, "rtype.Velocity");
+    EXPECT_EQ(aylo::ecs::ComponentTraits<Velocity>::kName, "aylo.Velocity");
     expectFields<Velocity, 2>({{{"linear", FieldType::kVec2}, {"angular", FieldType::kF32}}});
 }
 

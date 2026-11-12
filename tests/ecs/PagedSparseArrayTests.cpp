@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** PagedSparseArrayTests
 */
@@ -12,15 +12,15 @@
 #include <optional>
 #include <utility>
 
-#include "rtype/ecs/storage/PagedSparseArray.hpp"
+#include "aylo/ecs/storage/PagedSparseArray.hpp"
 
 namespace {
 constexpr std::uint32_t kMaxIndex = std::numeric_limits<std::uint32_t>::max();
-constexpr std::uint32_t kPageSize = rtype::ecs::storage::PagedSparseArray::kPageSize;
+constexpr std::uint32_t kPageSize = aylo::ecs::storage::PagedSparseArray::kPageSize;
 }  // namespace
 
 TEST(PagedSparseArray, StartsEmpty) {
-    const rtype::ecs::storage::PagedSparseArray sparse;
+    const aylo::ecs::storage::PagedSparseArray sparse;
     EXPECT_EQ(sparse.getAllocatedPageCount(), 0U);
     EXPECT_FALSE(sparse.get(0));
     EXPECT_FALSE(sparse.get(12345));
@@ -28,7 +28,7 @@ TEST(PagedSparseArray, StartsEmpty) {
 }
 
 TEST(PagedSparseArray, ReturnsWhatWasSet) {
-    rtype::ecs::storage::PagedSparseArray sparse;
+    aylo::ecs::storage::PagedSparseArray sparse;
     sparse.set(7, 3);
     EXPECT_EQ(sparse.get(7), std::optional<std::uint32_t>{3});
     sparse.set(7, 0);  // position 0 is a valid position
@@ -36,7 +36,7 @@ TEST(PagedSparseArray, ReturnsWhatWasSet) {
 }
 
 TEST(PagedSparseArray, IndicesNeverSetAreEmpty) {
-    rtype::ecs::storage::PagedSparseArray sparse;
+    aylo::ecs::storage::PagedSparseArray sparse;
     sparse.set(10, 1);
     EXPECT_FALSE(sparse.get(9));
     EXPECT_FALSE(sparse.get(11));
@@ -44,7 +44,7 @@ TEST(PagedSparseArray, IndicesNeverSetAreEmpty) {
 }
 
 TEST(PagedSparseArray, AllocatesOnlyTouchedPages) {
-    rtype::ecs::storage::PagedSparseArray sparse;
+    aylo::ecs::storage::PagedSparseArray sparse;
     sparse.set(0, 1);
     sparse.set(kPageSize - 1, 2);  // same page as 0
     EXPECT_EQ(sparse.getAllocatedPageCount(), 1U);
@@ -55,7 +55,7 @@ TEST(PagedSparseArray, AllocatesOnlyTouchedPages) {
 }
 
 TEST(PagedSparseArray, HandlesVeryHighIndices) {
-    rtype::ecs::storage::PagedSparseArray sparse;
+    aylo::ecs::storage::PagedSparseArray sparse;
     sparse.set(kMaxIndex - 1, 42);
     EXPECT_EQ(sparse.get(kMaxIndex - 1), std::optional<std::uint32_t>{42});
     EXPECT_FALSE(sparse.get(kMaxIndex));
@@ -63,7 +63,7 @@ TEST(PagedSparseArray, HandlesVeryHighIndices) {
 }
 
 TEST(PagedSparseArray, NeighbouringPagesAreIndependent) {
-    rtype::ecs::storage::PagedSparseArray sparse;
+    aylo::ecs::storage::PagedSparseArray sparse;
     sparse.set(kPageSize - 1, 1);
     sparse.set(kPageSize, 2);
     EXPECT_EQ(sparse.get(kPageSize - 1), std::optional<std::uint32_t>{1});
@@ -71,7 +71,7 @@ TEST(PagedSparseArray, NeighbouringPagesAreIndependent) {
 }
 
 TEST(PagedSparseArray, EraseEmptiesTheEntryAndKeepsThePage) {
-    rtype::ecs::storage::PagedSparseArray sparse;
+    aylo::ecs::storage::PagedSparseArray sparse;
     sparse.set(5, 1);
     sparse.set(6, 2);
     sparse.erase(5);
@@ -81,7 +81,7 @@ TEST(PagedSparseArray, EraseEmptiesTheEntryAndKeepsThePage) {
 }
 
 TEST(PagedSparseArray, ErasingAbsentIndicesDoesNothing) {
-    rtype::ecs::storage::PagedSparseArray sparse;
+    aylo::ecs::storage::PagedSparseArray sparse;
     sparse.erase(3);          // nothing allocated at all
     sparse.erase(kMaxIndex);  // far beyond the page table
     EXPECT_EQ(sparse.getAllocatedPageCount(), 0U);
@@ -91,7 +91,7 @@ TEST(PagedSparseArray, ErasingAbsentIndicesDoesNothing) {
 }
 
 TEST(PagedSparseArray, ClearEmptiesEveryEntryAndKeepsThePages) {
-    rtype::ecs::storage::PagedSparseArray sparse;
+    aylo::ecs::storage::PagedSparseArray sparse;
     sparse.set(1, 1);
     sparse.set(2 * kPageSize, 2);
     sparse.clear();
@@ -101,13 +101,13 @@ TEST(PagedSparseArray, ClearEmptiesEveryEntryAndKeepsThePages) {
 }
 
 TEST(PagedSparseArray, KeepsItsEntriesWhenMoved) {
-    rtype::ecs::storage::PagedSparseArray sparse;
+    aylo::ecs::storage::PagedSparseArray sparse;
     sparse.set(3, 30);
-    rtype::ecs::storage::PagedSparseArray moved{std::move(sparse)};
+    aylo::ecs::storage::PagedSparseArray moved{std::move(sparse)};
     EXPECT_EQ(moved.get(3), std::optional<std::uint32_t>{30});
     EXPECT_EQ(moved.getAllocatedPageCount(), 1U);
 
-    rtype::ecs::storage::PagedSparseArray assigned;
+    aylo::ecs::storage::PagedSparseArray assigned;
     assigned = std::move(moved);
     EXPECT_EQ(assigned.get(3), std::optional<std::uint32_t>{30});
 }

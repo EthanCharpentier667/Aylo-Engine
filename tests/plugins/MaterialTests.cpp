@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** MaterialTests
 */
@@ -16,34 +16,34 @@
 #include <glm/ext/vector_float4.hpp>
 #include <vector>
 
+#include "aylo/contract/renderer/shaders/CompiledShader.hpp"
+#include "aylo/ecs/component/ComponentTraits.hpp"
+#include "aylo/ecs/resource/ResourceTraits.hpp"
 #include "core/asset/AssetId.hpp"
 #include "plugins/shader/Material.hpp"
 #include "plugins/shader/MaterialAssets.hpp"
 #include "plugins/shader/MaterialInstance.hpp"
 #include "plugins/shader/detail/ShaderCompiler.hpp"
 #include "plugins/shader/exceptions/ShaderExceptions.hpp"
-#include "rtype/contract/renderer/shaders/CompiledShader.hpp"
-#include "rtype/ecs/component/ComponentTraits.hpp"
-#include "rtype/ecs/resource/ResourceTraits.hpp"
 
-using rtype::contract::renderer::CompiledShader;
-using rtype::core::asset::AssetId;
-using rtype::plugins::shader::Material;
-using rtype::plugins::shader::MaterialAssets;
-using rtype::plugins::shader::MaterialInstance;
-using rtype::plugins::shader::packMaterialValues;
-using rtype::plugins::shader::resolveMaterialTextures;
-using rtype::plugins::shader::exceptions::ShaderException;
+using aylo::contract::renderer::CompiledShader;
+using aylo::core::asset::AssetId;
+using aylo::plugins::shader::Material;
+using aylo::plugins::shader::MaterialAssets;
+using aylo::plugins::shader::MaterialInstance;
+using aylo::plugins::shader::packMaterialValues;
+using aylo::plugins::shader::resolveMaterialTextures;
+using aylo::plugins::shader::exceptions::ShaderException;
 
-static_assert(rtype::ecs::Resource<MaterialAssets>);
-static_assert(rtype::ecs::Component<MaterialInstance>);
+static_assert(aylo::ecs::Resource<MaterialAssets>);
+static_assert(aylo::ecs::Component<MaterialInstance>);
 
 namespace {
 /// @return A shader with a float speed (offset 0, default 2), a vec4 tint (offset 16), an int frames (offset 32), an
 /// instance value and two textures.
 CompiledShader makeShader() {
-    const std::array targets{rtype::contract::renderer::ShaderTarget::kSprite};
-    return rtype::plugins::shader::detail::compileShader(
+    const std::array targets{aylo::contract::renderer::ShaderTarget::kSprite};
+    return aylo::plugins::shader::detail::compileShader(
         "uniform float speed = 2.0;\nuniform vec4 tint;\nuniform int frames = 4;\ninstance uniform float flash;\n"
         "uniform sampler2D noise;\nuniform sampler2D palette;\n"
         "void fragment() { COLOR *= tint * speed * float(frames) * flash * texture(noise, UV) * texture(palette, UV); "
@@ -133,20 +133,20 @@ TEST(MaterialAssets, UnloadForgetsAMaterialAndReportsIt) {
 }
 
 TEST(MaterialInstance, StartsFromTheShadersDefaults) {
-    const CompiledShader shader = rtype::plugins::shader::detail::compileShader(
+    const CompiledShader shader = aylo::plugins::shader::detail::compileShader(
         "instance uniform float flash = 0.5;\nvoid fragment() { COLOR *= flash; }", "fx",
-        std::array{rtype::contract::renderer::ShaderTarget::kSprite});
+        std::array{aylo::contract::renderer::ShaderTarget::kSprite});
     EXPECT_FLOAT_EQ(MaterialInstance::of(shader).values[0].x, 0.5F);
 }
 
 TEST(MaterialInstance, SetsAnInstanceValueByName) {
-    const CompiledShader shader = rtype::plugins::shader::detail::compileShader(
+    const CompiledShader shader = aylo::plugins::shader::detail::compileShader(
         "instance uniform float flash;\ninstance uniform vec2 offset;\nvoid fragment() { COLOR *= flash + offset.x; }",
-        "fx", std::array{rtype::contract::renderer::ShaderTarget::kSprite});
+        "fx", std::array{aylo::contract::renderer::ShaderTarget::kSprite});
     const MaterialInstance instance =
         MaterialInstance::of(shader).set(shader, "flash", 1.0F).set(shader, "offset", glm::vec2{2.0F, 3.0F});
     const auto offset =
-        std::ranges::find(shader.instanceValues, "offset", &rtype::contract::renderer::ShaderValue::name)->offset;
+        std::ranges::find(shader.instanceValues, "offset", &aylo::contract::renderer::ShaderValue::name)->offset;
     EXPECT_FLOAT_EQ(instance.values[0].x, 1.0F);
     EXPECT_FLOAT_EQ(instance.values.at(offset / 16)[static_cast<int>((offset % 16) / 4)], 2.0F);
 }

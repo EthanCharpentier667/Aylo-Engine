@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** EditorOnlinePlayTests
 */
@@ -19,29 +19,29 @@
 #include <vector>
 
 #include "FakeBackend.hpp"
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/schedule/RunMode.hpp"
+#include "aylo/ecs/schedule/Schedules.hpp"
+#include "aylo/network/NetworkSettings.hpp"
+#include "aylo/network/Types.hpp"
+#include "aylo/network/admin/AdminServer.hpp"
+#include "aylo/network/server/NetServer.hpp"
 #include "editor/EditorPlugin.hpp"
 #include "editor/EditorSession.hpp"
 #include "editor/play/OnlinePlay.hpp"
 #include "editor/process/Runtime.hpp"
 #include "editor/server/ServerSupervisor.hpp"
 #include "plugins/capsule/CapsulePlugin.hpp"
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/schedule/RunMode.hpp"
-#include "rtype/ecs/schedule/Schedules.hpp"
-#include "rtype/network/NetworkSettings.hpp"
-#include "rtype/network/Types.hpp"
-#include "rtype/network/admin/AdminServer.hpp"
-#include "rtype/network/server/NetServer.hpp"
 
 #ifndef _WIN32
 
 namespace {
-namespace admin = rtype::network::admin;
-namespace editor = rtype::editor;
-namespace play = rtype::editor::play;
-namespace server = rtype::editor::server;
-namespace network = rtype::network;
-using rtype::ecs::RunMode;
+namespace admin = aylo::network::admin;
+namespace editor = aylo::editor;
+namespace play = aylo::editor::play;
+namespace server = aylo::editor::server;
+namespace network = aylo::network;
+using aylo::ecs::RunMode;
 using std::chrono::milliseconds;
 
 constexpr std::uint16_t kGamePort = 4311;
@@ -158,10 +158,10 @@ class LiveServer {
 class EditorApp {
   public:
     EditorApp(const RunMode mode, std::shared_ptr<editor::EditorSession> session)
-        : _state{std::make_shared<rtype::test::plugins::FakeBackendState>()}, _app{mode} {
-        rtype::test::plugins::addDrawingPlugins(_app, rtype::test::plugins::makeFakeRegistry(_state),
-                                                rtype::test::plugins::makeFakeSettings());
-        _app.addPlugin(rtype::plugins::capsule::CapsulePlugin{});
+        : _state{std::make_shared<aylo::test::plugins::FakeBackendState>()}, _app{mode} {
+        aylo::test::plugins::addDrawingPlugins(_app, aylo::test::plugins::makeFakeRegistry(_state),
+                                               aylo::test::plugins::makeFakeSettings());
+        _app.addPlugin(aylo::plugins::capsule::CapsulePlugin{});
         _app.addPlugin(editor::EditorPlugin{editor::EditorOptions{
             .layoutFile = std::filesystem::path{}, .captureOutput = false, .session = std::move(session)}});
     }
@@ -171,11 +171,11 @@ class EditorApp {
     EditorApp(EditorApp&& other) = delete;
     EditorApp& operator=(EditorApp&& other) = delete;
 
-    [[nodiscard]] rtype::ecs::App& app() noexcept { return _app; }
+    [[nodiscard]] aylo::ecs::App& app() noexcept { return _app; }
 
   private:
-    std::shared_ptr<rtype::test::plugins::FakeBackendState> _state;
-    rtype::ecs::App _app;
+    std::shared_ptr<aylo::test::plugins::FakeBackendState> _state;
+    aylo::ecs::App _app;
 };
 }  // namespace
 

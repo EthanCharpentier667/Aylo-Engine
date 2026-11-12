@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** PhysicsNetworkTests
 */
@@ -13,6 +13,15 @@
 #include <optional>
 
 #include "FakeBackend.hpp"
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/change/Mut.hpp"
+#include "aylo/ecs/component/ComponentRegistry.hpp"
+#include "aylo/ecs/component/Components.hpp"
+#include "aylo/ecs/entity/Entity.hpp"
+#include "aylo/ecs/schedule/Phase.hpp"
+#include "aylo/ecs/schedule/RunMode.hpp"
+#include "aylo/ecs/time/Time.hpp"
+#include "aylo/ecs/type/TypeInfo.hpp"
 #include "plugins/physics/Collider.hpp"
 #include "plugins/physics/MoveAndSlide.hpp"
 #include "plugins/physics/PhysicsHandle.hpp"
@@ -26,34 +35,25 @@
 #include "plugins/physics/exceptions/PhysicsExceptions.hpp"
 #include "plugins/transform/Transform.hpp"
 #include "plugins/transform/TransformPlugin.hpp"
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/change/Mut.hpp"
-#include "rtype/ecs/component/ComponentRegistry.hpp"
-#include "rtype/ecs/component/Components.hpp"
-#include "rtype/ecs/entity/Entity.hpp"
-#include "rtype/ecs/schedule/Phase.hpp"
-#include "rtype/ecs/schedule/RunMode.hpp"
-#include "rtype/ecs/time/Time.hpp"
-#include "rtype/ecs/type/TypeInfo.hpp"
 
-using rtype::ecs::Entity;
-using rtype::ecs::ReplicationMode;
-using rtype::ecs::RunMode;
-using rtype::plugins::physics::BodyType;
-using rtype::plugins::physics::Collider;
-using rtype::plugins::physics::moveAndSlide;
-using rtype::plugins::physics::PhysicsHandle;
-using rtype::plugins::physics::PhysicsPlugin;
-using rtype::plugins::physics::PhysicsSettings;
-using rtype::plugins::physics::PhysicsWorld;
-using rtype::plugins::physics::QueryFilter;
-using rtype::plugins::physics::RigidBody;
-using rtype::plugins::physics::ShapeType;
-using rtype::plugins::physics::SlideSettings;
-using rtype::plugins::physics::Velocity;
-using rtype::plugins::physics::debug::PhysicsDebugPlugin;
-using rtype::plugins::physics::exceptions::PhysicsException;
-using rtype::plugins::transform::Transform;
+using aylo::ecs::Entity;
+using aylo::ecs::ReplicationMode;
+using aylo::ecs::RunMode;
+using aylo::plugins::physics::BodyType;
+using aylo::plugins::physics::Collider;
+using aylo::plugins::physics::moveAndSlide;
+using aylo::plugins::physics::PhysicsHandle;
+using aylo::plugins::physics::PhysicsPlugin;
+using aylo::plugins::physics::PhysicsSettings;
+using aylo::plugins::physics::PhysicsWorld;
+using aylo::plugins::physics::QueryFilter;
+using aylo::plugins::physics::RigidBody;
+using aylo::plugins::physics::ShapeType;
+using aylo::plugins::physics::SlideSettings;
+using aylo::plugins::physics::Velocity;
+using aylo::plugins::physics::debug::PhysicsDebugPlugin;
+using aylo::plugins::physics::exceptions::PhysicsException;
+using aylo::plugins::transform::Transform;
 
 namespace {
 constexpr float kFixedDelta = 1.0F / 60.0F;
@@ -82,23 +82,23 @@ Collider shipCollider() {
 
 /// @brief An App with the PhysicsPlugin in a run mode, ticked by hand.
 struct PhysicsApp {
-    rtype::ecs::App app;  ///< The App under test.
+    aylo::ecs::App app;  ///< The App under test.
 
     explicit PhysicsApp(RunMode mode) : app{mode} {
-        app.addPlugin(rtype::plugins::transform::TransformPlugin{});
+        app.addPlugin(aylo::plugins::transform::TransformPlugin{});
         app.addPlugin(PhysicsPlugin{smallSettings()});
-        app.getWorld().getResources().insert(rtype::ecs::Time{.fixedDelta = kFixedDelta});
+        app.getWorld().getResources().insert(aylo::ecs::Time{.fixedDelta = kFixedDelta});
     }
 
     /// @brief Runs fixed ticks.
     void tick(int count = 1) {
         for (int index = 0; index < count; ++index) {
-            app.getSchedules().run(rtype::ecs::Phase::kFixedUpdate);
+            app.getSchedules().run(aylo::ecs::Phase::kFixedUpdate);
         }
     }
 
     [[nodiscard]] const PhysicsWorld& world() const { return app.getWorld().getResources().require<PhysicsWorld>(); }
-    [[nodiscard]] rtype::ecs::Components& components() { return app.getWorld().getComponents(); }
+    [[nodiscard]] aylo::ecs::Components& components() { return app.getWorld().getComponents(); }
 
     /// @return A new entity with a Transform and the Collider, and a RigidBody when given.
     Entity spawn(glm::vec2 position, const Collider& collider, std::optional<RigidBody> body = std::nullopt) {
@@ -137,30 +137,30 @@ ReplicationMode replicationOf(PhysicsApp& app, const char* name) {
 
 TEST(PhysicsNetwork, ColliderAndRigidBodyAreReplicated) {
     PhysicsApp app{RunMode::kStandalone};
-    EXPECT_EQ(replicationOf(app, "rtype.Collider"), ReplicationMode::kEveryChange);
-    EXPECT_EQ(replicationOf(app, "rtype.RigidBody"), ReplicationMode::kEveryChange);
+    EXPECT_EQ(replicationOf(app, "aylo.Collider"), ReplicationMode::kEveryChange);
+    EXPECT_EQ(replicationOf(app, "aylo.RigidBody"), ReplicationMode::kEveryChange);
 }
 
 TEST(PhysicsNetwork, TheInternalComponentsAreNot) {
     PhysicsApp app{RunMode::kStandalone};
-    EXPECT_EQ(replicationOf(app, "rtype.Velocity"), ReplicationMode::kNone);
-    EXPECT_EQ(replicationOf(app, "rtype.PhysicsHandle"), ReplicationMode::kNone);
+    EXPECT_EQ(replicationOf(app, "aylo.Velocity"), ReplicationMode::kNone);
+    EXPECT_EQ(replicationOf(app, "aylo.PhysicsHandle"), ReplicationMode::kNone);
 }
 
 TEST(PhysicsNetwork, TheDebugPluginRegistersColliderTheSameWayInEitherOrder) {
-    const auto addGraphics = [](rtype::ecs::App& app) {
-        rtype::test::plugins::addDrawingPlugins(
-            app, rtype::test::plugins::makeFakeRegistry(std::make_shared<rtype::test::plugins::FakeBackendState>()),
-            rtype::test::plugins::makeFakeSettings());
+    const auto addGraphics = [](aylo::ecs::App& app) {
+        aylo::test::plugins::addDrawingPlugins(
+            app, aylo::test::plugins::makeFakeRegistry(std::make_shared<aylo::test::plugins::FakeBackendState>()),
+            aylo::test::plugins::makeFakeSettings());
     };
-    rtype::ecs::App debugFirst;
+    aylo::ecs::App debugFirst;
     addGraphics(debugFirst);
     debugFirst.addPlugin(PhysicsDebugPlugin{});
-    debugFirst.addPlugin(rtype::plugins::transform::TransformPlugin{});
+    debugFirst.addPlugin(aylo::plugins::transform::TransformPlugin{});
     EXPECT_NO_THROW(debugFirst.addPlugin(PhysicsPlugin{smallSettings()}));
-    rtype::ecs::App physicsFirst;
+    aylo::ecs::App physicsFirst;
     addGraphics(physicsFirst);
-    physicsFirst.addPlugin(rtype::plugins::transform::TransformPlugin{});
+    physicsFirst.addPlugin(aylo::plugins::transform::TransformPlugin{});
     physicsFirst.addPlugin(PhysicsPlugin{smallSettings()});
     EXPECT_NO_THROW(physicsFirst.addPlugin(PhysicsDebugPlugin{}));
 }

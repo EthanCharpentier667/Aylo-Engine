@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** PhysicsPluginTests
 */
@@ -9,18 +9,18 @@
 
 #include <glm/ext/vector_float2.hpp>
 
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/schedule/Phase.hpp"
+#include "aylo/ecs/time/Time.hpp"
 #include "plugins/physics/PhysicsPlugin.hpp"
 #include "plugins/physics/PhysicsSettings.hpp"
 #include "plugins/physics/PhysicsWorld.hpp"
 #include "plugins/physics/exceptions/PhysicsExceptions.hpp"
 #include "plugins/transform/TransformPlugin.hpp"
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/schedule/Phase.hpp"
-#include "rtype/ecs/time/Time.hpp"
 
-using rtype::plugins::physics::PhysicsPlugin;
-using rtype::plugins::physics::PhysicsSettings;
-using rtype::plugins::physics::PhysicsWorld;
+using aylo::plugins::physics::PhysicsPlugin;
+using aylo::plugins::physics::PhysicsSettings;
+using aylo::plugins::physics::PhysicsWorld;
 
 namespace {
 constexpr float kFixedDelta = 1.0F / 60.0F;
@@ -32,22 +32,22 @@ PhysicsSettings smallSettings() {
 }
 }  // namespace
 
-TEST(PhysicsPlugin, IsNamedRtypePhysics) { EXPECT_EQ(PhysicsPlugin{}.getName(), "rtype.Physics"); }
+TEST(PhysicsPlugin, IsNamedRtypePhysics) { EXPECT_EQ(PhysicsPlugin{}.getName(), "aylo.Physics"); }
 
 TEST(PhysicsPlugin, RegistersTheComponents) {
-    rtype::ecs::App app;
-    app.addPlugin(rtype::plugins::transform::TransformPlugin{});
+    aylo::ecs::App app;
+    app.addPlugin(aylo::plugins::transform::TransformPlugin{});
     app.addPlugin(PhysicsPlugin{smallSettings()});
-    EXPECT_TRUE(app.getWorld().getComponents().find("rtype.RigidBody"));
-    EXPECT_TRUE(app.getWorld().getComponents().find("rtype.Collider"));
-    EXPECT_TRUE(app.getWorld().getComponents().find("rtype.Velocity"));
+    EXPECT_TRUE(app.getWorld().getComponents().find("aylo.RigidBody"));
+    EXPECT_TRUE(app.getWorld().getComponents().find("aylo.Collider"));
+    EXPECT_TRUE(app.getWorld().getComponents().find("aylo.Velocity"));
 }
 
 TEST(PhysicsPlugin, InsertsTheWorldFromItsSettings) {
-    rtype::ecs::App app;
+    aylo::ecs::App app;
     PhysicsSettings settings = smallSettings();
     settings.unitsPerMeter = 50.0F;
-    app.addPlugin(rtype::plugins::transform::TransformPlugin{});
+    app.addPlugin(aylo::plugins::transform::TransformPlugin{});
     app.addPlugin(PhysicsPlugin{settings});
 
     const PhysicsWorld* const world = app.getWorld().getResources().get<PhysicsWorld>();
@@ -56,28 +56,28 @@ TEST(PhysicsPlugin, InsertsTheWorldFromItsSettings) {
 }
 
 TEST(PhysicsPlugin, AddsTheStepSystemInFixedUpdate) {
-    rtype::ecs::App app;
-    app.addPlugin(rtype::plugins::transform::TransformPlugin{});
+    aylo::ecs::App app;
+    app.addPlugin(aylo::plugins::transform::TransformPlugin{});
     app.addPlugin(PhysicsPlugin{smallSettings()});
-    EXPECT_TRUE(app.getSchedules().getSchedule(rtype::ecs::Phase::kFixedUpdate).contains(PhysicsPlugin::kStepSystem));
+    EXPECT_TRUE(app.getSchedules().getSchedule(aylo::ecs::Phase::kFixedUpdate).contains(PhysicsPlugin::kStepSystem));
 }
 
 TEST(PhysicsPlugin, StepsTheWorldOncePerFixedUpdate) {
-    rtype::ecs::App app;
-    app.addPlugin(rtype::plugins::transform::TransformPlugin{});
+    aylo::ecs::App app;
+    app.addPlugin(aylo::plugins::transform::TransformPlugin{});
     app.addPlugin(PhysicsPlugin{smallSettings()});
-    app.getWorld().getResources().insert(rtype::ecs::Time{.fixedDelta = kFixedDelta});
+    app.getWorld().getResources().insert(aylo::ecs::Time{.fixedDelta = kFixedDelta});
 
-    app.getSchedules().run(rtype::ecs::Phase::kFixedUpdate);
-    app.getSchedules().run(rtype::ecs::Phase::kFixedUpdate);
+    app.getSchedules().run(aylo::ecs::Phase::kFixedUpdate);
+    app.getSchedules().run(aylo::ecs::Phase::kFixedUpdate);
 
     EXPECT_EQ(app.getWorld().getResources().require<PhysicsWorld>().getStepCount(), 2U);
 }
 
 TEST(PhysicsPlugin, RejectsInvalidSettingsWhenBuilt) {
-    rtype::ecs::App app;
+    aylo::ecs::App app;
     PhysicsSettings settings = smallSettings();
     settings.unitsPerMeter = 0.0F;
-    app.addPlugin(rtype::plugins::transform::TransformPlugin{});
-    EXPECT_THROW(app.addPlugin(PhysicsPlugin{settings}), rtype::plugins::physics::exceptions::PhysicsException);
+    app.addPlugin(aylo::plugins::transform::TransformPlugin{});
+    EXPECT_THROW(app.addPlugin(PhysicsPlugin{settings}), aylo::plugins::physics::exceptions::PhysicsException);
 }

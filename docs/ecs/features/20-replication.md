@@ -6,7 +6,7 @@ Replication is how the **server's world is mirrored on the clients**. The model 
 down**: clients send their inputs; the authoritative server simulates and sends back what changed.
 There is no client-side prediction or rollback.
 
-This doc describes the network plugins for an **R-Type-like game**: one shared screen, a few players
+This doc describes the network plugins for an **shoot'em up-like game**: one shared screen, a few players
 (typically up to 4), and many short-lived bullets and enemies.
 
 ## Why we need it
@@ -28,7 +28,7 @@ This doc describes the network plugins for an **R-Type-like game**: one shared s
 
 Quake 3-style **deltas from the last acknowledged tick**, driven by the ECS's
 [change detection](08-change-detection.md) and [reflection](15-reflection-and-serialization.md), with a
-per-component **replication mode** suited to R-Type's bullets.
+per-component **replication mode** suited to a shoot'em up's bullets.
 
 ## How it works
 
@@ -38,14 +38,14 @@ per-component **replication mode** suited to R-Type's bullets.
 flowchart TB
     game["Game (Luau)<br/>replication modes on components,<br/>spawn a ship on ClientConnected, read PlayerInput"]
     plugins["ECS plugins (C++)<br/>ServerPlugin / ClientPlugin<br/>+ shared ReplicationPlugin"]
-    net["rtype-network (no ECS)<br/>UDP sockets, packets, acks,<br/>reliable channel, connections"]
+    net["aylo-network (no ECS)<br/>UDP sockets, packets, acks,<br/>reliable channel, connections"]
     thread["Network thread"]
     game --> plugins
     plugins -- "two thread-safe queues" --> net
     net --- thread
 ```
 
-`rtype-network` knows nothing about the ECS. Socket I/O runs on a **network thread** and exchanges
+`aylo-network` knows nothing about the ECS. Socket I/O runs on a **network thread** and exchanges
 messages with the ECS through two thread-safe queues; only the plugins' systems touch the queues, so the
 ECS stays single-threaded.
 
@@ -61,12 +61,12 @@ ECS stays single-threaded.
 | Resource (client) | `ClientState` | Connection, latest server tick, `NetworkId → Entity` map, snapshot buffer |
 | Event | `ClientConnected` / `ClientDisconnected` | For the game to spawn or remove ships |
 
-`ReplicationPlugin` (`"rtype.replication"`) registers the components and events above and inserts the `InputLayout`
+`ReplicationPlugin` (`"aylo.replication"`) registers the components and events above and inserts the `InputLayout`
 resource; `ServerPlugin` and `ClientPlugin` both add it, and a standalone game can add it alone. It also registers the
-[engine calls](19-luau-bridge.md#engine-calls) of the inputs (`input/InputCalls.hpp`): `rtype.replication.addInput`
+[engine calls](19-luau-bridge.md#engine-calls) of the inputs (`input/InputCalls.hpp`): `aylo.replication.addInput`
 (`{name, kind}`, kind `"button"`, `"axis"` or `"vector2"`), which `engine.input.action` makes on both sides, and
-`rtype.replication.readInput` (`{entity, action}`), which gives a server script `{held, pressed, released, axis,
-vector}` from an entity's `PlayerInput`, and, in an App that runs the client side, `rtype.replication.localClient`
+`aylo.replication.readInput` (`{entity, action}`), which gives a server script `{held, pressed, released, axis,
+vector}` from an entity's `PlayerInput`, and, in an App that runs the client side, `aylo.replication.localClient`
 (`client/ClientCalls.hpp`), which gives a client script `{connected, client}`: its id once the server gave it one, to
 tell its own entities (their `Owner`) from the others'. It is registered here rather than by `ClientPlugin`, which the
 `Engine` adds after the scripts load. The network I/O
@@ -96,7 +96,7 @@ through `Commands`, applied after the phase, so `ClientPlugin` has no such const
 |---|---|---|
 | PreUpdate | `net.receive` | Apply snapshots: spawn / despawn / write, through `NetworkId → Entity` |
 | Update | `net.interpolate` | Display the state at (latest server tick − ~100 ms) |
-| PostUpdate | `rtype.engine.networkInput` | Input actions → `PlayerInput`. Not in `ClientPlugin`: `replication` never includes `plugins`, so the `Engine` adds it (`engine/NetworkInput`), reading each `InputLayout` action from the `plugins::input::Input` action of the same name; it calls `ClientState::setInput`. A game outside the `Engine` writes its own |
+| PostUpdate | `aylo.engine.networkInput` | Input actions → `PlayerInput`. Not in `ClientPlugin`: `replication` never includes `plugins`, so the `Engine` adds it (`engine/NetworkInput`), reading each `InputLayout` action from the `plugins::input::Input` action of the same name; it calls `ClientState::setInput`. A game outside the `Engine` writes its own |
 | PostUpdate | `net.sendInput` | Send the last 3 inputs (redundancy against loss) |
 | Render | drawing | |
 
@@ -123,7 +123,7 @@ changed since a client's acknowledged tick (see [Systems](12-systems.md#configur
 
 ### Replication modes
 
-R-Type has hundreds of bullets whose motion is predictable. Each component chooses a mode:
+A shoot'em up has hundreds of bullets whose motion is predictable. Each component chooses a mode:
 
 | Mode | Sent | Example |
 |---|---|---|
@@ -195,7 +195,7 @@ local OnJoin = ecs.system("game.OnJoin", { events = { "net.ClientConnected" } })
 
 function OnJoin:run(ctx)
     for event in ctx.events["net.ClientConnected"] do
-        local ship = ctx.call("rtype.capsule.spawn", { capsule = "actors/ship.actor" })
+        local ship = ctx.call("aylo.capsule.spawn", { capsule = "actors/ship.actor" })
         ctx.commands:add(ship, "net.Owner", { client = event.client })
     end
 end
@@ -218,7 +218,7 @@ and replicate to the clients like any other change. Nothing from a client reache
 
 ### Build order
 
-1. `rtype-network`: UDP socket on a thread, packet header, acks; test with two processes.
+1. `aylo-network`: UDP socket on a thread, packet header, acks; test with two processes.
 2. Connection + manifest + full snapshot: the client sees the server world.
 3. Inputs up: the ship moves on the server and appears on the client.
 4. Deltas from the last ack + `kSpawnOnly`: scales to many bullets.

@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** LocalHttpServer
 */
@@ -29,7 +29,7 @@
 #include <utility>
 #include <vector>
 
-namespace rtype::test::plugins {
+namespace aylo::test::plugins {
 
 /// @brief A plain HTTP server on 127.0.0.1, on a free port, for the http plugin's tests: no test reaches the internet.
 /// It serves one connection at a time on its own thread, answers with what its handler returns, then closes.
@@ -151,4 +151,4 @@ class LocalHttpServer {
     std::vector<Received> _received;
 };
 
-}  // namespace rtype::test::plugins
+}  // namespace aylo::test::plugins

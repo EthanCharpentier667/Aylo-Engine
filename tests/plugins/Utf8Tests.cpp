@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** Utf8Tests
 */
@@ -11,10 +11,10 @@
 
 #include "plugins/text/detail/Utf8.hpp"
 
-using rtype::plugins::text::detail::decodeUtf8;
-using rtype::plugins::text::detail::kReplacementCharacter;
+using aylo::plugins::text::detail::decodeUtf8;
+using aylo::plugins::text::detail::kReplacementCharacter;
 
-TEST(Utf8, DecodesAscii) { EXPECT_EQ(decodeUtf8("R-Type 1"), U"R-Type 1"); }
+TEST(Utf8, DecodesAscii) { EXPECT_EQ(decodeUtf8("AYLO 1"), U"AYLO 1"); }
 
 TEST(Utf8, DecodesEverySequenceLength) {
     EXPECT_EQ(decodeUtf8("\xC3\xA9"), U"\u00E9");              // An e with an acute accent: 2 bytes.

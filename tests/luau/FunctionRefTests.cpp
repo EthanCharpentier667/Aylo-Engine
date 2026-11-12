@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** FunctionRefTests
 */
@@ -10,41 +10,41 @@
 #include <string>
 #include <utility>
 
-#include "rtype/luau/ErrorKind.hpp"
-#include "rtype/luau/Exceptions.hpp"
-#include "rtype/luau/Function.hpp"
-#include "rtype/luau/FunctionRef.hpp"
-#include "rtype/luau/Ref.hpp"
-#include "rtype/luau/Runtime.hpp"
-#include "rtype/luau/RuntimeConfig.hpp"
-#include "rtype/luau/Value.hpp"
-#include "rtype/luau/ValuePack.hpp"
-#include "rtype/luau/detail/RawState.hpp"
-#include "rtype/luau/detail/Stack.hpp"
+#include "aylo/luau/ErrorKind.hpp"
+#include "aylo/luau/Exceptions.hpp"
+#include "aylo/luau/Function.hpp"
+#include "aylo/luau/FunctionRef.hpp"
+#include "aylo/luau/Ref.hpp"
+#include "aylo/luau/Runtime.hpp"
+#include "aylo/luau/RuntimeConfig.hpp"
+#include "aylo/luau/Value.hpp"
+#include "aylo/luau/ValuePack.hpp"
+#include "aylo/luau/detail/RawState.hpp"
+#include "aylo/luau/detail/Stack.hpp"
 
 namespace {
-using ErrorKind = rtype::luau::ErrorKind;
-using Function = rtype::luau::Function;
-using FunctionRef = rtype::luau::FunctionRef;
-using Value = rtype::luau::Value;
-using ValuePack = rtype::luau::ValuePack;
+using ErrorKind = aylo::luau::ErrorKind;
+using Function = aylo::luau::Function;
+using FunctionRef = aylo::luau::FunctionRef;
+using Value = aylo::luau::Value;
+using ValuePack = aylo::luau::ValuePack;
 
 /// @brief Creates a runtime with the standard libraries, failing the test if it cannot be created.
-rtype::luau::Runtime makeRuntime() {
-    auto runtime = rtype::luau::Runtime::create({
-        .libs = rtype::luau::RuntimeConfig::Libs::kStandard,
-        .optimizationLevel = rtype::luau::RuntimeConfig::OptimizationLevel::kStandard,
+aylo::luau::Runtime makeRuntime() {
+    auto runtime = aylo::luau::Runtime::create({
+        .libs = aylo::luau::RuntimeConfig::Libs::kStandard,
+        .optimizationLevel = aylo::luau::RuntimeConfig::OptimizationLevel::kStandard,
     });
     EXPECT_TRUE(runtime);
     return std::move(*runtime);
 }
 
 /// @brief Evaluates @p source, which must return a function, and wraps that function in a handle.
-FunctionRef makeFunctionRef(const rtype::luau::Runtime& runtime, const std::string& source) {
+FunctionRef makeFunctionRef(const aylo::luau::Runtime& runtime, const std::string& source) {
     const auto script = runtime.load("function-ref", source);
     EXPECT_TRUE(script);
-    script->closure().push(rtype::luau::detail::rawState(runtime));
-    const Function loader = Function::fromRef(rtype::luau::Ref::pop(rtype::luau::detail::rawState(runtime)), "loader");
+    script->closure().push(aylo::luau::detail::rawState(runtime));
+    const Function loader = Function::fromRef(aylo::luau::Ref::pop(aylo::luau::detail::rawState(runtime)), "loader");
     auto results = loader.call();
     EXPECT_TRUE(results);
     EXPECT_EQ(results->values().size(), 1U);
@@ -58,8 +58,8 @@ TEST(FunctionRef, FromStackReadsFunction) {
     const auto runtime = makeRuntime();
     const auto function = makeFunctionRef(runtime, "return function(a) return a * 2 end");
 
-    ASSERT_TRUE(rtype::luau::detail::pushFunctionRef(rtype::luau::detail::rawState(runtime), function));
-    const auto read = rtype::luau::detail::readFunctionRef(rtype::luau::detail::rawState(runtime));
+    ASSERT_TRUE(aylo::luau::detail::pushFunctionRef(aylo::luau::detail::rawState(runtime), function));
+    const auto read = aylo::luau::detail::readFunctionRef(aylo::luau::detail::rawState(runtime));
 
     EXPECT_TRUE(read);
 }
@@ -68,16 +68,16 @@ TEST(FunctionRef, FromStackFailsForOtherTypes) {
     const auto runtime = makeRuntime();
     ValuePack pushed{};
     pushed.add({1.0});
-    ASSERT_EQ(rtype::luau::detail::pushValuePack(rtype::luau::detail::rawState(runtime), pushed).value(), 1U);
+    ASSERT_EQ(aylo::luau::detail::pushValuePack(aylo::luau::detail::rawState(runtime), pushed).value(), 1U);
 
-    const auto read = rtype::luau::detail::readFunctionRef(rtype::luau::detail::rawState(runtime));
+    const auto read = aylo::luau::detail::readFunctionRef(aylo::luau::detail::rawState(runtime));
 
     ASSERT_FALSE(read);
     EXPECT_EQ(read.error().kind(), ErrorKind::kTypeMismatch);
 }
 
 TEST(FunctionRef, FromStackThrowsForNullState) {
-    EXPECT_THROW(std::ignore = rtype::luau::detail::readFunctionRef(nullptr), rtype::luau::exceptions::InvalidState);
+    EXPECT_THROW(std::ignore = aylo::luau::detail::readFunctionRef(nullptr), aylo::luau::exceptions::InvalidState);
 }
 
 TEST(FunctionRef, CopiesShareTheFunction) {
@@ -100,7 +100,7 @@ TEST(FunctionRef, PushFailsForOtherState) {
     const auto other = makeRuntime();
     const auto function = makeFunctionRef(runtime, "return function() end");
 
-    const auto pushed = rtype::luau::detail::pushFunctionRef(rtype::luau::detail::rawState(other), function);
+    const auto pushed = aylo::luau::detail::pushFunctionRef(aylo::luau::detail::rawState(other), function);
 
     ASSERT_FALSE(pushed);
     EXPECT_EQ(pushed.error().kind(), ErrorKind::kRuntime);
@@ -111,9 +111,9 @@ TEST(FunctionRef, MovedFromHandleThrows) {
     auto function = makeFunctionRef(runtime, "return function() end");
     const FunctionRef moved{std::move(function)};
 
-    EXPECT_THROW(std::ignore = function.ref(), rtype::luau::exceptions::InvalidRef);
-    EXPECT_THROW(std::ignore = rtype::luau::detail::pushFunctionRef(rtype::luau::detail::rawState(runtime), function),
-                 rtype::luau::exceptions::InvalidRef);
+    EXPECT_THROW(std::ignore = function.ref(), aylo::luau::exceptions::InvalidRef);
+    EXPECT_THROW(std::ignore = aylo::luau::detail::pushFunctionRef(aylo::luau::detail::rawState(runtime), function),
+                 aylo::luau::exceptions::InvalidRef);
 }
 
 TEST(FunctionRef, ValueHoldsFunctionRef) {
@@ -131,7 +131,7 @@ TEST(FunctionRef, ValuePushesFunctionBack) {
     const auto runtime = makeRuntime();
     const Value value{makeFunctionRef(runtime, "return function() return 1 end")};
 
-    ASSERT_TRUE(rtype::luau::detail::pushValue(rtype::luau::detail::rawState(runtime), value));
+    ASSERT_TRUE(aylo::luau::detail::pushValue(aylo::luau::detail::rawState(runtime), value));
 
-    EXPECT_TRUE(rtype::luau::detail::readFunctionRef(rtype::luau::detail::rawState(runtime)));
+    EXPECT_TRUE(aylo::luau::detail::readFunctionRef(aylo::luau::detail::rawState(runtime)));
 }

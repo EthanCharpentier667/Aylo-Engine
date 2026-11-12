@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ShaderTests
 */
@@ -12,18 +12,18 @@
 #include <stdexcept>
 #include <vector>
 
-#include "rtype/contract/renderer/drawing/Sprite.hpp"
-#include "rtype/contract/renderer/drawing/Text.hpp"
-#include "rtype/contract/renderer/particle/Particle.hpp"
-#include "rtype/contract/renderer/shaders/CompiledShader.hpp"
+#include "aylo/contract/renderer/drawing/Sprite.hpp"
+#include "aylo/contract/renderer/drawing/Text.hpp"
+#include "aylo/contract/renderer/particle/Particle.hpp"
+#include "aylo/contract/renderer/shaders/CompiledShader.hpp"
 
-using rtype::contract::renderer::CompiledShader;
-using rtype::contract::renderer::MaterialId;
-using rtype::contract::renderer::ShaderTarget;
-using rtype::contract::renderer::ShaderValue;
-using rtype::contract::renderer::ShaderValueType;
-using rtype::contract::renderer::ShaderVariant;
-using rtype::contract::renderer::validate;
+using aylo::contract::renderer::CompiledShader;
+using aylo::contract::renderer::MaterialId;
+using aylo::contract::renderer::ShaderTarget;
+using aylo::contract::renderer::ShaderValue;
+using aylo::contract::renderer::ShaderValueType;
+using aylo::contract::renderer::ShaderVariant;
+using aylo::contract::renderer::validate;
 
 namespace {
 /// @return A valid shader "flash" for sprites, with a vec4 tint in its material and a float flash per instance.
@@ -92,9 +92,9 @@ TEST(Shader, RejectsTextureSlotsPastTheLimitOrShared) {
 }
 
 TEST(Shader, DrawingsUseTheDefaultMaterialByDefault) {
-    EXPECT_EQ(rtype::contract::renderer::Sprite{}.material, MaterialId{});
-    EXPECT_EQ(rtype::contract::renderer::Text{}.material, MaterialId{});
-    EXPECT_EQ(rtype::contract::renderer::ParticleDraw{}.material, MaterialId{});
-    EXPECT_EQ(rtype::contract::renderer::Sprite{}.instanceValues.size() * sizeof(float) * 4,
-              std::size_t{rtype::contract::renderer::kShaderInstanceBytes});
+    EXPECT_EQ(aylo::contract::renderer::Sprite{}.material, MaterialId{});
+    EXPECT_EQ(aylo::contract::renderer::Text{}.material, MaterialId{});
+    EXPECT_EQ(aylo::contract::renderer::ParticleDraw{}.material, MaterialId{});
+    EXPECT_EQ(aylo::contract::renderer::Sprite{}.instanceValues.size() * sizeof(float) * 4,
+              std::size_t{aylo::contract::renderer::kShaderInstanceBytes});
 }

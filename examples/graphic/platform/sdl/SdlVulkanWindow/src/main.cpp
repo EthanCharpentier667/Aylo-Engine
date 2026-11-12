@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** main
 */
@@ -13,20 +13,20 @@
 #include <vector>
 
 #include "SdlPlatform.hpp"
+#include "aylo/contract/platform/IPlatform.hpp"
+#include "aylo/contract/platform/event/Event.hpp"
+#include "aylo/contract/platform/input/Key.hpp"
 #include "core/config/Settings.hpp"
 #include "plugins/graphics/BackendRegistry.hpp"
 #include "render/vulkan/Registration.hpp"
-#include "rtype/contract/platform/IPlatform.hpp"
-#include "rtype/contract/platform/event/Event.hpp"
-#include "rtype/contract/platform/input/Key.hpp"
 
-using namespace rtype::contract::platform::event;
+using namespace aylo::contract::platform::event;
+using aylo::contract::platform::IPlatform;
+using aylo::contract::platform::input::Key;
+using aylo::core::config::Settings;
+using aylo::plugins::graphics::Backend;
+using aylo::plugins::graphics::BackendRegistry;
 using example::SdlPlatform;
-using rtype::contract::platform::IPlatform;
-using rtype::contract::platform::input::Key;
-using rtype::core::config::Settings;
-using rtype::plugins::graphics::Backend;
-using rtype::plugins::graphics::BackendRegistry;
 
 /// @warning macOS: brew install molten-vk vulkan-loader (+ vulkan-validationlayers in debug builds)
 
@@ -36,7 +36,7 @@ int main() {
         /// registers "sdl" (SdlPlatform, written here). The factory receives the "sdl" section of the config; this
         /// platform has no setting, so it only rejects unknown keys.
         BackendRegistry registry;
-        rtype::render::vulkan::registerRenderer(registry.renderers);
+        aylo::render::vulkan::registerRenderer(registry.renderers);
         registry.platforms.add("sdl", [](const Settings& settings) -> std::unique_ptr<IPlatform> {
             settings.checkKeys({}, "sdl");
             return std::make_unique<SdlPlatform>();

@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ResourceStorageTests
 */
@@ -15,12 +15,12 @@
 #include <stdexcept>
 #include <utility>
 
-#include "rtype/ecs/change/Mut.hpp"
-#include "rtype/ecs/change/Tick.hpp"
-#include "rtype/ecs/resource/ResourceInfo.hpp"
-#include "rtype/ecs/resource/ResourceTraits.hpp"
-#include "rtype/ecs/storage/ResourceStorage.hpp"
-#include "rtype/ecs/storage/ViewAs.hpp"
+#include "aylo/ecs/change/Mut.hpp"
+#include "aylo/ecs/change/Tick.hpp"
+#include "aylo/ecs/resource/ResourceInfo.hpp"
+#include "aylo/ecs/resource/ResourceTraits.hpp"
+#include "aylo/ecs/storage/ResourceStorage.hpp"
+#include "aylo/ecs/storage/ViewAs.hpp"
 
 namespace {
 /// @brief Number of Counter instances alive, to detect leaks and double destruction.
@@ -40,26 +40,26 @@ struct Counter {
 bool throwOnCopy = false;
 }  // namespace
 
-namespace rtype::test::resource_storage {
+namespace aylo::test::resource_storage {
 struct Time {
     float delta;
     float fixedDelta;
 };
-RTYPE_ECS_RESOURCE(Time, "rtype.Time");
+AYLO_ECS_RESOURCE(Time, "aylo.Time");
 
 struct Tracked {
     std::int32_t value;
     Counter counter;
 };
-RTYPE_ECS_RESOURCE(Tracked, "test.Tracked");
+AYLO_ECS_RESOURCE(Tracked, "test.Tracked");
 
 struct Backend {
     std::unique_ptr<std::int32_t> window;
 };
-RTYPE_ECS_RESOURCE(Backend, "rtype.Backend");
+AYLO_ECS_RESOURCE(Backend, "aylo.Backend");
 
 struct Paused {};
-RTYPE_ECS_RESOURCE(Paused, "rtype.Paused");
+AYLO_ECS_RESOURCE(Paused, "aylo.Paused");
 
 /// @brief A resource whose copy throws on demand, counting its instances.
 struct Fragile {
@@ -77,27 +77,27 @@ struct Fragile {
     std::int32_t value;  ///< Payload.
     Counter counter;     ///< Detects leaks and double destruction.
 };
-RTYPE_ECS_RESOURCE(Fragile, "test.Fragile");
+AYLO_ECS_RESOURCE(Fragile, "test.Fragile");
 
 struct alignas(16) Aligned16 {
     std::array<float, 4> values;
 };
-RTYPE_ECS_RESOURCE(Aligned16, "test.Aligned16");
-}  // namespace rtype::test::resource_storage
+AYLO_ECS_RESOURCE(Aligned16, "test.Aligned16");
+}  // namespace aylo::test::resource_storage
 
-namespace res = rtype::test::resource_storage;
+namespace res = aylo::test::resource_storage;
 
 namespace {
 /// @return The description of `T`, kept alive for the whole test run: a storage only points to it.
 template <typename T>
-const rtype::ecs::ResourceInfo& infoOf() {
-    static const rtype::ecs::ResourceInfo info = rtype::ecs::ResourceTraits<T>::makeInfo();
+const aylo::ecs::ResourceInfo& infoOf() {
+    static const aylo::ecs::ResourceInfo info = aylo::ecs::ResourceTraits<T>::makeInfo();
     return info;
 }
 
 template <typename T>
-rtype::ecs::storage::ResourceStorage makeStorage() {
-    return rtype::ecs::storage::ResourceStorage{infoOf<T>()};
+aylo::ecs::storage::ResourceStorage makeStorage() {
+    return aylo::ecs::storage::ResourceStorage{infoOf<T>()};
 }
 
 template <typename T>
@@ -112,19 +112,19 @@ std::span<std::byte> bytesOf(T& value) {
 }  // namespace
 
 TEST(ResourceStorage, StartsEmpty) {
-    rtype::ecs::storage::ResourceStorage storage = makeStorage<res::Time>();
+    aylo::ecs::storage::ResourceStorage storage = makeStorage<res::Time>();
     EXPECT_FALSE(storage.hasValue());
     EXPECT_TRUE(storage.get().empty());
     EXPECT_FALSE(storage.remove());
-    EXPECT_EQ(storage.getInfo().type.name, "rtype.Time");
+    EXPECT_EQ(storage.getInfo().type.name, "aylo.Time");
 }
 
 TEST(ResourceStorage, InsertMoveThenGet) {
-    rtype::ecs::storage::ResourceStorage storage = makeStorage<res::Time>();
+    aylo::ecs::storage::ResourceStorage storage = makeStorage<res::Time>();
     res::Time time{.delta = 0.5F, .fixedDelta = 0.25F};
     storage.insertMove(bytesOf(time), 3);
     ASSERT_TRUE(storage.hasValue());
-    const res::Time* stored = rtype::ecs::storage::viewAs<res::Time>(storage.get());
+    const res::Time* stored = aylo::ecs::storage::viewAs<res::Time>(storage.get());
     EXPECT_FLOAT_EQ(stored->delta, 0.5F);
     EXPECT_FLOAT_EQ(stored->fixedDelta, 0.25F);
     EXPECT_EQ(storage.getTicks().added, 3U);
@@ -132,31 +132,30 @@ TEST(ResourceStorage, InsertMoveThenGet) {
 }
 
 TEST(ResourceStorage, InsertCopyLeavesSourceIntact) {
-    rtype::ecs::storage::ResourceStorage storage = makeStorage<res::Time>();
+    aylo::ecs::storage::ResourceStorage storage = makeStorage<res::Time>();
     const res::Time time{.delta = 1.F, .fixedDelta = 2.F};
     storage.insertCopy(bytesOf(time), 1);
-    EXPECT_FLOAT_EQ(rtype::ecs::storage::viewAs<res::Time>(storage.get())->fixedDelta, 2.F);
+    EXPECT_FLOAT_EQ(aylo::ecs::storage::viewAs<res::Time>(storage.get())->fixedDelta, 2.F);
     EXPECT_FLOAT_EQ(time.fixedDelta, 2.F);
 }
 
 TEST(ResourceStorage, MutReadDoesNotMarkChanged) {
-    rtype::ecs::storage::ResourceStorage storage = makeStorage<res::Time>();
+    aylo::ecs::storage::ResourceStorage storage = makeStorage<res::Time>();
     res::Time time{.delta = 2.F, .fixedDelta = 0.F};
     storage.insertMove(bytesOf(time), 1);
-    const rtype::ecs::Mut<res::Time> mut{rtype::ecs::storage::viewAs<res::Time>(storage.get()),
-                                         &storage.getTicks().changed, 7};
+    const aylo::ecs::Mut<res::Time> mut{aylo::ecs::storage::viewAs<res::Time>(storage.get()),
+                                        &storage.getTicks().changed, 7};
     EXPECT_FLOAT_EQ(mut.get().delta, 2.F);
     EXPECT_EQ(storage.getTicks().changed, 1U);
 }
 
 TEST(ResourceStorage, MutWriteMarksChanged) {
-    rtype::ecs::storage::ResourceStorage storage = makeStorage<res::Time>();
+    aylo::ecs::storage::ResourceStorage storage = makeStorage<res::Time>();
     res::Time time{.delta = 0.F, .fixedDelta = 0.F};
     storage.insertMove(bytesOf(time), 1);
-    rtype::ecs::Mut<res::Time> mut{rtype::ecs::storage::viewAs<res::Time>(storage.get()), &storage.getTicks().changed,
-                                   7};
+    aylo::ecs::Mut<res::Time> mut{aylo::ecs::storage::viewAs<res::Time>(storage.get()), &storage.getTicks().changed, 7};
     mut->delta = 4.F;
-    EXPECT_FLOAT_EQ(rtype::ecs::storage::viewAs<res::Time>(storage.get())->delta, 4.F);
+    EXPECT_FLOAT_EQ(aylo::ecs::storage::viewAs<res::Time>(storage.get())->delta, 4.F);
     EXPECT_EQ(storage.getTicks().added, 1U);
     EXPECT_EQ(storage.getTicks().changed, 7U);
     EXPECT_TRUE(storage.getTicks().isChanged(5, 8));
@@ -166,13 +165,13 @@ TEST(ResourceStorage, MutWriteMarksChanged) {
 TEST(ResourceStorage, ReplaceKeepsAddedTickAndDestroysOldValue) {
     liveCounters = 0;
     {
-        rtype::ecs::storage::ResourceStorage storage = makeStorage<res::Tracked>();
+        aylo::ecs::storage::ResourceStorage storage = makeStorage<res::Tracked>();
         res::Tracked first{.value = 1, .counter = {}};
         storage.insertMove(bytesOf(first), 2);
         res::Tracked second{.value = 2, .counter = {}};
         storage.insertMove(bytesOf(second), 5);
         EXPECT_EQ(liveCounters, 3);  // first, second and the stored copy
-        EXPECT_EQ(rtype::ecs::storage::viewAs<res::Tracked>(storage.get())->value, 2);
+        EXPECT_EQ(aylo::ecs::storage::viewAs<res::Tracked>(storage.get())->value, 2);
         EXPECT_EQ(storage.getTicks().added, 2U);
         EXPECT_EQ(storage.getTicks().changed, 5U);
     }
@@ -181,7 +180,7 @@ TEST(ResourceStorage, ReplaceKeepsAddedTickAndDestroysOldValue) {
 
 TEST(ResourceStorage, RemoveDestroysValue) {
     liveCounters = 0;
-    rtype::ecs::storage::ResourceStorage storage = makeStorage<res::Tracked>();
+    aylo::ecs::storage::ResourceStorage storage = makeStorage<res::Tracked>();
     {
         res::Tracked value{.value = 1, .counter = {}};
         storage.insertMove(bytesOf(value), 1);
@@ -194,7 +193,7 @@ TEST(ResourceStorage, RemoveDestroysValue) {
 }
 
 TEST(ResourceStorage, InsertAfterRemoveStampsNewAddedTick) {
-    rtype::ecs::storage::ResourceStorage storage = makeStorage<res::Time>();
+    aylo::ecs::storage::ResourceStorage storage = makeStorage<res::Time>();
     res::Time time{.delta = 0.F, .fixedDelta = 0.F};
     storage.insertMove(bytesOf(time), 1);
     storage.remove();
@@ -205,7 +204,7 @@ TEST(ResourceStorage, InsertAfterRemoveStampsNewAddedTick) {
 TEST(ResourceStorage, DestructorDestroysValue) {
     liveCounters = 0;
     {
-        rtype::ecs::storage::ResourceStorage storage = makeStorage<res::Tracked>();
+        aylo::ecs::storage::ResourceStorage storage = makeStorage<res::Tracked>();
         res::Tracked value{.value = 1, .counter = {}};
         storage.insertCopy(bytesOf(std::as_const(value)), 1);
         EXPECT_EQ(liveCounters, 2);
@@ -214,17 +213,17 @@ TEST(ResourceStorage, DestructorDestroysValue) {
 }
 
 TEST(ResourceStorage, StoresMoveOnlyType) {
-    rtype::ecs::storage::ResourceStorage storage = makeStorage<res::Backend>();
+    aylo::ecs::storage::ResourceStorage storage = makeStorage<res::Backend>();
     res::Backend backend{.window = std::make_unique<std::int32_t>(42)};
     storage.insertMove(bytesOf(backend), 1);
     EXPECT_EQ(backend.window, nullptr);
-    const res::Backend* stored = rtype::ecs::storage::viewAs<res::Backend>(storage.get());
+    const res::Backend* stored = aylo::ecs::storage::viewAs<res::Backend>(storage.get());
     ASSERT_NE(stored->window, nullptr);
     EXPECT_EQ(*stored->window, 42);
 }
 
 TEST(ResourceStorage, EmptyTypeHasValueButNoBytes) {
-    rtype::ecs::storage::ResourceStorage storage = makeStorage<res::Paused>();
+    aylo::ecs::storage::ResourceStorage storage = makeStorage<res::Paused>();
     storage.insertMove({}, 1);
     EXPECT_TRUE(storage.hasValue());
     EXPECT_TRUE(storage.get().empty());
@@ -233,7 +232,7 @@ TEST(ResourceStorage, EmptyTypeHasValueButNoBytes) {
 }
 
 TEST(ResourceStorage, ValueIsAligned) {
-    rtype::ecs::storage::ResourceStorage storage = makeStorage<res::Aligned16>();
+    aylo::ecs::storage::ResourceStorage storage = makeStorage<res::Aligned16>();
     res::Aligned16 value{.values = {1.F, 2.F, 3.F, 4.F}};
     storage.insertMove(bytesOf(value), 1);
     EXPECT_EQ(reinterpret_cast<std::uintptr_t>(storage.get().data()) % 16, 0U);
@@ -242,11 +241,11 @@ TEST(ResourceStorage, ValueIsAligned) {
 TEST(ResourceStorage, MoveTransfersValue) {
     liveCounters = 0;
     {
-        rtype::ecs::storage::ResourceStorage storage = makeStorage<res::Tracked>();
+        aylo::ecs::storage::ResourceStorage storage = makeStorage<res::Tracked>();
         res::Tracked value{.value = 6, .counter = {}};
         storage.insertMove(bytesOf(value), 1);
-        rtype::ecs::storage::ResourceStorage moved{std::move(storage)};
-        EXPECT_EQ(rtype::ecs::storage::viewAs<res::Tracked>(moved.get())->value, 6);
+        aylo::ecs::storage::ResourceStorage moved{std::move(storage)};
+        EXPECT_EQ(aylo::ecs::storage::viewAs<res::Tracked>(moved.get())->value, 6);
     }
     EXPECT_EQ(liveCounters, 0);
 }
@@ -254,13 +253,13 @@ TEST(ResourceStorage, MoveTransfersValue) {
 TEST(ResourceStorage, ReplaceByCopyKeepsAddedTickAndDestroysOldValue) {
     liveCounters = 0;
     {
-        rtype::ecs::storage::ResourceStorage storage = makeStorage<res::Fragile>();
+        aylo::ecs::storage::ResourceStorage storage = makeStorage<res::Fragile>();
         const res::Fragile first{1};
         storage.insertCopy(bytesOf(first), 2);
         const res::Fragile second{2};
         storage.insertCopy(bytesOf(second), 5);
         EXPECT_EQ(liveCounters, 3);  // first, second and the stored copy
-        EXPECT_EQ(rtype::ecs::storage::viewAs<res::Fragile>(storage.get())->value, 2);
+        EXPECT_EQ(aylo::ecs::storage::viewAs<res::Fragile>(storage.get())->value, 2);
         EXPECT_EQ(storage.getTicks().added, 2U);
         EXPECT_EQ(storage.getTicks().changed, 5U);
     }
@@ -270,7 +269,7 @@ TEST(ResourceStorage, ReplaceByCopyKeepsAddedTickAndDestroysOldValue) {
 TEST(ResourceStorage, ThrowingCopyKeepsOldValue) {
     liveCounters = 0;
     {
-        rtype::ecs::storage::ResourceStorage storage = makeStorage<res::Fragile>();
+        aylo::ecs::storage::ResourceStorage storage = makeStorage<res::Fragile>();
         const res::Fragile first{1};
         storage.insertCopy(bytesOf(first), 2);
         const res::Fragile second{2};
@@ -278,19 +277,19 @@ TEST(ResourceStorage, ThrowingCopyKeepsOldValue) {
         EXPECT_THROW(storage.insertCopy(bytesOf(second), 5), std::runtime_error);
         throwOnCopy = false;
         ASSERT_TRUE(storage.hasValue());
-        EXPECT_EQ(rtype::ecs::storage::viewAs<res::Fragile>(storage.get())->value, 1);
+        EXPECT_EQ(aylo::ecs::storage::viewAs<res::Fragile>(storage.get())->value, 1);
         EXPECT_EQ(storage.getTicks().added, 2U);
         EXPECT_EQ(storage.getTicks().changed, 2U);
         EXPECT_EQ(liveCounters, 3);  // first, second and the stored copy: no leak from the failed copy
         const res::Fragile third{3};
         storage.insertCopy(bytesOf(third), 6);
-        EXPECT_EQ(rtype::ecs::storage::viewAs<res::Fragile>(storage.get())->value, 3);
+        EXPECT_EQ(aylo::ecs::storage::viewAs<res::Fragile>(storage.get())->value, 3);
     }
     EXPECT_EQ(liveCounters, 0);
 }
 
 TEST(ResourceStorage, ThrowingFirstCopyLeavesStorageEmpty) {
-    rtype::ecs::storage::ResourceStorage storage = makeStorage<res::Fragile>();
+    aylo::ecs::storage::ResourceStorage storage = makeStorage<res::Fragile>();
     const res::Fragile value{1};
     throwOnCopy = true;
     EXPECT_THROW(storage.insertCopy(bytesOf(value), 1), std::runtime_error);
@@ -299,12 +298,12 @@ TEST(ResourceStorage, ThrowingFirstCopyLeavesStorageEmpty) {
 }
 
 TEST(ResourceStorage, ClampTicksMovesOnlyOldTicks) {
-    rtype::ecs::storage::ResourceStorage storage = makeStorage<res::Time>();
+    aylo::ecs::storage::ResourceStorage storage = makeStorage<res::Time>();
     res::Time time{.delta = 0.F, .fixedDelta = 0.F};
     storage.insertMove(bytesOf(time), 0);
-    const rtype::ecs::Tick thisRun = rtype::ecs::kMaxChangeAge + 100;
+    const aylo::ecs::Tick thisRun = aylo::ecs::kMaxChangeAge + 100;
     storage.getTicks().changed = thisRun - 10;
     storage.clampTicks(thisRun);
-    EXPECT_EQ(storage.getTicks().added, thisRun - rtype::ecs::kMaxChangeAge);
+    EXPECT_EQ(storage.getTicks().added, thisRun - aylo::ecs::kMaxChangeAge);
     EXPECT_EQ(storage.getTicks().changed, thisRun - 10);
 }

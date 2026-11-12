@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** DynamicEventsTests
 */
@@ -12,40 +12,40 @@
 #include <span>
 #include <vector>
 
-#include "rtype/ecs/event/EventCursor.hpp"
-#include "rtype/ecs/event/EventTraits.hpp"
-#include "rtype/ecs/exceptions/TypeExceptions.hpp"
-#include "rtype/ecs/resource/ResourceTraits.hpp"
-#include "rtype/ecs/system/DynamicEvents.hpp"
-#include "rtype/ecs/system/ResourceParam.hpp"
-#include "rtype/ecs/system/System.hpp"
-#include "rtype/ecs/system/SystemAccess.hpp"
-#include "rtype/ecs/world/World.hpp"
+#include "aylo/ecs/event/EventCursor.hpp"
+#include "aylo/ecs/event/EventTraits.hpp"
+#include "aylo/ecs/exceptions/TypeExceptions.hpp"
+#include "aylo/ecs/resource/ResourceTraits.hpp"
+#include "aylo/ecs/system/DynamicEvents.hpp"
+#include "aylo/ecs/system/ResourceParam.hpp"
+#include "aylo/ecs/system/System.hpp"
+#include "aylo/ecs/system/SystemAccess.hpp"
+#include "aylo/ecs/world/World.hpp"
 
-namespace rtype::test::dynamic_events {
+namespace aylo::test::dynamic_events {
 struct Boom {
     int power;
 };
-RTYPE_ECS_EVENT(Boom, "test.dynamicEvents.Boom", power);
+AYLO_ECS_EVENT(Boom, "test.dynamicEvents.Boom", power);
 
 /// @brief What the system under test read.
 struct Heard {
     int sum;
     int count;
 };
-RTYPE_ECS_RESOURCE(Heard, "test.dynamicEvents.Heard", sum, count);
-}  // namespace rtype::test::dynamic_events
+AYLO_ECS_RESOURCE(Heard, "test.dynamicEvents.Heard", sum, count);
+}  // namespace aylo::test::dynamic_events
 
 namespace {
-using rtype::ecs::DynamicEvents;
-using rtype::ecs::EventCursor;
-using rtype::ecs::EventId;
-using rtype::ecs::EventList;
-using rtype::ecs::ResMut;
-using rtype::ecs::System;
-using rtype::ecs::World;
-using rtype::test::dynamic_events::Boom;
-using rtype::test::dynamic_events::Heard;
+using aylo::ecs::DynamicEvents;
+using aylo::ecs::EventCursor;
+using aylo::ecs::EventId;
+using aylo::ecs::EventList;
+using aylo::ecs::ResMut;
+using aylo::ecs::System;
+using aylo::ecs::World;
+using aylo::test::dynamic_events::Boom;
+using aylo::test::dynamic_events::Heard;
 
 /// @return The int at the start of `bytes`.
 int intOf(std::span<const std::byte> bytes) {
@@ -127,5 +127,5 @@ TEST_F(DynamicEventsTest, DeclaresItsAccess) {
 
 TEST_F(DynamicEventsTest, RefusesAnUnknownEvent) {
     EXPECT_THROW((System{world, "test.listen", &listen, EventList{{{.id = 999, .read = true, .send = false}}}}),
-                 rtype::ecs::exceptions::TypeRegistrationException);
+                 aylo::ecs::exceptions::TypeRegistrationException);
 }

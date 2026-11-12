@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** SdlPlatform
 */
@@ -31,11 +31,11 @@
 #include <utility>
 #include <vector>
 
-#include "rtype/contract/platform/WindowConfig.hpp"
-#include "rtype/contract/platform/event/Event.hpp"
-#include "rtype/contract/platform/input/Key.hpp"
+#include "aylo/contract/platform/WindowConfig.hpp"
+#include "aylo/contract/platform/event/Event.hpp"
+#include "aylo/contract/platform/input/Key.hpp"
 
-using namespace rtype::contract::platform;
+using namespace aylo::contract::platform;
 
 namespace {
 

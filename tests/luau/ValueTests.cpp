@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ValueTests
 */
@@ -14,10 +14,10 @@
 #include <utility>
 #include <variant>
 
-#include "rtype/luau/Value.hpp"
+#include "aylo/luau/Value.hpp"
 
 namespace {
-using Value = rtype::luau::Value;
+using Value = aylo::luau::Value;
 }  // namespace
 
 TEST(Value, HoldsNil) {

@@ -13,7 +13,7 @@ from our own constraints, and says what we chose and what it costs us.
 ## Our constraints
 
 Every comparison is judged against the same list. They come from the subject and from the [architecture
-rules](https://github.com/Charles-Mahoudeau/rtype/blob/main/AGENTS.md#architecture-rules).
+rules](https://github.com/EthanCharpentier667/Aylo-Engine/blob/main/AGENTS.md#architecture-rules).
 
 | # | Constraint | Where it comes from |
 |---|---|---|

@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** PhysicsHierarchyTests
 */
@@ -10,6 +10,13 @@
 #include <glm/ext/vector_float2.hpp>
 #include <optional>
 
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/command/Commands.hpp"
+#include "aylo/ecs/component/Components.hpp"
+#include "aylo/ecs/entity/Entity.hpp"
+#include "aylo/ecs/schedule/Phase.hpp"
+#include "aylo/ecs/schedule/RunMode.hpp"
+#include "aylo/ecs/time/Time.hpp"
 #include "plugins/physics/Collider.hpp"
 #include "plugins/physics/PhysicsPlugin.hpp"
 #include "plugins/physics/PhysicsSettings.hpp"
@@ -19,25 +26,18 @@
 #include "plugins/transform/Reparent.hpp"
 #include "plugins/transform/Transform.hpp"
 #include "plugins/transform/TransformPlugin.hpp"
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/command/Commands.hpp"
-#include "rtype/ecs/component/Components.hpp"
-#include "rtype/ecs/entity/Entity.hpp"
-#include "rtype/ecs/schedule/Phase.hpp"
-#include "rtype/ecs/schedule/RunMode.hpp"
-#include "rtype/ecs/time/Time.hpp"
 
-using rtype::ecs::Entity;
-using rtype::ecs::RunMode;
-using rtype::plugins::physics::BodyType;
-using rtype::plugins::physics::Collider;
-using rtype::plugins::physics::PhysicsPlugin;
-using rtype::plugins::physics::PhysicsSettings;
-using rtype::plugins::physics::PhysicsWorld;
-using rtype::plugins::physics::RigidBody;
-using rtype::plugins::physics::ShapeType;
-using rtype::plugins::physics::Velocity;
-using rtype::plugins::transform::Transform;
+using aylo::ecs::Entity;
+using aylo::ecs::RunMode;
+using aylo::plugins::physics::BodyType;
+using aylo::plugins::physics::Collider;
+using aylo::plugins::physics::PhysicsPlugin;
+using aylo::plugins::physics::PhysicsSettings;
+using aylo::plugins::physics::PhysicsWorld;
+using aylo::plugins::physics::RigidBody;
+using aylo::plugins::physics::ShapeType;
+using aylo::plugins::physics::Velocity;
+using aylo::plugins::transform::Transform;
 
 namespace {
 constexpr float kFixedDelta = 1.0F / 60.0F;
@@ -45,27 +45,27 @@ constexpr float kTolerance = 0.01F;
 
 /// @brief An App with the PhysicsPlugin and no gravity, ticked by hand.
 struct HierarchyApp {
-    rtype::ecs::App app;  ///< The App under test.
+    aylo::ecs::App app;  ///< The App under test.
 
     explicit HierarchyApp(RunMode mode = RunMode::kStandalone) : app{mode} {
-        app.addPlugin(rtype::plugins::transform::TransformPlugin{});
+        app.addPlugin(aylo::plugins::transform::TransformPlugin{});
         app.addPlugin(PhysicsPlugin{PhysicsSettings{.gravity = {0.0F, 0.0F},
                                                     .unitsPerMeter = 100.0F,
                                                     .maxBodies = 16,
                                                     .maxBodyPairs = 16,
                                                     .maxContactConstraints = 16,
                                                     .tempAllocatorBytes = 1024 * 1024}});
-        app.getWorld().getResources().insert(rtype::ecs::Time{.fixedDelta = kFixedDelta});
+        app.getWorld().getResources().insert(aylo::ecs::Time{.fixedDelta = kFixedDelta});
     }
 
     /// @brief Runs the given number of fixed ticks.
     void tick(int count = 1) {
         for (int index = 0; index < count; ++index) {
-            app.getSchedules().run(rtype::ecs::Phase::kFixedUpdate);
+            app.getSchedules().run(aylo::ecs::Phase::kFixedUpdate);
         }
     }
 
-    [[nodiscard]] rtype::ecs::Components& components() { return app.getWorld().getComponents(); }
+    [[nodiscard]] aylo::ecs::Components& components() { return app.getWorld().getComponents(); }
     [[nodiscard]] const PhysicsWorld& physics() const { return app.getWorld().getResources().require<PhysicsWorld>(); }
 
     /// @return A new entity at @p position, with neither Collider nor RigidBody.
@@ -261,9 +261,9 @@ TEST(PhysicsHierarchy, ADynamicChildDetachedInPlaceStaysWhereItIs) {
     const Entity parent = fixture.spawn({100.0F, 0.0F});
     const Entity child = fixture.spawnBody(parent, {10.0F, 0.0F}, BodyType::kDynamic);
     fixture.tick(2);
-    rtype::ecs::Commands commands{fixture.app.getWorld()};
-    rtype::plugins::transform::detachInPlace(commands, child,
-                                             rtype::plugins::transform::GlobalTransform{.position = {110.0F, 0.0F}});
+    aylo::ecs::Commands commands{fixture.app.getWorld()};
+    aylo::plugins::transform::detachInPlace(commands, child,
+                                            aylo::plugins::transform::GlobalTransform{.position = {110.0F, 0.0F}});
     commands.flush();
     fixture.tick(2);
     fixture.expectBodyAt(child, {110.0F, 0.0F});

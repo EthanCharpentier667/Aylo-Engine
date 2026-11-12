@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** EditorPluginTests
 */
@@ -17,6 +17,14 @@
 #include <variant>
 
 #include "FakeBackend.hpp"
+#include "aylo/contract/platform/event/Event.hpp"
+#include "aylo/contract/platform/input/Key.hpp"
+#include "aylo/contract/renderer/drawing/Texture.hpp"
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/event/EventCursor.hpp"
+#include "aylo/ecs/exceptions/PluginException.hpp"
+#include "aylo/ecs/resource/Resources.hpp"
+#include "aylo/ecs/schedule/RunMode.hpp"
 #include "editor/EditorPlugin.hpp"
 #include "plugins/capsule/CapsulePlugin.hpp"
 #include "plugins/graphics/PlatformEventFilter.hpp"
@@ -25,31 +33,22 @@
 #include "plugins/input/InputEvents.hpp"      // IWYU pragma: keep
 #include "plugins/input/InputPlugin.hpp"
 #include "plugins/transform/TransformPlugin.hpp"
-#include "rtype/contract/platform/event/Event.hpp"
-#include "rtype/contract/platform/input/Key.hpp"
-#include "rtype/contract/renderer/drawing/Texture.hpp"
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/event/EventCursor.hpp"
-#include "rtype/ecs/exceptions/PluginException.hpp"
-#include "rtype/ecs/resource/Resources.hpp"
-#include "rtype/ecs/schedule/RunMode.hpp"
 
 namespace {
-namespace event = rtype::contract::platform::event;
-using rtype::contract::platform::Event;
-using rtype::contract::platform::input::Key;
-using rtype::contract::platform::input::MouseButton;
+namespace event = aylo::contract::platform::event;
+using aylo::contract::platform::Event;
+using aylo::contract::platform::input::Key;
+using aylo::contract::platform::input::MouseButton;
 
 /// @brief An App with the drawing plugins over the fake backend, and the editor, which keeps no layout file.
 class EditorApp {
   public:
-    EditorApp()
-        : _state{std::make_shared<rtype::test::plugins::FakeBackendState>()}, _app{rtype::ecs::RunMode::kClient} {
-        rtype::test::plugins::addDrawingPlugins(_app, rtype::test::plugins::makeFakeRegistry(_state),
-                                                rtype::test::plugins::makeFakeSettings());
-        _app.addPlugin(rtype::plugins::capsule::CapsulePlugin{});
-        _app.addPlugin(rtype::editor::EditorPlugin{
-            rtype::editor::EditorOptions{.layoutFile = std::filesystem::path{}, .captureOutput = false}});
+    EditorApp() : _state{std::make_shared<aylo::test::plugins::FakeBackendState>()}, _app{aylo::ecs::RunMode::kClient} {
+        aylo::test::plugins::addDrawingPlugins(_app, aylo::test::plugins::makeFakeRegistry(_state),
+                                               aylo::test::plugins::makeFakeSettings());
+        _app.addPlugin(aylo::plugins::capsule::CapsulePlugin{});
+        _app.addPlugin(aylo::editor::EditorPlugin{
+            aylo::editor::EditorOptions{.layoutFile = std::filesystem::path{}, .captureOutput = false}});
     }
     ~EditorApp() = default;
     EditorApp(const EditorApp& other) = delete;
@@ -57,17 +56,17 @@ class EditorApp {
     EditorApp(EditorApp&& other) = delete;
     EditorApp& operator=(EditorApp&& other) = delete;
 
-    [[nodiscard]] rtype::ecs::App& app() noexcept { return _app; }
-    [[nodiscard]] rtype::test::plugins::FakeBackendState& state() noexcept { return *_state; }
+    [[nodiscard]] aylo::ecs::App& app() noexcept { return _app; }
+    [[nodiscard]] aylo::test::plugins::FakeBackendState& state() noexcept { return *_state; }
 
     /// @return What the window's filter says of @p received, which it may have changed.
     [[nodiscard]] bool filter(Event& received) {
-        return _app.getWorld().getResources().getMut<rtype::plugins::graphics::PlatformEventFilter>()->filter(received);
+        return _app.getWorld().getResources().getMut<aylo::plugins::graphics::PlatformEventFilter>()->filter(received);
     }
 
   private:
-    std::shared_ptr<rtype::test::plugins::FakeBackendState> _state;  ///< Drives the fakes.
-    rtype::ecs::App _app;                                            ///< The App under test.
+    std::shared_ptr<aylo::test::plugins::FakeBackendState> _state;  ///< Drives the fakes.
+    aylo::ecs::App _app;                                            ///< The App under test.
 };
 
 constexpr int kLayoutFrames = 4;  ///< Frames the docking takes to give every panel its size.
@@ -81,30 +80,30 @@ void runFrames(EditorApp& editor, int count) {
 }  // namespace
 
 TEST(EditorPlugin, IsNamedLikeTheLibraryEntryRegistersIt) {
-    EXPECT_EQ(rtype::editor::EditorPlugin::kName, "rtype.Editor");
-    EXPECT_EQ(rtype::editor::EditorPlugin{}.getName(), "rtype.Editor");
+    EXPECT_EQ(aylo::editor::EditorPlugin::kName, "aylo.Editor");
+    EXPECT_EQ(aylo::editor::EditorPlugin{}.getName(), "aylo.Editor");
 }
 
 TEST(EditorPlugin, RequiresTheGraphicsAndCapsulePlugins) {
-    const rtype::editor::EditorPlugin plugin{rtype::editor::EditorOptions{.layoutFile = std::filesystem::path{}}};
+    const aylo::editor::EditorPlugin plugin{aylo::editor::EditorOptions{.layoutFile = std::filesystem::path{}}};
     const auto dependencies = plugin.getDependencies();
     ASSERT_EQ(dependencies.size(), 2U);
-    EXPECT_EQ(dependencies[0], "rtype.graphics");
-    EXPECT_EQ(dependencies[1], "rtype.Capsule");
+    EXPECT_EQ(dependencies[0], "aylo.graphics");
+    EXPECT_EQ(dependencies[1], "aylo.Capsule");
 }
 
 TEST(EditorPlugin, IsRefusedWithoutTheGraphicsPlugin) {
-    rtype::ecs::App app{rtype::ecs::RunMode::kClient};
-    EXPECT_THROW(app.addPlugin(rtype::editor::EditorPlugin{
-                     rtype::editor::EditorOptions{.layoutFile = std::filesystem::path{}, .captureOutput = false}}),
-                 rtype::ecs::exceptions::PluginException);
+    aylo::ecs::App app{aylo::ecs::RunMode::kClient};
+    EXPECT_THROW(app.addPlugin(aylo::editor::EditorPlugin{
+                     aylo::editor::EditorOptions{.layoutFile = std::filesystem::path{}, .captureOutput = false}}),
+                 aylo::ecs::exceptions::PluginException);
 }
 
 TEST(EditorPlugin, SetsTheTwoHooksOfTheGraphicsPlugin) {
     EditorApp editor;
-    const rtype::ecs::Resources& resources = editor.app().getWorld().getResources();
-    EXPECT_TRUE(static_cast<bool>(resources.get<rtype::plugins::graphics::PlatformEventFilter>()->filter));
-    EXPECT_TRUE(static_cast<bool>(resources.get<rtype::plugins::graphics::ToolFrame>()->draw));
+    const aylo::ecs::Resources& resources = editor.app().getWorld().getResources();
+    EXPECT_TRUE(static_cast<bool>(resources.get<aylo::plugins::graphics::PlatformEventFilter>()->filter));
+    EXPECT_TRUE(static_cast<bool>(resources.get<aylo::plugins::graphics::ToolFrame>()->draw));
 }
 
 TEST(EditorPlugin, HidesTheMouseFromTheGameOutsideItsPanel) {
@@ -153,7 +152,7 @@ TEST(EditorPlugin, BuildsItsPanelsWhenTheFrameEnds) {
     EditorApp editor;
     editor.app().runFrame();
     ASSERT_EQ(editor.state().meshes.size(), 1U);
-    const rtype::contract::renderer::Mesh& mesh = editor.state().meshes.front();
+    const aylo::contract::renderer::Mesh& mesh = editor.state().meshes.front();
     EXPECT_FALSE(mesh.vertices.empty());
     EXPECT_FALSE(mesh.commands.empty());
     EXPECT_EQ(mesh.indices.size() % 3, 0U);
@@ -228,7 +227,7 @@ TEST(EditorPlugin, GivesTheGameTheMouseOverItsPanelInTheScenePixels) {
     editor.app().runFrame();
     editor.state().frames.push_back({event::MouseMoved{.position = {410.0F, 210.0F}, .delta = {10.0F, 10.0F}}});
     editor.app().runFrame();
-    rtype::ecs::EventCursor cursor;
+    aylo::ecs::EventCursor cursor;
     const auto moves = editor.app().getWorld().getEvents().read<event::MouseMoved>(cursor);
     ASSERT_EQ(moves.size(), 1U);
     const glm::vec2 position = moves.begin()->position;

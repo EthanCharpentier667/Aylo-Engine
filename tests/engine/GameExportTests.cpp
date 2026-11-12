@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** GameExportTests
 */
@@ -19,21 +19,21 @@
 #include <system_error>
 #include <vector>
 
+#include "aylo/ecs/schedule/RunMode.hpp"
+#include "aylo/engine/Engine.hpp"
+#include "aylo/engine/Exceptions.hpp"
+#include "aylo/engine/exporting/GameExport.hpp"
+#include "aylo/engine/plugin/SharedLibrary.hpp"
+#include "aylo/luau/Runtime.hpp"
 #include "core/system/ExecutablePath.hpp"
 #include "core/vfs/Pack.hpp"
-#include "rtype/ecs/schedule/RunMode.hpp"
-#include "rtype/engine/Engine.hpp"
-#include "rtype/engine/Exceptions.hpp"
-#include "rtype/engine/exporting/GameExport.hpp"
-#include "rtype/engine/plugin/SharedLibrary.hpp"
-#include "rtype/luau/Runtime.hpp"
 
-using rtype::engine::Engine;
-using rtype::engine::exceptions::RuntimeError;
-using rtype::engine::exporting::exportGame;
-using rtype::engine::exporting::ExportReport;
-using rtype::engine::exporting::ExportRequest;
-using rtype::engine::plugin::SharedLibrary;
+using aylo::engine::Engine;
+using aylo::engine::exceptions::RuntimeError;
+using aylo::engine::exporting::exportGame;
+using aylo::engine::exporting::ExportReport;
+using aylo::engine::exporting::ExportRequest;
+using aylo::engine::plugin::SharedLibrary;
 
 namespace {
 /// @return The file name of the library @p basename as the build names it.
@@ -72,7 +72,7 @@ class GameExportTest : public ::testing::Test {
   protected:
     void SetUp() override {
         std::filesystem::create_directories(_game / "scripts");
-        write("project.luau", R"(engine.settings.plugins = { "rtype.Physics" })");
+        write("project.luau", R"(engine.settings.plugins = { "aylo.Physics" })");
         write("scripts/main.luau", "return {}");
     }
 
@@ -90,14 +90,14 @@ class GameExportTest : public ::testing::Test {
     /// @return What exporting the game to the output folder asks, with the name @p name.
     [[nodiscard]] ExportRequest request(std::string name = "") const {
         return {.game = _game,
-                .runtime = rtype::core::system::getExecutableDirectory(),
+                .runtime = aylo::core::system::getExecutableDirectory(),
                 .output = _output,
                 .name = std::move(name),
                 .engineVersion = "9.9.9"};
     }
 
     std::filesystem::path _root{std::filesystem::temp_directory_path() /
-                                std::format("rtype_game_export_{:08x}", std::random_device{}())};
+                                std::format("aylo_game_export_{:08x}", std::random_device{}())};
     std::filesystem::path _game{_root / "MyGame" / "game"};
     std::filesystem::path _output{_root / "out"};
 };
@@ -110,10 +110,10 @@ TEST_F(GameExportTest, ExportsTheProgramTheGameAndOnlyThePluginsItNeeds) {
     EXPECT_EQ(report.folder, folder);
     // The runtime's program, renamed: "MyGame", or "MyGame.exe" on Windows.
     const std::string program =
-        "MyGame" + std::filesystem::path{rtype::engine::exporting::runtimeProgramName()}.extension().string();
+        "MyGame" + std::filesystem::path{aylo::engine::exporting::runtimeProgramName()}.extension().string();
     EXPECT_TRUE(std::filesystem::is_regular_file(folder / program));
     EXPECT_EQ(filesIn(folder / Engine::kPluginsDirectory),
-              (std::vector<std::string>{libraryFile("rtype-plugin-physics"), libraryFile("rtype-plugin-transform")}));
+              (std::vector<std::string>{libraryFile("aylo-plugin-physics"), libraryFile("aylo-plugin-transform")}));
     EXPECT_TRUE(filesIn(folder / Engine::kPluginsDirectory / Engine::kBackendsDirectory).empty());
     EXPECT_TRUE(std::filesystem::is_regular_file(folder / Engine::kPackFile));
     EXPECT_FALSE(std::filesystem::exists(folder / "game" / Engine::kProjectFile));  // in the pack
@@ -126,7 +126,7 @@ TEST_F(GameExportTest, WritesTheLibrariesAndTheHashesInExportJson) {
     const std::string json = readText(_output / "MyGame" / "export.json");
 
     EXPECT_NE(json.find(R"("engine": "9.9.9")"), std::string::npos) << json;
-    EXPECT_NE(json.find(std::format(R"("file": "plugins/{}")", libraryFile("rtype-plugin-physics"))), std::string::npos)
+    EXPECT_NE(json.find(std::format(R"("file": "plugins/{}")", libraryFile("aylo-plugin-physics"))), std::string::npos)
         << json;
     EXPECT_NE(json.find(R"json("named in plugins (server)")json"), std::string::npos) << json;
     EXPECT_NE(json.find(R"("game.pak": ")"), std::string::npos) << json;
@@ -135,13 +135,13 @@ TEST_F(GameExportTest, WritesTheLibrariesAndTheHashesInExportJson) {
 TEST_F(GameExportTest, PacksTheGameWithItsScriptsPrecompiled) {
     write("assets/levels/a.txt", "a level");
     static_cast<void>(exportGame(request()));
-    const rtype::core::vfs::PackSource pack{_output / "MyGame" / Engine::kPackFile};
+    const aylo::core::vfs::PackSource pack{_output / "MyGame" / Engine::kPackFile};
 
-    EXPECT_EQ(pack.read("project.luau"), R"(engine.settings.plugins = { "rtype.Physics" })");
+    EXPECT_EQ(pack.read("project.luau"), R"(engine.settings.plugins = { "aylo.Physics" })");
     EXPECT_EQ(pack.read("assets/levels/a.txt"), "a level");
-    EXPECT_TRUE(std::string_view{pack.read("scripts/main.luau")}.starts_with(rtype::luau::Runtime::kBytecodeHeader));
+    EXPECT_TRUE(std::string_view{pack.read("scripts/main.luau")}.starts_with(aylo::luau::Runtime::kBytecodeHeader));
     EXPECT_EQ(readText(_output / "MyGame" / "play.sh").find("game.pak") == std::string::npos,
-              rtype::engine::exporting::runtimeProgramName().ends_with(".exe"));  // play.bat on Windows
+              aylo::engine::exporting::runtimeProgramName().ends_with(".exe"));  // play.bat on Windows
 }
 
 TEST_F(GameExportTest, TheEngineRunsTheExportedPack) {
@@ -151,7 +151,7 @@ TEST_F(GameExportTest, TheEngineRunsTheExportedPack) {
     static_cast<void>(exportGame(request()));
 
     const Engine engine{
-        {.mode = rtype::ecs::RunMode::kServer, .args = {(_output / "MyGame" / Engine::kPackFile).string()}}};
+        {.mode = aylo::ecs::RunMode::kServer, .args = {(_output / "MyGame" / Engine::kPackFile).string()}}};
 
     EXPECT_TRUE(engine.isPacked());
     EXPECT_TRUE(engine.app().getWorld().getComponents().find("game.Shield"));
@@ -179,7 +179,7 @@ TEST_F(GameExportTest, KeepsTheGameFolderWithoutAPack) {
     const std::filesystem::path game = _output / "MyGame" / "game";
 
     EXPECT_FALSE(std::filesystem::exists(_output / "MyGame" / Engine::kPackFile));
-    EXPECT_EQ(readText(game / Engine::kProjectFile), R"(engine.settings.plugins = { "rtype.Physics" })");
+    EXPECT_EQ(readText(game / Engine::kProjectFile), R"(engine.settings.plugins = { "aylo.Physics" })");
     EXPECT_EQ(readText(game / "scripts" / "main.luau"), "return {}");
     EXPECT_FALSE(std::filesystem::exists(game / ".luaurc"));
     EXPECT_FALSE(std::filesystem::exists(game / "plugins" / "boss"));
@@ -187,10 +187,10 @@ TEST_F(GameExportTest, KeepsTheGameFolderWithoutAPack) {
 
 TEST_F(GameExportTest, KeepsTheLibrariesOfTheGamePluginsNextToThePack) {
     // The fixture under another name: two libraries of the same file name are refused.
-    const std::string library = libraryFile("rtype-game-boss");
+    const std::string library = libraryFile("aylo-game-boss");
     std::filesystem::create_directories(_game / "plugins");
     std::filesystem::copy_file(
-        rtype::core::system::getExecutableDirectory() / "plugins" / libraryFile("rtype-test-plugin"),
+        aylo::core::system::getExecutableDirectory() / "plugins" / libraryFile("aylo-test-plugin"),
         _game / "plugins" / library);
     write("plugins/" + library + ".sig", "a signature");
     write("plugins/boss/Boss.cpp", "// a source");
@@ -203,7 +203,7 @@ TEST_F(GameExportTest, KeepsTheLibrariesOfTheGamePluginsNextToThePack) {
     EXPECT_TRUE(std::filesystem::is_regular_file(plugins / library));
     EXPECT_EQ(readText(plugins / (library + ".sig")), "a signature");
     EXPECT_FALSE(std::filesystem::exists(plugins / "boss"));
-    EXPECT_FALSE(rtype::core::vfs::PackSource{_output / "MyGame" / Engine::kPackFile}.exists("plugins/" + library));
+    EXPECT_FALSE(aylo::core::vfs::PackSource{_output / "MyGame" / Engine::kPackFile}.exists("plugins/" + library));
 }
 
 TEST_F(GameExportTest, WarnsWhenTheRuntimeHasNoNotices) {

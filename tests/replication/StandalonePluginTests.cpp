@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** StandalonePluginTests
 */
@@ -12,31 +12,31 @@
 #include <memory>
 #include <vector>
 
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/event/EventCursor.hpp"
-#include "rtype/ecs/schedule/RunMode.hpp"
-#include "rtype/ecs/time/FixedTimestep.hpp"
-#include "rtype/ecs/time/TimePlugin.hpp"
-#include "rtype/replication/component/Owner.hpp"
-#include "rtype/replication/component/PlayerInput.hpp"
-#include "rtype/replication/event/ClientConnected.hpp"
-#include "rtype/replication/input/InputKind.hpp"
-#include "rtype/replication/input/InputLayout.hpp"
-#include "rtype/replication/packet/PacketCalls.hpp"
-#include "rtype/replication/packet/PacketSchema.hpp"
-#include "rtype/replication/standalone/LocalSession.hpp"
-#include "rtype/replication/standalone/StandalonePlugin.hpp"
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/event/EventCursor.hpp"
+#include "aylo/ecs/schedule/RunMode.hpp"
+#include "aylo/ecs/time/FixedTimestep.hpp"
+#include "aylo/ecs/time/TimePlugin.hpp"
+#include "aylo/replication/component/Owner.hpp"
+#include "aylo/replication/component/PlayerInput.hpp"
+#include "aylo/replication/event/ClientConnected.hpp"
+#include "aylo/replication/input/InputKind.hpp"
+#include "aylo/replication/input/InputLayout.hpp"
+#include "aylo/replication/packet/PacketCalls.hpp"
+#include "aylo/replication/packet/PacketSchema.hpp"
+#include "aylo/replication/standalone/LocalSession.hpp"
+#include "aylo/replication/standalone/StandalonePlugin.hpp"
 
 namespace {
-using rtype::ecs::App;
-using rtype::ecs::RunMode;
-using rtype::replication::component::Owner;
-using rtype::replication::component::PlayerInput;
-using rtype::replication::event::ClientConnected;
-using rtype::replication::input::InputKind;
-using rtype::replication::input::InputLayout;
-using rtype::replication::standalone::LocalSession;
-using rtype::replication::standalone::StandalonePlugin;
+using aylo::ecs::App;
+using aylo::ecs::RunMode;
+using aylo::replication::component::Owner;
+using aylo::replication::component::PlayerInput;
+using aylo::replication::event::ClientConnected;
+using aylo::replication::input::InputKind;
+using aylo::replication::input::InputLayout;
+using aylo::replication::standalone::LocalSession;
+using aylo::replication::standalone::StandalonePlugin;
 
 constexpr std::chrono::milliseconds kFrame{20};
 constexpr std::uint8_t kTickRate = 50;  // one fixed step per frame
@@ -44,7 +44,7 @@ constexpr std::uint8_t kTickRate = 50;  // one fixed step per frame
 /// @return A standalone app with a manual clock, one step per frame, and a "fire" button in the layout.
 std::unique_ptr<App> makeApp() {
     auto app = std::make_unique<App>(RunMode::kStandalone);
-    app->addPlugin(rtype::ecs::TimePlugin::manual(kFrame, rtype::ecs::FixedTimestep{kTickRate, 5}));
+    app->addPlugin(aylo::ecs::TimePlugin::manual(kFrame, aylo::ecs::FixedTimestep{kTickRate, 5}));
     app->addPlugin(StandalonePlugin{});
     app->getWorld().getResources().getMut<InputLayout>()->add("fire", InputKind::kButton);
     return app;
@@ -62,10 +62,10 @@ TEST(StandalonePlugin, IsNamedAndRegistersTheVocabulary) {
     const std::unique_ptr<App> holder = makeApp();
     App& app = *holder;
 
-    EXPECT_EQ(StandalonePlugin{}.getName(), "rtype.replication.standalone");
-    EXPECT_TRUE(app.hasPlugin("rtype.replication"));
-    for (const char* call : {"rtype.net.declarePacket", "rtype.net.sendToServer", "rtype.net.sendToClients",
-                             "rtype.replication.localClient", "rtype.replication.readInput"}) {
+    EXPECT_EQ(StandalonePlugin{}.getName(), "aylo.replication.standalone");
+    EXPECT_TRUE(app.hasPlugin("aylo.replication"));
+    for (const char* call : {"aylo.net.declarePacket", "aylo.net.sendToServer", "aylo.net.sendToClients",
+                             "aylo.replication.localClient", "aylo.replication.readInput"}) {
         EXPECT_NE(app.getWorld().getCalls().findByName(call), nullptr) << call;
     }
     EXPECT_NE(app.getWorld().getEvents().getRegistry().findByName("net.PacketReceived"), nullptr);
@@ -75,7 +75,7 @@ TEST(StandalonePlugin, IsNamedAndRegistersTheVocabulary) {
 TEST(StandalonePlugin, RaisesClientConnectedOnceForClientOne) {
     const std::unique_ptr<App> holder = makeApp();
     App& app = *holder;
-    rtype::ecs::EventCursor cursor;
+    aylo::ecs::EventCursor cursor;
     std::vector<std::uint32_t> clients;
 
     for (int frame = 0; frame < 4; ++frame) {
@@ -92,10 +92,10 @@ TEST(StandalonePlugin, RaisesClientConnectedOnceForClientOne) {
 TEST(StandalonePlugin, GivesTheLocalInputToTheEntityOfClientOneWithEdges) {
     const std::unique_ptr<App> holder = makeApp();
     App& app = *holder;
-    const rtype::ecs::Entity mine = app.getWorld().spawn(Owner{.client = 1}, PlayerInput{});
-    const rtype::ecs::Entity other = app.getWorld().spawn(Owner{.client = 2}, PlayerInput{});
+    const aylo::ecs::Entity mine = app.getWorld().spawn(Owner{.client = 1}, PlayerInput{});
+    const aylo::ecs::Entity other = app.getWorld().spawn(Owner{.client = 2}, PlayerInput{});
     const InputLayout& layout = *app.getWorld().getResources().get<InputLayout>();
-    const auto fire = [&](const rtype::ecs::Entity entity) {
+    const auto fire = [&](const aylo::ecs::Entity entity) {
         return layout.isHeld(*app.getWorld().getComponents().get<PlayerInput>(entity), "fire");
     };
     const auto pressed = [&] {

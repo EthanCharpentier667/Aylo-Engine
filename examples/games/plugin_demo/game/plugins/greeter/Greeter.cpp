@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** Greeter
 */
@@ -13,31 +13,31 @@
 #include <string>
 #include <string_view>
 
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/app/Plugin.hpp"
-#include "rtype/ecs/app/PluginEntry.hpp"
-#include "rtype/ecs/call/CallTraits.hpp"
-#include "rtype/ecs/type/String.hpp"
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/app/Plugin.hpp"
+#include "aylo/ecs/app/PluginEntry.hpp"
+#include "aylo/ecs/call/CallTraits.hpp"
+#include "aylo/ecs/type/String.hpp"
 
 namespace {
 /// @brief The arguments of `demo.greet`.
 struct GreetArguments {
-    rtype::ecs::String name;  ///< Who to greet.
+    aylo::ecs::String name;  ///< Who to greet.
 };
-RTYPE_ECS_CALL_DATA(GreetArguments, "demo.GreetArguments", name);
+AYLO_ECS_CALL_DATA(GreetArguments, "demo.GreetArguments", name);
 
 /// @brief The result of `demo.greet`.
 struct GreetResult {
-    rtype::ecs::String message;  ///< The greeting.
+    aylo::ecs::String message;  ///< The greeting.
 };
-RTYPE_ECS_CALL_DATA(GreetResult, "demo.GreetResult", message);
+AYLO_ECS_CALL_DATA(GreetResult, "demo.GreetResult", message);
 
 GreetResult greet(const GreetArguments& arguments) {
-    return GreetResult{.message = rtype::ecs::String{std::format("Good luck, {}!", arguments.name.view())}};
+    return GreetResult{.message = aylo::ecs::String{std::format("Good luck, {}!", arguments.name.view())}};
 }
 
 /// @brief Adds the call `demo.greet`.
-class GreeterPlugin final : public rtype::ecs::Plugin {
+class GreeterPlugin final : public aylo::ecs::Plugin {
   public:
     static constexpr std::string_view kName = "demo.Greeter";  ///< The plugin's name, as project.luau names it.
 
@@ -49,10 +49,10 @@ class GreeterPlugin final : public rtype::ecs::Plugin {
     GreeterPlugin& operator=(GreeterPlugin&& other) noexcept = default;
 
     [[nodiscard]] std::string_view getName() const noexcept override { return kName; }
-    void build(rtype::ecs::App& app) override { app.addCall("demo.greet", &greet); }
+    void build(aylo::ecs::App& app) override { app.addCall("demo.greet", &greet); }
 };
 }  // namespace
 
-RTYPE_PLUGIN_LIBRARY(registrar) {
+AYLO_PLUGIN_LIBRARY(registrar) {
     registrar.getPlugins().add(std::string{GreeterPlugin::kName}, [] { return std::make_unique<GreeterPlugin>(); });
 }

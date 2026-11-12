@@ -1,0 +1,84 @@
+/*
+** EPITECH PROJECT, 2026
+** aylo
+** File description:
+** main
+*/
+
+// aylo-runtime: runs a game in `game/` (or the <directory> given first), with the plugins and backends its project.luau
+// names, loaded from their libraries. It runs the client side by default, and the headless server side with `--server`.
+// Every other flag goes to project.luau as `engine.args`. The editor is another program, `aylo-editor`.
+//   aylo-runtime [--server] [--ticks <n>] [<directory>] [--<flag> <value>]...
+//   aylo-runtime --version
+
+#include <algorithm>
+#include <cstddef>
+#include <exception>
+#include <iostream>
+#include <optional>
+#include <span>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
+
+#include "aylo/build/BuildInfo.hpp"
+#include "aylo/ecs/schedule/RunMode.hpp"
+#include "aylo/engine/CommandLine.hpp"
+#include "aylo/engine/Engine.hpp"
+#include "core/library/LibraryEntry.hpp"
+#include "core/version/Version.hpp"
+
+namespace {
+constexpr int kErrorCode = 84;                          ///< What the program returns when it cannot run the game.
+constexpr std::string_view kServerFlag = "--server";    ///< Runs the server side, headless, instead of the client.
+constexpr std::string_view kVersionFlag = "--version";  ///< Prints the version of the engine and stops.
+
+/// @brief Prints what `--version` says: the version, the commit, the toolchain and the library ABI version.
+void printVersion() {
+    const aylo::core::version::VersionInfo info{
+        .version = aylo::build::kEngineVersion,
+        .commit = aylo::build::kEngineCommit,
+        .toolchain = AYLO_LIBRARY_TOOLCHAIN,
+        .libraryAbiVersion = aylo::core::library::kLibraryAbiVersion,
+    };
+
+    std::cout << aylo::core::version::describe(info);
+}
+
+/// @brief Takes the server flag out of @p args.
+/// @param args The arguments, without the program name.
+/// @return Whether the flag was there: the engine and the game never see it.
+bool takeServerFlag(std::vector<std::string>& args) {
+    const auto [first, last] = std::ranges::remove(args, kServerFlag);
+    const bool found = first != last;
+
+    args.erase(first, last);
+    return found;
+}
+}  // namespace
+
+int main(const int argc, char** argv) {
+    try {
+        const std::span rawArgs{argv, static_cast<std::size_t>(argc)};
+        std::vector<std::string> args;
+        if (!rawArgs.empty()) {  // Some platforms start a program with no argv[0].
+            args.assign(rawArgs.begin() + 1, rawArgs.end());
+        }
+        if (std::ranges::find(args, kVersionFlag) != args.end()) {
+            printVersion();
+            return 0;
+        }
+        const bool server = takeServerFlag(args);
+        const std::optional<std::size_t> ticks = aylo::engine::takeFrameLimit(args);
+        aylo::engine::Engine engine{{
+            .mode = server ? aylo::ecs::RunMode::kServer : aylo::ecs::RunMode::kClient,
+            .args = std::move(args),
+        }};
+
+        return engine.run(ticks);
+    } catch (const std::exception& error) {
+        std::cerr << "Error: " << error.what() << '\n';
+        return kErrorCode;
+    }
+}

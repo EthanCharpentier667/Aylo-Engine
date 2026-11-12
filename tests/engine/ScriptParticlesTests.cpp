@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ScriptParticlesTests
 */
@@ -14,35 +14,35 @@
 
 #include "FakeBackend.hpp"
 #include "ScriptProbe.hpp"
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/app/PluginRegistry.hpp"
+#include "aylo/ecs/schedule/RunMode.hpp"
+#include "aylo/ecs/time/TimePlugin.hpp"
+#include "aylo/scripting/ScriptHost.hpp"
 #include "plugins/graphics/GraphicsPlugin.hpp"
 #include "plugins/input/InputPlugin.hpp"
 #include "plugins/particle/ParticlePlugin.hpp"
 #include "plugins/particle/ParticleSystems.hpp"
 #include "plugins/shader/ShaderPlugin.hpp"
 #include "plugins/transform/TransformPlugin.hpp"
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/app/PluginRegistry.hpp"
-#include "rtype/ecs/schedule/RunMode.hpp"
-#include "rtype/ecs/time/TimePlugin.hpp"
-#include "rtype/scripting/ScriptHost.hpp"
 
 namespace {
 /// @brief A client App with the ParticlePlugin over the fake backend, 0.1 second per frame, and a script host on it.
 struct ClientScripts {
-    rtype::ecs::App app{rtype::ecs::RunMode::kClient};
-    std::unique_ptr<rtype::scripting::ScriptHost> host;
+    aylo::ecs::App app{aylo::ecs::RunMode::kClient};
+    std::unique_ptr<aylo::scripting::ScriptHost> host;
 
     ClientScripts() {
-        app.addPlugin(rtype::ecs::TimePlugin::manual(std::chrono::milliseconds{100}));
-        app.addPlugin(rtype::plugins::transform::TransformPlugin{});
-        app.addPlugin(rtype::plugins::input::InputPlugin{});
-        app.addPlugin(rtype::plugins::graphics::GraphicsPlugin{
-            rtype::test::plugins::makeFakeRegistry(std::make_shared<rtype::test::plugins::FakeBackendState>()),
-            rtype::test::plugins::makeFakeSettings()});
-        app.addPlugin(rtype::plugins::shader::ShaderPlugin{});
-        app.addPlugin(rtype::plugins::particle::ParticlePlugin{});
-        app.getPluginRegistry().addScriptForms("test.Probe", rtype::tests::kProbeForms);
-        auto created = rtype::scripting::ScriptHost::create(app, {.isClient = true});
+        app.addPlugin(aylo::ecs::TimePlugin::manual(std::chrono::milliseconds{100}));
+        app.addPlugin(aylo::plugins::transform::TransformPlugin{});
+        app.addPlugin(aylo::plugins::input::InputPlugin{});
+        app.addPlugin(aylo::plugins::graphics::GraphicsPlugin{
+            aylo::test::plugins::makeFakeRegistry(std::make_shared<aylo::test::plugins::FakeBackendState>()),
+            aylo::test::plugins::makeFakeSettings()});
+        app.addPlugin(aylo::plugins::shader::ShaderPlugin{});
+        app.addPlugin(aylo::plugins::particle::ParticlePlugin{});
+        app.getPluginRegistry().addScriptForms("test.Probe", aylo::tests::kProbeForms);
+        auto created = aylo::scripting::ScriptHost::create(app, {.isClient = true});
         EXPECT_TRUE(created) << (created ? "" : std::string{created.error().message()});
         host = std::move(*created);
     }
@@ -55,7 +55,7 @@ struct ClientScripts {
 
     /// @return The emitters playing.
     [[nodiscard]] std::size_t playing() const {
-        return app.getWorld().getResources().require<rtype::plugins::particle::ParticleSystems>().getCount();
+        return app.getWorld().getResources().require<aylo::plugins::particle::ParticleSystems>().getCount();
     }
 };
 }  // namespace
@@ -73,15 +73,15 @@ TEST(ScriptParticles, AScriptPlaysAnEmitterAndAOneShotOfItsEffects) {
             phase = "Update",
             side = "client",
             query = {},
-            events = { send = { "rtype.SpawnParticles" } },
+            events = { send = { "aylo.SpawnParticles" } },
             run = function(ctx)
                 if started then return end
                 started = true
                 ctx.commands:spawn({
-                    ["rtype.Transform"] = { position = { x = 10, y = 20 } },
-                    ["rtype.ParticleEmitter"] = { effect = smoke, rateScale = 2 },
+                    ["aylo.Transform"] = { position = { x = 10, y = 20 } },
+                    ["aylo.ParticleEmitter"] = { effect = smoke, rateScale = 2 },
                 })
-                ctx.events.send("rtype.SpawnParticles", { effect = hit, position = { x = 50, y = 0 }, layer = 1 })
+                ctx.events.send("aylo.SpawnParticles", { effect = hit, position = { x = 50, y = 0 }, layer = 1 })
             end,
         })
 
@@ -90,9 +90,9 @@ TEST(ScriptParticles, AScriptPlaysAnEmitterAndAOneShotOfItsEffects) {
             phase = "Update",
             side = "client",
             query = {},
-            events = { read = { "rtype.ParticlesFinished" } },
+            events = { read = { "aylo.ParticlesFinished" } },
             run = function(ctx)
-                for _ in ctx.events.read("rtype.ParticlesFinished") do
+                for _ in ctx.events.read("aylo.ParticlesFinished") do
                     probe.finished += 1
                 end
             end,
@@ -123,8 +123,8 @@ TEST(ScriptParticles, AnEmitterCanNameItsEffect) {
                 if started then return end
                 started = true
                 ctx.commands:spawn({
-                    ["rtype.Transform"] = {},
-                    ["rtype.ParticleEmitter"] = { effect = "game.smoke" },
+                    ["aylo.Transform"] = {},
+                    ["aylo.ParticleEmitter"] = { effect = "game.smoke" },
                 })
             end,
         })
@@ -169,12 +169,12 @@ TEST(ScriptParticles, TheManualsRecipesRun) {
         engine.ecs.system("game.MuzzleSparks", {
             phase = "Update",
             side = "client",
-            query = { read = { "rtype.Transform" }, added = { "game.Laser" } },
-            events = { send = { "rtype.SpawnParticles" } },
+            query = { read = { "aylo.Transform" }, added = { "game.Laser" } },
+            events = { send = { "aylo.SpawnParticles" } },
             run = function(ctx)
                 for _, transform in ctx.query do
                     local at = transform.position
-                    ctx.events.send("rtype.SpawnParticles", { effect = Game.effects.sparks, position = { x = at.x, y = at.y } })
+                    ctx.events.send("aylo.SpawnParticles", { effect = Game.effects.sparks, position = { x = at.x, y = at.y } })
                 end
             end,
         })
@@ -182,10 +182,10 @@ TEST(ScriptParticles, TheManualsRecipesRun) {
         engine.ecs.system("game.ShipTrail", {
             phase = "Update",
             side = "client",
-            query = { with = { "game.Ship" }, without = { "rtype.ParticleEmitter" } },
+            query = { with = { "game.Ship" }, without = { "aylo.ParticleEmitter" } },
             run = function(ctx)
                 for ship in ctx.query do
-                    ctx.commands:add(ship, "rtype.ParticleEmitter", { effect = Game.effects.trail, layer = -1 })
+                    ctx.commands:add(ship, "aylo.ParticleEmitter", { effect = Game.effects.trail, layer = -1 })
                 end
             end,
         })
@@ -198,8 +198,8 @@ TEST(ScriptParticles, TheManualsRecipesRun) {
             run = function(ctx)
                 if spawned then return end
                 spawned = true
-                ctx.commands:spawn({ ["game.Ship"] = {}, ["rtype.Transform"] = { position = { x = 1, y = 2 } } })
-                ctx.commands:spawn({ ["game.Laser"] = {}, ["rtype.Transform"] = { position = { x = 3, y = 4 } } })
+                ctx.commands:spawn({ ["game.Ship"] = {}, ["aylo.Transform"] = { position = { x = 1, y = 2 } } })
+                ctx.commands:spawn({ ["game.Laser"] = {}, ["aylo.Transform"] = { position = { x = 3, y = 4 } } })
             end,
         })
     )"),

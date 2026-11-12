@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** SlotMapTests
 */
@@ -11,13 +11,13 @@
 #include <optional>
 #include <string>
 
+#include "aylo/contract/renderer/drawing/Texture.hpp"
 #include "render/vulkan/core/SlotMap.hpp"
-#include "rtype/contract/renderer/drawing/Texture.hpp"
 
 namespace {
 
-using TextureId = rtype::contract::renderer::TextureId;
-using Map = rtype::render::vulkan::core::SlotMap<TextureId, std::string>;
+using TextureId = aylo::contract::renderer::TextureId;
+using Map = aylo::render::vulkan::core::SlotMap<TextureId, std::string>;
 
 }  // namespace
 
@@ -78,7 +78,7 @@ TEST(SlotMap, IgnoresAnIndexOutOfRange) {
 }
 
 TEST(SlotMap, HoldsMoveOnlyValues) {
-    rtype::render::vulkan::core::SlotMap<TextureId, std::unique_ptr<int>> map;
+    aylo::render::vulkan::core::SlotMap<TextureId, std::unique_ptr<int>> map;
     const TextureId key = map.insert(std::make_unique<int>(42));
 
     std::optional<std::unique_ptr<int>> erased = map.erase(key);

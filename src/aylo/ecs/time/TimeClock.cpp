@@ -1,0 +1,62 @@
+/*
+** EPITECH PROJECT, 2026
+** aylo
+** File description:
+** TimeClock
+*/
+
+#include "TimeClock.hpp"
+
+#include <algorithm>
+#include <chrono>
+#include <cstdint>
+#include <optional>
+
+#include "aylo/ecs/change/Mut.hpp"
+#include "aylo/ecs/resource/Resources.hpp"
+#include "aylo/ecs/time/FixedTimestep.hpp"
+#include "aylo/ecs/time/Time.hpp"
+#include "aylo/ecs/world/World.hpp"
+
+namespace aylo::ecs {
+TimeClock::TimeClock(FixedTimestep timestep, std::optional<std::chrono::nanoseconds> manualFrame) noexcept
+    : _timestep{timestep}, _manualFrame{manualFrame} {}
+
+const FixedTimestep& TimeClock::getFixedTimestep() const noexcept { return _timestep; }
+
+std::optional<std::chrono::nanoseconds> TimeClock::getManualFrame() const noexcept { return _manualFrame; }
+
+std::uint32_t TimeClock::startFrame(World& world) {
+    const std::chrono::nanoseconds frame = measureFrame();
+    Mut<Time> time = getTime(world);
+    const std::chrono::nanoseconds duration = std::max(frame, std::chrono::nanoseconds::zero());
+    time->delta = std::chrono::duration<float>{duration}.count();
+    time->elapsed += std::chrono::duration<double>{duration}.count();
+    time->fixedDelta = _timestep.getTickSeconds();
+    return _timestep.advance(frame);
+}
+
+void TimeClock::finishFixedTick(World& world) { ++getTime(world)->tick; }
+
+void TimeClock::startUpdate(World& world) { getTime(world)->alpha = _timestep.getAlpha(); }
+
+std::chrono::nanoseconds TimeClock::measureFrame() noexcept {
+    if (_manualFrame) {
+        return *_manualFrame;
+    }
+    const std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+    const std::chrono::nanoseconds frame =
+        _lastFrameStart ? std::chrono::duration_cast<std::chrono::nanoseconds>(now - *_lastFrameStart)
+                        : std::chrono::nanoseconds::zero();
+    _lastFrameStart = now;
+    return frame;
+}
+
+Mut<Time> TimeClock::getTime(World& world) const {
+    Resources& resources = world.getResources();
+    // checked each time: a system may have removed or replaced it
+    resources.insertIfAbsent(
+        Time{.delta = 0.F, .fixedDelta = _timestep.getTickSeconds(), .tick = 0, .alpha = 0.F, .elapsed = 0.});
+    return resources.getMut<Time>();
+}
+}  // namespace aylo::ecs

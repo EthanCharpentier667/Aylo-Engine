@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ParticleSpawnTests
 */
@@ -9,17 +9,17 @@
 
 #include <cstdint>
 
+#include "aylo/contract/renderer/particle/Particle.hpp"
+#include "aylo/contract/renderer/particle/ParticleSystemDesc.hpp"
 #include "plugins/particle/ParticleSpawn.hpp"
 #include "plugins/particle/ParticleSystems.hpp"
-#include "rtype/contract/renderer/particle/Particle.hpp"
-#include "rtype/contract/renderer/particle/ParticleSystemDesc.hpp"
 
-using rtype::contract::renderer::ParticleBurst;
-using rtype::contract::renderer::ParticleSystemDesc;
-using rtype::contract::renderer::ParticleSystemId;
-using rtype::plugins::particle::computeSpawnCount;
-using rtype::plugins::particle::EmitterState;
-using rtype::plugins::particle::isEmissionOver;
+using aylo::contract::renderer::ParticleBurst;
+using aylo::contract::renderer::ParticleSystemDesc;
+using aylo::contract::renderer::ParticleSystemId;
+using aylo::plugins::particle::computeSpawnCount;
+using aylo::plugins::particle::EmitterState;
+using aylo::plugins::particle::isEmissionOver;
 
 namespace {
 /// @return The state of an emitter that just started.

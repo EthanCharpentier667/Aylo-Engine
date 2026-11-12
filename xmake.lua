@@ -63,10 +63,10 @@ end
 -- A library knows where its dependencies are from its own folder (rpath on Linux and macOS, all inside the folder).
 -- Windows has no rpath: the DLLs an executable links are copied next to it, and SharedLibrary adds `lib/` to the folders
 -- a plugin's DLLs are looked for in.
-rule("rtype.layout")
+rule("aylo.layout")
     on_load(function (target)
         local kind = target:kind()
-        if (kind ~= "shared" and kind ~= "binary") or target:rule("rtype.plugin_library") or target:rule("rtype.game_plugin") then
+        if (kind ~= "shared" and kind ~= "binary") or target:rule("aylo.plugin_library") or target:rule("aylo.game_plugin") then
             return
         end
         if kind == "shared" then
@@ -90,14 +90,14 @@ rule("rtype.layout")
         end
     end)
 rule_end()
-add_rules("rtype.layout")
+add_rules("aylo.layout")
 
 -- Makes a shared library a plugin library: it is built into the `plugins` folder next to the executables (or the folder
 -- `folder` names, `plugins/backends` for a backend), where the Engine finds it. It is the only copy of the library:
 -- the plugins it links are in its own folder, the other libraries in `lib/`.
-rule("rtype.plugin_library")
+rule("aylo.plugin_library")
     on_load(function (target)
-        local folder = target:extraconf("rules", "rtype.plugin_library", "folder") or "plugins"
+        local folder = target:extraconf("rules", "aylo.plugin_library", "folder") or "plugins"
         target:set("targetdir", path.join(target:targetdir(), folder))
         if not target:is_plat("windows") then
             -- A plugin finds the plugins it links beside it, and `lib/` one folder up; a backend, one folder deeper, only
@@ -122,7 +122,7 @@ rule_end()
 -- Makes a target a game's own plugin library: a folder `<game>/plugins/<name>/`, with its xmake.lua and its sources, built
 -- into `<game>/plugins/`, where the Engine finds it. Nothing of the engine changes for it. A game's xmake.lua (or the
 -- root's scan of `game/plugins/`) includes that file.
-rule("rtype.game_plugin")
+rule("aylo.game_plugin")
     on_load(function (target)
         -- The library stays in the game: it links the engine's libraries through their folders.
         local folder = path.directory(target:scriptdir())
@@ -140,7 +140,7 @@ rule("rtype.game_plugin")
 rule_end()
 
 -- Copies a binary to the repository root after it is built
-rule("rtype.copy_to_root")
+rule("aylo.copy_to_root")
     on_load(function (target)
         if not target:is_plat("windows") then
             -- The build folder, where the binary finds its libraries and plugins before it is packaged.
@@ -180,7 +180,7 @@ rule_end()
 -- The modules that are static libraries because no plugin links them: they live in the executable, once. A shared library
 -- (a plugin, a backend, a contract) linking one would carry its own copy, and the state of the two copies would drift
 -- apart (docs/Modules.md). The build refuses it. `core` is static too, but stateless: any library may link it.
-rule("rtype.static_modules")
+rule("aylo.static_modules")
     on_config(function (target)
         local executableOnly = {luau = true, network = true, replication = true, scripting = true, engine = true}
         if target:kind() ~= "shared" then
@@ -194,35 +194,35 @@ rule("rtype.static_modules")
         end
     end)
 rule_end()
-add_rules("rtype.static_modules")
+add_rules("aylo.static_modules")
 
 -- The game's own plugins, if the repository has a game.
 for _, file in ipairs(os.files(path.join(os.scriptdir(), "game", "plugins", "*", "xmake.lua"))) do
     includes(file)
 end
 
-includes("src/rtype/core")
-includes("src/rtype/ecs")
-includes("src/rtype/scripting")
-includes("src/rtype/network")
-includes("src/rtype/replication")
-includes("src/rtype/engine")
-includes("src/rtype/contract")
-includes("src/rtype/plugins")
-includes("src/rtype/editor")
-includes("src/rtype/interop")
-includes("src/rtype/platform/glfw")
-includes("src/rtype/platform/sdl")
-includes("src/rtype/backend/null")
-includes("src/rtype/backend/raylib")
-includes("src/rtype/luau")
-includes("src/rtype/render/vulkan")
-includes("src/rtype/audio/miniaudio")
-includes("src/rtype/runtime")
-includes("src/rtype/tools/sign")
-includes("src/rtype/tools/export")
+includes("src/aylo/core")
+includes("src/aylo/ecs")
+includes("src/aylo/scripting")
+includes("src/aylo/network")
+includes("src/aylo/replication")
+includes("src/aylo/engine")
+includes("src/aylo/contract")
+includes("src/aylo/plugins")
+includes("src/aylo/editor")
+includes("src/aylo/interop")
+includes("src/aylo/platform/glfw")
+includes("src/aylo/platform/sdl")
+includes("src/aylo/backend/null")
+includes("src/aylo/backend/raylib")
+includes("src/aylo/luau")
+includes("src/aylo/render/vulkan")
+includes("src/aylo/audio/miniaudio")
+includes("src/aylo/runtime")
+includes("src/aylo/tools/sign")
+includes("src/aylo/tools/export")
 
--- The version and the commit of the build, as a header the executables include (rtype/build/BuildInfo.hpp): generated
+-- The version and the commit of the build, as a header the executables include (aylo/build/BuildInfo.hpp): generated
 -- once per configuration, rewritten only when they change (xmake/modules/engine_version.lua).
 target("build-info")
     set_kind("headeronly")
@@ -239,7 +239,7 @@ target("backend-libraries")
     set_kind("phony")
     add_deps("platform-glfw", "platform-sdl", "render-vulkan", "audio-miniaudio", "backend-null", "backend-raylib")
 
-target("rtype")
+target("aylo")
     set_kind("phony")
     set_default(true)
     add_deps("core", "ecs", "network", "replication", "engine", "platform-glfw", "platform-sdl", "luau", "render-vulkan", "audio-miniaudio", "backend-null", "backend-raylib",

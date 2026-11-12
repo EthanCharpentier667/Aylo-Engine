@@ -1,0 +1,320 @@
+/*
+** EPITECH PROJECT, 2026
+** aylo
+** File description:
+** Snapshot
+*/
+
+#include "aylo/replication/snapshot/Snapshot.hpp"
+
+#include <algorithm>
+#include <cstddef>
+#include <cstdint>
+#include <limits>
+#include <numeric>
+#include <optional>
+#include <span>
+#include <unordered_set>
+#include <utility>
+#include <vector>
+
+#include "aylo/ecs/component/ComponentInfo.hpp"
+#include "aylo/ecs/world/World.hpp"
+#include "aylo/network/Types.hpp"
+#include "aylo/network/bytes/ByteReader.hpp"
+#include "aylo/network/bytes/ByteWriter.hpp"
+#include "aylo/replication/MessageType.hpp"
+#include "aylo/replication/manifest/Manifest.hpp"
+#include "aylo/replication/serialization/FieldSerializer.hpp"
+
+namespace aylo::replication::snapshot {
+namespace {
+/// @brief The most records a list holds: a count is a `u16`.
+constexpr std::size_t kMaxRecords = std::numeric_limits<std::uint16_t>::max();
+
+/// @brief NetworkId (4), capsule (2) and component count (1).
+constexpr std::size_t kSpawnFixedSize = 7;
+
+/// @brief NetworkId (4) and component count (1).
+constexpr std::size_t kUpdateFixedSize = 5;
+
+/// @brief NetworkId (4) and short id (2).
+constexpr std::size_t kRemovalSize = 6;
+
+/// @brief NetworkId (4).
+constexpr std::size_t kDespawnSize = 4;
+
+/// @brief Short id (2): what a component takes besides its fields.
+constexpr std::size_t kComponentFixedSize = 2;
+
+/// @brief Length (2) written before a value of variable size.
+constexpr std::size_t kLengthSize = 2;
+
+[[nodiscard]] std::size_t getComponentsSize(const std::vector<ComponentValue>& components) noexcept {
+    return std::accumulate(components.begin(), components.end(), std::size_t{0},
+                           [](const std::size_t total, const ComponentValue& component) {
+                               return total + kComponentFixedSize + (component.lengthPrefixed ? kLengthSize : 0) +
+                                      component.bytes.size();
+                           });
+}
+
+[[nodiscard]] std::size_t computeWireSize(const UpdateRecord& record) noexcept {
+    return kUpdateFixedSize + getComponentsSize(record.components);
+}
+
+void writeComponents(network::bytes::ByteWriter& writer, const std::vector<ComponentValue>& components) noexcept {
+    writer.writeU8(static_cast<std::uint8_t>(components.size()));
+    for (const ComponentValue& component : components) {
+        writer.writeU16(component.shortId);
+        if (component.lengthPrefixed) {
+            writer.writeU16(static_cast<std::uint16_t>(component.bytes.size()));
+        }
+        writer.writeBytes(component.bytes);
+    }
+}
+
+/// @return True when the flags are known, and a part's index is below its count of at least 2.
+[[nodiscard]] bool hasValidFlags(const Snapshot& snapshot) noexcept {
+    constexpr auto kKnown = static_cast<std::uint8_t>(kComplete | kPart);
+    if ((snapshot.flags & kKnown) != snapshot.flags) {
+        return false;
+    }
+    return (snapshot.flags & kPart) == 0 || (snapshot.partCount >= 2 && snapshot.part < snapshot.partCount);
+}
+
+/// @return True when the flags are valid and no list or record is larger than its count allows.
+[[nodiscard]] bool fitsCounts(const Snapshot& snapshot) noexcept {
+    if (!hasValidFlags(snapshot)) {
+        return false;
+    }
+    const auto tooMany = [](const auto& records) {
+        return std::ranges::any_of(records,
+                                   [](const auto& record) { return record.components.size() > kMaxRecordComponents; });
+    };
+    return snapshot.spawns.size() <= kMaxRecords && snapshot.updates.size() <= kMaxRecords &&
+           snapshot.removals.size() <= kMaxRecords && snapshot.despawns.size() <= kMaxRecords &&
+           !tooMany(snapshot.spawns) && !tooMany(snapshot.updates);
+}
+
+/// @brief Reads the components of one record.
+/// @return False when a short id is unknown or listed twice, or bytes are missing.
+[[nodiscard]] bool readComponents(network::bytes::ByteReader& reader, const std::span<const std::size_t> sizes,
+                                  std::vector<ComponentValue>& components) {
+    const std::size_t count = reader.readU8();
+    components.reserve(count);
+    for (std::size_t index = 0; index < count; ++index) {
+        const std::uint16_t shortId = reader.readU16();
+        if (!reader.isValid() || shortId >= sizes.size() ||
+            std::ranges::any_of(components,
+                                [shortId](const ComponentValue& known) { return known.shortId == shortId; })) {
+            return false;
+        }
+        const std::size_t size = sizes.subspan(shortId).front();
+        const bool variable = size == kVariableSize;
+        const std::span<const std::byte> value = reader.readBytes(variable ? reader.readU16() : size);
+        if (!reader.isValid()) {
+            return false;
+        }
+        components.push_back(
+            {.shortId = shortId, .bytes = network::Bytes{value.begin(), value.end()}, .lengthPrefixed = variable});
+    }
+    return reader.isValid();
+}
+
+/// @brief Reads a list count, refusing one that the remaining bytes cannot hold at `minimumSize` each.
+[[nodiscard]] std::optional<std::size_t> readCount(network::bytes::ByteReader& reader,
+                                                   const std::size_t minimumSize) noexcept {
+    const std::size_t count = reader.readU16();
+    if (!reader.isValid() || count > reader.remainingSize() / minimumSize) {
+        return std::nullopt;
+    }
+    return count;
+}
+
+/// @brief Tells whether a NetworkId is valid and new to the list, and remembers it.
+[[nodiscard]] bool takeId(std::unordered_set<std::uint32_t>& seen, const std::uint32_t networkId) {
+    return networkId != 0 && seen.insert(networkId).second;
+}
+
+[[nodiscard]] bool readSpawns(network::bytes::ByteReader& reader, const std::span<const std::size_t> sizes,
+                              std::vector<SpawnRecord>& spawns) {
+    const std::optional<std::size_t> count = readCount(reader, kSpawnFixedSize);
+    if (!count) {
+        return false;
+    }
+    std::unordered_set<std::uint32_t> seen;
+    spawns.reserve(*count);
+    for (std::size_t index = 0; index < *count; ++index) {
+        SpawnRecord record;
+        record.networkId = reader.readU32();
+        record.capsule = reader.readU16();
+        if (!reader.isValid() || !takeId(seen, record.networkId) || !readComponents(reader, sizes, record.components)) {
+            return false;
+        }
+        spawns.push_back(std::move(record));
+    }
+    return true;
+}
+
+[[nodiscard]] bool readUpdates(network::bytes::ByteReader& reader, const std::span<const std::size_t> sizes,
+                               std::vector<UpdateRecord>& updates) {
+    const std::optional<std::size_t> count = readCount(reader, kUpdateFixedSize);
+    if (!count) {
+        return false;
+    }
+    std::unordered_set<std::uint32_t> seen;
+    updates.reserve(*count);
+    for (std::size_t index = 0; index < *count; ++index) {
+        UpdateRecord record;
+        record.networkId = reader.readU32();
+        if (!reader.isValid() || !takeId(seen, record.networkId) || !readComponents(reader, sizes, record.components)) {
+            return false;
+        }
+        updates.push_back(std::move(record));
+    }
+    return true;
+}
+
+[[nodiscard]] bool readRemovals(network::bytes::ByteReader& reader, const std::span<const std::size_t> sizes,
+                                std::vector<RemovalRecord>& removals) {
+    const std::optional<std::size_t> count = readCount(reader, kRemovalSize);
+    if (!count) {
+        return false;
+    }
+    removals.reserve(*count);
+    for (std::size_t index = 0; index < *count; ++index) {
+        const std::uint32_t networkId = reader.readU32();
+        const std::uint16_t shortId = reader.readU16();
+        if (!reader.isValid() || networkId == 0 || shortId >= sizes.size()) {
+            return false;
+        }
+        removals.push_back({.networkId = networkId, .shortId = shortId});
+    }
+    return true;
+}
+
+[[nodiscard]] bool readDespawns(network::bytes::ByteReader& reader, std::vector<std::uint32_t>& despawns) {
+    const std::optional<std::size_t> count = readCount(reader, kDespawnSize);
+    if (!count) {
+        return false;
+    }
+    std::unordered_set<std::uint32_t> seen;
+    despawns.reserve(*count);
+    for (std::size_t index = 0; index < *count; ++index) {
+        const std::uint32_t networkId = reader.readU32();
+        if (!reader.isValid() || !takeId(seen, networkId)) {
+            return false;
+        }
+        despawns.push_back(networkId);
+    }
+    return true;
+}
+}  // namespace
+
+std::size_t computeWireSize(const SpawnRecord& record) noexcept {
+    return kSpawnFixedSize + getComponentsSize(record.components);
+}
+
+std::size_t computeWireSize(const Snapshot& snapshot) noexcept {
+    std::size_t size = (snapshot.flags & kPart) != 0 ? kEmptyPartSize : kEmptySize;
+    for (const SpawnRecord& record : snapshot.spawns) {
+        size += computeWireSize(record);
+    }
+    for (const UpdateRecord& record : snapshot.updates) {
+        size += computeWireSize(record);
+    }
+    return size + (snapshot.removals.size() * kRemovalSize) + (snapshot.despawns.size() * kDespawnSize);
+}
+
+std::optional<network::Bytes> encode(const Snapshot& snapshot) {
+    if (!fitsCounts(snapshot)) {
+        return std::nullopt;
+    }
+    network::Bytes bytes(computeWireSize(snapshot));
+    network::bytes::ByteWriter writer{bytes};
+    writer.writeU8(static_cast<std::uint8_t>(MessageType::kSnapshot));
+    writer.writeU32(snapshot.tick);
+    writer.writeU32(snapshot.lastProcessedInput);
+    writer.writeU8(snapshot.flags);
+    if ((snapshot.flags & kPart) != 0) {
+        writer.writeU8(snapshot.part);
+        writer.writeU8(snapshot.partCount);
+    }
+    writer.writeU16(static_cast<std::uint16_t>(snapshot.spawns.size()));
+    for (const SpawnRecord& record : snapshot.spawns) {
+        writer.writeU32(record.networkId);
+        writer.writeU16(record.capsule);
+        writeComponents(writer, record.components);
+    }
+    writer.writeU16(static_cast<std::uint16_t>(snapshot.updates.size()));
+    for (const UpdateRecord& record : snapshot.updates) {
+        writer.writeU32(record.networkId);
+        writeComponents(writer, record.components);
+    }
+    writer.writeU16(static_cast<std::uint16_t>(snapshot.removals.size()));
+    for (const RemovalRecord& record : snapshot.removals) {
+        writer.writeU32(record.networkId);
+        writer.writeU16(record.shortId);
+    }
+    writer.writeU16(static_cast<std::uint16_t>(snapshot.despawns.size()));
+    for (const std::uint32_t networkId : snapshot.despawns) {
+        writer.writeU32(networkId);
+    }
+    if (!writer.isValid() || writer.bytesWritten() != bytes.size()) {
+        return std::nullopt;
+    }
+    return bytes;
+}
+
+std::optional<Snapshot> decode(const std::span<const std::byte> message,
+                               const std::span<const std::size_t> componentSizes) noexcept {
+    try {
+        network::bytes::ByteReader reader{message};
+        if (reader.readU8() != static_cast<std::uint8_t>(MessageType::kSnapshot)) {
+            return std::nullopt;
+        }
+        Snapshot snapshot;
+        snapshot.tick = reader.readU32();
+        snapshot.lastProcessedInput = reader.readU32();
+        snapshot.flags = reader.readU8();
+        if ((snapshot.flags & kPart) != 0) {
+            snapshot.part = reader.readU8();
+            snapshot.partCount = reader.readU8();
+        }
+        if (!reader.isValid() || !hasValidFlags(snapshot) || !readSpawns(reader, componentSizes, snapshot.spawns) ||
+            !readUpdates(reader, componentSizes, snapshot.updates) ||
+            !readRemovals(reader, componentSizes, snapshot.removals) || !readDespawns(reader, snapshot.despawns) ||
+            !reader.isFinished()) {
+            return std::nullopt;
+        }
+        return snapshot;
+    } catch (...) {  // only an allocation can fail here
+        return std::nullopt;
+    }
+}
+
+void setLastProcessedInput(const std::span<std::byte> message, const std::uint32_t sequence) noexcept {
+    if (message.size() < kLastProcessedInputOffset + sizeof(std::uint32_t)) {
+        return;
+    }
+    network::bytes::ByteWriter writer{message.subspan(kLastProcessedInputOffset, sizeof(std::uint32_t))};
+    writer.writeU32(sequence);
+}
+
+std::vector<std::size_t> computeComponentSizes(const manifest::Manifest& manifest, const ecs::World& world) {
+    const auto& registry = world.getComponents().getRegistry();
+    std::vector<std::size_t> sizes;
+    sizes.reserve(manifest.components().size());
+    for (const ecs::ComponentId id : manifest.components()) {
+        const ecs::ComponentInfo* info = registry.findById(id);
+        if (info == nullptr) {
+            sizes.push_back(0);
+        } else if (serialization::isVariableSize(info->type)) {
+            sizes.push_back(kVariableSize);
+        } else {
+            sizes.push_back(serialization::computeWireSize(info->type));
+        }
+    }
+    return sizes;
+}
+}  // namespace aylo::replication::snapshot

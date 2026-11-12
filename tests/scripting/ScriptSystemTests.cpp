@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ScriptSystemTests
 */
@@ -14,21 +14,21 @@
 #include <string_view>
 #include <vector>
 
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/schedule/Phase.hpp"
-#include "rtype/ecs/schedule/RunMode.hpp"
-#include "rtype/ecs/system/Side.hpp"
-#include "rtype/ecs/system/System.hpp"
-#include "rtype/scripting/ScriptHost.hpp"
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/schedule/Phase.hpp"
+#include "aylo/ecs/schedule/RunMode.hpp"
+#include "aylo/ecs/system/Side.hpp"
+#include "aylo/ecs/system/System.hpp"
+#include "aylo/scripting/ScriptHost.hpp"
 
 namespace {
 /// @brief A bare App and a host on it, with the components the systems below use already declared.
 struct Fixture {
-    rtype::ecs::App app;
-    std::unique_ptr<rtype::scripting::ScriptHost> host;
+    aylo::ecs::App app;
+    std::unique_ptr<aylo::scripting::ScriptHost> host;
 
-    explicit Fixture(const rtype::ecs::RunMode mode = rtype::ecs::RunMode::kStandalone) : app{mode} {
-        auto created = rtype::scripting::ScriptHost::create(app, {});
+    explicit Fixture(const aylo::ecs::RunMode mode = aylo::ecs::RunMode::kStandalone) : app{mode} {
+        auto created = aylo::scripting::ScriptHost::create(app, {});
         EXPECT_TRUE(created) << (created ? "" : std::string{created.error().message()});
         host = std::move(*created);
         EXPECT_EQ(run(R"(
@@ -49,11 +49,11 @@ struct Fixture {
     }
 
     /// @return The system of a phase with this name, or null.
-    [[nodiscard]] const rtype::ecs::System* find(const rtype::ecs::Phase phase, const std::string_view name) const {
+    [[nodiscard]] const aylo::ecs::System* find(const aylo::ecs::Phase phase, const std::string_view name) const {
         return app.getSchedules().getSchedule(phase).findSystem(name);
     }
 
-    [[nodiscard]] rtype::ecs::ComponentId id(const std::string_view name) {
+    [[nodiscard]] aylo::ecs::ComponentId id(const std::string_view name) {
         return *app.getWorld().getComponents().find(name);
     }
 };
@@ -70,7 +70,7 @@ TEST(ScriptSystem, IsListedUnderItsNameWithTheAccessOfItsTerms) {
     )"),
               "");
 
-    const auto* system = fixture.find(rtype::ecs::Phase::kFixedUpdate, "game.ShieldRegen");
+    const auto* system = fixture.find(aylo::ecs::Phase::kFixedUpdate, "game.ShieldRegen");
     ASSERT_NE(system, nullptr);
     const auto access = system->getAccess().getComponents();
     ASSERT_EQ(access.size(), 2U);
@@ -79,7 +79,7 @@ TEST(ScriptSystem, IsListedUnderItsNameWithTheAccessOfItsTerms) {
     EXPECT_FALSE(access[0].write);
     EXPECT_EQ(access[1].id, fixture.id("game.Shield"));
     EXPECT_TRUE(access[1].write);
-    EXPECT_EQ(fixture.find(rtype::ecs::Phase::kUpdate, "game.ShieldRegen"), nullptr);
+    EXPECT_EQ(fixture.find(aylo::ecs::Phase::kUpdate, "game.ShieldRegen"), nullptr);
 }
 
 TEST(ScriptSystem, AfterAndBeforeOrderTheSchedule) {
@@ -96,7 +96,7 @@ TEST(ScriptSystem, AfterAndBeforeOrderTheSchedule) {
 
     fixture.app.runFrame();  // builds the schedules
     const std::vector<std::string_view> expected{"game.A", "game.B", "game.C"};
-    EXPECT_EQ(fixture.app.getSchedules().getSchedule(rtype::ecs::Phase::kUpdate).getOrder(), expected);
+    EXPECT_EQ(fixture.app.getSchedules().getSchedule(aylo::ecs::Phase::kUpdate).getOrder(), expected);
 }
 
 TEST(ScriptSystem, UnknownComponentIsRefusedWhenTheScriptLoads) {
@@ -106,7 +106,7 @@ TEST(ScriptSystem, UnknownComponentIsRefusedWhenTheScriptLoads) {
     )");
     EXPECT_NE(error.find("game.Bad"), std::string::npos) << error;
     EXPECT_NE(error.find("game.Nope"), std::string::npos) << error;
-    EXPECT_EQ(fixture.find(rtype::ecs::Phase::kUpdate, "game.Bad"), nullptr);
+    EXPECT_EQ(fixture.find(aylo::ecs::Phase::kUpdate, "game.Bad"), nullptr);
 }
 
 TEST(ScriptSystem, BadDeclarationsRaiseAnErrorNamingTheSystem) {
@@ -155,7 +155,7 @@ TEST(ScriptSystem, StaysInTheAppWhenTheHostIsDestroyedFirst) {
 
     fixture.host.reset();
 
-    EXPECT_NE(fixture.find(rtype::ecs::Phase::kUpdate, "game.Orphan"), nullptr);
+    EXPECT_NE(fixture.find(aylo::ecs::Phase::kUpdate, "game.Orphan"), nullptr);
     // The App is destroyed after the host, with the system's function still referenced.
 }
 
@@ -167,7 +167,7 @@ namespace {
 }
 
 /// @brief Runs one frame of an App that has a "game.Glow" on an entity, and returns the intensity afterwards.
-[[nodiscard]] float intensityAfterAFrame(const rtype::ecs::RunMode mode, const std::string& side) {
+[[nodiscard]] float intensityAfterAFrame(const aylo::ecs::RunMode mode, const std::string& side) {
     Fixture fixture{mode};
     EXPECT_EQ(fixture.run(R"(engine.ecs.system("game.Writer", {
         phase = "Update", )" +
@@ -196,17 +196,17 @@ namespace {
 TEST(ScriptSystem, RunsOnTheServerWhenItDeclaresNoSide) {
     Fixture fixture;
     EXPECT_EQ(fixture.run(writer("", "game.Shield")), "");
-    EXPECT_EQ(fixture.find(rtype::ecs::Phase::kUpdate, "game.Writer")->getSide(), rtype::ecs::Side::kServer);
+    EXPECT_EQ(fixture.find(aylo::ecs::Phase::kUpdate, "game.Writer")->getSide(), aylo::ecs::Side::kServer);
 }
 
 TEST(ScriptSystem, SideIsSetOnTheSystem) {
     for (const auto& [name, side] :
-         std::vector<std::pair<std::string, rtype::ecs::Side>>{{"server", rtype::ecs::Side::kServer},
-                                                               {"client", rtype::ecs::Side::kClient},
-                                                               {"both", rtype::ecs::Side::kBoth}}) {
+         std::vector<std::pair<std::string, aylo::ecs::Side>>{{"server", aylo::ecs::Side::kServer},
+                                                              {"client", aylo::ecs::Side::kClient},
+                                                              {"both", aylo::ecs::Side::kBoth}}) {
         Fixture fixture;
         EXPECT_EQ(fixture.run(writer("side = \"" + name + "\",", "game.Glow")), "") << name;
-        EXPECT_EQ(fixture.find(rtype::ecs::Phase::kUpdate, "game.Writer")->getSide(), side) << name;
+        EXPECT_EQ(fixture.find(aylo::ecs::Phase::kUpdate, "game.Writer")->getSide(), side) << name;
     }
 }
 
@@ -219,16 +219,16 @@ TEST(ScriptSystem, UnknownSideIsRefused) {
 }
 
 TEST(ScriptSystem, AClientSystemDoesNotRunInAServerApp) {
-    EXPECT_FLOAT_EQ(intensityAfterAFrame(rtype::ecs::RunMode::kServer, "side = \"client\","), 0.F);
+    EXPECT_FLOAT_EQ(intensityAfterAFrame(aylo::ecs::RunMode::kServer, "side = \"client\","), 0.F);
 }
 
 TEST(ScriptSystem, AClientSystemRunsInAClientApp) {
-    EXPECT_FLOAT_EQ(intensityAfterAFrame(rtype::ecs::RunMode::kClient, "side = \"client\","), 1.F);
+    EXPECT_FLOAT_EQ(intensityAfterAFrame(aylo::ecs::RunMode::kClient, "side = \"client\","), 1.F);
 }
 
 TEST(ScriptSystem, AServerSystemDoesNotRunInAClientApp) {
-    EXPECT_FLOAT_EQ(intensityAfterAFrame(rtype::ecs::RunMode::kClient, ""), 0.F);
-    EXPECT_FLOAT_EQ(intensityAfterAFrame(rtype::ecs::RunMode::kServer, ""), 1.F);
+    EXPECT_FLOAT_EQ(intensityAfterAFrame(aylo::ecs::RunMode::kClient, ""), 0.F);
+    EXPECT_FLOAT_EQ(intensityAfterAFrame(aylo::ecs::RunMode::kServer, ""), 1.F);
 }
 
 TEST(ScriptSystem, AClientSystemWritingAReplicatedComponentFailsToLoad) {
@@ -267,5 +267,5 @@ TEST(ScriptSystem, ASystemOfBothSidesWritingAServerOnlyComponentWarns) {
     const std::string warning = testing::internal::GetCapturedStderr();
     EXPECT_NE(warning.find("game.Writer"), std::string::npos) << warning;
     EXPECT_NE(warning.find("game.Secret"), std::string::npos) << warning;
-    EXPECT_NE(fixture.find(rtype::ecs::Phase::kUpdate, "game.Writer"), nullptr);
+    EXPECT_NE(fixture.find(aylo::ecs::Phase::kUpdate, "game.Writer"), nullptr);
 }

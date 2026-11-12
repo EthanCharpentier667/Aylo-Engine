@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** main
 */
@@ -15,14 +15,14 @@
 #include <format>
 #include <iostream>
 
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/schedule/Phase.hpp"
-#include "rtype/ecs/system/ResourceParam.hpp"
-#include "rtype/ecs/time/FixedTimestep.hpp"
-#include "rtype/ecs/time/Time.hpp"
-#include "rtype/ecs/time/TimePlugin.hpp"
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/schedule/Phase.hpp"
+#include "aylo/ecs/system/ResourceParam.hpp"
+#include "aylo/ecs/time/FixedTimestep.hpp"
+#include "aylo/ecs/time/Time.hpp"
+#include "aylo/ecs/time/TimePlugin.hpp"
 
-using namespace rtype::ecs;
+using namespace aylo::ecs;
 
 namespace {
 /// @brief Feeds `frames` frames of `frame` to a 60 Hz timestep and prints the ticks they give.

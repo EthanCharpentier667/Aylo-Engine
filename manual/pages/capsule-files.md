@@ -6,7 +6,7 @@ as a file. This page says when each happens and what it does to the file. What y
 
 ## When the game starts
 
-With `rtype.Capsule` in `engine.settings.plugins`, the engine reads every `.capsule`, `.scene` and `.actor` file under
+With `aylo.Capsule` in `engine.settings.plugins`, the engine reads every `.capsule`, `.scene` and `.actor` file under
 `assets/`, on the server and on every client.
 
 - **After your scripts.** Files are read once every plugin and every script is loaded, so a file can use the
@@ -65,13 +65,13 @@ The written file reads back as the same capsule, but it is not the text you type
 # The boss, with a turret on each side.
 [node path="."]
 game.Health = { value = 50, max = 100 }   # max is the default
-rtype.Transform = {
+aylo.Transform = {
     position = (0.0, 2.50),
     scale = (1, 1),
 }
 
 [node path="LeftTurret" instance="./actors/turret.actor"]
-rtype.Transform = { position = (-40, 0), rotation = 1.5 }
+aylo.Transform = { position = (-40, 0), rotation = 1.5 }
 
 [node path="Shadow" side=client]
 game.Sprite = { texture = "sprites/boss_shadow.png", layer = -1 }
@@ -84,10 +84,10 @@ is written back as:
 
 [node path="."]
 game.Health = { value = 50 }
-rtype.Transform = { position = (0, 2.5) }
+aylo.Transform = { position = (0, 2.5) }
 
 [node path="LeftTurret" instance="actors/turret.actor"]
-rtype.Transform = { position = (-40, 0) }
+aylo.Transform = { position = (-40, 0) }
 
 [node path="Shadow" side=client]
 game.Sprite = { texture = "sprites/boss_shadow.png", layer = -1 }

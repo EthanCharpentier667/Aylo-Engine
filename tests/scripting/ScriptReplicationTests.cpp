@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ScriptReplicationTests
 */
@@ -24,42 +24,42 @@
 #include <thread>
 #include <vector>
 
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/component/ComponentInfo.hpp"
-#include "rtype/ecs/entity/Entity.hpp"
-#include "rtype/ecs/schedule/RunMode.hpp"
-#include "rtype/ecs/time/FixedTimestep.hpp"
-#include "rtype/ecs/time/TimePlugin.hpp"
-#include "rtype/ecs/type/Field.hpp"
-#include "rtype/ecs/type/String.hpp"
-#include "rtype/network/NetworkSettings.hpp"
-#include "rtype/network/Types.hpp"
-#include "rtype/network/io/Address.hpp"
-#include "rtype/replication/ReplicationPlugin.hpp"
-#include "rtype/replication/client/ClientPlugin.hpp"
-#include "rtype/replication/client/ClientState.hpp"
-#include "rtype/replication/input/InputLayout.hpp"
-#include "rtype/replication/server/ServerPlugin.hpp"
-#include "rtype/replication/server/ServerState.hpp"
-#include "rtype/scripting/component/ComponentDeclaration.hpp"
-#include "rtype/scripting/component/ComponentLayout.hpp"
-#include "rtype/scripting/component/ComponentRegistration.hpp"
-#include "rtype/scripting/plugin/ScriptingPlugin.hpp"
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/component/ComponentInfo.hpp"
+#include "aylo/ecs/entity/Entity.hpp"
+#include "aylo/ecs/schedule/RunMode.hpp"
+#include "aylo/ecs/time/FixedTimestep.hpp"
+#include "aylo/ecs/time/TimePlugin.hpp"
+#include "aylo/ecs/type/Field.hpp"
+#include "aylo/ecs/type/String.hpp"
+#include "aylo/network/NetworkSettings.hpp"
+#include "aylo/network/Types.hpp"
+#include "aylo/network/io/Address.hpp"
+#include "aylo/replication/ReplicationPlugin.hpp"
+#include "aylo/replication/client/ClientPlugin.hpp"
+#include "aylo/replication/client/ClientState.hpp"
+#include "aylo/replication/input/InputLayout.hpp"
+#include "aylo/replication/server/ServerPlugin.hpp"
+#include "aylo/replication/server/ServerState.hpp"
+#include "aylo/scripting/component/ComponentDeclaration.hpp"
+#include "aylo/scripting/component/ComponentLayout.hpp"
+#include "aylo/scripting/component/ComponentRegistration.hpp"
+#include "aylo/scripting/plugin/ScriptingPlugin.hpp"
 
 namespace {
-namespace network = rtype::network;
-namespace sc = rtype::scripting::component;
+namespace network = aylo::network;
+namespace sc = aylo::scripting::component;
 using namespace std::chrono_literals;  // NOLINT(google-build-using-namespace): only the literals
-using rtype::ecs::App;
-using rtype::ecs::Entity;
-using rtype::ecs::FieldType;
-using rtype::ecs::ReplicationMode;
-using rtype::ecs::RunMode;
-using rtype::replication::client::ClientPlugin;
-using rtype::replication::client::ClientState;
-using rtype::replication::client::ManifestStatus;
-using rtype::replication::server::ServerPlugin;
-using rtype::replication::server::ServerState;
+using aylo::ecs::App;
+using aylo::ecs::Entity;
+using aylo::ecs::FieldType;
+using aylo::ecs::ReplicationMode;
+using aylo::ecs::RunMode;
+using aylo::replication::client::ClientPlugin;
+using aylo::replication::client::ClientState;
+using aylo::replication::client::ManifestStatus;
+using aylo::replication::server::ServerPlugin;
+using aylo::replication::server::ServerState;
 
 constexpr std::uint8_t kTickRate = 50;
 constexpr std::chrono::milliseconds kFrame{20};
@@ -107,8 +107,8 @@ class ScriptsDirectory {
 
 /// @brief What `game.Shield` looks like in a world: its id, its fields and a zeroed value.
 struct Shield {
-    rtype::ecs::ComponentId id{};
-    std::vector<rtype::ecs::FieldInfo> fields;
+    aylo::ecs::ComponentId id{};
+    std::vector<aylo::ecs::FieldInfo> fields;
     std::vector<std::byte> defaults;
 };
 
@@ -134,7 +134,7 @@ struct Game {
 
     /// @brief Loads the Luau files of a directory, as a game does: the component comes from the script.
     Game(const RunMode mode, const std::filesystem::path& scripts) : app{makeApp(mode)} {
-        app->addPlugin(rtype::scripting::ScriptingPlugin{
+        app->addPlugin(aylo::scripting::ScriptingPlugin{
             {.directory = scripts,
              .options = {.isClient = mode == RunMode::kClient, .isServer = mode == RunMode::kServer}}});
         findShield();
@@ -142,10 +142,10 @@ struct Game {
 
     [[nodiscard]] static std::unique_ptr<App> makeApp(const RunMode mode) {
         auto app = std::make_unique<App>(mode);
-        app->addPlugin(rtype::ecs::TimePlugin::manual(kFrame, rtype::ecs::FixedTimestep{kTickRate, 5}));
-        app->addPlugin(rtype::replication::ReplicationPlugin{});
-        app->getWorld().getResources().getMut<rtype::replication::input::InputLayout>()->add(
-            "fire", rtype::replication::input::InputKind::kButton);
+        app->addPlugin(aylo::ecs::TimePlugin::manual(kFrame, aylo::ecs::FixedTimestep{kTickRate, 5}));
+        app->addPlugin(aylo::replication::ReplicationPlugin{});
+        app->getWorld().getResources().getMut<aylo::replication::input::InputLayout>()->add(
+            "fire", aylo::replication::input::InputKind::kButton);
         return app;
     }
 
@@ -221,7 +221,7 @@ struct Pair {
     [[nodiscard]] ClientState& clientState() { return *client.app->getWorld().getResources().getMut<ClientState>(); }
 
     /// @brief Spawns a shield on the server.
-    Entity spawnShield(const std::uint32_t hp, const rtype::ecs::String& owner) {
+    Entity spawnShield(const std::uint32_t hp, const aylo::ecs::String& owner) {
         const Entity shield = server.app->getWorld().spawn();
         EXPECT_TRUE(server.app->getWorld().getComponents().add(shield, server.shield.id, server.shield.defaults));
         server.write(shield, "hp", hp);
@@ -253,13 +253,13 @@ TEST(ScriptReplication, SendsTheValueOfAScriptComponentToTheClient) {
     const Entity mirror = pair.clientState().find(1);
     ASSERT_TRUE(pair.client.app->getWorld().getComponents().has(mirror, pair.client.shield.id));
     EXPECT_EQ(pair.client.read<std::uint32_t>(mirror, "hp"), 100U);
-    EXPECT_EQ(pair.client.read<rtype::ecs::String>(mirror, "owner"), rtype::ecs::String{"Ana"});
+    EXPECT_EQ(pair.client.read<aylo::ecs::String>(mirror, "owner"), aylo::ecs::String{"Ana"});
 
     pair.server.write(shield, "hp", std::uint32_t{40});
-    pair.server.write(shield, "owner", rtype::ecs::String{"Bo"});
+    pair.server.write(shield, "owner", aylo::ecs::String{"Bo"});
     ASSERT_TRUE(
         runUntil(pair.server, pair.client, [&] { return pair.client.read<std::uint32_t>(mirror, "hp") == 40U; }));
-    EXPECT_EQ(pair.client.read<rtype::ecs::String>(mirror, "owner"), rtype::ecs::String{"Bo"});
+    EXPECT_EQ(pair.client.read<aylo::ecs::String>(mirror, "owner"), aylo::ecs::String{"Bo"});
 }
 
 TEST(ScriptReplication, AgreesWhateverTheOrderOfTheFieldsInTheScript) {
@@ -291,10 +291,10 @@ TEST(ScriptReplication, RefusesAClientThatDidNotLoadTheScript) {
     Pair pair{makeShield(shieldFields()), makeShield(shieldFields())};
     // A third App whose scripts declare no `game.Shield` at all.
     App bare{RunMode::kClient};
-    bare.addPlugin(rtype::ecs::TimePlugin::manual(kFrame, rtype::ecs::FixedTimestep{kTickRate, 5}));
-    bare.addPlugin(rtype::replication::ReplicationPlugin{});
-    bare.getWorld().getResources().getMut<rtype::replication::input::InputLayout>()->add(
-        "fire", rtype::replication::input::InputKind::kButton);
+    bare.addPlugin(aylo::ecs::TimePlugin::manual(kFrame, aylo::ecs::FixedTimestep{kTickRate, 5}));
+    bare.addPlugin(aylo::replication::ReplicationPlugin{});
+    bare.getWorld().getResources().getMut<aylo::replication::input::InputLayout>()->add(
+        "fire", aylo::replication::input::InputKind::kButton);
     const auto address = network::io::Address::resolve("127.0.0.1", pair.serverState().netServer().localPort());
     bare.addPlugin(ClientPlugin{address.value(), makeNetworkSettings()});
     auto& state = *bare.getWorld().getResources().getMut<ClientState>();
@@ -311,8 +311,8 @@ TEST(ScriptReplication, RefusesAClientThatDidNotLoadTheScript) {
 }
 
 TEST(ScriptReplication, SendsAComponentDeclaredInLuauToTheClient) {
-    const ScriptsDirectory serverScripts{"rtype-script-replication-server", shieldScript(kShieldFields)};
-    const ScriptsDirectory clientScripts{"rtype-script-replication-client", shieldScript(kShieldFields)};
+    const ScriptsDirectory serverScripts{"aylo-script-replication-server", shieldScript(kShieldFields)};
+    const ScriptsDirectory clientScripts{"aylo-script-replication-client", shieldScript(kShieldFields)};
     Pair pair{Game{RunMode::kServer, serverScripts.path()}, Game{RunMode::kClient, clientScripts.path()}};
     ASSERT_NE(pair.server.shield.fields.size(), 0U);
     const Entity shield = pair.spawnShield(100, "Ana");
@@ -322,7 +322,7 @@ TEST(ScriptReplication, SendsAComponentDeclaredInLuauToTheClient) {
     EXPECT_EQ(pair.clientState().manifestStatus(), ManifestStatus::kAccepted);
     const Entity mirror = pair.clientState().find(1);
     EXPECT_EQ(pair.client.read<std::uint32_t>(mirror, "hp"), 100U);
-    EXPECT_EQ(pair.client.read<rtype::ecs::String>(mirror, "owner"), rtype::ecs::String{"Ana"});
+    EXPECT_EQ(pair.client.read<aylo::ecs::String>(mirror, "owner"), aylo::ecs::String{"Ana"});
 
     pair.server.write(shield, "hp", std::uint32_t{40});
     ASSERT_TRUE(
@@ -330,8 +330,8 @@ TEST(ScriptReplication, SendsAComponentDeclaredInLuauToTheClient) {
 }
 
 TEST(ScriptReplication, RefusesAClientWhoseLuauDeclaresADifferentLayout) {
-    const ScriptsDirectory serverScripts{"rtype-script-replication-same", shieldScript(kShieldFields)};
-    const ScriptsDirectory clientScripts{"rtype-script-replication-other",
+    const ScriptsDirectory serverScripts{"aylo-script-replication-same", shieldScript(kShieldFields)};
+    const ScriptsDirectory clientScripts{"aylo-script-replication-other",
                                          shieldScript(R"(hp = "u32", owner = "string", armor = "f32")")};
     Pair pair{Game{RunMode::kServer, serverScripts.path()}, Game{RunMode::kClient, clientScripts.path()}};
 

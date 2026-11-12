@@ -1,15 +1,15 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** SequenceTests
 */
 
 #include <gtest/gtest.h>
 
-#include "rtype/network/protocol/Sequence.hpp"
+#include "aylo/network/protocol/Sequence.hpp"
 
-namespace protocol = rtype::network::protocol;
+namespace protocol = aylo::network::protocol;
 
 static_assert(protocol::isNewer(1, 0));
 static_assert(!protocol::isNewer(0, 1));

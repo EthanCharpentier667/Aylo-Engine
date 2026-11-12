@@ -1,18 +1,18 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ConstantsTests
 */
 
 #include <gtest/gtest.h>
 
-#include "rtype/network/protocol/Constants.hpp"
+#include "aylo/network/protocol/Constants.hpp"
 
-namespace protocol = rtype::network::protocol;
+namespace protocol = aylo::network::protocol;
 
 TEST(Constants, ProtocolValues) {
-    EXPECT_EQ(protocol::kProtocolId, 0x52545950U);
+    EXPECT_EQ(protocol::kProtocolId, 0x41594C4FU);
     EXPECT_EQ(protocol::kProtocolVersion, 1U);
     EXPECT_EQ(protocol::kMaxPacketSize, 1200U);
     EXPECT_EQ(protocol::kMaxMessageSize, 1000U);

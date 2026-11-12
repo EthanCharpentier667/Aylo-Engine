@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ScriptCommandsTests
 */
@@ -15,36 +15,36 @@
 #include <vector>
 
 #include "ScriptProbe.hpp"
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/app/PluginRegistry.hpp"
-#include "rtype/ecs/component/ComponentTraits.hpp"
-#include "rtype/ecs/entity/Entity.hpp"
-#include "rtype/ecs/hierarchy/Children.hpp"
-#include "rtype/ecs/hierarchy/Parent.hpp"
-#include "rtype/ecs/time/FixedTimestep.hpp"
-#include "rtype/ecs/time/TimePlugin.hpp"
-#include "rtype/scripting/ScriptHost.hpp"
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/app/PluginRegistry.hpp"
+#include "aylo/ecs/component/ComponentTraits.hpp"
+#include "aylo/ecs/entity/Entity.hpp"
+#include "aylo/ecs/hierarchy/Children.hpp"
+#include "aylo/ecs/hierarchy/Parent.hpp"
+#include "aylo/ecs/time/FixedTimestep.hpp"
+#include "aylo/ecs/time/TimePlugin.hpp"
+#include "aylo/scripting/ScriptHost.hpp"
 
-namespace rtype::test::commands {
+namespace aylo::test::commands {
 /// @brief A plain-data C++ component, with defaults of its own.
 struct Hull {
     float armor{7.0F};
     std::uint32_t plates{3};
 };
-RTYPE_ECS_COMPONENT(Hull, "test.Hull", armor, plates);
+AYLO_ECS_COMPONENT(Hull, "test.Hull", armor, plates);
 
 /// @brief A replicated C++ component.
 struct Beacon {
     std::uint32_t channel{0};
 };
-RTYPE_ECS_COMPONENT(Beacon, "test.Beacon", channel);
+AYLO_ECS_COMPONENT(Beacon, "test.Beacon", channel);
 
 /// @brief A C++ component that owns memory: a list and a text.
 struct Cargo {
     std::vector<std::int32_t> items;
     std::string label{"empty"};
 };
-RTYPE_ECS_COMPONENT(Cargo, "test.Cargo", items, label);
+AYLO_ECS_COMPONENT(Cargo, "test.Cargo", items, label);
 
 /// @brief A value with no default: it must be given one.
 struct Sealed {
@@ -62,20 +62,20 @@ struct Sealed {
 struct Crate {
     Sealed sealed;
 };
-RTYPE_ECS_COMPONENT(Crate, "test.Crate");
-}  // namespace rtype::test::commands
+AYLO_ECS_COMPONENT(Crate, "test.Crate");
+}  // namespace aylo::test::commands
 
 namespace {
 /// @brief An App whose every frame lasts one second, and a host on it with a few components declared, and one marked
 /// entity.
 struct Fixture {
-    rtype::ecs::App app;
-    std::unique_ptr<rtype::scripting::ScriptHost> host;
+    aylo::ecs::App app;
+    std::unique_ptr<aylo::scripting::ScriptHost> host;
 
     Fixture() {
-        app.addPlugin(rtype::ecs::TimePlugin::manual(std::chrono::seconds{1}, rtype::ecs::FixedTimestep{1, 5}));
-        app.getPluginRegistry().addScriptForms("test.Probe", rtype::tests::kProbeForms);
-        auto created = rtype::scripting::ScriptHost::create(app, {});
+        app.addPlugin(aylo::ecs::TimePlugin::manual(std::chrono::seconds{1}, aylo::ecs::FixedTimestep{1, 5}));
+        app.getPluginRegistry().addScriptForms("test.Probe", aylo::tests::kProbeForms);
+        auto created = aylo::scripting::ScriptHost::create(app, {});
         EXPECT_TRUE(created) << (created ? "" : std::string{created.error().message()});
         host = std::move(*created);
         EXPECT_EQ(run(R"(
@@ -105,13 +105,13 @@ namespace {
 struct Inventory {
     std::vector<std::uint32_t> items;
 };
-RTYPE_ECS_COMPONENT(Inventory, "test.script.Inventory", items);
+AYLO_ECS_COMPONENT(Inventory, "test.script.Inventory", items);
 
 /// @brief A C++ component with a text of any length.
 struct Sign {
     std::string text;
 };
-RTYPE_ECS_COMPONENT(Sign, "test.script.Sign", text);
+AYLO_ECS_COMPONENT(Sign, "test.script.Sign", text);
 }  // namespace
 
 TEST(ScriptCommands, ASpawnerCreatesEntitiesASecondSystemSeesInTheNextPhase) {
@@ -244,7 +244,7 @@ TEST(ScriptCommands, AHeldCommandsHandleIsRefusedOnceTheRunEnded) {
 TEST(ScriptCommands, SetParentAndRemoveParentLinkEntitiesAndDespawnCascades) {
     Fixture fixture;
     static_cast<void>(
-        fixture.app.getWorld().getComponents().registerType<rtype::ecs::Parent>(rtype::ecs::kParentOptions));
+        fixture.app.getWorld().getComponents().registerType<aylo::ecs::Parent>(aylo::ecs::kParentOptions));
     ASSERT_EQ(fixture.run(R"(
         local frame = 0
         local parent, first, second
@@ -270,7 +270,7 @@ TEST(ScriptCommands, SetParentAndRemoveParentLinkEntitiesAndDespawnCascades) {
         })
         engine.ecs.system("game.Count", {
             phase = "PostUpdate",
-            query = { read = { "rtype.Parent" } },
+            query = { read = { "aylo.Parent" } },
             run = function(ctx)
                 probe.linked = 0
                 for _ in ctx.query do
@@ -311,18 +311,18 @@ TEST(ScriptCommands, SetParentRefusesWhatIsNotAnEntity) {
 
 TEST(ScriptHierarchy, ScriptsReadChildrenAndParentThroughDeclaredTerms) {
     Fixture fixture;
-    rtype::ecs::World& world = fixture.app.getWorld();
-    static_cast<void>(world.getComponents().registerType<rtype::ecs::Parent>(rtype::ecs::kParentOptions));
-    static_cast<void>(world.getComponents().registerType<rtype::ecs::Children>());
-    const rtype::ecs::Entity parent = world.spawn();
-    const rtype::ecs::Entity first = world.spawn();
-    const rtype::ecs::Entity second = world.spawn();
+    aylo::ecs::World& world = fixture.app.getWorld();
+    static_cast<void>(world.getComponents().registerType<aylo::ecs::Parent>(aylo::ecs::kParentOptions));
+    static_cast<void>(world.getComponents().registerType<aylo::ecs::Children>());
+    const aylo::ecs::Entity parent = world.spawn();
+    const aylo::ecs::Entity first = world.spawn();
+    const aylo::ecs::Entity second = world.spawn();
     EXPECT_TRUE(world.setParent(first, parent));
     EXPECT_TRUE(world.setParent(second, parent));
     ASSERT_EQ(fixture.run(R"(
         engine.ecs.system("game.ReadChildren", {
             phase = "Update",
-            query = { read = { "rtype.Children" } },
+            query = { read = { "aylo.Children" } },
             run = function(ctx)
                 for entity, children in ctx.query do
                     probe.owner = entity
@@ -332,7 +332,7 @@ TEST(ScriptHierarchy, ScriptsReadChildrenAndParentThroughDeclaredTerms) {
         })
         engine.ecs.system("game.ReadParent", {
             phase = "Update",
-            query = { read = { "rtype.Parent" } },
+            query = { read = { "aylo.Parent" } },
             run = function(ctx)
                 probe.parents = {}
                 for entity, parent in ctx.query do
@@ -353,15 +353,15 @@ TEST(ScriptHierarchy, ScriptsReadChildrenAndParentThroughDeclaredTerms) {
 
 TEST(ScriptHierarchy, ChangingTheListGivenToAScriptChangesNothing) {
     Fixture fixture;
-    rtype::ecs::World& world = fixture.app.getWorld();
-    static_cast<void>(world.getComponents().registerType<rtype::ecs::Children>());
-    const rtype::ecs::Entity parent = world.spawn();
-    const rtype::ecs::Entity child = world.spawn();
+    aylo::ecs::World& world = fixture.app.getWorld();
+    static_cast<void>(world.getComponents().registerType<aylo::ecs::Children>());
+    const aylo::ecs::Entity parent = world.spawn();
+    const aylo::ecs::Entity child = world.spawn();
     EXPECT_TRUE(world.setParent(child, parent));
     ASSERT_EQ(fixture.run(R"(
         engine.ecs.system("game.Tamper", {
             phase = "Update",
-            query = { read = { "rtype.Children" } },
+            query = { read = { "aylo.Children" } },
             run = function(ctx)
                 for _, children in ctx.query do
                     local list = children.entities
@@ -372,18 +372,18 @@ TEST(ScriptHierarchy, ChangingTheListGivenToAScriptChangesNothing) {
     )"),
               "");
     fixture.app.runFrame();
-    EXPECT_EQ(world.getComponents().get<rtype::ecs::Children>(parent)->entities.size(), 1U);
+    EXPECT_EQ(world.getComponents().get<aylo::ecs::Children>(parent)->entities.size(), 1U);
 }
 
 TEST(ScriptHierarchy, RefusesASystemWritingTheHierarchy) {
     Fixture fixture;
     auto& components = fixture.app.getWorld().getComponents();
-    static_cast<void>(components.registerType<rtype::ecs::Parent>(rtype::ecs::kParentOptions));
-    static_cast<void>(components.registerType<rtype::ecs::Children>());
+    static_cast<void>(components.registerType<aylo::ecs::Parent>(aylo::ecs::kParentOptions));
+    static_cast<void>(components.registerType<aylo::ecs::Children>());
     const std::string parent = fixture.run(R"(
         engine.ecs.system("game.WriteParent", {
             phase = "Update",
-            query = { write = { "rtype.Parent" } },
+            query = { write = { "aylo.Parent" } },
             run = function(ctx) end,
         })
     )");
@@ -391,7 +391,7 @@ TEST(ScriptHierarchy, RefusesASystemWritingTheHierarchy) {
     const std::string children = fixture.run(R"(
         engine.ecs.system("game.WriteChildren", {
             phase = "Update",
-            query = { optionalWrite = { "rtype.Children" }, with = { "game.Marker" } },
+            query = { optionalWrite = { "aylo.Children" }, with = { "game.Marker" } },
             run = function(ctx) end,
         })
     )");
@@ -400,7 +400,7 @@ TEST(ScriptHierarchy, RefusesASystemWritingTheHierarchy) {
 
 TEST(ScriptLists, ReadsAListAsATableOfItsValues) {
     Fixture fixture;
-    rtype::ecs::World& world = fixture.app.getWorld();
+    aylo::ecs::World& world = fixture.app.getWorld();
     world.getComponents().add(world.spawn(), Inventory{.items = {4, 5, 6}});
     ASSERT_EQ(fixture.run(R"(
         engine.ecs.system("game.ReadItems", {
@@ -422,8 +422,8 @@ TEST(ScriptLists, ReadsAListAsATableOfItsValues) {
 
 TEST(ScriptLists, ReplacesAListFromATable) {
     Fixture fixture;
-    rtype::ecs::World& world = fixture.app.getWorld();
-    const rtype::ecs::Entity entity = world.spawn();
+    aylo::ecs::World& world = fixture.app.getWorld();
+    const aylo::ecs::Entity entity = world.spawn();
     world.getComponents().add(entity, Inventory{.items = {1, 2, 3}});
     ASSERT_EQ(fixture.run(R"(
         engine.ecs.system("game.WriteItems", {
@@ -443,8 +443,8 @@ TEST(ScriptLists, ReplacesAListFromATable) {
 
 TEST(ScriptLists, EmptiesAListFromAnEmptyTable) {
     Fixture fixture;
-    rtype::ecs::World& world = fixture.app.getWorld();
-    const rtype::ecs::Entity entity = world.spawn();
+    aylo::ecs::World& world = fixture.app.getWorld();
+    const aylo::ecs::Entity entity = world.spawn();
     world.getComponents().add(entity, Inventory{.items = {1}});
     ASSERT_EQ(fixture.run(R"(
         engine.ecs.system("game.ClearItems", {
@@ -464,8 +464,8 @@ TEST(ScriptLists, EmptiesAListFromAnEmptyTable) {
 
 TEST(ScriptLists, RefusesBadValuesAndLeavesTheListAlone) {
     Fixture fixture;
-    rtype::ecs::World& world = fixture.app.getWorld();
-    const rtype::ecs::Entity entity = world.spawn();
+    aylo::ecs::World& world = fixture.app.getWorld();
+    const aylo::ecs::Entity entity = world.spawn();
     world.getComponents().add(entity, Inventory{.items = {1, 2}});
     ASSERT_EQ(fixture.run(R"(
         engine.ecs.system("game.BadItems", {
@@ -491,8 +491,8 @@ TEST(ScriptLists, RefusesBadValuesAndLeavesTheListAlone) {
 
 TEST(ScriptLists, ReadsAndWritesATextOfAnyLength) {
     Fixture fixture;
-    rtype::ecs::World& world = fixture.app.getWorld();
-    const rtype::ecs::Entity entity = world.spawn();
+    aylo::ecs::World& world = fixture.app.getWorld();
+    const aylo::ecs::Entity entity = world.spawn();
     world.getComponents().add(entity, Sign{.text = "hello"});
     ASSERT_EQ(fixture.run(R"(
         engine.ecs.system("game.Rewrite", {
@@ -515,7 +515,7 @@ TEST(ScriptLists, ReadsAndWritesATextOfAnyLength) {
 
 TEST(ScriptCommands, AScriptSpawnsACxxComponentFromItsCxxDefaults) {
     Fixture fixture;
-    static_cast<void>(fixture.app.getWorld().getComponents().registerType<rtype::test::commands::Hull>());
+    static_cast<void>(fixture.app.getWorld().getComponents().registerType<aylo::test::commands::Hull>());
     ASSERT_EQ(fixture.run(R"(
         engine.ecs.system("game.Builder", {
             phase = "Update",
@@ -543,8 +543,8 @@ TEST(ScriptCommands, AScriptSpawnsACxxComponentFromItsCxxDefaults) {
 
 TEST(ScriptCommands, AClientSystemCannotAddAReplicatedCxxComponent) {
     Fixture fixture;
-    static_cast<void>(fixture.app.getWorld().getComponents().registerType<rtype::test::commands::Beacon>(
-        {.replication = rtype::ecs::ReplicationMode::kEveryChange}));
+    static_cast<void>(fixture.app.getWorld().getComponents().registerType<aylo::test::commands::Beacon>(
+        {.replication = aylo::ecs::ReplicationMode::kEveryChange}));
     ASSERT_EQ(fixture.run(R"(
         engine.ecs.system("game.Lighter", {
             phase = "Update",
@@ -567,7 +567,7 @@ TEST(ScriptCommands, AClientSystemCannotAddAReplicatedCxxComponent) {
 
 TEST(ScriptCommands, AScriptSpawnsACxxComponentThatOwnsMemory) {
     Fixture fixture;
-    static_cast<void>(fixture.app.getWorld().getComponents().registerType<rtype::test::commands::Cargo>());
+    static_cast<void>(fixture.app.getWorld().getComponents().registerType<aylo::test::commands::Cargo>());
     ASSERT_EQ(fixture.run(R"(
         engine.ecs.system("game.Loader", {
             phase = "Update",
@@ -600,7 +600,7 @@ TEST(ScriptCommands, AScriptSpawnsACxxComponentThatOwnsMemory) {
 
 TEST(ScriptCommands, ACxxComponentWithNoDefaultConstructorIsRefused) {
     Fixture fixture;
-    static_cast<void>(fixture.app.getWorld().getComponents().registerType<rtype::test::commands::Crate>());
+    static_cast<void>(fixture.app.getWorld().getComponents().registerType<aylo::test::commands::Crate>());
     ASSERT_EQ(fixture.run(R"(
         engine.ecs.system("game.Packer", {
             phase = "Update",
@@ -658,7 +658,7 @@ TEST(ScriptCommands, PatchWritesOnlyTheFieldsItNames) {
 
 TEST(ScriptCommands, PatchWritesTheFieldsOfACxxComponentThatOwnsMemory) {
     Fixture fixture;
-    static_cast<void>(fixture.app.getWorld().getComponents().registerType<rtype::test::commands::Cargo>());
+    static_cast<void>(fixture.app.getWorld().getComponents().registerType<aylo::test::commands::Cargo>());
     ASSERT_EQ(fixture.run(R"(
         local spawned = false
         engine.ecs.system("game.Loader", {
@@ -727,8 +727,8 @@ TEST(ScriptCommands, PatchRefusesAFieldTheComponentDoesNotHaveAndRecordsNothing)
 
 TEST(ScriptCommands, AClientSystemCannotPatchAReplicatedCxxComponent) {
     Fixture fixture;
-    static_cast<void>(fixture.app.getWorld().getComponents().registerType<rtype::test::commands::Beacon>(
-        {.replication = rtype::ecs::ReplicationMode::kEveryChange}));
+    static_cast<void>(fixture.app.getWorld().getComponents().registerType<aylo::test::commands::Beacon>(
+        {.replication = aylo::ecs::ReplicationMode::kEveryChange}));
     ASSERT_EQ(fixture.run(R"(
         engine.ecs.system("game.Tuner", {
             phase = "Update",
@@ -751,14 +751,14 @@ TEST(ScriptCommands, AClientSystemCannotPatchAReplicatedCxxComponent) {
 TEST(ScriptCommands, PatchRefusesTheHierarchy) {
     Fixture fixture;
     static_cast<void>(
-        fixture.app.getWorld().getComponents().registerType<rtype::ecs::Parent>(rtype::ecs::kParentOptions));
+        fixture.app.getWorld().getComponents().registerType<aylo::ecs::Parent>(aylo::ecs::kParentOptions));
     ASSERT_EQ(fixture.run(R"(
         engine.ecs.system("game.Reparent", {
             phase = "Update",
             query = { with = { "game.Marker" } },
             run = function(ctx)
                 local parent = ctx.commands:spawn()
-                ctx.commands:patch(ctx.commands:spawn(), "rtype.Parent", { entity = parent })
+                ctx.commands:patch(ctx.commands:spawn(), "aylo.Parent", { entity = parent })
             end,
         })
     )"),
@@ -768,5 +768,5 @@ TEST(ScriptCommands, PatchRefusesTheHierarchy) {
     fixture.app.runFrame();
     const std::string log = testing::internal::GetCapturedStderr();
 
-    EXPECT_NE(log.find("cannot patch 'rtype.Parent': use setParent and removeParent"), std::string::npos) << log;
+    EXPECT_NE(log.find("cannot patch 'aylo.Parent': use setParent and removeParent"), std::string::npos) << log;
 }

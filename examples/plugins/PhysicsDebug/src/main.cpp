@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** main
 */
@@ -27,6 +27,16 @@
 #include <utility>
 #include <vector>
 
+#include "aylo/contract/renderer/drawing/Color.hpp"
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/app/AppExit.hpp"
+#include "aylo/ecs/app/MinimalPlugins.hpp"
+#include "aylo/ecs/command/Commands.hpp"
+#include "aylo/ecs/resource/ResourceTraits.hpp"
+#include "aylo/ecs/schedule/Phase.hpp"
+#include "aylo/ecs/system/EventWriter.hpp"
+#include "aylo/ecs/system/ResourceParam.hpp"
+#include "aylo/ecs/time/Time.hpp"
 #include "core/config/Settings.hpp"
 #include "platform/glfw/Registration.hpp"
 #include "plugins/graphics/BackendRegistry.hpp"
@@ -43,21 +53,11 @@
 #include "plugins/transform/Transform.hpp"
 #include "plugins/transform/TransformPlugin.hpp"
 #include "render/vulkan/Registration.hpp"
-#include "rtype/contract/renderer/drawing/Color.hpp"
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/app/AppExit.hpp"
-#include "rtype/ecs/app/MinimalPlugins.hpp"
-#include "rtype/ecs/command/Commands.hpp"
-#include "rtype/ecs/resource/ResourceTraits.hpp"
-#include "rtype/ecs/schedule/Phase.hpp"
-#include "rtype/ecs/system/EventWriter.hpp"
-#include "rtype/ecs/system/ResourceParam.hpp"
-#include "rtype/ecs/time/Time.hpp"
 
-using namespace rtype;
-using namespace rtype::plugins::physics;
-using rtype::contract::renderer::Color;
-using rtype::plugins::transform::Transform;
+using namespace aylo;
+using namespace aylo::plugins::physics;
+using aylo::contract::renderer::Color;
+using aylo::plugins::transform::Transform;
 
 namespace {
 constexpr double kWidth = 800.0;
@@ -71,7 +71,7 @@ struct Lifetime {
     std::optional<float> seconds;
     float elapsed = 0.0F;
 };
-RTYPE_ECS_RESOURCE(Lifetime, "example.Lifetime");
+AYLO_ECS_RESOURCE(Lifetime, "example.Lifetime");
 
 // Startup: the scene, every entity with its debug drawing switched on. Distances are in world units, Y down.
 void spawnScene(ecs::Commands& commands) {
@@ -170,11 +170,11 @@ int main(int argc, char** argv) {
 
         ecs::App app;
         app.addPlugins(ecs::MinimalPlugins{})
-            .addPlugin(rtype::plugins::transform::TransformPlugin{})
-            .addPlugin(rtype::plugins::input::InputPlugin{})
+            .addPlugin(aylo::plugins::transform::TransformPlugin{})
+            .addPlugin(aylo::plugins::input::InputPlugin{})
             .addPlugin(plugins::graphics::GraphicsPlugin{std::move(registry), makeSettings(validate)})
             // 980 units/s^2 down is 9.8 m/s^2 at 100 units per meter.
-            .addPlugin(rtype::plugins::transform::TransformPlugin{})
+            .addPlugin(aylo::plugins::transform::TransformPlugin{})
             .addPlugin(PhysicsPlugin{PhysicsSettings{.gravity = {0.0F, 980.0F}, .unitsPerMeter = 100.0F}})
             .addPlugin(debug::PhysicsDebugPlugin{});
         app.insertResource(plugins::graphics::ClearColor{.value = {0.05F, 0.05F, 0.08F, 1.0F}});

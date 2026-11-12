@@ -1,7 +1,7 @@
 # User interface
 
 The UI is ECS-native: a node is an entity, its children are its ECS children, and [Yoga](https://www.yogalayout.dev/) lays
-them out with flexbox. It is drawn over everything else, in view pixels. List `"rtype.Ui"` in `engine.settings.plugins`;
+them out with flexbox. It is drawn over everything else, in view pixels. List `"aylo.Ui"` in `engine.settings.plugins`;
 `examples/plugins/ui` is a complete menu, in Luau only.
 
 Nothing has a fixed look. There is no `Button` entity to subclass: a button is any node with a `UiButton`, whatever else
@@ -90,9 +90,9 @@ engine.ecs.system("game.ReadMenu", {
     phase = "Update",
     side = "client",
     query = {},
-    events = { read = { "rtype.UiClicked", "rtype.UiValueChanged" } },
+    events = { read = { "aylo.UiClicked", "aylo.UiValueChanged" } },
     run = function(ctx)
-        for click in ctx.events.read("rtype.UiClicked") do
+        for click in ctx.events.read("aylo.UiClicked") do
             if click.action == "menu.play" then
                 -- ...
             end
@@ -127,7 +127,7 @@ The pointer, the keyboard and a gamepad all work on every widget.
 
 ## How it is drawn
 
-`rtype.ui.draw` pushes the frame's nodes to the `OverlayQueue` of the graphics plugin, and never touches the backend, so it
+`aylo.ui.draw` pushes the frame's nodes to the `OverlayQueue` of the graphics plugin, and never touches the backend, so it
 needs no order with the plugins that draw. The queue goes to `IRenderer::drawOverlay()`: unlike the other draws, its items
 are in view pixels, stay in the order given, sprites, shapes and texts mixed, and each has its clip. Vulkan records them
 after the frame, in runs of one kind and one clip, each a scissored draw, with its own view. Any other plugin can push to

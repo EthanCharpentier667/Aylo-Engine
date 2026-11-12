@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** LibraryTests
 */
@@ -13,24 +13,24 @@
 #include <utility>
 #include <vector>
 
-#include "rtype/luau/Function.hpp"
-#include "rtype/luau/Library.hpp"
-#include "rtype/luau/LibraryBuilder.hpp"
-#include "rtype/luau/Runtime.hpp"
-#include "rtype/luau/RuntimeConfig.hpp"
-#include "rtype/luau/Value.hpp"
-#include "rtype/luau/ValuePack.hpp"
+#include "aylo/luau/Function.hpp"
+#include "aylo/luau/Library.hpp"
+#include "aylo/luau/LibraryBuilder.hpp"
+#include "aylo/luau/Runtime.hpp"
+#include "aylo/luau/RuntimeConfig.hpp"
+#include "aylo/luau/Value.hpp"
+#include "aylo/luau/ValuePack.hpp"
 
 namespace {
-using Function = rtype::luau::Function;
-using Value = rtype::luau::Value;
-using ValuePack = rtype::luau::ValuePack;
+using Function = aylo::luau::Function;
+using Value = aylo::luau::Value;
+using ValuePack = aylo::luau::ValuePack;
 
 /// @brief Creates a runtime with the standard libraries, failing the test if it cannot be created.
-rtype::luau::Runtime makeRuntime() {
-    auto runtime = rtype::luau::Runtime::create({
-        .libs = rtype::luau::RuntimeConfig::Libs::kStandard,
-        .optimizationLevel = rtype::luau::RuntimeConfig::OptimizationLevel::kStandard,
+aylo::luau::Runtime makeRuntime() {
+    auto runtime = aylo::luau::Runtime::create({
+        .libs = aylo::luau::RuntimeConfig::Libs::kStandard,
+        .optimizationLevel = aylo::luau::RuntimeConfig::OptimizationLevel::kStandard,
     });
     EXPECT_TRUE(runtime);
     return std::move(*runtime);
@@ -46,7 +46,7 @@ void bindMultiplier(Function& function, const double factor) {
 }
 
 /// @brief Runs @p source, which must assign a number to the global `result`, and returns that number.
-double runForResult(const rtype::luau::Runtime& runtime, const std::string& source) {
+double runForResult(const aylo::luau::Runtime& runtime, const std::string& source) {
     const auto script = runtime.load("library-test", source);
     EXPECT_TRUE(script);
     EXPECT_TRUE(runtime.run(*script));
@@ -60,7 +60,7 @@ double runForResult(const rtype::luau::Runtime& runtime, const std::string& sour
 
 TEST(Library, KeepsItsName) {
     auto runtime = makeRuntime();
-    rtype::luau::LibraryBuilder builder{runtime};
+    aylo::luau::LibraryBuilder builder{runtime};
     builder.setName("mathx");
 
     const auto library = builder.build();
@@ -70,7 +70,7 @@ TEST(Library, KeepsItsName) {
 
 TEST(Library, StoresItsNameInTheTable) {
     auto runtime = makeRuntime();
-    rtype::luau::LibraryBuilder builder{runtime};
+    aylo::luau::LibraryBuilder builder{runtime};
     builder.setName("mathx");
 
     const auto library = builder.build();
@@ -84,7 +84,7 @@ TEST(Library, StoresItsNameInTheTable) {
 
 TEST(Library, RegistersFunctionsUnderTheirName) {
     auto runtime = makeRuntime();
-    rtype::luau::LibraryBuilder builder{runtime};
+    aylo::luau::LibraryBuilder builder{runtime};
     builder.setName("mathx");
     bindMultiplier(builder.function("double"), 2.0);
     bindMultiplier(builder.function("triple"), 3.0);
@@ -97,7 +97,7 @@ TEST(Library, RegistersFunctionsUnderTheirName) {
 
 TEST(Library, FunctionsOutliveTheBuilder) {
     auto runtime = makeRuntime();
-    auto builder = std::make_unique<rtype::luau::LibraryBuilder>(runtime);
+    auto builder = std::make_unique<aylo::luau::LibraryBuilder>(runtime);
     builder->setName("mathx");
     bindMultiplier(builder->function("double"), 2.0);
     const auto library = builder->build();
@@ -110,7 +110,7 @@ TEST(Library, FunctionsOutliveTheBuilder) {
 TEST(Library, FunctionReferencesStayValidWhileAddingMore) {
     constexpr std::size_t kFunctionCount = 200;
     auto runtime = makeRuntime();
-    rtype::luau::LibraryBuilder builder{runtime};
+    aylo::luau::LibraryBuilder builder{runtime};
     builder.setName("many");
 
     std::vector<Function*> functions;

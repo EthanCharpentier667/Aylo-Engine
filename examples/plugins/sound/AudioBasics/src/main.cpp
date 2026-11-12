@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** main
 */
@@ -31,6 +31,20 @@
 #include <utility>
 
 #include "audio/miniaudio/Registration.hpp"
+#include "aylo/contract/audiodevice/AudioTypes.hpp"
+#include "aylo/contract/audiodevice/IAudioDevice.hpp"
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/app/MinimalPlugins.hpp"
+#include "aylo/ecs/command/Commands.hpp"
+#include "aylo/ecs/component/ComponentTraits.hpp"
+#include "aylo/ecs/entity/Entity.hpp"
+#include "aylo/ecs/query/Query.hpp"
+#include "aylo/ecs/query/QueryTerms.hpp"
+#include "aylo/ecs/resource/ResourceTraits.hpp"
+#include "aylo/ecs/schedule/Phase.hpp"
+#include "aylo/ecs/schedule/RunMode.hpp"
+#include "aylo/ecs/system/EventWriter.hpp"
+#include "aylo/ecs/system/ResourceParam.hpp"
 #include "core/asset/AssetId.hpp"
 #include "core/config/Settings.hpp"
 #include "plugins/audio/AudioAssets.hpp"
@@ -43,26 +57,12 @@
 #include "plugins/audio/AudioVolumes.hpp"
 #include "plugins/transform/Transform.hpp"
 #include "plugins/transform/TransformPlugin.hpp"
-#include "rtype/contract/audiodevice/AudioTypes.hpp"
-#include "rtype/contract/audiodevice/IAudioDevice.hpp"
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/app/MinimalPlugins.hpp"
-#include "rtype/ecs/command/Commands.hpp"
-#include "rtype/ecs/component/ComponentTraits.hpp"
-#include "rtype/ecs/entity/Entity.hpp"
-#include "rtype/ecs/query/Query.hpp"
-#include "rtype/ecs/query/QueryTerms.hpp"
-#include "rtype/ecs/resource/ResourceTraits.hpp"
-#include "rtype/ecs/schedule/Phase.hpp"
-#include "rtype/ecs/schedule/RunMode.hpp"
-#include "rtype/ecs/system/EventWriter.hpp"
-#include "rtype/ecs/system/ResourceParam.hpp"
 
-using namespace rtype;
-using namespace rtype::contract::audiodevice;
-using namespace rtype::plugins::audio;
-using rtype::core::asset::AssetId;
-using rtype::plugins::transform::Transform;
+using namespace aylo;
+using namespace aylo::contract::audiodevice;
+using namespace aylo::plugins::audio;
+using aylo::core::asset::AssetId;
+using aylo::plugins::transform::Transform;
 
 namespace {
 /// @return The name of a bus, for the log.
@@ -162,17 +162,17 @@ struct GameSounds {
     AssetId misfire;  ///< A one-shot effect.
     AssetId laser;    ///< The ship's cannon, looped as an autofire.
 };
-RTYPE_ECS_RESOURCE(GameSounds, "example.GameSounds");
+AYLO_ECS_RESOURCE(GameSounds, "example.GameSounds");
 
 /// @brief The frame the script is at.
 struct Script {
     int frame{0};  ///< Counted from 1 by the script system.
 };
-RTYPE_ECS_RESOURCE(Script, "example.Script");
+AYLO_ECS_RESOURCE(Script, "example.Script");
 
 /// @brief Marks the player's ship.
 struct Ship {};
-RTYPE_ECS_COMPONENT(Ship, "example.Ship");
+AYLO_ECS_COMPONENT(Ship, "example.Ship");
 
 /// @brief Startup: asks for the sounds (they load in this frame's PostUpdate), places the listener in the middle of an
 /// 800-unit-wide screen, and spawns the ship on the left with its cannon firing.
@@ -247,7 +247,7 @@ void run(const std::string& backend) {
 
     ecs::App app{ecs::RunMode::kStandalone};
     app.addPlugins(ecs::MinimalPlugins{})
-        .addPlugin(rtype::plugins::transform::TransformPlugin{})
+        .addPlugin(aylo::plugins::transform::TransformPlugin{})
         .addPlugin(AudioPlugin{std::move(registry), std::move(settings)});
     app.getWorld().getResources().insert(GameSounds{});
     app.getWorld().getResources().insert(Script{});

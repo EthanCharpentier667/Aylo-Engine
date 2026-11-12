@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ComponentInfoTests
 */
@@ -12,25 +12,25 @@
 #include <string>
 #include <string_view>
 
-#include "rtype/ecs/component/ComponentInfo.hpp"
-#include "rtype/ecs/error/Error.hpp"
+#include "aylo/ecs/component/ComponentInfo.hpp"
+#include "aylo/ecs/error/Error.hpp"
 
 namespace {
 /// @return A valid description of a `{ std::int32_t value; std::int32_t max; }` component.
-rtype::ecs::ComponentInfo makeHealth() {
-    return rtype::ecs::ComponentInfo{
-        .type = {.name = "rtype.Health",
+aylo::ecs::ComponentInfo makeHealth() {
+    return aylo::ecs::ComponentInfo{
+        .type = {.name = "aylo.Health",
                  .size = 8,
                  .alignment = 4,
-                 .fields = {{.name = "value", .type = rtype::ecs::FieldType::kI32, .offset = 0},
-                            {.name = "max", .type = rtype::ecs::FieldType::kI32, .offset = 4}}}};
+                 .fields = {{.name = "value", .type = aylo::ecs::FieldType::kI32, .offset = 0},
+                            {.name = "max", .type = aylo::ecs::FieldType::kI32, .offset = 4}}}};
 }
 
 /// @brief Expects validate() to reject the description with a message containing every given word.
-void expectInvalid(const rtype::ecs::ComponentInfo& info, std::initializer_list<std::string_view> words) {
-    const rtype::ecs::Result<void> result = rtype::ecs::validate(info);
+void expectInvalid(const aylo::ecs::ComponentInfo& info, std::initializer_list<std::string_view> words) {
+    const aylo::ecs::Result<void> result = aylo::ecs::validate(info);
     ASSERT_FALSE(result) << "expected '" << info.type.name << "' to be rejected";
-    EXPECT_EQ(result.error().getKind(), rtype::ecs::ErrorKind::kInvalidType);
+    EXPECT_EQ(result.error().getKind(), aylo::ecs::ErrorKind::kInvalidType);
     const std::string message{result.error().getMessage()};
     for (const std::string_view word : words) {
         EXPECT_NE(message.find(word), std::string::npos) << "'" << word << "' missing from: " << message;
@@ -39,8 +39,8 @@ void expectInvalid(const rtype::ecs::ComponentInfo& info, std::initializer_list<
 }  // namespace
 
 TEST(FieldLayout, MatchesTheCppTypes) {
-    using rtype::ecs::FieldType;
-    using rtype::ecs::getFieldLayout;
+    using aylo::ecs::FieldType;
+    using aylo::ecs::getFieldLayout;
     EXPECT_EQ(getFieldLayout(FieldType::kBool).size, sizeof(bool));
     EXPECT_EQ(getFieldLayout(FieldType::kI8).size, 1U);
     EXPECT_EQ(getFieldLayout(FieldType::kU16).size, 2U);
@@ -57,191 +57,191 @@ TEST(FieldLayout, MatchesTheCppTypes) {
 }
 
 TEST(ComponentInfo, DefaultsAreNotReplicatedSparseSetOnBothSides) {
-    const rtype::ecs::ComponentInfo info{};
-    EXPECT_EQ(info.type.id, rtype::ecs::kInvalidComponentId);
-    EXPECT_EQ(info.storage, rtype::ecs::StorageKind::kSparseSet);
-    EXPECT_EQ(info.type.presence, rtype::ecs::Presence::kBoth);
-    EXPECT_EQ(info.type.replication, rtype::ecs::ReplicationMode::kNone);
+    const aylo::ecs::ComponentInfo info{};
+    EXPECT_EQ(info.type.id, aylo::ecs::kInvalidComponentId);
+    EXPECT_EQ(info.storage, aylo::ecs::StorageKind::kSparseSet);
+    EXPECT_EQ(info.type.presence, aylo::ecs::Presence::kBoth);
+    EXPECT_EQ(info.type.replication, aylo::ecs::ReplicationMode::kNone);
     EXPECT_EQ(info.type.hooks.construct, nullptr);
 }
 
-TEST(Validate, AcceptsAValidComponent) { EXPECT_TRUE(rtype::ecs::validate(makeHealth())); }
+TEST(Validate, AcceptsAValidComponent) { EXPECT_TRUE(aylo::ecs::validate(makeHealth())); }
 
 TEST(Validate, AcceptsATag) {
     EXPECT_TRUE(
-        rtype::ecs::validate(rtype::ecs::ComponentInfo{.type = {.name = "rtype.Dead", .size = 0, .alignment = 1}}));
+        aylo::ecs::validate(aylo::ecs::ComponentInfo{.type = {.name = "aylo.Dead", .size = 0, .alignment = 1}}));
 }
 
 TEST(Validate, AcceptsAReplicatedComponentAndAReplicatedTag) {
-    rtype::ecs::ComponentInfo health = makeHealth();
-    health.type.replication = rtype::ecs::ReplicationMode::kEveryChange;
-    EXPECT_TRUE(rtype::ecs::validate(health));
+    aylo::ecs::ComponentInfo health = makeHealth();
+    health.type.replication = aylo::ecs::ReplicationMode::kEveryChange;
+    EXPECT_TRUE(aylo::ecs::validate(health));
 
-    const rtype::ecs::ComponentInfo tag{
+    const aylo::ecs::ComponentInfo tag{
         .type = {
-            .name = "rtype.Player", .size = 0, .alignment = 1, .replication = rtype::ecs::ReplicationMode::kSpawnOnly}};
-    EXPECT_TRUE(rtype::ecs::validate(tag));
+            .name = "aylo.Player", .size = 0, .alignment = 1, .replication = aylo::ecs::ReplicationMode::kSpawnOnly}};
+    EXPECT_TRUE(aylo::ecs::validate(tag));
 }
 
 TEST(Validate, AcceptsAFixedArrayField) {
-    const rtype::ecs::ComponentInfo info{
+    const aylo::ecs::ComponentInfo info{
         .type = {.name = "game.Path",
                  .size = 32,
                  .alignment = 4,
-                 .fields = {{.name = "points", .type = rtype::ecs::FieldType::kVec2, .offset = 0, .count = 4}}}};
-    EXPECT_TRUE(rtype::ecs::validate(info));
+                 .fields = {{.name = "points", .type = aylo::ecs::FieldType::kVec2, .offset = 0, .count = 4}}}};
+    EXPECT_TRUE(aylo::ecs::validate(info));
 }
 
 TEST(Validate, RejectsAnEmptyName) {
-    rtype::ecs::ComponentInfo info = makeHealth();
+    aylo::ecs::ComponentInfo info = makeHealth();
     info.type.name.clear();
     expectInvalid(info, {"name"});
 }
 
 TEST(Validate, RejectsAnAlignmentThatIsNotAPowerOfTwo) {
-    rtype::ecs::ComponentInfo info = makeHealth();
+    aylo::ecs::ComponentInfo info = makeHealth();
     info.type.alignment = 0;
-    expectInvalid(info, {"rtype.Health", "alignment 0"});
+    expectInvalid(info, {"aylo.Health", "alignment 0"});
     info.type.alignment = 3;
-    expectInvalid(info, {"rtype.Health", "alignment 3"});
+    expectInvalid(info, {"aylo.Health", "alignment 3"});
 }
 
 TEST(Validate, RejectsASizeThatIsNotAMultipleOfTheAlignment) {
-    rtype::ecs::ComponentInfo info = makeHealth();
+    aylo::ecs::ComponentInfo info = makeHealth();
     info.type.size = 6;
-    expectInvalid(info, {"rtype.Health", "size 6"});
+    expectInvalid(info, {"aylo.Health", "size 6"});
 }
 
 TEST(Validate, RejectsATagWithFields) {
-    rtype::ecs::ComponentInfo info = makeHealth();
+    aylo::ecs::ComponentInfo info = makeHealth();
     info.type.size = 0;
-    expectInvalid(info, {"rtype.Health", "tag"});
+    expectInvalid(info, {"aylo.Health", "tag"});
 }
 
 TEST(Validate, RejectsAReplicatedClientOnlyComponent) {
-    rtype::ecs::ComponentInfo info = makeHealth();
-    info.type.presence = rtype::ecs::Presence::kClientOnly;
-    info.type.replication = rtype::ecs::ReplicationMode::kEveryChange;
-    expectInvalid(info, {"rtype.Health", "client-only"});
+    aylo::ecs::ComponentInfo info = makeHealth();
+    info.type.presence = aylo::ecs::Presence::kClientOnly;
+    info.type.replication = aylo::ecs::ReplicationMode::kEveryChange;
+    expectInvalid(info, {"aylo.Health", "client-only"});
 }
 
 TEST(Validate, RejectsAReplicatedComponentWithoutFields) {
-    rtype::ecs::ComponentInfo info = makeHealth();
+    aylo::ecs::ComponentInfo info = makeHealth();
     info.type.fields.clear();
-    info.type.replication = rtype::ecs::ReplicationMode::kEveryChange;
-    expectInvalid(info, {"rtype.Health", "fields"});
+    info.type.replication = aylo::ecs::ReplicationMode::kEveryChange;
+    expectInvalid(info, {"aylo.Health", "fields"});
 }
 
 TEST(Validate, RejectsAFieldWithoutName) {
-    rtype::ecs::ComponentInfo info = makeHealth();
+    aylo::ecs::ComponentInfo info = makeHealth();
     info.type.fields.at(1).name.clear();
-    expectInvalid(info, {"rtype.Health", "offset 4", "no name"});
+    expectInvalid(info, {"aylo.Health", "offset 4", "no name"});
 }
 
 TEST(Validate, RejectsADuplicateField) {
-    rtype::ecs::ComponentInfo info = makeHealth();
+    aylo::ecs::ComponentInfo info = makeHealth();
     info.type.fields.at(1).name = "value";
-    expectInvalid(info, {"rtype.Health", "'value'", "twice"});
+    expectInvalid(info, {"aylo.Health", "'value'", "twice"});
 }
 
 TEST(Validate, RejectsAnEmptyArrayField) {
-    rtype::ecs::ComponentInfo info = makeHealth();
+    aylo::ecs::ComponentInfo info = makeHealth();
     info.type.fields.at(1).count = 0;
-    expectInvalid(info, {"rtype.Health", "'max'", "count of 0"});
+    expectInvalid(info, {"aylo.Health", "'max'", "count of 0"});
 }
 
 TEST(Validate, RejectsAMisalignedField) {
-    rtype::ecs::ComponentInfo info = makeHealth();
+    aylo::ecs::ComponentInfo info = makeHealth();
     info.type.fields.at(1).offset = 2;
-    expectInvalid(info, {"rtype.Health", "'max'", "aligned"});
+    expectInvalid(info, {"aylo.Health", "'max'", "aligned"});
 }
 
 TEST(Validate, RejectsAFieldPastTheEnd) {
-    rtype::ecs::ComponentInfo info = makeHealth();
+    aylo::ecs::ComponentInfo info = makeHealth();
     info.type.fields.at(1).offset = 8;
-    expectInvalid(info, {"rtype.Health", "'max'", "ends at byte 12"});
+    expectInvalid(info, {"aylo.Health", "'max'", "ends at byte 12"});
 }
 
 TEST(Validate, RejectsAHugeArrayWithoutOverflowing) {
-    rtype::ecs::ComponentInfo info = makeHealth();
+    aylo::ecs::ComponentInfo info = makeHealth();
     info.type.fields.at(1).count = 0xFFFFFFFFU;
-    expectInvalid(info, {"rtype.Health", "'max'", "past the component size"});
+    expectInvalid(info, {"aylo.Health", "'max'", "past the component size"});
 }
 
 TEST(Validate, RejectsOverlappingFields) {
-    rtype::ecs::ComponentInfo info{
+    aylo::ecs::ComponentInfo info{
         .type = {.name = "game.Shield",
                  .size = 16,
                  .alignment = 4,
-                 .fields = {{.name = "strength", .type = rtype::ecs::FieldType::kF32, .offset = 4},
-                            {.name = "direction", .type = rtype::ecs::FieldType::kVec2, .offset = 0}}}};
+                 .fields = {{.name = "strength", .type = aylo::ecs::FieldType::kF32, .offset = 4},
+                            {.name = "direction", .type = aylo::ecs::FieldType::kVec2, .offset = 0}}}};
     expectInvalid(info, {"game.Shield", "'direction'", "'strength'", "overlap"});
 }
 
 TEST(LayoutHash, IsStable) {
-    EXPECT_EQ(rtype::ecs::computeLayoutHash(makeHealth().type), rtype::ecs::computeLayoutHash(makeHealth().type));
+    EXPECT_EQ(aylo::ecs::computeLayoutHash(makeHealth().type), aylo::ecs::computeLayoutHash(makeHealth().type));
 }
 
 TEST(Validate, RejectsANonCopyableComponent) {
-    rtype::ecs::ComponentInfo info = makeHealth();
+    aylo::ecs::ComponentInfo info = makeHealth();
     info.type.copyable = false;
-    expectInvalid(info, {"rtype.Health", "copyable"});
+    expectInvalid(info, {"aylo.Health", "copyable"});
 }
 
 TEST(LayoutHash, ChangesWithTheLayout) {
-    const std::uint64_t original = rtype::ecs::computeLayoutHash(makeHealth().type);
+    const std::uint64_t original = aylo::ecs::computeLayoutHash(makeHealth().type);
 
-    rtype::ecs::ComponentInfo renamed = makeHealth();
-    renamed.type.name = "rtype.Shield";
-    EXPECT_NE(rtype::ecs::computeLayoutHash(renamed.type), original);
+    aylo::ecs::ComponentInfo renamed = makeHealth();
+    renamed.type.name = "aylo.Shield";
+    EXPECT_NE(aylo::ecs::computeLayoutHash(renamed.type), original);
 
-    rtype::ecs::ComponentInfo bigger = makeHealth();
+    aylo::ecs::ComponentInfo bigger = makeHealth();
     bigger.type.size = 16;
-    EXPECT_NE(rtype::ecs::computeLayoutHash(bigger.type), original);
+    EXPECT_NE(aylo::ecs::computeLayoutHash(bigger.type), original);
 
-    rtype::ecs::ComponentInfo aligned = makeHealth();
+    aylo::ecs::ComponentInfo aligned = makeHealth();
     aligned.type.alignment = 8;
-    EXPECT_NE(rtype::ecs::computeLayoutHash(aligned.type), original);
+    EXPECT_NE(aylo::ecs::computeLayoutHash(aligned.type), original);
 
-    rtype::ecs::ComponentInfo fieldRenamed = makeHealth();
+    aylo::ecs::ComponentInfo fieldRenamed = makeHealth();
     fieldRenamed.type.fields.at(1).name = "maximum";
-    EXPECT_NE(rtype::ecs::computeLayoutHash(fieldRenamed.type), original);
+    EXPECT_NE(aylo::ecs::computeLayoutHash(fieldRenamed.type), original);
 
-    rtype::ecs::ComponentInfo retyped = makeHealth();
-    retyped.type.fields.at(1).type = rtype::ecs::FieldType::kU32;
-    EXPECT_NE(rtype::ecs::computeLayoutHash(retyped.type), original);
+    aylo::ecs::ComponentInfo retyped = makeHealth();
+    retyped.type.fields.at(1).type = aylo::ecs::FieldType::kU32;
+    EXPECT_NE(aylo::ecs::computeLayoutHash(retyped.type), original);
 
-    rtype::ecs::ComponentInfo moved = makeHealth();
+    aylo::ecs::ComponentInfo moved = makeHealth();
     moved.type.fields.at(1).offset = 0;
-    EXPECT_NE(rtype::ecs::computeLayoutHash(moved.type), original);
+    EXPECT_NE(aylo::ecs::computeLayoutHash(moved.type), original);
 
-    rtype::ecs::ComponentInfo array = makeHealth();
+    aylo::ecs::ComponentInfo array = makeHealth();
     array.type.fields.at(1).count = 2;
-    EXPECT_NE(rtype::ecs::computeLayoutHash(array.type), original);
+    EXPECT_NE(aylo::ecs::computeLayoutHash(array.type), original);
 
-    rtype::ecs::ComponentInfo destroyed = makeHealth();
+    aylo::ecs::ComponentInfo destroyed = makeHealth();
     destroyed.type.hooks.destruct = [](void* /*target*/) noexcept {};
-    EXPECT_NE(rtype::ecs::computeLayoutHash(destroyed.type), original);
+    EXPECT_NE(aylo::ecs::computeLayoutHash(destroyed.type), original);
 
-    rtype::ecs::ComponentInfo moveOnly = makeHealth();
+    aylo::ecs::ComponentInfo moveOnly = makeHealth();
     moveOnly.type.copyable = false;
-    EXPECT_NE(rtype::ecs::computeLayoutHash(moveOnly.type), original);
+    EXPECT_NE(aylo::ecs::computeLayoutHash(moveOnly.type), original);
 }
 
 TEST(LayoutHash, IgnoresTheOptions) {
-    rtype::ecs::ComponentInfo info = makeHealth();
-    info.storage = rtype::ecs::StorageKind::kTable;
-    info.type.presence = rtype::ecs::Presence::kServerOnly;
-    info.type.replication = rtype::ecs::ReplicationMode::kEveryChange;
-    EXPECT_EQ(rtype::ecs::computeLayoutHash(info.type), rtype::ecs::computeLayoutHash(makeHealth().type));
+    aylo::ecs::ComponentInfo info = makeHealth();
+    info.storage = aylo::ecs::StorageKind::kTable;
+    info.type.presence = aylo::ecs::Presence::kServerOnly;
+    info.type.replication = aylo::ecs::ReplicationMode::kEveryChange;
+    EXPECT_EQ(aylo::ecs::computeLayoutHash(info.type), aylo::ecs::computeLayoutHash(makeHealth().type));
 }
 
 TEST(LayoutHash, DependsOnWhichHooksExistNotOnTheirAddress) {
-    rtype::ecs::ComponentInfo first = makeHealth();
-    rtype::ecs::ComponentInfo second = makeHealth();
+    aylo::ecs::ComponentInfo first = makeHealth();
+    aylo::ecs::ComponentInfo second = makeHealth();
     first.type.hooks.destruct = [](void* /*target*/) noexcept {};
     second.type.hooks.destruct = [](void* target) noexcept { static_cast<void>(target); };  // another function
-    EXPECT_EQ(rtype::ecs::computeLayoutHash(first.type), rtype::ecs::computeLayoutHash(second.type));
+    EXPECT_EQ(aylo::ecs::computeLayoutHash(first.type), aylo::ecs::computeLayoutHash(second.type));
     second.type.hooks.copy = [](void* /*destination*/, const void* /*source*/) {};
-    EXPECT_NE(rtype::ecs::computeLayoutHash(first.type), rtype::ecs::computeLayoutHash(second.type));
+    EXPECT_NE(aylo::ecs::computeLayoutHash(first.type), aylo::ecs::computeLayoutHash(second.type));
 }

@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** WorldAdminTests
 */
@@ -14,23 +14,23 @@
 #include <variant>
 
 #include "ServerFixtures.hpp"
-#include "rtype/ecs/command/Commands.hpp"
-#include "rtype/ecs/component/Components.hpp"
-#include "rtype/ecs/entity/Entity.hpp"
-#include "rtype/ecs/entity/Name.hpp"
-#include "rtype/ecs/schedule/RunMode.hpp"
-#include "rtype/ecs/schedule/Schedules.hpp"
-#include "rtype/ecs/world/World.hpp"
-#include "rtype/network/admin/AdminProtocol.hpp"
-#include "rtype/network/admin/WorldProtocol.hpp"
-#include "rtype/replication/admin/WorldAdmin.hpp"
+#include "aylo/ecs/command/Commands.hpp"
+#include "aylo/ecs/component/Components.hpp"
+#include "aylo/ecs/entity/Entity.hpp"
+#include "aylo/ecs/entity/Name.hpp"
+#include "aylo/ecs/schedule/RunMode.hpp"
+#include "aylo/ecs/schedule/Schedules.hpp"
+#include "aylo/ecs/world/World.hpp"
+#include "aylo/network/admin/AdminProtocol.hpp"
+#include "aylo/network/admin/WorldProtocol.hpp"
+#include "aylo/replication/admin/WorldAdmin.hpp"
 
 namespace {
-namespace net = rtype::network::admin;
-namespace ecs = rtype::ecs;
-using rtype::test::server::Cargo;
-using rtype::test::server::Follow;
-using rtype::test::server::Position;
+namespace net = aylo::network::admin;
+namespace ecs = aylo::ecs;
+using aylo::test::server::Cargo;
+using aylo::test::server::Follow;
+using aylo::test::server::Position;
 
 /// What a request got: a world reply, or an error code.
 struct Answer {
@@ -42,7 +42,7 @@ struct Fixture {
     ecs::World world;
     ecs::Schedules schedules{world, ecs::RunMode::kServer};
     ecs::Commands commands{world};
-    rtype::replication::admin::WorldAdmin admin{world, &schedules};
+    aylo::replication::admin::WorldAdmin admin{world, &schedules};
 
     Fixture() { admin.bind(&commands); }
 
@@ -190,7 +190,7 @@ TEST(WorldAdmin, SetsAStringField) {
     Fixture fixture;
     const ecs::Entity ship = fixture.spawnShip("Ship");
     static_cast<void>(fixture.ask(net::SetFieldRequest{
-        .entity = ship.getBits(), .component = "rtype.Name", .field = "value", .value = "Flagship"}));
+        .entity = ship.getBits(), .component = "aylo.Name", .field = "value", .value = "Flagship"}));
     EXPECT_EQ(std::string{fixture.world.getComponents().get<ecs::Name>(ship)->value.view()}, "Flagship");
 }
 
@@ -261,7 +261,7 @@ TEST(WorldAdmin, PausesResumesAndStepsTheSchedules) {
 
 TEST(WorldAdmin, RefusesChangesWithoutCommandsAndPauseWithoutSchedules) {
     ecs::World world;
-    rtype::replication::admin::WorldAdmin admin{world};  // no schedules, nothing bound
+    aylo::replication::admin::WorldAdmin admin{world};  // no schedules, nothing bound
     const auto error = [&](const net::WorldRequest& request) {
         const auto reply = admin.handle(net::encodeWorldRequest(request));
         return reply && std::holds_alternative<net::ErrorReply>(*reply) ? std::get<net::ErrorReply>(*reply).code

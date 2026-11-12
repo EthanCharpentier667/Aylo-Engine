@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** EditorSettingsTests
 */
@@ -9,16 +9,16 @@
 
 #include <string>
 
+#include "aylo/core/config/exceptions/ConfigExceptions.hpp"
 #include "core/config/Settings.hpp"
 #include "editor/EditorSettings.hpp"
-#include "rtype/core/config/exceptions/ConfigExceptions.hpp"
 
 namespace {
-using rtype::core::config::Settings;
+using aylo::core::config::Settings;
 }  // namespace
 
 TEST(EditorSettings, DefaultsToNoSceneAndTheDefaultTextEditor) {
-    const rtype::editor::EditorOptions options = rtype::editor::readEditorOptions(Settings{});
+    const aylo::editor::EditorOptions options = aylo::editor::readEditorOptions(Settings{});
 
     EXPECT_TRUE(options.scene.empty());
     EXPECT_TRUE(options.textEditor.empty());
@@ -29,7 +29,7 @@ TEST(EditorSettings, ReadsTheSceneAndTheTextEditor) {
     settings.set("editor.scene", std::string{"scenes/level.scene"});
     settings.set("editor.textEditor", std::string{"subl"});
 
-    const rtype::editor::EditorOptions options = rtype::editor::readEditorOptions(settings);
+    const aylo::editor::EditorOptions options = aylo::editor::readEditorOptions(settings);
 
     EXPECT_EQ(options.scene, "scenes/level.scene");
     EXPECT_EQ(options.textEditor, "subl");
@@ -37,15 +37,15 @@ TEST(EditorSettings, ReadsTheSceneAndTheTextEditor) {
 
 TEST(EditorSettings, ReadsTheGameWindowTitle) {
     Settings settings;
-    settings.set("window.title", std::string{"R-Type Duel"});
+    settings.set("window.title", std::string{"AYLO Duel"});
 
-    EXPECT_EQ(rtype::editor::readEditorOptions(settings).gameTitle, "R-Type Duel");
-    EXPECT_TRUE(rtype::editor::readEditorOptions(Settings{}).gameTitle.empty());
+    EXPECT_EQ(aylo::editor::readEditorOptions(settings).gameTitle, "AYLO Duel");
+    EXPECT_TRUE(aylo::editor::readEditorOptions(Settings{}).gameTitle.empty());
 }
 
 TEST(EditorSettings, RefusesAnUnknownKey) {
     Settings settings;
     settings.set("editor.sceen", std::string{"level"});
 
-    EXPECT_ANY_THROW(static_cast<void>(rtype::editor::readEditorOptions(settings)));
+    EXPECT_ANY_THROW(static_cast<void>(aylo::editor::readEditorOptions(settings)));
 }

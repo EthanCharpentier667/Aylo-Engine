@@ -43,7 +43,7 @@ clients draw it and send their inputs. The same scripts load on both sides, and 
 ## Where to start
 
 1. [Getting started](getting-started.md) runs an example game.
-2. [The R-Type Duel walkthrough](duel-walkthrough.md) reads a complete two-player game, file by file.
+2. [The AYLO Duel walkthrough](duel-walkthrough.md) reads a complete two-player game, file by file.
 3. The reference pages answer "what can I write here".
 4. [Shipping your game](shipping.md) explains how to download the engine and what to hand to your players.
 5. [Accessibility](accessibility.md) shows how to make your game playable by everyone.

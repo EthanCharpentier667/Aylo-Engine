@@ -1,0 +1,115 @@
+/*
+** EPITECH PROJECT, 2026
+** aylo
+** File description:
+** SettingsLoader
+*/
+
+#pragma once
+
+#include <filesystem>
+#include <string>
+#include <string_view>
+
+#include "aylo/core/config/Settings.hpp"
+#include "aylo/ecs/schedule/RunMode.hpp"
+#include "aylo/engine/CommandLine.hpp"
+#include "aylo/engine/Export.hpp"
+#include "aylo/luau/Function.hpp"
+#include "aylo/luau/Runtime.hpp"
+#include "aylo/luau/Table.hpp"
+
+namespace aylo::engine::scripting {
+/// @brief Reads the project settings from a Luau script (`examples/games/aylo_duel/game/project.luau`) into a
+/// core::config::Settings.
+///
+/// @details The script runs in a sandboxed runtime and sees the pure standard libraries (`table`, `string`, `math`...,
+/// but no `os` or `debug`) plus one engine global, `engine`:
+/// - `engine.<flag>`: the booleans given to setFlag() (`engine.isClient`, `engine.isDebug`...);
+/// - `engine.args`: the command line given to setArgs() (`--port 4242` gives `engine.args.port == 4242`), empty until
+///   then, so `engine.args.port or 4242` reads a flag with a default;
+/// - `engine.settings`: the table the script fills, which build() flattens into dotted keys.
+/// @code{.lua}
+/// if engine.isClient then
+///     engine.settings.renderer = "vulkan"
+///     engine.settings.window.title = "AYLO"
+///     engine.settings.window.size = { 800, 600 }
+/// end
+/// @endcode
+/// gives `renderer`, `window.title` and `window.size`. A setting is a boolean, a number, a string, or an array of
+/// numbers or of strings; tables nest. Groups need no declaration: reading a missing key of `engine.settings` (or of a
+/// group) creates an empty group, so `engine.settings.a.b.c = 1` works at any depth. A consequence is that reading an
+/// unset setting gives an empty table, not `nil`; empty groups store nothing.
+class AYLO_ENGINE_API SettingsLoader {
+  public:
+    /// @brief Creates the sandboxed runtime and exposes the empty `engine`, `engine.settings` and `engine.args` tables.
+    /// @throws luau::exceptions::RuntimeError If the runtime cannot be created.
+    SettingsLoader();
+    ~SettingsLoader() = default;
+    SettingsLoader(const SettingsLoader&) = delete;
+    SettingsLoader& operator=(const SettingsLoader&) = delete;
+    SettingsLoader(SettingsLoader&&) = delete;
+    SettingsLoader& operator=(SettingsLoader&&) = delete;
+
+    /// @brief Flattens `engine.settings` into a Settings.
+    ///
+    /// Can be called at any time, and again after more scripts are loaded: it reflects the table as it is.
+    /// @return The settings the scripts have set; empty groups store nothing.
+    /// @throws exceptions::RuntimeError If a value has an unsupported type: a function, a non-string key, an array
+    /// mixed with named keys or with holes, or an array of mixed or other element types.
+    [[nodiscard]] core::config::Settings build();
+
+    /// @brief Exposes a boolean to scripts as `engine.<name>`, replacing the previous value.
+    /// @param name The name of the flag.
+    /// @param enabled Its value.
+    /// @throws luau::exceptions::RuntimeError If the flag cannot be set.
+    void setFlag(std::string_view name, bool enabled);
+
+    /// @brief Exposes a command line to scripts as `engine.args`, replacing the previous one.
+    ///
+    /// Each flag is a field named after it, holding its value as CommandLine::toValue() reads it: a boolean, a number
+    /// or a string.
+    /// @param commandLine The flags.
+    /// @throws luau::exceptions::RuntimeError If the table cannot be created or set.
+    void setArgs(const CommandLine& commandLine);
+
+    /// @brief Loads and runs a script, which fills `engine.settings`.
+    /// @param path The Luau file to run.
+    /// @throws luau::exceptions::RuntimeError If the file cannot be read or compiled, or if the script fails.
+    void load(const std::filesystem::path& path);
+
+    /// @brief As load(), for a script given as its text: `project.luau` read from an exported game's pack.
+    /// @param name How messages name the script.
+    /// @param source Its source.
+    /// @throws luau::exceptions::RuntimeError If it cannot be compiled, or if it fails.
+    void load(std::string name, const std::string& source);
+
+  private:
+    luau::Runtime _runtime;      ///< The sandboxed runtime the scripts run in.
+    luau::Table _engineTable;    ///< The `engine` global.
+    luau::Table _settingsTable;  ///< `engine.settings`, flattened by build().
+    luau::Table
+        _groupMetatable;  ///< The metatable of `engine.settings` and of every group: its `__index` is _createGroup.
+    luau::Function _createGroup;  ///< The native `__index` of _groupMetatable, which creates the missing groups.
+};
+
+/// @brief Reads a game's settings as the Engine does for one side: `engine.isClient` and `engine.isServer` from
+/// @p mode, `engine.isDebug`, and `engine.args` from @p commandLine.
+/// @param projectFile The game's `project.luau`.
+/// @param mode The side the settings are read for.
+/// @param commandLine The flags, as `engine.args`.
+/// @param isDebug `engine.isDebug`.
+/// @return The settings the file gives.
+/// @throws luau::exceptions::RuntimeError If the file cannot be read or compiled, or if the script fails.
+/// @throws exceptions::RuntimeError If a setting has an unsupported type (build()).
+[[nodiscard]] AYLO_ENGINE_API core::config::Settings loadProjectSettings(const std::filesystem::path& projectFile,
+                                                                         ecs::RunMode mode,
+                                                                         const CommandLine& commandLine, bool isDebug);
+
+/// @brief As the other loadProjectSettings(), for a project given as its text (read from a pack).
+/// @param name How messages name it.
+/// @param source The text of `project.luau`.
+[[nodiscard]] AYLO_ENGINE_API core::config::Settings loadProjectSettings(std::string name, const std::string& source,
+                                                                         ecs::RunMode mode,
+                                                                         const CommandLine& commandLine, bool isDebug);
+}  // namespace aylo::engine::scripting

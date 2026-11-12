@@ -6,8 +6,8 @@ contract of `IRenderer`. Each effect chooses where it runs, CPU or GPU, and an e
 the CPU when the renderer cannot simulate it, so every backend can show every effect.
 
 > Status: **design agreed, nothing implemented yet.** Snippets omit the Epitech header and most `[[nodiscard]]`/
-> `noexcept` for brevity. Names are relative to `rtype::plugins::particle` unless qualified; `graphics::` is
-> `rtype::contract::renderer`. Decisions and what is still open are in [Open questions](#14-open-questions).
+> `noexcept` for brevity. Names are relative to `aylo::plugins::particle` unless qualified; `graphics::` is
+> `aylo::contract::renderer`. Decisions and what is still open are in [Open questions](#14-open-questions).
 
 ## Contents
 
@@ -71,7 +71,7 @@ The renderer never includes the ECS, so something must turn entities, transforms
 `IRenderer`: that is the plugin, as `TextPlugin` is for `IRenderer::draw(Text)`.
 
 ```
-src/rtype/contract/renderer/   namespace rtype::contract::renderer   (target contract-renderer)
+src/aylo/contract/renderer/   namespace aylo::contract::renderer   (target contract-renderer)
 ├── Particle.hpp                      ParticleSystemId, ParticleSimulation, ParticleInstance, ParticleEmission,
 │                                     ParticleDraw
 ├── ParticleSystemDesc.hpp            the simulation half of an effect: shape, spawn, initial values, forces, curves
@@ -79,7 +79,7 @@ src/rtype/contract/renderer/   namespace rtype::contract::renderer   (target con
 ├── ParticleRandom.hpp                the hashed random numbers, shared by CPU and GPU
 └── IRenderer.hpp                     + the particle calls (create, destroy, simulate, draw)
 
-src/rtype/plugins/particle/           namespace rtype::plugins::particle               (target plugins)
+src/aylo/plugins/particle/           namespace aylo::plugins::particle               (target plugins)
 ├── ParticlePlugin.hpp/.cpp           the plugin: registers, inserts the resources, adds the systems
 ├── ParticleEffect.hpp                an effect: a ParticleSystemDesc plus how its particles look
 ├── ParticleEffectAssets.hpp/.cpp     the effects by AssetId (resource), with the file loaders by extension
@@ -92,13 +92,13 @@ src/rtype/plugins/particle/           namespace rtype::plugins::particle        
 ├── CpuSimulation.hpp/.cpp            the CPU simulation of a ParticleSystemDesc
 └── exceptions/ParticleExceptions.hpp ParticleLoadException
 
-src/rtype/render/vulkan/rendering/    namespace rtype::render::vulkan::rendering       (target render-vulkan)
+src/aylo/render/vulkan/rendering/    namespace aylo::render::vulkan::rendering       (target render-vulkan)
 ├── ParticlePass.hpp/.cpp             draws the particles of both paths (particle.vert, sprite.frag reused)
 ├── ParticleConstants.hpp/.cpp        what every particle of a draw shares, as push constants
 ├── ParticleVertexInput.hpp/.cpp      ParticleInstance as per-instance vertex input
 └── DrawList.hpp/.cpp                 the order of the sprite batches and the particle draws of a frame
 
-src/rtype/render/vulkan/particle/     namespace rtype::render::vulkan::particle        (target render-vulkan)
+src/aylo/render/vulkan/particle/     namespace aylo::render::vulkan::particle        (target render-vulkan)
 ├── GpuParticleSystem.hpp/.cpp        one GPU system: its buffers and lookup tables
 ├── ParticleSimulationPass.hpp/.cpp   records emit, simulate (and later sort) for every system of the frame
 └── shaders: particle_emit.comp, particle_simulate.comp
@@ -107,7 +107,7 @@ src/rtype/render/vulkan/particle/     namespace rtype::render::vulkan::particle 
 - **The contract types go in `contract/renderer/`,** next to `Sprite` and `Text`, never in `render/vulkan/`:
   gameplay must not depend on Vulkan, and another backend must be able to implement them.
 - **`ParticlePlugin` is added by the game,** as the sprite, tilemap and text plugins are, and requires `GraphicsPlugin` and `ShaderPlugin`. Its client Render
-  system is ordered after `rtype.graphics.camera` and before `rtype.graphics.sprites`.
+  system is ordered after `aylo.graphics.camera` and before `aylo.graphics.sprites`.
 - **Dependencies do not change:** `plugins` still knows nothing of Vulkan or Luau, `render-vulkan` still knows nothing
   of the ECS.
 
@@ -237,7 +237,7 @@ struct ParticleInstance {
   number of particles at the same frames.
 - **`draw(ParticleDraw)` goes through the `SpriteQueue`,** whose `Item` becomes `std::variant<Sprite, Text,
   ParticleDraw>`. The graphics plugin sorts it by layer with the sprites, so particles are drawn between the right
-  sprites. For CPU instances, the span must stay valid until `rtype.graphics.sprites` has drawn the queue, in the same
+  sprites. For CPU instances, the span must stay valid until `aylo.graphics.sprites` has drawn the queue, in the same
   frame: it points into the emitter's pool, which nothing changes between the plugin's Render system and that one. The
   renderer copies the instances in `draw()`, as it copies sprites.
 
@@ -261,7 +261,7 @@ enum class ParticleSimulation : std::uint8_t {
 ## 7. The plugin: resources, components, events, systems
 
 ```cpp
-/// @brief Plays an effect at its entity's GlobalTransform, as the component "rtype.ParticleEmitter".
+/// @brief Plays an effect at its entity's GlobalTransform, as the component "aylo.ParticleEmitter".
 struct ParticleEmitter {
     core::asset::AssetId effect;      ///< From ParticleEffectAssets::load() or add().
     bool playing{true};               ///< false stops emitting; living particles finish their life.
@@ -272,7 +272,7 @@ struct ParticleEmitter {
     std::uint32_t seed{0};            ///< 0: picked when it starts.
 };
 
-/// @brief Despawns its entity once its emitter has finished, as the component "rtype.ParticleOneShot".
+/// @brief Despawns its entity once its emitter has finished, as the component "aylo.ParticleOneShot".
 struct ParticleOneShot {};
 ```
 
@@ -281,10 +281,10 @@ struct ParticleOneShot {};
 - **`ParticleOneShot`** is for fire-and-forget effects: its entity is despawned once `ParticlesFinished` is sent for
   it, or at once if its effect cannot be read. Its effect must not loop, or the entity stays.
 
-- **`ParticleEffectAssets`** (resource `rtype.ParticleEffectAssets`) keeps the effects by `AssetId`: `add(name,
+- **`ParticleEffectAssets`** (resource `aylo.ParticleEffectAssets`) keeps the effects by `AssetId`: `add(name,
   effect)` for an effect built in C++, `load(path)` for a file, read by the loader registered for its extension
   ([Luau](#12-luau)).
-- **`ParticleSystems`** (resource `rtype.ParticleSystems`) keeps each emitter's live state, by entity: its clock and
+- **`ParticleSystems`** (resource `aylo.ParticleSystems`) keeps each emitter's live state, by entity: its clock and
   spawn accumulator, the particles it emitted so far (the next `firstParticle`), and either its CPU pool or its
   `ParticleSystemId` with the frame's `ParticleEmission`. It also picks the seeds of the emitters whose seed is 0, and
   reports once per effect that one asking for the GPU runs on the CPU. It is a resource rather than a component
@@ -296,12 +296,12 @@ struct ParticleOneShot {};
   emitter has emitted everything and its last particle died (always known on the CPU; on the GPU, when its duration
   plus the longest lifetime has passed, without reading anything back).
 - **Systems,** all client-side (`ecs::Side::kClient`):
-    - `PostUpdate` `rtype.Particle.Spawn`: spawn the entities of the `SpawnParticles` events.
-    - `PostUpdate` `rtype.Particle.Update`, after the transform plugin: start and sweep emitters (an emitter whose
+    - `PostUpdate` `aylo.Particle.Spawn`: spawn the entities of the `SpawnParticles` events.
+    - `PostUpdate` `aylo.Particle.Update`, after the transform plugin: start and sweep emitters (an emitter whose
       effect changed, or whose effect was replaced, `ParticleEffectAssets::replace()` bumping its version, restarts), advance their clocks, compute each one's spawn count (`computeSpawnCount()`), run the
       CPU simulation of the CPU emitters, and send `ParticlesFinished`.
-    - `Render` `rtype.Particle.Draw`, after `rtype.graphics.camera` and `rtype.Text.Draw`, before
-      `rtype.graphics.sprites`: call `simulate()` for each GPU emitter, and push a `ParticleDraw` per emitter whose
+    - `Render` `aylo.Particle.Draw`, after `aylo.graphics.camera` and `aylo.Text.Draw`, before
+      `aylo.graphics.sprites`: call `simulate()` for each GPU emitter, and push a `ParticleDraw` per emitter whose
       texture is loaded to the `SpriteQueue`. Skipping the emitters outside the `VisibleArea` comes later.
 
 ## 8. The CPU simulation
@@ -441,11 +441,11 @@ over five engine calls (`plugins/particle/ParticleCalls.hpp`), all on the client
 
 | Call | Arguments | What it does |
 |---|---|---|
-| `rtype.particle.beginEffect` | `name` and every scalar of the effect, flat: `lifetimeMin`/`lifetimeMax`..., `shape` (`"point"`, `"circle"`, `"rect"`) with `radius`, `edgeOnly`, `rectSize`, enums as names (`blend`, `alignment`, `space`, `simulation`) | starts a draft, replacing one of the same name |
-| `rtype.particle.addBurst` | `name`, `time`, `count`, `cycles`, `interval` | appends a burst to the draft |
-| `rtype.particle.addColorKey` | `name`, `t`, `color` | appends a key to its `colorOverLife` |
-| `rtype.particle.addCurveKey` | `name`, `curve` (`"size"` or `"speed"`), `t`, `value` | appends a key to its `sizeOverLife` or `speedOverLife` |
-| `rtype.particle.addEffect` | `name` | validates the draft and moves it to `ParticleEffectAssets::add()`; returns `{ effect }` |
+| `aylo.particle.beginEffect` | `name` and every scalar of the effect, flat: `lifetimeMin`/`lifetimeMax`..., `shape` (`"point"`, `"circle"`, `"rect"`) with `radius`, `edgeOnly`, `rectSize`, enums as names (`blend`, `alignment`, `space`, `simulation`) | starts a draft, replacing one of the same name |
+| `aylo.particle.addBurst` | `name`, `time`, `count`, `cycles`, `interval` | appends a burst to the draft |
+| `aylo.particle.addColorKey` | `name`, `t`, `color` | appends a key to its `colorOverLife` |
+| `aylo.particle.addCurveKey` | `name`, `curve` (`"size"` or `"speed"`), `t`, `value` | appends a key to its `sizeOverLife` or `speedOverLife` |
+| `aylo.particle.addEffect` | `name` | validates the draft and moves it to `ParticleEffectAssets::add()`; returns `{ effect }` |
 
 The drafts are the resource `ParticleEffectDrafts`, so the effect stored is always whole and valid: an effect is never
 changed once it is in `ParticleEffectAssets`, and a draft that fails validation is dropped, not left half-built. The

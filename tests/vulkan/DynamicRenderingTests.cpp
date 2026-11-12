@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** DynamicRenderingTests
 */
@@ -12,7 +12,7 @@
 
 #include "render/vulkan/rendering/DynamicRendering.hpp"
 
-namespace rendering = rtype::render::vulkan::rendering;
+namespace rendering = aylo::render::vulkan::rendering;
 
 TEST(DynamicRendering, ColorAttachmentClearsAndStores) {
     const vk::ClearColorValue clear{std::array{0.1F, 0.2F, 0.3F, 1.0F}};

@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** CapsuleCallsTests
 */
@@ -17,6 +17,19 @@
 #include <utility>
 #include <vector>
 
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/app/PluginRegistry.hpp"
+#include "aylo/ecs/call/CallInfo.hpp"
+#include "aylo/ecs/call/Calls.hpp"
+#include "aylo/ecs/call/DynamicCalls.hpp"
+#include "aylo/ecs/component/ComponentTraits.hpp"
+#include "aylo/ecs/entity/Entity.hpp"
+#include "aylo/ecs/hierarchy/Children.hpp"
+#include "aylo/ecs/schedule/Phase.hpp"
+#include "aylo/ecs/system/ScriptCallable.hpp"
+#include "aylo/ecs/system/System.hpp"
+#include "aylo/ecs/system/SystemAccess.hpp"
+#include "aylo/ecs/world/World.hpp"
 #include "core/asset/AssetId.hpp"
 #include "plugins/capsule/Capsule.hpp"
 #include "plugins/capsule/CapsuleCalls.hpp"
@@ -25,29 +38,16 @@
 #include "plugins/capsule/Capsules.hpp"
 #include "plugins/capsule/LoadedCapsule.hpp"
 #include "plugins/capsule/exceptions/CapsuleException.hpp"
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/app/PluginRegistry.hpp"
-#include "rtype/ecs/call/CallInfo.hpp"
-#include "rtype/ecs/call/Calls.hpp"
-#include "rtype/ecs/call/DynamicCalls.hpp"
-#include "rtype/ecs/component/ComponentTraits.hpp"
-#include "rtype/ecs/entity/Entity.hpp"
-#include "rtype/ecs/hierarchy/Children.hpp"
-#include "rtype/ecs/schedule/Phase.hpp"
-#include "rtype/ecs/system/ScriptCallable.hpp"
-#include "rtype/ecs/system/System.hpp"
-#include "rtype/ecs/system/SystemAccess.hpp"
-#include "rtype/ecs/world/World.hpp"
 
-namespace rtype::test::capsule_calls {
+namespace aylo::test::capsule_calls {
 struct Health {
     std::int32_t value;
 };
-RTYPE_ECS_COMPONENT(Health, "test.capsulecalls.Health", value);
-}  // namespace rtype::test::capsule_calls
+AYLO_ECS_COMPONENT(Health, "test.capsulecalls.Health", value);
+}  // namespace aylo::test::capsule_calls
 
-namespace capsule = rtype::plugins::capsule;
-namespace tc = rtype::test::capsule_calls;
+namespace capsule = aylo::plugins::capsule;
+namespace tc = aylo::test::capsule_calls;
 
 namespace {
 /// @return The bytes of a value, as a script's arguments.
@@ -91,7 +91,7 @@ class CapsuleCallsTest : public ::testing::Test {
     }
 
     /// @return The id of a registered call.
-    rtype::ecs::CallId callId(std::string_view name) { return app.getWorld().getCalls().findByName(name)->id; }
+    aylo::ecs::CallId callId(std::string_view name) { return app.getWorld().getCalls().findByName(name)->id; }
 
     /// @brief Calls `name` at once (as a script while it loads), with `arguments`, into a result of type `R`.
     template <typename R, typename A>
@@ -101,29 +101,29 @@ class CapsuleCallsTest : public ::testing::Test {
         return valueOf<R>(result);
     }
 
-    rtype::ecs::App app;  ///< The App with the calls.
+    aylo::ecs::App app;  ///< The App with the calls.
 };
 }  // namespace
 
 TEST_F(CapsuleCallsTest, RegistersTheThreeCalls) {
-    EXPECT_NE(app.getWorld().getCalls().findByName("rtype.capsule.spawn"), nullptr);
-    EXPECT_NE(app.getWorld().getCalls().findByName("rtype.capsule.load"), nullptr);
-    EXPECT_NE(app.getWorld().getCalls().findByName("rtype.capsule.reload"), nullptr);
+    EXPECT_NE(app.getWorld().getCalls().findByName("aylo.capsule.spawn"), nullptr);
+    EXPECT_NE(app.getWorld().getCalls().findByName("aylo.capsule.load"), nullptr);
+    EXPECT_NE(app.getWorld().getCalls().findByName("aylo.capsule.reload"), nullptr);
 }
 
 TEST_F(CapsuleCallsTest, SpawnsACapsule) {
     const auto spawned = invoke<capsule::CapsuleRoot>(
         capsule::kSpawnCall,
-        capsule::CapsuleArguments{.capsule = rtype::core::asset::AssetId::fromPath("actors/turret.actor")});
-    rtype::ecs::World& world = app.getWorld();
+        capsule::CapsuleArguments{.capsule = aylo::core::asset::AssetId::fromPath("actors/turret.actor")});
+    aylo::ecs::World& world = app.getWorld();
     ASSERT_TRUE(world.isAlive(spawned.root));  // the call's commands are applied when it returns
     EXPECT_EQ(world.getComponents().get<tc::Health>(spawned.root)->value, 5);
     EXPECT_EQ(world.getEntityCount(), 2U);
 }
 
 TEST_F(CapsuleCallsTest, LoadsACapsuleInPlaceOfThePreviousOne) {
-    const capsule::CapsuleArguments level{.capsule = rtype::core::asset::AssetId::fromPath("scenes/level.scene")};
-    const capsule::CapsuleArguments turret{.capsule = rtype::core::asset::AssetId::fromPath("actors/turret.actor")};
+    const capsule::CapsuleArguments level{.capsule = aylo::core::asset::AssetId::fromPath("scenes/level.scene")};
+    const capsule::CapsuleArguments turret{.capsule = aylo::core::asset::AssetId::fromPath("actors/turret.actor")};
     const auto first = invoke<capsule::CapsuleRoot>(capsule::kLoadCall, level);
     EXPECT_EQ(app.getWorld().getEntityCount(), 3U);
     const auto second = invoke<capsule::CapsuleRoot>(capsule::kLoadCall, turret);
@@ -135,48 +135,48 @@ TEST_F(CapsuleCallsTest, LoadsACapsuleInPlaceOfThePreviousOne) {
 TEST_F(CapsuleCallsTest, ReloadsARoot) {
     const auto spawned = invoke<capsule::CapsuleRoot>(
         capsule::kSpawnCall,
-        capsule::CapsuleArguments{.capsule = rtype::core::asset::AssetId::fromPath("actors/turret.actor")});
+        capsule::CapsuleArguments{.capsule = aylo::core::asset::AssetId::fromPath("actors/turret.actor")});
     defineTurret(tc::Health{.value = 9}, false);
     EXPECT_TRUE(
         invoke<capsule::ReloadResult>(capsule::kReloadCall, capsule::ReloadArguments{.root = spawned.root}).reloaded);
-    rtype::ecs::World& world = app.getWorld();
+    aylo::ecs::World& world = app.getWorld();
     EXPECT_EQ(world.getComponents().get<tc::Health>(spawned.root)->value, 9);
     EXPECT_EQ(world.getComponents().get<capsule::CapsuleInstance>(spawned.root)->version, 1U);
-    EXPECT_EQ(world.getComponents().get<rtype::ecs::Children>(spawned.root), nullptr);  // no muzzle any more
-    const rtype::ecs::Entity plain = world.spawn();
+    EXPECT_EQ(world.getComponents().get<aylo::ecs::Children>(spawned.root), nullptr);  // no muzzle any more
+    const aylo::ecs::Entity plain = world.spawn();
     EXPECT_FALSE(invoke<capsule::ReloadResult>(capsule::kReloadCall, capsule::ReloadArguments{.root = plain}).reloaded);
 }
 
 TEST_F(CapsuleCallsTest, RefusesAnUnknownCapsule) {
     EXPECT_THROW(static_cast<void>(invoke<capsule::CapsuleRoot>(
                      capsule::kSpawnCall,
-                     capsule::CapsuleArguments{.capsule = rtype::core::asset::AssetId::fromPath("nowhere")})),
+                     capsule::CapsuleArguments{.capsule = aylo::core::asset::AssetId::fromPath("nowhere")})),
                  capsule::exceptions::CapsuleException);
     EXPECT_EQ(app.getWorld().getEntityCount(), 0U);
 }
 
 TEST_F(CapsuleCallsTest, SpawnsIntoTheCommandsOfTheSystemThatCalls) {
-    rtype::ecs::Entity reserved;
-    rtype::ecs::ScriptCallable callable{[&](const rtype::ecs::DynamicCalls calls) {
+    aylo::ecs::Entity reserved;
+    aylo::ecs::ScriptCallable callable{[&](const aylo::ecs::DynamicCalls calls) {
         const capsule::CapsuleArguments arguments{.capsule =
-                                                      rtype::core::asset::AssetId::fromPath("actors/turret.actor")};
+                                                      aylo::core::asset::AssetId::fromPath("actors/turret.actor")};
         std::array<std::byte, sizeof(capsule::CapsuleRoot)> result{};
         calls.invoke(0, bytesOf(arguments), result);
         reserved = valueOf<capsule::CapsuleRoot>(result).root;
     }};
-    app.addSystem(rtype::ecs::Phase::kStartup, "test.spawnTurret", std::move(callable),
-                  rtype::ecs::CallList{{callId(capsule::kSpawnCall)}});
+    app.addSystem(aylo::ecs::Phase::kStartup, "test.spawnTurret", std::move(callable),
+                  aylo::ecs::CallList{{callId(capsule::kSpawnCall)}});
     app.runFrame();
     ASSERT_TRUE(app.getWorld().isAlive(reserved));  // applied with the system's commands, after its phase
     EXPECT_EQ(app.getWorld().getComponents().get<tc::Health>(reserved)->value, 5);
 }
 
 TEST_F(CapsuleCallsTest, GivesTheSystemTheAccessOfTheCalls) {
-    rtype::ecs::ScriptCallable callable{[](const rtype::ecs::DynamicCalls /*calls*/) {}};
-    const rtype::ecs::System system{app.getWorld(), "test.load", std::move(callable),
-                                    rtype::ecs::CallList{{callId(capsule::kLoadCall)}}};
-    const auto capsules = app.getWorld().getResources().find("rtype.Capsules");
-    const auto loaded = app.getWorld().getResources().find("rtype.LoadedCapsule");
+    aylo::ecs::ScriptCallable callable{[](const aylo::ecs::DynamicCalls /*calls*/) {}};
+    const aylo::ecs::System system{app.getWorld(), "test.load", std::move(callable),
+                                   aylo::ecs::CallList{{callId(capsule::kLoadCall)}}};
+    const auto capsules = app.getWorld().getResources().find("aylo.Capsules");
+    const auto loaded = app.getWorld().getResources().find("aylo.LoadedCapsule");
     ASSERT_TRUE(capsules && loaded);
     bool readsCapsules = false;
     bool writesLoaded = false;
@@ -189,7 +189,7 @@ TEST_F(CapsuleCallsTest, GivesTheSystemTheAccessOfTheCalls) {
 }
 
 TEST(CapsuleCalls, ThePluginBringsItsSetupForms) {
-    rtype::ecs::App app;
+    aylo::ecs::App app;
     app.addPlugin(capsule::CapsulePlugin{});
     const auto& forms = app.getPluginRegistry().getScriptForms();
     const auto found = forms.find("addCapsuleForms");

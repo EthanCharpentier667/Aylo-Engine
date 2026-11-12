@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** EditorServerTests
 */
@@ -20,23 +20,23 @@
 #include <utility>
 #include <vector>
 
+#include "aylo/network/NetworkSettings.hpp"
+#include "aylo/network/Types.hpp"
+#include "aylo/network/admin/AdminServer.hpp"
+#include "aylo/network/admin/WorldProtocol.hpp"
+#include "aylo/network/server/NetServer.hpp"
 #include "editor/console/ConsoleLog.hpp"
 #include "editor/process/ClientLauncher.hpp"
 #include "editor/process/Runtime.hpp"
 #include "editor/server/AdminSession.hpp"
 #include "editor/server/ServerSupervisor.hpp"
-#include "rtype/network/NetworkSettings.hpp"
-#include "rtype/network/Types.hpp"
-#include "rtype/network/admin/AdminServer.hpp"
-#include "rtype/network/admin/WorldProtocol.hpp"
-#include "rtype/network/server/NetServer.hpp"
 
 namespace {
-namespace admin = rtype::network::admin;
-namespace console = rtype::editor::console;
-namespace process = rtype::editor::process;
-namespace server = rtype::editor::server;
-namespace network = rtype::network;
+namespace admin = aylo::network::admin;
+namespace console = aylo::editor::console;
+namespace process = aylo::editor::process;
+namespace server = aylo::editor::server;
+namespace network = aylo::network;
 using std::chrono::milliseconds;
 
 constexpr const char* kToken = "tok3n";
@@ -195,7 +195,7 @@ TEST(EditorAdminSession, SetsTheSimulationAndShowsWhatTheServerKept) {
         fixture.until([&] { return fixture.session.simulation() && fixture.session.simulation()->isActive(); }));
     EXPECT_EQ(fixture.session.simulation()->latencyMs, 100);
     EXPECT_EQ(fixture.session.simulation()->jitterMs,
-              rtype::network::simulation::kMaxDelayMs);  // clamped by the server
+              aylo::network::simulation::kMaxDelayMs);  // clamped by the server
     EXPECT_FLOAT_EQ(fixture.session.simulation()->lossPercent, 5.0F);
 }
 

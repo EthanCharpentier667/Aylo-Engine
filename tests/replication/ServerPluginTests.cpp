@@ -1,6 +1,6 @@
 /*
 ** EPITECH PROJECT, 2026
-** rtype
+** aylo
 ** File description:
 ** ServerPluginTests
 */
@@ -19,48 +19,48 @@
 #include <vector>
 
 #include "ServerFixtures.hpp"
-#include "rtype/ecs/app/App.hpp"
-#include "rtype/ecs/command/Commands.hpp"
-#include "rtype/ecs/component/ComponentInfo.hpp"
-#include "rtype/ecs/component/Components.hpp"
-#include "rtype/ecs/exceptions/ScheduleException.hpp"
-#include "rtype/ecs/query/Query.hpp"
-#include "rtype/ecs/resource/ResourceTraits.hpp"
-#include "rtype/ecs/schedule/Phase.hpp"
-#include "rtype/ecs/schedule/RunMode.hpp"
-#include "rtype/ecs/system/EventReader.hpp"
-#include "rtype/ecs/system/ResourceParam.hpp"
-#include "rtype/ecs/time/FixedTimestep.hpp"
-#include "rtype/ecs/time/Time.hpp"
-#include "rtype/ecs/time/TimePlugin.hpp"
-#include "rtype/network/NetworkSettings.hpp"
-#include "rtype/network/Types.hpp"
-#include "rtype/network/admin/AdminClient.hpp"
-#include "rtype/network/admin/AdminProtocol.hpp"
-#include "rtype/network/admin/WorldProtocol.hpp"
-#include "rtype/network/client/ClientEvent.hpp"
-#include "rtype/network/client/NetClient.hpp"
-#include "rtype/network/exceptions/NetworkExceptions.hpp"
-#include "rtype/network/io/Address.hpp"
-#include "rtype/network/io/UdpSocket.hpp"
-#include "rtype/network/server/NetServer.hpp"
-#include "rtype/replication/MessageType.hpp"
-#include "rtype/replication/ReplicationPlugin.hpp"
-#include "rtype/replication/ReplicationSettings.hpp"
-#include "rtype/replication/component/NetworkId.hpp"
-#include "rtype/replication/component/Owner.hpp"
-#include "rtype/replication/component/PlayerInput.hpp"
-#include "rtype/replication/event/ClientConnected.hpp"
-#include "rtype/replication/event/ClientDisconnected.hpp"
-#include "rtype/replication/exceptions/ReplicationExceptions.hpp"
-#include "rtype/replication/input/InputKind.hpp"
-#include "rtype/replication/input/InputLayout.hpp"
-#include "rtype/replication/input/InputMessage.hpp"
-#include "rtype/replication/server/ServerPlugin.hpp"
-#include "rtype/replication/server/ServerState.hpp"
-#include "rtype/replication/snapshot/Snapshot.hpp"
+#include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/command/Commands.hpp"
+#include "aylo/ecs/component/ComponentInfo.hpp"
+#include "aylo/ecs/component/Components.hpp"
+#include "aylo/ecs/exceptions/ScheduleException.hpp"
+#include "aylo/ecs/query/Query.hpp"
+#include "aylo/ecs/resource/ResourceTraits.hpp"
+#include "aylo/ecs/schedule/Phase.hpp"
+#include "aylo/ecs/schedule/RunMode.hpp"
+#include "aylo/ecs/system/EventReader.hpp"
+#include "aylo/ecs/system/ResourceParam.hpp"
+#include "aylo/ecs/time/FixedTimestep.hpp"
+#include "aylo/ecs/time/Time.hpp"
+#include "aylo/ecs/time/TimePlugin.hpp"
+#include "aylo/network/NetworkSettings.hpp"
+#include "aylo/network/Types.hpp"
+#include "aylo/network/admin/AdminClient.hpp"
+#include "aylo/network/admin/AdminProtocol.hpp"
+#include "aylo/network/admin/WorldProtocol.hpp"
+#include "aylo/network/client/ClientEvent.hpp"
+#include "aylo/network/client/NetClient.hpp"
+#include "aylo/network/exceptions/NetworkExceptions.hpp"
+#include "aylo/network/io/Address.hpp"
+#include "aylo/network/io/UdpSocket.hpp"
+#include "aylo/network/server/NetServer.hpp"
+#include "aylo/replication/MessageType.hpp"
+#include "aylo/replication/ReplicationPlugin.hpp"
+#include "aylo/replication/ReplicationSettings.hpp"
+#include "aylo/replication/component/NetworkId.hpp"
+#include "aylo/replication/component/Owner.hpp"
+#include "aylo/replication/component/PlayerInput.hpp"
+#include "aylo/replication/event/ClientConnected.hpp"
+#include "aylo/replication/event/ClientDisconnected.hpp"
+#include "aylo/replication/exceptions/ReplicationExceptions.hpp"
+#include "aylo/replication/input/InputKind.hpp"
+#include "aylo/replication/input/InputLayout.hpp"
+#include "aylo/replication/input/InputMessage.hpp"
+#include "aylo/replication/server/ServerPlugin.hpp"
+#include "aylo/replication/server/ServerState.hpp"
+#include "aylo/replication/snapshot/Snapshot.hpp"
 
-namespace rtype::test::server_plugin {
+namespace aylo::test::server_plugin {
 /// @brief What the game systems of the tests record.
 struct Log {
     std::uint32_t connected;     ///< ClientConnected events seen.
@@ -69,40 +69,40 @@ struct Log {
     std::uint32_t buttons;       ///< The buttons a player's PlayerInput had when the game looked at it.
     std::uint32_t pending;       ///< Entities the spawner has to spawn.
 };
-RTYPE_ECS_RESOURCE(Log, "test.serverPlugin.Log", connected, disconnected, lastClient, buttons, pending);
-}  // namespace rtype::test::server_plugin
+AYLO_ECS_RESOURCE(Log, "test.serverPlugin.Log", connected, disconnected, lastClient, buttons, pending);
+}  // namespace aylo::test::server_plugin
 
 namespace {
-namespace snapshot = rtype::replication::snapshot;
-namespace network = rtype::network;
+namespace snapshot = aylo::replication::snapshot;
+namespace network = aylo::network;
 using namespace std::chrono_literals;  // NOLINT(google-build-using-namespace): only the literals
-using rtype::ecs::App;
-using rtype::ecs::Commands;
-using rtype::ecs::EventReader;
-using rtype::ecs::FixedTimestep;
-using rtype::ecs::Phase;
-using rtype::ecs::Presence;
-using rtype::ecs::Query;
-using rtype::ecs::ReplicationMode;
-using rtype::ecs::Res;
-using rtype::ecs::ResMut;
-using rtype::ecs::RunMode;
-using rtype::ecs::TimePlugin;
-using rtype::replication::ReplicationPlugin;
-using rtype::replication::ReplicationSettings;
-using rtype::replication::component::NetworkId;
-using rtype::replication::component::Owner;
-using rtype::replication::component::PlayerInput;
-using rtype::replication::event::ClientConnected;
-using rtype::replication::event::ClientDisconnected;
-using rtype::replication::exceptions::ReplicationException;
-using rtype::replication::input::InputKind;
-using rtype::replication::input::InputLayout;
-using rtype::replication::server::ServerPlugin;
-using rtype::replication::server::ServerState;
-using rtype::test::server::Follow;
-using rtype::test::server::Position;
-using rtype::test::server_plugin::Log;
+using aylo::ecs::App;
+using aylo::ecs::Commands;
+using aylo::ecs::EventReader;
+using aylo::ecs::FixedTimestep;
+using aylo::ecs::Phase;
+using aylo::ecs::Presence;
+using aylo::ecs::Query;
+using aylo::ecs::ReplicationMode;
+using aylo::ecs::Res;
+using aylo::ecs::ResMut;
+using aylo::ecs::RunMode;
+using aylo::ecs::TimePlugin;
+using aylo::replication::ReplicationPlugin;
+using aylo::replication::ReplicationSettings;
+using aylo::replication::component::NetworkId;
+using aylo::replication::component::Owner;
+using aylo::replication::component::PlayerInput;
+using aylo::replication::event::ClientConnected;
+using aylo::replication::event::ClientDisconnected;
+using aylo::replication::exceptions::ReplicationException;
+using aylo::replication::input::InputKind;
+using aylo::replication::input::InputLayout;
+using aylo::replication::server::ServerPlugin;
+using aylo::replication::server::ServerState;
+using aylo::test::server::Follow;
+using aylo::test::server::Position;
+using aylo::test::server_plugin::Log;
 
 /// One frame is one fixed tick: 50 Hz, 20 ms per frame.
 constexpr std::uint8_t kTickRate = 50;
@@ -177,7 +177,7 @@ class Server {
 
     [[nodiscard]] App& app() { return *_app; }
 
-    [[nodiscard]] rtype::ecs::World& world() { return _app->getWorld(); }
+    [[nodiscard]] aylo::ecs::World& world() { return _app->getWorld(); }
 
     [[nodiscard]] ServerState& state() { return *_app->getWorld().getResources().getMut<ServerState>(); }
 
@@ -264,7 +264,7 @@ std::optional<snapshot::Snapshot> lastSnapshot(Server& server, Remote& remote) {
     const std::vector<std::size_t> sizes = snapshot::computeComponentSizes(server.state().manifest(), server.world());
     for (auto message = remote.messages().rbegin(); message != remote.messages().rend(); ++message) {
         if (!message->empty() &&
-            message->front() == static_cast<std::byte>(rtype::replication::MessageType::kSnapshot)) {
+            message->front() == static_cast<std::byte>(aylo::replication::MessageType::kSnapshot)) {
             return snapshot::decode(*message, sizes);
         }
     }
@@ -272,15 +272,15 @@ std::optional<snapshot::Snapshot> lastSnapshot(Server& server, Remote& remote) {
 }
 
 /// @return The NetworkId an entity was given, or 0.
-std::uint32_t networkIdOf(Server& server, const rtype::ecs::Entity entity) {
+std::uint32_t networkIdOf(Server& server, const aylo::ecs::Entity entity) {
     const NetworkId* id = server.world().getComponents().get<NetworkId>(entity);
     return id == nullptr ? 0 : id->value;
 }
 }  // namespace
 
 TEST(ServerPlugin, IsNamed) {
-    EXPECT_EQ((ServerPlugin{network::NetworkSettings{}, ReplicationSettings{}}.getName()), "rtype.replication.server");
-    EXPECT_EQ(ServerPlugin::kName, "rtype.replication.server");
+    EXPECT_EQ((ServerPlugin{network::NetworkSettings{}, ReplicationSettings{}}.getName()), "aylo.replication.server");
+    EXPECT_EQ(ServerPlugin::kName, "aylo.replication.server");
     EXPECT_EQ(ServerPlugin::kReceiveSystem, "net.receive");
     EXPECT_EQ(ServerPlugin::kApplyInputsSystem, "net.applyInputs");
     EXPECT_EQ(ServerPlugin::kAssignIdsSystem, "net.assignIds");
@@ -289,8 +289,8 @@ TEST(ServerPlugin, IsNamed) {
 
 TEST(ServerPlugin, AddsTheReplicationPluginAndTheState) {
     Server server;
-    EXPECT_TRUE(server.app().hasPlugin("rtype.replication"));
-    EXPECT_TRUE(server.app().hasPlugin("rtype.replication.server"));
+    EXPECT_TRUE(server.app().hasPlugin("aylo.replication"));
+    EXPECT_TRUE(server.app().hasPlugin("aylo.replication.server"));
     EXPECT_TRUE(server.world().getResources().has<ServerState>());
 }
 
@@ -381,7 +381,7 @@ TEST(ServerPlugin, TheAdminChannelEditsTheWorldBetweenFramesAndPausesIt) {
     ASSERT_TRUE(reply.has_value());
     const std::uint64_t bits = std::get<network::admin::SpawnReply>(*reply).entity;
     app.runFrame();  // the spawn is applied after the phase that answered it
-    const rtype::ecs::Entity entity{static_cast<std::uint32_t>(bits), static_cast<std::uint32_t>(bits >> 32U)};
+    const aylo::ecs::Entity entity{static_cast<std::uint32_t>(bits), static_cast<std::uint32_t>(bits >> 32U)};
     ASSERT_TRUE(app.getWorld().isAlive(entity));
 
     ASSERT_TRUE(ask(network::admin::RunRequest{.action = network::admin::RunAction::kPause}).has_value());
@@ -425,13 +425,13 @@ TEST(ServerPlugin, StartFailsWhenThePortIsTaken) {
 
 TEST(ServerPlugin, StartNamesAReplicatedComponentRegisteredAfterThePlugin) {
     Server server;
-    rtype::ecs::ComponentInfo info;
+    aylo::ecs::ComponentInfo info;
     info.type.name = "test.serverPlugin.Late";
     info.type.size = sizeof(float);
     info.type.alignment = alignof(float);
     info.type.presence = Presence::kBoth;
     info.type.replication = ReplicationMode::kEveryChange;
-    info.type.fields.push_back({.name = "value", .type = rtype::ecs::FieldType::kF32, .offset = 0, .count = 1});
+    info.type.fields.push_back({.name = "value", .type = aylo::ecs::FieldType::kF32, .offset = 0, .count = 1});
     ASSERT_TRUE(server.world().getComponents().registerType(info));
 
     try {
@@ -448,7 +448,7 @@ TEST(ServerPlugin, AGameSystemWritingAReplicatedComponentMustBeOrderedAgainstThe
     try {
         server.app().runFrame();
         FAIL() << "the schedule should not build";
-    } catch (const rtype::ecs::exceptions::ScheduleException& error) {
+    } catch (const aylo::ecs::exceptions::ScheduleException& error) {
         const std::string message = error.what();
         EXPECT_NE(message.find("game.writePositions"), std::string::npos) << message;
         EXPECT_NE(message.find("net.snapshot"), std::string::npos) << message;
@@ -491,8 +491,8 @@ TEST(ServerPlugin, GivesIncreasingIdsInTheFrameTheEntityWasSpawned) {
 TEST(ServerPlugin, AnEntityWithSeveralReplicatedComponentsGetsOneId) {
     Server server;
     server.app().runFrame();
-    const rtype::ecs::Entity target = server.world().spawn(Position{});
-    const rtype::ecs::Entity both = server.world().spawn(Position{}, Follow{.target = target});
+    const aylo::ecs::Entity target = server.world().spawn(Position{});
+    const aylo::ecs::Entity both = server.world().spawn(Position{}, Follow{.target = target});
 
     server.app().runFrame();
 
@@ -517,7 +517,7 @@ TEST(ServerPlugin, NeverReusesAnId) {
     server.app().runFrame();
     server.log().pending = 1;
     server.app().runFrame();
-    const rtype::ecs::Entity first = *server.state().findEntity(1);
+    const aylo::ecs::Entity first = *server.state().findEntity(1);
     server.world().despawn(first);
     server.app().runFrame();  // forgets it, at the snapshot
     server.log().pending = 1;
@@ -619,7 +619,7 @@ TEST(ServerPlugin, AGameSystemOrderedAfterApplyInputsSeesTheInput) {
     ASSERT_TRUE(runUntil(server, &remote, [&] { return server.world().getEntityCount() == 1; }));
     ASSERT_EQ(server.log().buttons, 0U);
 
-    const network::Bytes message = rtype::replication::input::encodeInput(
+    const network::Bytes message = aylo::replication::input::encodeInput(
         {.lastAppliedSnapshot = 0, .inputs = {{.sequence = 1, .buttons = 0b1, .axes = {}}}}, server.layout());
     ASSERT_TRUE(remote.client().send(network::Channel::kUnreliable, message));
 
@@ -635,7 +635,7 @@ TEST(ServerPlugin, TheSnapshotCarriesTheLastProcessedInputOfTheClient) {
     ASSERT_TRUE(connect(server, remote));
     ASSERT_TRUE(runUntil(server, &remote, [&] { return server.world().getEntityCount() == 1; }));
 
-    const network::Bytes message = rtype::replication::input::encodeInput(
+    const network::Bytes message = aylo::replication::input::encodeInput(
         {.lastAppliedSnapshot = 0, .inputs = {{.sequence = 3, .buttons = 0b1, .axes = {}}}}, server.layout());
     ASSERT_TRUE(remote.client().send(network::Channel::kUnreliable, message));
 
