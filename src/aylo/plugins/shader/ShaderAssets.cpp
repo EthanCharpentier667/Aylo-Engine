@@ -26,6 +26,7 @@
 #include "core/asset/exceptions/AssetExceptions.hpp"
 #include "core/vfs/DirectorySource.hpp"
 #include "core/vfs/FileSource.hpp"
+#include "plugins/shader/BuiltinShaders.hpp"
 #include "plugins/shader/detail/ShaderCompiler.hpp"
 
 namespace aylo::plugins::shader {
@@ -123,6 +124,13 @@ std::vector<core::asset::AssetId> ShaderAssets::takeReloaded() { return std::exc
 std::vector<core::asset::AssetId> ShaderAssets::takeUnloaded() { return std::exchange(_unloaded, {}); }
 
 contract::renderer::CompiledShader ShaderAssets::compileFile(const std::string& name) const {
+    if (const std::optional<std::string_view> builtin = findBuiltinShader(name)) {
+        return detail::compileShader(*builtin, name);
+    }
+    if (name.starts_with(kBuiltinShaderPrefix)) {
+        throw core::asset::exceptions::AssetLoadException{
+            std::format("Shader '{}': the engine has no such shader (@aylo/bloom.glsl, @aylo/tonemap.glsl)", name)};
+    }
     std::string text;
     try {
         text = _source->read(name);

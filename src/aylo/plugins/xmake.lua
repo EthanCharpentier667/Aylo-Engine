@@ -66,6 +66,8 @@ plugin("shader", {"plugin-graphics"})
     -- The shaders ABI of the renderer contract (contract/renderer/shaders/*.glsl), the prelude of the game's shaders,
     -- embedded as byte arrays that shader/detail/ShaderAssembler.cpp includes as "<file>.glsl.h".
     add_files("../contract/renderer/shaders/*.glsl")
+    -- The shaders the engine gives games ("@aylo/<name>.glsl", shader/BuiltinShaders.cpp), embedded the same way.
+    add_files("shader/builtin/*.glsl")
 
 plugin("shape", {"plugin-graphics", "plugin-transform"})
     add_files("shape/**.cpp")

@@ -63,7 +63,9 @@ class AYLO_PLUGIN_SHADER_API ShaderAssets {
     [[nodiscard]] const core::vfs::FileSource& getSource() const noexcept;
 
     /// @brief Reads and compiles the shader file at @p path (the engine's GLSL dialect, docs/Shaders.md).
-    /// @param path Relative to setDirectory()'s directory. It names the shader as it is given.
+    /// @param path Relative to setDirectory()'s directory. It names the shader as it is given. A path starting with
+    /// kBuiltinShaderPrefix (`@aylo/bloom.glsl`) names a shader the engine gives (findBuiltinShader()), read from no
+    /// file.
     /// @return Its id (AssetId::fromPath()), at once, even if it failed. Asking twice gives the first one.
     /// @throws core::asset::exceptions::AssetLoadException If another path already has this id (a hash collision).
     core::asset::AssetId load(const std::filesystem::path& path);
