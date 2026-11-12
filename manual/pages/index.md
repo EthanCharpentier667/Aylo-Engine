@@ -1,7 +1,7 @@
 # AYLO Engine Manual
 
-The AYLO Engine runs games written entirely in Luau. You do not need to know anything about the engine's C++ code to
-make one.
+The AYLO Engine runs games written entirely in Luau, of every kind: it is not made for one genre. You do not need to
+know anything about the engine's C++ code to make one.
 
 ## A game is a folder
 
