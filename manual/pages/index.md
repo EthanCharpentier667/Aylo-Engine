@@ -33,6 +33,7 @@ your game never needs a program of its own.
 - **The editor** shows the game in a window of panels, with its entities and their components to look at and change. See [Editor](editor.md).
 - **Web APIs** (an AI model, a leaderboard) are reached from the server with HTTPS requests. See [HTTP](http.md).
 - **Particle effects** (sparks, smoke, trails) are tables too. See [Particles](particles.md).
+- **Bloom and tonemapping** make bright colours glow, with one call. See [Post-processing](post-processing.md).
 
 ## Client and server
 

@@ -53,6 +53,7 @@ Prefer the `engine.assets.atlas` form, which makes these calls from one table.
 | Call | Arguments | Result |
 |---|---|---|
 | `aylo.backend.loadTexture` | `path` | the texture id |
+| `aylo.backend.setPostProcess` | `bloom`, `bloomThreshold`, `bloomKnee`, `bloomIntensity`, `tonemap`, `exposure` | nothing, see [Post-processing](post-processing.md) |
 | `aylo.text.loadFont` | `path` (a font atlas JSON) | the font id |
 | `aylo.tilemap.load` | `path` (a Tiled `.tmj`) | the map id |
 | `aylo.tilemap.spawn` | `map`, `position`, `scale`, `firstDrawLayer` | how many layers it spawned |
