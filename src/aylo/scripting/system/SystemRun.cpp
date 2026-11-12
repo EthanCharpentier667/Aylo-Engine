@@ -41,6 +41,7 @@
 #include "aylo/luau/Function.hpp"
 #include "aylo/luau/Result.hpp"
 #include "aylo/luau/Runtime.hpp"
+#include "aylo/luau/StackAccess.hpp"
 #include "aylo/luau/Table.hpp"
 #include "aylo/luau/Userdata.hpp"
 #include "aylo/luau/Usertype.hpp"
@@ -108,10 +109,12 @@ class QueryStepper {
     QueryStepper(QueryStepper&& other) = delete;
     QueryStepper& operator=(QueryStepper&& other) = delete;
 
-    /// @return The entity and views of the next match, or an empty pack when there is none (which ends a `for`).
-    luau::ValuePack next() {
+    /// @brief Pushes the entity and views of the next match, or nothing when there is none (which ends a `for`).
+    /// @details Pushed straight onto the stack: this runs once per entity, so a pack of values held through the
+    /// registry would cost more than the script's own work.
+    void next(luau::Pusher& results) {
         if (_done) {
-            return {};
+            return;
         }
         if (_started) {
             ++_current;
@@ -119,20 +122,19 @@ class QueryStepper {
         _started = true;
         if (_current == ecs::QueryIteration::end()) {
             _done = true;
-            return {};
+            return;
         }
         ecs::QueryMatch& match = *_current;
-        luau::ValuePack pack;
-        pack.add(handOver(_entities.create(match.getEntity())));
+        results.userdata(_entities, match.getEntity());
         for (std::size_t index = 0; index < _system->terms.size(); ++index) {
-            pack.add(makeView(match, index));
+            pushView(match, index, results);
         }
-        return pack;
     }
 
   private:
-    /// @return The view of data term `index` of the match, or `nil` when the entity has no such optional component.
-    [[nodiscard]] luau::Value makeView(ecs::QueryMatch& match, const std::size_t index) const {
+    /// @brief Pushes the view of data term `index` of the match, or `nil` when the entity has no such optional
+    /// component.
+    void pushView(ecs::QueryMatch& match, const std::size_t index, luau::Pusher& results) const {
         const auto& [info, readOnly] = _system->terms.at(index);
         std::span<std::byte> bytes;
         if (readOnly) {
@@ -144,15 +146,16 @@ class QueryStepper {
             bytes = match.getMut(index);
         }
         if (bytes.empty()) {
-            return luau::Value{luau::Value::Nil{}};
+            results.nil();
+            return;
         }
-        return handOver(_views.create(view::ComponentView{
-            .type = &info->type,
-            .bytes = bytes,
-            .scope = _system->scope,
-            .generation = _system->scope->generation,
-            .readOnly = readOnly,
-        }));
+        results.userdata(_views, view::ComponentView{
+                                     .type = &info->type,
+                                     .bytes = bytes,
+                                     .scope = _system->scope,
+                                     .generation = _system->scope->generation,
+                                     .readOnly = readOnly,
+                                 });
     }
 
     ScriptSystem* _system;                       ///< The system being run.
@@ -334,8 +337,11 @@ class EventsContext {
         stepper.emplace(system, runtime, queries.iter(0));
     }
     auto iterator = luau::Function::create(runtime, std::format("{}.query", system.name));
-    iterator.setHandler(
-        [&stepper](const luau::CallContext& /*arguments*/) { return stepper ? stepper->next() : luau::ValuePack{}; });
+    iterator.setRawHandler([&stepper](luau::Pusher& results) {
+        if (stepper) {
+            stepper->next(results);
+        }
+    });
 
     auto recorder = runtime.usertype<commands::ScriptCommands>().create(commands::ScriptCommands{
         .commands = &commands,

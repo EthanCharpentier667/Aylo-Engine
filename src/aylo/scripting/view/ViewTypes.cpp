@@ -22,8 +22,8 @@
 #include "aylo/luau/Exceptions.hpp"
 #include "aylo/luau/Result.hpp"
 #include "aylo/luau/Runtime.hpp"
+#include "aylo/luau/StackAccess.hpp"
 #include "aylo/luau/Usertype.hpp"
-#include "aylo/luau/Value.hpp"
 #include "core/asset/AssetId.hpp"
 
 namespace aylo::scripting::view {
@@ -84,23 +84,22 @@ luau::Result<> registerComponentViewType(luau::Runtime& runtime, const FieldRead
         return tl::unexpected{std::move(viewType.error())};
     }
     viewType
-        ->index([context](const ComponentView& view, const std::string_view name) {
+        // Raw: a script reads and writes views on every step of its loops, so values go straight to and from the stack.
+        ->rawIndex([context](const ComponentView& view, const std::string_view name, luau::Pusher& result) {
             checkAlive(view);
             const auto& field = findField(view, name);
-            auto value = readField(view.type->name, field, view.bytes, context);
-            if (!value) {
-                throw luau::exceptions::RuntimeError{std::string{value.error().message()}};
+            if (auto pushed = pushField(view.type->name, field, view.bytes, context, result); !pushed) {
+                throw luau::exceptions::RuntimeError{std::string{pushed.error().message()}};
             }
-            return std::move(*value);
         })
-        .newIndex([](const ComponentView& view, const std::string_view name, const luau::Value& value) {
+        .rawNewIndex([](const ComponentView& view, const std::string_view name, const luau::StackSlot& value) {
             checkAlive(view);
             if (view.readOnly) {
                 throw luau::exceptions::RuntimeError{
                     std::format("cannot write '{}': the view of '{}' is read-only", name, view.type->name)};
             }
             const auto& field = findField(view, name);
-            if (auto written = writeField(view.type->name, field, view.bytes, value); !written) {
+            if (auto written = writeFieldFrom(view.type->name, field, view.bytes, value); !written) {
                 throw luau::exceptions::RuntimeError{std::string{written.error().message()}};
             }
         })
