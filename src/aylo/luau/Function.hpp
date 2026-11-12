@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <string>
@@ -16,6 +17,7 @@
 #include "FunctionRef.hpp"
 #include "Ref.hpp"
 #include "Result.hpp"
+#include "StackAccess.hpp"
 #include "ValuePack.hpp"
 
 struct lua_State;
@@ -47,6 +49,8 @@ class AYLO_LUAU_API Function {
     /// whose message is then prefixed with the name of the function; any other `std::exception` also becomes a Lua
     /// error, with its message unchanged, and so does anything else that is thrown, with a generic message.
     using Handler = std::function<ValuePack(const CallContext&)>;
+    /// @brief A handler that ignores the arguments and pushes its results itself: see setRawHandler().
+    using RawHandler = std::function<void(Pusher&)>;
 
     /// @brief Creates a native closure bound to a new Function.
     ///
@@ -96,6 +100,11 @@ class AYLO_LUAU_API Function {
     /// @brief Sets the C++ handler run when Lua calls the native closure, replacing the previous one.
     /// @param handler The handler to run; an empty one makes calls from Lua raise a Lua error.
     void setHandler(Handler handler);
+
+    /// @brief Sets a handler for a function a script calls in its hot loop and that reads no argument, such as the
+    /// iterator of a `for`: nothing is read, and the results are pushed as they are made, without a `ValuePack`.
+    /// Takes precedence over setHandler(). The handler reports a misuse as setHandler()'s does.
+    void setRawHandler(RawHandler handler);
 
     /// @brief Sets a typed C++ handler run when Lua calls the native closure, replacing the previous one.
     ///
@@ -176,11 +185,17 @@ class AYLO_LUAU_API Function {
     /// @throws exceptions::InvalidOperation If the upvalue points to a Function wrapping a function defined in Luau.
     static int handle(lua_State* state);
 
-    lua_State* _state;  ///< Lua state the function lives in.
-    BindingType _type;  ///< Where the body of the wrapped function lives.
-    FunctionRef _ref;   ///< Handle on the function.
-    std::string _name;  ///< Name used in error messages.
-    Handler _handler;   ///< C++ handler called by the native closure.
+    /// @brief Runs the raw handler for handle(), pushing its results.
+    /// @param error Set to the message of a misuse the handler reported; the error is raised by handle().
+    /// @return The number of values pushed.
+    std::size_t runRawHandler(lua_State* state, std::string& error) const;
+
+    lua_State* _state;       ///< Lua state the function lives in.
+    BindingType _type;       ///< Where the body of the wrapped function lives.
+    FunctionRef _ref;        ///< Handle on the function.
+    std::string _name;       ///< Name used in error messages.
+    Handler _handler;        ///< C++ handler called by the native closure.
+    RawHandler _rawHandler;  ///< Called instead of _handler when set.
 };
 }  // namespace aylo::luau
 

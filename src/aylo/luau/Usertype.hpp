@@ -10,6 +10,7 @@
 #include <string>
 
 #include "Result.hpp"
+#include "StackAccess.hpp"
 #include "Userdata.hpp"
 #include "detail/UsertypeData.hpp"
 
@@ -97,6 +98,22 @@ class Usertype {
     template <typename F>
     Usertype& newIndex(F&& function);
 
+    /// @brief Like index(), for a member read in a script's hot loop: the handler pushes the value itself, so a table
+    /// or a userdata reaches the script without being held through the registry. Takes precedence over index().
+    /// @tparam F Callable convertible to `std::function<void(T&, std::string_view, Pusher&)>`; it pushes exactly one
+    ///         value, or raises an `exceptions::RuntimeError`.
+    /// @param function Reads the member of the given name.
+    /// @return This type.
+    template <typename F>
+    Usertype& rawIndex(F&& function);
+
+    /// @brief Like newIndex(), with the written value read where it is on the stack. Takes precedence over newIndex().
+    /// @tparam F Callable convertible to `std::function<void(T&, std::string_view, const StackSlot&)>`.
+    /// @param function Writes the member of the given name.
+    /// @return This type.
+    template <typename F>
+    Usertype& rawNewIndex(F&& function);
+
     /// @brief Sets `__eq`: two userdata of the type are equal for `==` when @p function says so.
     /// @tparam F Callable convertible to `std::function<bool(const T&, const T&)>`.
     /// @param function Compares two objects.
@@ -116,6 +133,12 @@ class Usertype {
     /// @return A handle on the userdata, or a Failure of kind `kOutOfMemory` if Luau could not allocate it, or of kind
     ///         `kRuntime` if the object could not be constructed.
     [[nodiscard]] Result<Userdata> create(T value) const;
+
+    /// @brief Pushes a new userdata holding an object as a result of a raw handler (`Pusher::userdata()`).
+    /// @param result Where the userdata goes.
+    /// @param value The object, moved into the userdata.
+    /// @throws exceptions::RuntimeError If the stack cannot grow; the exception of Luau if it cannot allocate.
+    void push(Pusher& result, T value) const;
 
   private:
     detail::UsertypeData* _data;  ///< The registration of the type, owned by the runtime.
