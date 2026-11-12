@@ -22,7 +22,9 @@
 #include "aylo/ecs/query/Query.hpp"
 #include "aylo/ecs/query/QueryTerms.hpp"
 #include "aylo/ecs/schedule/Phase.hpp"
+#include "aylo/ecs/system/ResourceParam.hpp"
 #include "aylo/ecs/system/Side.hpp"
+#include "aylo/ecs/time/Time.hpp"
 #include "plugins/transform/Transform.hpp"
 #include "plugins/transform/TransformMath.hpp"
 
@@ -75,6 +77,40 @@ void insertGlobalTransforms(
     }
 }
 
+/// @return Whether @p first and @p second are the same pose.
+bool samePose(const Transform& first, const Transform& second) {
+    return first.position == second.position && first.rotation == second.rotation && first.scale == second.scale;
+}
+
+/// @brief PostUpdate, on the client: records the pose of each TransformInterpolation after the fixed ticks of the frame
+/// and blends the last two by Time::alpha.
+/// @details A tick ran since the last record: the pose then becomes `previous` and the Transform now `current`. No tick
+/// ran but the Transform changed: it was moved out of the ticks (a teleport, the editor), and is drawn there at once.
+void interpolateTransforms(ecs::Query<TransformInterpolation, const Transform> entities, ecs::Res<ecs::Time> time) {
+    for (auto [entity, state, transform] : entities) {
+        if (!state->recorded) {
+            *state = TransformInterpolation{
+                .previous = transform, .current = transform, .drawn = transform, .tick = time->tick, .recorded = true};
+            continue;
+        }
+        if (state->tick != time->tick) {
+            state->previous = state->current;
+            state->current = transform;
+            state->tick = time->tick;
+        } else if (!samePose(state->current, transform)) {
+            state->previous = transform;
+            state->current = transform;
+        }
+        state->drawn = interpolate(state->previous, state->current, time->alpha);
+    }
+}
+
+/// @return What GlobalTransform is computed from: the blended pose of an entity interpolated on this side, its
+/// Transform otherwise.
+const Transform* drawnLocal(const Transform* transform, const TransformInterpolation* interpolation) {
+    return interpolation != nullptr && interpolation->recorded ? &interpolation->drawn : transform;
+}
+
 /// @brief What the walk down a hierarchy needs of one entity.
 struct Node {
     ecs::Mut<GlobalTransform> global;  ///< Written by the walk.
@@ -107,16 +143,17 @@ void pushChildren(const Node& node, const GlobalTransform& global, std::vector<S
 }
 
 /// @brief Computes every GlobalTransform, from the roots down.
-void propagateTransforms(
-    ecs::Query<GlobalTransform, const Transform, ecs::Optional<const ecs::Parent>, ecs::Optional<const ecs::Children>>
-        transforms) {
+void propagateTransforms(ecs::Query<GlobalTransform, const Transform, ecs::Optional<const ecs::Parent>,
+                                    ecs::Optional<const ecs::Children>, ecs::Optional<const TransformInterpolation>>
+                             transforms) {
     std::unordered_map<ecs::Entity, Node> nodes;
-    for (auto [entity, global, transform, parent, children] : transforms) {
+    for (auto [entity, global, transform, parent, children, interpolation] : transforms) {
+        const Transform* local = drawnLocal(&transform, interpolation);
         if (parent == nullptr && children == nullptr) {
-            update(global, toGlobal(transform));
+            update(global, toGlobal(*local));
             continue;
         }
-        nodes.emplace(entity, Node{.global = global, .local = &transform, .parent = parent, .children = children});
+        nodes.emplace(entity, Node{.global = global, .local = local, .parent = parent, .children = children});
     }
     std::vector<Step> steps;
     for (auto& [entity, node] : nodes) {
@@ -145,12 +182,16 @@ std::string_view TransformPlugin::getName() const noexcept { return kName; }
 void TransformPlugin::build(ecs::App& app) {
     static_cast<void>(app.getWorld().getComponents().registerType<Transform>());
     static_cast<void>(app.getWorld().getComponents().registerType<GlobalTransform>());
+    static_cast<void>(app.getWorld().getComponents().registerType<TransformInterpolation>());
     static_cast<void>(app.getWorld().getComponents().registerType<ecs::Parent>(ecs::kParentOptions));
     static_cast<void>(app.getWorld().getComponents().registerType<ecs::Children>());
     app.addSystem(ecs::Phase::kPostUpdate, std::string{kInsertSystem}, &insertGlobalTransforms)
         .setSide(ecs::Side::kBoth);
+    app.addSystem(ecs::Phase::kPostUpdate, std::string{kInterpolateSystem}, &interpolateTransforms)
+        .setSide(ecs::Side::kClient);
     app.addSystem(ecs::Phase::kPostUpdate, std::string{kPropagateSystem}, &propagateTransforms)
         .after(std::string{kInsertSystem})
+        .after(std::string{kInterpolateSystem})
         .setSide(ecs::Side::kBoth);
 }
 
