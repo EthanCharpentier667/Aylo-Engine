@@ -233,7 +233,9 @@ architecture rules, and this file keeps the detail, which changes with every fea
       (`vendor/.clang-tidy`).
 - `src/aylo/luau/` — `luau` target, static library (`aylo-luau`) for Luau scripting. Failures a correct program can
   hit return
-  `Result<T>`; exceptions are only for API misuse (`docs/luau/error-handling.md`). The opt-in sandbox and `Table::freeze()`: `docs/luau/sandbox.md`. The `require` loader (`ModuleLoader`): `docs/luau/modules.md`.
+  `Result<T>`; exceptions are only for API misuse (`docs/luau/error-handling.md`). The opt-in sandbox and `Table::freeze()`: `docs/luau/sandbox.md`. The `require` loader (`ModuleLoader`): `docs/luau/modules.md`. `StackAccess.hpp` (`Pusher`, `StackSlot`) and the raw
+  handlers (`Function::setRawHandler`, `Usertype::rawIndex`/`rawNewIndex`) cross into C++ without `Value`s, for what a
+  script does per entity; `RuntimeConfig::nativeCode` compiles scripts to machine code: `docs/luau/hot-path.md`.
 - `src/aylo/scripting/` — `scripting` target, static library (`aylo-scripting`): the Luau bridge, turning what scripts
   declare into ECS data (`aylo::scripting`, exported symbols marked `AYLO_SCRIPTING_API`). It has its own `Error` /
   `Result`, like `luau`. `component/` holds `ComponentDeclaration` and `registerComponent()`, which computes the

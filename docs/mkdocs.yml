@@ -56,6 +56,7 @@ nav:
       - Plan: scripting/plan.md
       - Luau modules: luau/modules.md
       - Luau sandbox: luau/sandbox.md
+      - Script hot path: luau/hot-path.md
       - Luau errors: luau/error-handling.md
       - Luau types: luau/type-definitions.md
   - Subsystems:
