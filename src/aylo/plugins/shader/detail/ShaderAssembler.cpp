@@ -8,9 +8,11 @@
 #include "plugins/shader/detail/ShaderAssembler.hpp"
 
 #include <array>
+#include <bit>
 #include <cstddef>
 #include <cstdint>
 #include <format>
+#include <glm/ext/vector_float4.hpp>
 #include <string>
 #include <string_view>
 
@@ -55,6 +57,12 @@ constexpr auto kShapeVertex = std::to_array<char>({
 });
 constexpr auto kShapeFragment = std::to_array<char>({
 #include "shape.frag.glsl.h"
+});
+constexpr auto kScreenVertex = std::to_array<char>({
+#include "screen.vert.glsl.h"
+});
+constexpr auto kScreenFragment = std::to_array<char>({
+#include "screen.frag.glsl.h"
 });
 
 /// @brief Where a template takes the shader's declarations and body, and where its main() takes the instance values
@@ -153,6 +161,8 @@ std::string_view vertexTemplate(ShaderTarget target) noexcept {
             return text(kParticleVertex);
         case ShaderTarget::kShape:
             return text(kShapeVertex);
+        case ShaderTarget::kScreen:
+            return text(kScreenVertex);
         case ShaderTarget::kSprite:
         case ShaderTarget::kGlyph:
             break;
@@ -167,11 +177,28 @@ std::string_view fragmentTemplate(ShaderTarget target) noexcept {
             return text(kGlyphFragment);
         case ShaderTarget::kShape:
             return text(kShapeFragment);
+        case ShaderTarget::kScreen:
+            return text(kScreenFragment);
         case ShaderTarget::kSprite:
         case ShaderTarget::kParticle:
             break;
     }
     return text(kSpriteFragment);
+}
+
+/// @return The statement that fills `ayloInstance` (4 vec4, a global of a screen effect's vertex stage) with
+/// @p shader's instance defaults, their bits as they are, for main(): a screen effect has no drawing to carry its own.
+/// A statement, not a constant: GLSL does not fold uintBitsToFloat() in a constant's initializer.
+std::string screenInstanceValues(const ParsedShader& shader) {
+    std::string glsl = "    ayloInstance = vec4[4](";
+    for (std::size_t vector = 0; vector < shader.instanceDefaults.size(); ++vector) {
+        const glm::vec4& value = shader.instanceDefaults.at(vector);
+        glsl += std::format("{}uintBitsToFloat(uvec4({}u, {}u, {}u, {}u))", vector == 0 ? "" : ", ",
+                            std::bit_cast<std::uint32_t>(value.x), std::bit_cast<std::uint32_t>(value.y),
+                            std::bit_cast<std::uint32_t>(value.z), std::bit_cast<std::uint32_t>(value.w));
+    }
+    glsl += ");\n";
+    return glsl;
 }
 
 /// @return The statements that fill the instance values from @p source (4 vec4), for main().
@@ -228,6 +255,10 @@ std::string assembleShader(const ParsedShader& shader, ShaderTarget target, Shad
     if (particle) {
         glsl += text(kParticleConstants);
     }
+    const bool screenValues = target == ShaderTarget::kScreen && vertex && !shader.instanceValues.empty();
+    if (screenValues) {
+        glsl += "vec4 ayloInstance[4];\n";
+    }
     if (!vertex) {
         glsl += text(kFragmentCommon);
         if (!particle) {
@@ -242,7 +273,8 @@ std::string assembleShader(const ParsedShader& shader, ShaderTarget target, Shad
     const bool calls = vertex ? shader.hasVertex : shader.hasFragment;
     const std::string_view call = vertex ? "    vertex();" : "    fragment();";
     const std::string mainCode =
-        std::format("{}{}", loadInstanceValues(shader, particle ? "ayloParticles.instance" : "ayloInstance"),
+        std::format("{}{}{}", screenValues ? screenInstanceValues(shader) : std::string{},
+                    loadInstanceValues(shader, particle ? "ayloParticles.instance" : "ayloInstance"),
                     calls ? call : std::string_view{});
     glsl += replaceMarker(replaceMarker(std::string{stageTemplate}, kShaderMarker, shaderCode), kMainMarker, mainCode);
     return glsl;

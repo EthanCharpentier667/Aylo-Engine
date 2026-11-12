@@ -57,7 +57,7 @@ std::string errorOf(std::string_view source) {
 TEST(ShaderCompiler, CompilesAShaderForEveryTarget) {
     const CompiledShader shader = compileShader(kFlash, "flash");
     ASSERT_EQ(shader.variants.size(), 4U);
-    for (const ShaderTarget target : aylo::plugins::shader::detail::kAllTargets) {
+    for (const ShaderTarget target : aylo::plugins::shader::detail::kDrawingTargets) {
         const auto* variant = shader.findVariant(target);
         ASSERT_NE(variant, nullptr);
         ASSERT_FALSE(variant->vertex.empty());
@@ -103,7 +103,7 @@ TEST(ShaderCompiler, RejectsInvalidGlslForAStage) {
 }
 
 TEST(ShaderCompiler, CompilesTheDefaultShaderOfEveryTarget) {
-    for (const ShaderTarget target : aylo::plugins::shader::detail::kAllTargets) {
+    for (const ShaderTarget target : aylo::plugins::shader::detail::kDrawingTargets) {
         for (const ShaderStage stage : {ShaderStage::kVertex, ShaderStage::kFragment}) {
             const std::vector<std::uint32_t> spirv =
                 compileStage(assembleShader(ParsedShader{}, target, stage), stage, "default");

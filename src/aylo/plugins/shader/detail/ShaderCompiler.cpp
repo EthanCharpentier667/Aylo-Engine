@@ -79,6 +79,8 @@ std::string_view nameOf(contract::renderer::ShaderTarget target) noexcept {
             return "particle";
         case contract::renderer::ShaderTarget::kShape:
             return "shape";
+        case contract::renderer::ShaderTarget::kScreen:
+            return "screen";
         case contract::renderer::ShaderTarget::kSprite:
             break;
     }
@@ -129,6 +131,10 @@ contract::renderer::CompiledShader compileShader(std::string_view source, std::s
     }
     for (const DeclaredValue& declared : parsed.instanceValues) {
         shader.instanceValues.push_back(declared.value);
+    }
+    if (targets.empty()) {
+        targets = parsed.screen ? std::span<const contract::renderer::ShaderTarget>{kScreenTargets}
+                                : std::span<const contract::renderer::ShaderTarget>{kDrawingTargets};
     }
     for (const contract::renderer::ShaderTarget target : targets) {
         const auto compile = [&](ShaderStage stage) {
