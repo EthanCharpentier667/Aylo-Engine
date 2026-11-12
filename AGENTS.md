@@ -162,6 +162,9 @@ If a step cannot be run or fails, say so; never claim it done.
 - Issues are titled `[Area] <summary>` (`[Area] <ID>: <summary>` for tasks of a plan). Priority, Size and Status live in
   the project "Aylo Engine" (number 8), not in labels; parents and blocked-by links are real GitHub relationships, not text
   (`plan-issues` skill).
+- **The issues to finish live in <https://github.com/Charles-Mahoudeau/rtype/issues>**, not in this repository's
+  tracker. Look a task up there (`gh issue view <n> -R Charles-Mahoudeau/rtype`), and close it from a pull request with
+  `Closes Charles-Mahoudeau/rtype#<n>`.
 - No `Co-Authored-By` or other AI attribution in commits or pull requests.
 
 ## Skills
