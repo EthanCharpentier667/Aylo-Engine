@@ -12,21 +12,16 @@
 #include <string_view>
 #include <tuple>
 #include <utility>
+#include <vector>
 
 #include "aylo/ecs/app/App.hpp"
 #include "aylo/ecs/resource/Resources.hpp"
-#include "core/layout/Layout.hpp"
 #include "plugins/persistence/PersistenceCalls.hpp"
 #include "plugins/persistence/PersistenceSettings.hpp"
 #include "plugins/persistence/SaveStore.hpp"
 #include "plugins/persistence/UserDataDirectory.hpp"
 
 namespace aylo::plugins::persistence {
-
-namespace {
-/// The default save folder before the engine was renamed: a game that kept the default finds its saves again.
-constexpr std::string_view kFolderBeforeRename = "rtype";
-}  // namespace
 
 PersistencePlugin::PersistencePlugin(PersistenceSettings settings) : _settings{std::move(settings)} {}
 
@@ -38,17 +33,15 @@ void PersistencePlugin::build(ecs::App& app) {
     ecs::Resources& resources = app.getWorld().getResources();
     if (!resources.has<SaveStore>()) {
         std::filesystem::path directory = _settings.directory;
-        std::filesystem::path before;
+        std::vector<std::filesystem::path> shared;
         if (directory.empty()) {
             const std::filesystem::path userData = getUserDataDirectory();
             directory = userData / _settings.folder;
-            if (!userData.empty() && _settings.folder == core::layout::kUserFolder) {
-                before = userData / kFolderBeforeRename;
-            }
+            shared = _settings.foldersToAdopt(userData);
         }
         SaveStore store{std::move(directory)};
-        if (!before.empty()) {
-            std::ignore = store.adopt(before);
+        for (const std::filesystem::path& folder : shared) {
+            std::ignore = store.adopt(folder);  // copies only while the game's folder does not exist yet
         }
         resources.insert(std::move(store));
     }
