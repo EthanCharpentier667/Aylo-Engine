@@ -13,6 +13,7 @@
 #include <iterator>
 #include <random>
 #include <string>
+#include <vector>
 
 #include "aylo/ecs/app/App.hpp"
 #include "core/config/Settings.hpp"
@@ -201,6 +202,33 @@ TEST(PersistenceSettings, ReadsDirectoryAndFolder) {
     const auto defaults = PersistenceSettings::fromSettings(aylo::core::config::Settings{});
     EXPECT_TRUE(defaults.directory.empty());
     EXPECT_EQ(defaults.folder, aylo::core::layout::kUserFolder);
+}
+
+TEST(PersistenceSettings, NamesTheFolderAfterTheGame) {
+    using aylo::plugins::persistence::PersistenceSettings;
+    EXPECT_EQ(PersistenceSettings::fromSettings(aylo::core::config::Settings{}, "MyGame").folder, "MyGame");
+    aylo::core::config::Settings settings;
+    settings.set("folder", std::string{"saves"});
+    EXPECT_EQ(PersistenceSettings::fromSettings(settings, "MyGame").folder, "saves");  // the project's choice wins
+}
+
+TEST(PersistenceSettings, AdoptsTheSharedFoldersOnlyWithTheDefaultFolder) {
+    using aylo::plugins::persistence::PersistenceSettings;
+    const std::filesystem::path data{"data"};
+    const auto defaults = PersistenceSettings::fromSettings(aylo::core::config::Settings{}, "MyGame");
+    EXPECT_EQ(defaults.foldersToAdopt(data),
+              (std::vector<std::filesystem::path>{data / aylo::core::layout::kUserFolder, data / "rtype"}));
+    EXPECT_TRUE(defaults.foldersToAdopt({}).empty());  // no user data directory
+    aylo::core::config::Settings settings;
+    settings.set("folder", std::string{"MyGame"});
+    EXPECT_TRUE(PersistenceSettings::fromSettings(settings, "MyGame").foldersToAdopt(data).empty());
+}
+
+TEST(PersistenceSettings, NeverAdoptsItsOwnFolder) {
+    using aylo::plugins::persistence::PersistenceSettings;
+    const std::filesystem::path data{"data"};
+    const auto unnamed = PersistenceSettings::fromSettings(aylo::core::config::Settings{});
+    EXPECT_EQ(unnamed.foldersToAdopt(data), (std::vector<std::filesystem::path>{data / "rtype"}));
 }
 
 TEST_F(PersistenceFixture, PluginRegistersTheCallsOnItsDirectory) {
