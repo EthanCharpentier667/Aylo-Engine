@@ -130,7 +130,7 @@ std::string instanceAccess(const contract::renderer::ShaderValue& value, std::st
 std::string declareValues(const ParsedShader& shader) {
     std::string glsl = "\n// The shader's values.\n";
     if (!shader.materialValues.empty()) {
-        glsl += "layout(set = 2, binding = 0, std140) uniform RtypeMaterial {\n";
+        glsl += "layout(set = 2, binding = 0, std140) uniform AyloMaterial {\n";
         for (const DeclaredValue& declared : shader.materialValues) {
             glsl += std::format("    layout(offset = {}) {} {};\n", declared.value.offset,
                                 glslType(declared.value.type), declared.value.name);
