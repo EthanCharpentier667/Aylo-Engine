@@ -46,6 +46,7 @@
 #include "plugins/graphics/GraphicsResources.hpp"
 #include "plugins/graphics/OverlayQueue.hpp"
 #include "plugins/graphics/PlatformEventFilter.hpp"
+#include "plugins/graphics/PostProcessCalls.hpp"
 #include "plugins/graphics/SpriteQueue.hpp"
 #include "plugins/graphics/TextureAssets.hpp"
 #include "plugins/graphics/TextureCalls.hpp"
@@ -140,6 +141,15 @@ void beginFrame(ecs::NonSendMut<plugins::graphics::Backend> backend, ecs::Res<Cl
     plugins::graphics::Backend& started = *backend;
     if (isStarted(started) && !isMinimized(started)) {
         started.renderer->beginFrame(clearColor->value);
+    }
+}
+
+/// @brief Render: gives the renderer the PostProcess settings when they changed since it last got them.
+void applyPostProcess(ecs::NonSendMut<plugins::graphics::Backend> backend, ecs::ResMut<PostProcess> postProcess) {
+    plugins::graphics::Backend& started = *backend;
+    if (isStarted(started) && postProcess->applied != postProcess->settings) {
+        started.renderer->setPostProcess(postProcess->settings);
+        postProcess->applied = postProcess->settings;
     }
 }
 
@@ -277,6 +287,7 @@ void GraphicsPlugin::build(ecs::App& app) {
     resources.insertNonSend(PlatformEventFilter{});
     resources.insertNonSend(ToolFrame{});
     resources.insertIfAbsent<ClearColor>();
+    resources.insertIfAbsent<PostProcess>();
     resources.insertIfAbsent<TextureAssets>();
     resources.getMut<TextureAssets>()->setSource(assetSourceOf(resources));
     resources.insertIfAbsent<graphics::SpriteQueue>();
@@ -285,6 +296,7 @@ void GraphicsPlugin::build(ecs::App& app) {
     resources.insertIfAbsent<graphics::VisibleArea>();
     static_cast<void>(app.getWorld().getComponents().registerType<graphics::Camera>());
     addTextureCalls(app);
+    addPostProcessCalls(app);
 
     app.addSystem(ecs::Phase::kStartup, std::string{kCreateSystem}, &createBackend).setSide(ecs::Side::kClient);
     app.addSystem(ecs::Phase::kPreUpdate, std::string{kEventsSystem}, &forwardEvents)
@@ -294,8 +306,11 @@ void GraphicsPlugin::build(ecs::App& app) {
     app.addSystem(ecs::Phase::kRender, std::string{kBeginFrameSystem}, &beginFrame)
         .after(std::string{kTexturesSystem})
         .setSide(ecs::Side::kClient);
-    app.addSystem(ecs::Phase::kRender, std::string{kCameraSystem}, &applyCamera)
+    app.addSystem(ecs::Phase::kRender, std::string{kPostProcessSystem}, &applyPostProcess)
         .after(std::string{kBeginFrameSystem})
+        .setSide(ecs::Side::kClient);
+    app.addSystem(ecs::Phase::kRender, std::string{kCameraSystem}, &applyCamera)
+        .after(std::string{kPostProcessSystem})
         .setSide(ecs::Side::kClient);
     app.addSystem(ecs::Phase::kRender, std::string{kSpritesSystem}, &drawSprites)
         .after(std::string{kCameraSystem})
