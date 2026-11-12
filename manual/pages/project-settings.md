@@ -36,6 +36,11 @@ too.
 | `scripts.server` | none | the entry of the server side |
 | `scripts.client` | none | the entry of the client side |
 | `scripts.aliases.<name>` | none | the folder inside `scripts/` that `@<name>` points to, a string |
+| `scripts.native` | `true` | a boolean: compile the scripts to machine code when they load, on x64 and arm64 processors; elsewhere they are interpreted |
+
+Machine code runs the Luau of your systems about twice as fast; it behaves the same way, and errors name the same
+lines. Set `engine.settings.scripts.native = false` to interpret them, for example to compare when you suspect the
+compiler.
 
 An **entry** is a path inside `scripts/`, with no extension and no prefix: `"shared/main"` is
 `scripts/shared/main.luau` (or `scripts/shared/main/init.luau`). A process requires `main`, then `server` if it runs
