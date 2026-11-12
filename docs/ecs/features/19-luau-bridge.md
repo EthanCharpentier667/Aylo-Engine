@@ -155,7 +155,7 @@ adds run on clients):
 | Plugin | Calls |
 |---|---|
 | Sprite | `aylo.sprite.loadAtlas`, `aylo.sprite.createAtlas`, `aylo.sprite.addFrame`, `aylo.sprite.addAnimation` ([Sprites](../../Sprites.md#from-scripts)) |
-| Backend | `aylo.backend.loadTexture`, `aylo.backend.setPostProcess` ([Vulkan](../../Vulkan.md#hdr-scene-and-post-processing)) |
+| Backend | `aylo.backend.loadTexture` |
 | Text | `aylo.text.loadFont` ([Text](../../Text.md#from-scripts)) |
 | Tilemap | `aylo.tilemap.load`, `aylo.tilemap.spawn` ([Tilemaps](../../Tilemap.md#from-scripts)) |
 | Particle | `aylo.particle.beginEffect`, `aylo.particle.addBurst`, `aylo.particle.addColorKey`, `aylo.particle.addCurveKey`, `aylo.particle.addEffect` (clients) ([Particles](../../particles/design.md#12-luau)) |
@@ -206,6 +206,7 @@ engine.input.action("fire", "button", { bind = { "Space", "GamepadSouth" } })
 | `engine.assets.sound(path, {stream})` | `aylo.audio.loadSound` | the sound's `AssetId` |
 | `engine.assets.shader(path)` | `aylo.shader.load` | the shader's `AssetId` |
 | `engine.assets.material({name, shader, values, textures})` | `aylo.shader.addMaterial`, then `aylo.shader.setMaterialValue` and `aylo.shader.setMaterialTexture` | the material's `AssetId` |
+| `engine.screenEffects(materials)` | `aylo.shader.setScreenMaterials` (clients; nothing on a server) | nothing |
 | `engine.assets.font(path)` | `aylo.text.loadFont` | the font's `AssetId` |
 | `engine.assets.tilemap(path)` | `aylo.tilemap.load` | the map's `AssetId` |
 | `engine.assets.atlas{path \| texture, name, linear, grid, frames, animations}` | `aylo.sprite.loadAtlas` (a `path`) or `aylo.sprite.createAtlas` (a `texture`, named after it unless `name` is given), then `aylo.sprite.addFrame` per frame and `aylo.sprite.addAnimation` per animation, by name | the atlas's `AssetId` |
