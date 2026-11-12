@@ -12,6 +12,12 @@ Add the plugin in `project.luau`. Optional `persistence` section:
 | `directory` | none      | Absolute folder for the saves. Without it: `<user data directory>/<folder>`.      |
 | `folder`    | `"aylo"` | The game's folder in the user data directory (`%APPDATA%`, `~/Library/Application Support`, `$XDG_DATA_HOME` or `~/.local/share`). |
 
+Set `folder` to your game's name: every game that keeps the default shares the `aylo` folder.
+
+If you keep the default and the player has saves in an `rtype` folder (the default of older versions of the engine)
+but no `aylo` folder yet, the plugin copies those saves to `aylo` when it starts. The old folder is left as it is. A
+game that sets `folder` or `directory` is not concerned.
+
 ## From scripts
 
 Each helper takes a system's `ctx` (listing the call under `calls`) or `nil` while the script loads, and a table.
