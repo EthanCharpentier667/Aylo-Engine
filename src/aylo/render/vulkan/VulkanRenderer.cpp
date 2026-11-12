@@ -45,6 +45,7 @@
 #include "aylo/contract/renderer/math/Rect.hpp"
 #include "aylo/contract/renderer/particle/Particle.hpp"
 #include "aylo/contract/renderer/particle/ParticleSystemDesc.hpp"
+#include "aylo/contract/renderer/postprocess/PostProcess.hpp"
 #include "aylo/contract/renderer/shaders/CompiledShader.hpp"
 #include "aylo/contract/renderer/view/CameraView.hpp"
 #include "aylo/contract/renderer/view/View.hpp"
@@ -67,6 +68,7 @@
 #include "particle/GpuParticleSystem.hpp"
 #include "particle/ParticleSimulationPass.hpp"
 #include "pipeline/PipelineCacheFile.hpp"
+#include "postprocess/PostProcessPass.hpp"
 #include "rendering/DynamicRendering.hpp"
 #include "rendering/FrameUniforms.hpp"
 #include "rendering/MaterialBinding.hpp"
@@ -93,6 +95,10 @@ constexpr vk::Format kTextureFormat = vk::Format::eR8G8B8A8Srgb;
 
 /// @brief Format of the data textures (TextureEncoding::kLinear): the same pixels, sampled as they are stored.
 constexpr vk::Format kDataTextureFormat = vk::Format::eR8G8B8A8Unorm;
+
+/// @brief Format of the scene: half-float, so a colour may exceed 1 (bloom, tonemap). Every pass that draws the world
+/// renders into it, the window's format only comes with the composite (postprocess::PostProcessPass) and the meshes.
+constexpr vk::Format kSceneFormat = vk::Format::eR16G16B16A16Sfloat;
 
 /// @brief Texture sets per descriptor pool: a new pool is added each time this many textures are alive.
 constexpr std::uint32_t kTextureSetsPerPool = 64;
@@ -340,25 +346,32 @@ void VulkanRenderer::recreateSwapchain() {
 }
 
 void VulkanRenderer::createPasses() {
-    auto spritePass =
-        std::make_unique<rendering::SpritePass>(*_device, *_allocator, *_shaders, *_layout, _swapchain->getFormat(),
-                                                &_pipelineCache->getCache(), kFramesInFlight);
-    auto particlePass =
-        std::make_unique<rendering::ParticlePass>(*_device, *_allocator, *_shaders, *_layout, _swapchain->getFormat(),
-                                                  &_pipelineCache->getCache(), kFramesInFlight);
-    auto shapePass =
-        std::make_unique<rendering::ShapePass>(*_device, *_allocator, *_shaders, *_layout, _swapchain->getFormat(),
-                                               &_pipelineCache->getCache(), kFramesInFlight);
-    auto overlaySpritePass =
-        std::make_unique<rendering::SpritePass>(*_device, *_allocator, *_shaders, *_layout, _swapchain->getFormat(),
-                                                &_pipelineCache->getCache(), kFramesInFlight);
-    auto overlayShapePass =
-        std::make_unique<rendering::ShapePass>(*_device, *_allocator, *_shaders, *_layout, _swapchain->getFormat(),
-                                               &_pipelineCache->getCache(), kFramesInFlight);
+    auto spritePass = std::make_unique<rendering::SpritePass>(*_device, *_allocator, *_shaders, *_layout, kSceneFormat,
+                                                              &_pipelineCache->getCache(), kFramesInFlight);
+    auto particlePass = std::make_unique<rendering::ParticlePass>(
+        *_device, *_allocator, *_shaders, *_layout, kSceneFormat, &_pipelineCache->getCache(), kFramesInFlight);
+    auto shapePass = std::make_unique<rendering::ShapePass>(*_device, *_allocator, *_shaders, *_layout, kSceneFormat,
+                                                            &_pipelineCache->getCache(), kFramesInFlight);
+    auto overlaySpritePass = std::make_unique<rendering::SpritePass>(
+        *_device, *_allocator, *_shaders, *_layout, kSceneFormat, &_pipelineCache->getCache(), kFramesInFlight);
+    auto overlayShapePass = std::make_unique<rendering::ShapePass>(
+        *_device, *_allocator, *_shaders, *_layout, kSceneFormat, &_pipelineCache->getCache(), kFramesInFlight);
     auto meshPass =
         std::make_unique<rendering::MeshPass>(*_device, *_allocator, *_shaders, *_layout, _swapchain->getFormat(),
                                               &_pipelineCache->getCache(), kFramesInFlight);
+    auto postProcessPass = std::make_unique<postprocess::PostProcessPass>(
+        *_device, *_shaders, *_textureSetLayout, *_samplers->get(contract::renderer::TextureFilter::kLinear, false),
+        kSceneFormat, _swapchain->getFormat(), &_pipelineCache->getCache());
     const std::size_t frameIndex = _frames->getFrameIndex();
+    if (_postProcessPass) {
+        // The targets are sampled through sets the old pass's layout made: they go with it.
+        _deletionQueue.defer(frameIndex, std::exchange(_postProcessPass, std::move(postProcessPass)));
+        if (_postTargets) {
+            _deletionQueue.defer(frameIndex, std::move(_postTargets));
+        }
+    } else {
+        _postProcessPass = std::move(postProcessPass);
+    }
     if (_overlaySpritePass) {
         _deletionQueue.defer(frameIndex, std::exchange(_overlaySpritePass, std::move(overlaySpritePass)));
         _deletionQueue.defer(frameIndex, std::exchange(_overlayShapePass, std::move(overlayShapePass)));
@@ -548,13 +561,28 @@ void VulkanRenderer::endFrame() {
         commandBuffer.endRendering();
         rendering::transitionImage(commandBuffer, *scene->image.getImage(), rendering::kSceneToShaderRead);
     }
+    const postprocess::PostProcessPass::Targets* hdr = nullptr;
+    if (scene == nullptr) {
+        // The scene goes to a floating-point image first, then the glow, the exposure and the tonemap bring it to the
+        // window (postprocess::PostProcessPass).
+        hdr = &acquirePostTargets(frameIndex, windowExtent);
+        const command::CommandLabel label{*_device, commandBuffer, "Scene"};
+        rendering::transitionImage(commandBuffer, *hdr->scene.getImage(), rendering::kSceneToColorAttachment);
+        const vk::RenderingAttachmentInfo sceneColor =
+            rendering::colorAttachment(*hdr->scene.getImageView(), toClearColor(_clearColor));
+        commandBuffer.beginRendering(rendering::renderingInfo(windowExtent, {&sceneColor, 1}));
+        recordWorld(commandBuffer, frameIndex, view, *_globals);
+        recordOverlay(commandBuffer, frameIndex, view, viewSize, framebufferSize);
+        commandBuffer.endRendering();
+        rendering::transitionImage(commandBuffer, *hdr->scene.getImage(), rendering::kSceneToShaderRead);
+        _postProcessPass->recordBloom(commandBuffer, *hdr, _postProcess);
+    }
     rendering::transitionImage(commandBuffer, _swapchain->getImages().at(imageIndex), rendering::kToColorAttachment);
     const vk::RenderingAttachmentInfo color =
         rendering::colorAttachment(*_swapchain->getImageViews().at(imageIndex), toClearColor(_clearColor));
     commandBuffer.beginRendering(rendering::renderingInfo(windowExtent, {&color, 1}));
-    if (scene == nullptr) {
-        recordWorld(commandBuffer, frameIndex, view, *_globals);
-        recordOverlay(commandBuffer, frameIndex, view, viewSize, framebufferSize);
+    if (hdr != nullptr) {
+        _postProcessPass->recordComposite(commandBuffer, *hdr, _postProcess, windowExtent);
     }
     clearWorld();
     recordMeshes(commandBuffer, frameIndex, windowSize);
@@ -587,6 +615,26 @@ void VulkanRenderer::endFrame() {
         _swapchainOutOfDate = true;
     }
     _frames->advance();
+}
+
+bool VulkanRenderer::supportsPostProcess() const noexcept { return true; }
+
+void VulkanRenderer::setPostProcess(const contract::renderer::PostProcessSettings& settings) {
+    _postProcess = settings.sanitized();
+}
+
+const postprocess::PostProcessPass::Targets& VulkanRenderer::acquirePostTargets(std::size_t frameIndex,
+                                                                                vk::Extent2D extent) {
+    if (_postTargets) {
+        const vk::Extent2D current = _postTargets->scene.getExtent();
+        if (current.width == extent.width && current.height == extent.height) {
+            return *_postTargets;
+        }
+        // The previous frames may still read the old images: they go when those frames are done.
+        _deletionQueue.defer(frameIndex, std::move(_postTargets));
+    }
+    _postTargets = _postProcessPass->createTargets(*_allocator, *_textureDescriptors, *_textureSetLayout, extent);
+    return *_postTargets;
 }
 
 glm::vec2 VulkanRenderer::getViewSize() const { return glm::vec2{_config.virtualResolution}; }
@@ -777,7 +825,7 @@ contract::renderer::TextureId VulkanRenderer::getSceneTexture() const {
 contract::renderer::FrameStats VulkanRenderer::getFrameStats() const { return _stats; }
 
 texture::Texture VulkanRenderer::makeTargetTexture(glm::uvec2 size, std::string_view name) const {
-    memory::Image image{*_device, *_allocator, vk::Extent2D{size.x, size.y}, _swapchain->getFormat(),
+    memory::Image image{*_device, *_allocator, vk::Extent2D{size.x, size.y}, kSceneFormat,
                         vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled};
     vk::raii::DescriptorSet set = _textureDescriptors->allocate(*_textureSetLayout);
     const contract::renderer::TextureDesc desc{.size = size, .filter = contract::renderer::TextureFilter::kLinear};
@@ -804,7 +852,7 @@ void VulkanRenderer::adoptTarget(std::optional<glm::uvec2>& size, contract::rend
     const std::uint32_t maxSize = _physicalDevice->getLimits().maxImageDimension2D;
     const glm::uvec2 wanted{std::clamp(request->x, 1U, maxSize), std::clamp(request->y, 1U, maxSize)};
     texture::Texture* current = size ? _textures.find(texture) : nullptr;
-    if (current != nullptr && size == wanted && current->image.getFormat() == _swapchain->getFormat()) {
+    if (current != nullptr && size == wanted && current->image.getFormat() == kSceneFormat) {
         return;
     }
     texture::Texture made = makeTargetTexture(wanted, name);
@@ -1077,9 +1125,8 @@ rendering::MaterialBinding VulkanRenderer::findMaterial(contract::renderer::Mate
     if (shader == nullptr) {
         return {};
     }
-    const pipeline::GraphicsPipeline* pipeline =
-        shader->getPipeline(target, *_device, *_materialLayout, _swapchain->getFormat(), &_pipelineCache->getCache(),
-                            pipelineBuilderOf(target));
+    const pipeline::GraphicsPipeline* pipeline = shader->getPipeline(
+        target, *_device, *_materialLayout, kSceneFormat, &_pipelineCache->getCache(), pipelineBuilderOf(target));
     if (pipeline == nullptr) {
         return {};
     }
