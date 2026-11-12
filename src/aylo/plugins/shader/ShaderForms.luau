@@ -64,3 +64,19 @@ engine.assets.material = function(...)
 	end
 	return material
 end
+
+-- engine.screenEffects({ material, ... }): the screen effects, materials of `#pragma screen` shaders run in this order
+-- over the whole scene (aylo.shader.setScreenMaterials), replacing the previous ones; {} removes them. Where there is no
+-- screen to draw (a server), it does nothing, so a script shared by both sides can call it.
+engine.screenEffects = function(...)
+	local name = "engine.screenEffects"
+	forms.arguments(name, 1, ...)
+	local materials = (...)
+	if type(materials) ~= "table" then
+		forms.fail(name, "expected a list of materials")
+	end
+	if not engine.hasCall("aylo.shader.setScreenMaterials") then
+		return
+	end
+	forms.call(name, "aylo.shader.setScreenMaterials", { materials = materials })
+end

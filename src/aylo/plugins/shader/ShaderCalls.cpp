@@ -26,6 +26,7 @@
 #include "core/asset/AssetId.hpp"
 #include "plugins/shader/Material.hpp"
 #include "plugins/shader/MaterialAssets.hpp"
+#include "plugins/shader/ScreenMaterials.hpp"
 #include "plugins/shader/ShaderAssets.hpp"
 #include "plugins/shader/exceptions/ShaderExceptions.hpp"
 
@@ -89,6 +90,16 @@ MaterialResult setMaterialTexture(ecs::ResMut<MaterialAssets> materials, const S
     }
     return MaterialResult{.material = arguments.material};
 }
+
+void setScreenMaterials(ecs::Res<MaterialAssets> materials, ecs::ResMut<ScreenMaterials> screen,
+                        const SetScreenMaterialsArguments& arguments) {
+    for (const core::asset::AssetId material : arguments.materials) {
+        if (materials->get(material) == nullptr) {
+            throw exceptions::ShaderException{std::format("No material has the id {}", material.value)};
+        }
+    }
+    screen->materials = arguments.materials;
+}
 }  // namespace
 
 void addShaderForms(ecs::PluginRegistry& registry) {
@@ -105,6 +116,7 @@ void addShaderCalls(ecs::App& app) {
     app.addCall(std::string{kAddMaterialCall}, &addMaterial);
     app.addCall(std::string{kSetValueCall}, &setMaterialValue);
     app.addCall(std::string{kSetTextureCall}, &setMaterialTexture);
+    app.addCall(std::string{kSetScreenMaterialsCall}, &setScreenMaterials);
 }
 
 }  // namespace aylo::plugins::shader
