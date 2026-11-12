@@ -71,8 +71,8 @@ inline constexpr ImageTransition kSceneToShaderRead{
 };
 
 /// @brief A sampled image back to color attachment, its contents kept: the drawing adds to what a previous one made
-/// (the bloom's upsamples). Waits for the fragment shaders that sampled it, then orders the attachment's read (the
-/// load) and write.
+/// (the overlay over the screen effects). Waits for the fragment shaders that sampled it, then orders the attachment's
+/// read (the load) and write.
 inline constexpr ImageTransition kShaderReadToColorAttachment{
     .oldLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
     .newLayout = vk::ImageLayout::eColorAttachmentOptimal,

@@ -36,7 +36,6 @@
 #include "aylo/contract/renderer/math/Rect.hpp"
 #include "aylo/contract/renderer/particle/Particle.hpp"
 #include "aylo/contract/renderer/particle/ParticleSystemDesc.hpp"
-#include "aylo/contract/renderer/postprocess/PostProcess.hpp"
 #include "aylo/contract/renderer/shaders/CompiledShader.hpp"
 #include "aylo/contract/renderer/stats/FrameStats.hpp"
 #include "aylo/contract/renderer/view/CameraView.hpp"
@@ -62,7 +61,7 @@
 #include "pipeline/PipelineCache.hpp"
 #include "pipeline/PipelineLayout.hpp"
 #include "pipeline/ShaderCache.hpp"
-#include "postprocess/PostProcessPass.hpp"
+#include "postprocess/ScreenPass.hpp"
 #include "presentation/Swapchain.hpp"
 #include "rendering/DrawList.hpp"
 #include "rendering/MaterialBinding.hpp"
@@ -263,21 +262,17 @@ class AYLO_RENDER_VULKAN_API VulkanRenderer final : public contract::renderer::I
     /// @brief Destroys a material once the GPU is done with it; does nothing for one already destroyed.
     void destroy(contract::renderer::MaterialId material) override;
 
-    /// @return true: the scene is drawn in a half-float image, then bloom, exposure and a tonemap bring it to the
-    /// window (postprocess::PostProcessPass).
-    [[nodiscard]] bool supportsPostProcess() const noexcept override;
-
-    /// @brief Sets the bloom, the exposure and the tonemap of the window, from the next frame recorded. The defaults
-    /// change nothing of the picture. A scene drawn into a texture (setSceneSize()) does not get them.
-    void setPostProcess(const contract::renderer::PostProcessSettings& settings) override;
+    /// @brief Sets the screen effects, from the next frame recorded: the scene is drawn in a half-float image, then
+    /// each effect runs over it (postprocess::ScreenPass), in the window and in a tool's scene texture alike.
+    void setScreenMaterials(std::span<const contract::renderer::MaterialId> materials) override;
 
     /// @brief Adds @p mesh to the frame's meshes, drawn by endFrame() in the window, over the scene and the overlay,
     /// by rendering::MeshPass. Does nothing if beginFrame() skipped the frame.
     void drawMesh(const contract::renderer::Mesh& mesh) override;
 
     /// @brief Asks for the scene to be drawn into a texture of @p size, or back into the window (nothing); the next
-    /// beginFrame() makes the change (see IRenderer::setSceneSize()). The texture is half-float, as the scene is before
-    /// the post-process: it is shown as drawn, without bloom or tonemap.
+    /// beginFrame() makes the change (see IRenderer::setSceneSize()). The texture is half-float, as the scene is: it
+    /// gets the screen effects, as the window does.
     void setSceneSize(std::optional<glm::uvec2> size) override;
 
     /// @return The size of the scene's texture as of the current frame; nothing while the scene goes to the window.
@@ -330,10 +325,18 @@ class AYLO_RENDER_VULKAN_API VulkanRenderer final : public contract::renderer::I
     /// ones (their pipelines render into the old format) to the deletion queue.
     void createPasses();
 
-    /// @return The images the window's scene is drawn into and post-processed with, for a window of @p extent: the
+    /// @return The images the scene is drawn into and the screen effects take turns on, for a scene of @p extent: the
     /// current ones, or new ones when the size changed (the old are deferred to @p frameIndex).
-    [[nodiscard]] const postprocess::PostProcessPass::Targets& acquirePostTargets(std::size_t frameIndex,
-                                                                                  vk::Extent2D extent);
+    [[nodiscard]] const postprocess::ScreenPass::Targets& acquireScreenTargets(std::size_t frameIndex,
+                                                                               vk::Extent2D extent);
+
+    /// @brief Records the frame's scene into a target of @p extent: the world into the first image, the screen effects
+    /// over it, then the overlay.
+    /// @return The set that samples the image holding the result, in SHADER_READ_ONLY_OPTIMAL, for
+    /// ScreenPass::recordCopy().
+    [[nodiscard]] vk::DescriptorSet recordScene(const vk::raii::CommandBuffer& commandBuffer, std::size_t frameIndex,
+                                                vk::Extent2D extent, const contract::renderer::CameraView& view,
+                                                glm::vec2 viewSize, glm::uvec2 framebufferSize);
 
     /// @return The FrameUniforms of a picture of @p extent seen through @p view, at the time of the frame being ended:
     /// what the frame's uniform buffers hold (one per picture: the scene and the preview).
@@ -455,10 +458,10 @@ class AYLO_RENDER_VULKAN_API VulkanRenderer final : public contract::renderer::I
     contract::renderer::Mesh _mesh;                  ///< The frame's meshes, merged; cleared by beginFrame().
     std::optional<contract::renderer::ScenePreview> _previewRequest;  ///< From setScenePreview(): for beginFrame().
     std::optional<contract::renderer::View> _previewView;             ///< The preview's view as of the current frame.
-    std::optional<glm::uvec2> _previewSize;                ///< The preview texture's size now; empty: no preview.
-    contract::renderer::TextureId _previewTexture;         ///< The preview's texture in _textures.
-    contract::renderer::FrameStats _stats;                 ///< What the last frame drew.
-    contract::renderer::PostProcessSettings _postProcess;  ///< From setPostProcess(): the window's bloom and tonemap.
+    std::optional<glm::uvec2> _previewSize;         ///< The preview texture's size now; empty: no preview.
+    contract::renderer::TextureId _previewTexture;  ///< The preview's texture in _textures.
+    contract::renderer::FrameStats _stats;          ///< What the last frame drew.
+    std::vector<contract::renderer::MaterialId> _screenMaterials;  ///< From setScreenMaterials(), in their order.
 
     // 2. Context: created by init(), in this order.
     std::optional<core::Instance> _instance;                ///< The VkInstance.
@@ -500,9 +503,10 @@ class AYLO_RENDER_VULKAN_API VulkanRenderer final : public contract::renderer::I
     std::unique_ptr<rendering::MeshPass> _meshPass;             ///< Draws _mesh at endFrame(), over everything.
     std::unique_ptr<rendering::ParticlePass> _particlePass;  ///< Draws _particleRanges at endFrame(), among _sprites.
     std::unique_ptr<particle::ParticleSimulationPass> _particleSimulation;  ///< Runs _simulations at endFrame().
-    std::unique_ptr<postprocess::PostProcessPass> _postProcessPass;         ///< Brings the HDR scene to the window.
-    std::unique_ptr<postprocess::PostProcessPass::Targets> _postTargets;    ///< The HDR scene and the bloom chain; its
-                                                                            ///< sets come from _textureDescriptors.
+    std::unique_ptr<postprocess::ScreenPass> _screenPass;  ///< Runs the screen effects and shows the result.
+    std::unique_ptr<postprocess::ScreenPass::Targets>
+        _screenTargets;  ///< The HDR scene and the effects' other
+                         ///< image; its sets come from _textureDescriptors.
     core::SlotMap<contract::renderer::TextureId, texture::Texture> _textures;  ///< By TextureId.
     core::SlotMap<contract::renderer::ParticleSystemId, particle::GpuParticleSystem>
         _particleSystems;                                                              ///< By ParticleSystemId.

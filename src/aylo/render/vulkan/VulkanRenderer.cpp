@@ -45,7 +45,6 @@
 #include "aylo/contract/renderer/math/Rect.hpp"
 #include "aylo/contract/renderer/particle/Particle.hpp"
 #include "aylo/contract/renderer/particle/ParticleSystemDesc.hpp"
-#include "aylo/contract/renderer/postprocess/PostProcess.hpp"
 #include "aylo/contract/renderer/shaders/CompiledShader.hpp"
 #include "aylo/contract/renderer/view/CameraView.hpp"
 #include "aylo/contract/renderer/view/View.hpp"
@@ -69,7 +68,7 @@
 #include "particle/GpuParticleSystem.hpp"
 #include "particle/ParticleSimulationPass.hpp"
 #include "pipeline/PipelineCacheFile.hpp"
-#include "postprocess/PostProcessPass.hpp"
+#include "postprocess/ScreenPass.hpp"
 #include "rendering/DynamicRendering.hpp"
 #include "rendering/FrameUniforms.hpp"
 #include "rendering/MaterialBinding.hpp"
@@ -97,8 +96,9 @@ constexpr vk::Format kTextureFormat = vk::Format::eR8G8B8A8Srgb;
 /// @brief Format of the data textures (TextureEncoding::kLinear): the same pixels, sampled as they are stored.
 constexpr vk::Format kDataTextureFormat = vk::Format::eR8G8B8A8Unorm;
 
-/// @brief Format of the scene: half-float, so a colour may exceed 1 (bloom, tonemap). Every pass that draws the world
-/// renders into it, the window's format only comes with the composite (postprocess::PostProcessPass) and the meshes.
+/// @brief Format of the scene: half-float, so a colour may exceed 1 (a bloom, a tonemap among the screen effects).
+/// Every pass that draws the world renders into it, the window's format only comes with the copy of the frame
+/// (postprocess::ScreenPass) and the meshes.
 constexpr vk::Format kSceneFormat = vk::Format::eR16G16B16A16Sfloat;
 
 /// @brief Texture sets per descriptor pool: a new pool is added each time this many textures are alive.
@@ -112,6 +112,8 @@ material::GameShader::PipelineBuilder pipelineBuilderOf(contract::renderer::Shad
             return &rendering::ShapePass::createMaterialPipeline;
         case contract::renderer::ShaderTarget::kParticle:
             return &rendering::ParticlePass::createMaterialPipeline;
+        case contract::renderer::ShaderTarget::kScreen:
+            return &postprocess::ScreenPass::createMaterialPipeline;
         case contract::renderer::ShaderTarget::kSprite:
         case contract::renderer::ShaderTarget::kGlyph:
             break;
@@ -361,18 +363,14 @@ void VulkanRenderer::createPasses() {
     auto meshPass =
         std::make_unique<rendering::MeshPass>(*_device, *_allocator, *_shaders, *_layout, _swapchain->getFormat(),
                                               &_pipelineCache->getCache(), kFramesInFlight);
-    auto postProcessPass = std::make_unique<postprocess::PostProcessPass>(
+    auto screenPass = std::make_unique<postprocess::ScreenPass>(
         *_device, *_shaders, *_textureSetLayout, *_samplers->get(contract::renderer::TextureFilter::kLinear, false),
         kSceneFormat, _swapchain->getFormat(), &_pipelineCache->getCache());
     const std::size_t frameIndex = _frames->getFrameIndex();
-    if (_postProcessPass) {
-        // The targets are sampled through sets the old pass's layout made: they go with it.
-        _deletionQueue.defer(frameIndex, std::exchange(_postProcessPass, std::move(postProcessPass)));
-        if (_postTargets) {
-            _deletionQueue.defer(frameIndex, std::move(_postTargets));
-        }
+    if (_screenPass) {
+        _deletionQueue.defer(frameIndex, std::exchange(_screenPass, std::move(screenPass)));
     } else {
-        _postProcessPass = std::move(postProcessPass);
+        _screenPass = std::move(screenPass);
     }
     if (_overlaySpritePass) {
         _deletionQueue.defer(frameIndex, std::exchange(_overlaySpritePass, std::move(overlaySpritePass)));
@@ -552,39 +550,25 @@ void VulkanRenderer::endFrame() {
     // dispatches) is recorded above, before it. The world is uploaded once, for the preview and the scene.
     uploadWorld(frameIndex);
     recordPreview(commandBuffer, frameIndex);
+    // The scene goes to a floating-point image first, the screen effects run over it, and the result is copied where
+    // it is shown: the tool's scene texture, or the window.
+    const vk::DescriptorSet result =
+        recordScene(commandBuffer, frameIndex, sceneExtent, view, viewSize, framebufferSize);
     if (scene != nullptr) {
-        const command::CommandLabel label{*_device, commandBuffer, "Scene"};
         rendering::transitionImage(commandBuffer, *scene->image.getImage(), rendering::kSceneToColorAttachment);
         const vk::RenderingAttachmentInfo sceneColor =
             rendering::colorAttachment(*scene->image.getImageView(), toClearColor(_clearColor));
         commandBuffer.beginRendering(rendering::renderingInfo(sceneExtent, {&sceneColor, 1}));
-        recordWorld(commandBuffer, frameIndex, view, *_globals);
-        recordOverlay(commandBuffer, frameIndex, view, viewSize, framebufferSize);
+        _screenPass->recordCopy(commandBuffer, result, sceneExtent, false);
         commandBuffer.endRendering();
         rendering::transitionImage(commandBuffer, *scene->image.getImage(), rendering::kSceneToShaderRead);
-    }
-    const postprocess::PostProcessPass::Targets* hdr = nullptr;
-    if (scene == nullptr) {
-        // The scene goes to a floating-point image first, then the glow, the exposure and the tonemap bring it to the
-        // window (postprocess::PostProcessPass).
-        hdr = &acquirePostTargets(frameIndex, windowExtent);
-        const command::CommandLabel label{*_device, commandBuffer, "Scene"};
-        rendering::transitionImage(commandBuffer, *hdr->scene.getImage(), rendering::kSceneToColorAttachment);
-        const vk::RenderingAttachmentInfo sceneColor =
-            rendering::colorAttachment(*hdr->scene.getImageView(), toClearColor(_clearColor));
-        commandBuffer.beginRendering(rendering::renderingInfo(windowExtent, {&sceneColor, 1}));
-        recordWorld(commandBuffer, frameIndex, view, *_globals);
-        recordOverlay(commandBuffer, frameIndex, view, viewSize, framebufferSize);
-        commandBuffer.endRendering();
-        rendering::transitionImage(commandBuffer, *hdr->scene.getImage(), rendering::kSceneToShaderRead);
-        _postProcessPass->recordBloom(commandBuffer, *hdr, _postProcess);
     }
     rendering::transitionImage(commandBuffer, _swapchain->getImages().at(imageIndex), rendering::kToColorAttachment);
     const vk::RenderingAttachmentInfo color =
         rendering::colorAttachment(*_swapchain->getImageViews().at(imageIndex), toClearColor(_clearColor));
     commandBuffer.beginRendering(rendering::renderingInfo(windowExtent, {&color, 1}));
-    if (hdr != nullptr) {
-        _postProcessPass->recordComposite(commandBuffer, *hdr, _postProcess, windowExtent);
+    if (scene == nullptr) {
+        _screenPass->recordCopy(commandBuffer, result, windowExtent, true);
     }
     clearWorld();
     recordMeshes(commandBuffer, frameIndex, windowSize);
@@ -619,24 +603,59 @@ void VulkanRenderer::endFrame() {
     _frames->advance();
 }
 
-bool VulkanRenderer::supportsPostProcess() const noexcept { return true; }
-
-void VulkanRenderer::setPostProcess(const contract::renderer::PostProcessSettings& settings) {
-    _postProcess = settings.sanitized();
+void VulkanRenderer::setScreenMaterials(std::span<const contract::renderer::MaterialId> materials) {
+    _screenMaterials.assign(materials.begin(), materials.end());
 }
 
-const postprocess::PostProcessPass::Targets& VulkanRenderer::acquirePostTargets(std::size_t frameIndex,
-                                                                                vk::Extent2D extent) {
-    if (_postTargets) {
-        const vk::Extent2D current = _postTargets->scene.getExtent();
+const postprocess::ScreenPass::Targets& VulkanRenderer::acquireScreenTargets(std::size_t frameIndex,
+                                                                             vk::Extent2D extent) {
+    if (_screenTargets) {
+        const vk::Extent2D current = _screenTargets->images.front().getExtent();
         if (current.width == extent.width && current.height == extent.height) {
-            return *_postTargets;
+            return *_screenTargets;
         }
         // The previous frames may still read the old images: they go when those frames are done.
-        _deletionQueue.defer(frameIndex, std::move(_postTargets));
+        _deletionQueue.defer(frameIndex, std::move(_screenTargets));
     }
-    _postTargets = _postProcessPass->createTargets(*_allocator, *_textureDescriptors, *_textureSetLayout, extent);
-    return *_postTargets;
+    _screenTargets = _screenPass->createTargets(*_allocator, *_textureDescriptors, *_textureSetLayout, extent);
+    return *_screenTargets;
+}
+
+vk::DescriptorSet VulkanRenderer::recordScene(const vk::raii::CommandBuffer& commandBuffer, std::size_t frameIndex,
+                                              vk::Extent2D extent, const contract::renderer::CameraView& view,
+                                              glm::vec2 viewSize, glm::uvec2 framebufferSize) {
+    const postprocess::ScreenPass::Targets& targets = acquireScreenTargets(frameIndex, extent);
+    const memory::Image& sceneImage = targets.images.front();
+    {
+        const command::CommandLabel label{*_device, commandBuffer, "Scene"};
+        rendering::transitionImage(commandBuffer, *sceneImage.getImage(), rendering::kSceneToColorAttachment);
+        const vk::RenderingAttachmentInfo sceneColor =
+            rendering::colorAttachment(*sceneImage.getImageView(), toClearColor(_clearColor));
+        commandBuffer.beginRendering(rendering::renderingInfo(extent, {&sceneColor, 1}));
+        recordWorld(commandBuffer, frameIndex, view, *_globals);
+        commandBuffer.endRendering();
+        rendering::transitionImage(commandBuffer, *sceneImage.getImage(), rendering::kSceneToShaderRead);
+    }
+    std::vector<rendering::MaterialBinding> effects;
+    effects.reserve(_screenMaterials.size());
+    for (const contract::renderer::MaterialId material : _screenMaterials) {
+        effects.push_back(findMaterial(material, contract::renderer::ShaderTarget::kScreen, frameIndex));
+    }
+    const std::size_t result = _screenPass->recordEffects(commandBuffer, targets, effects, *_globals, frameIndex);
+    if (!_overlayRuns.empty()) {
+        // Over the effects, so they leave the interface alone.
+        const memory::Image& resultImage = targets.images.at(result);
+        rendering::transitionImage(commandBuffer, *resultImage.getImage(), rendering::kShaderReadToColorAttachment);
+        const vk::RenderingAttachmentInfo overlayColor = rendering::loadedColorAttachment(*resultImage.getImageView());
+        commandBuffer.beginRendering(rendering::renderingInfo(extent, {&overlayColor, 1}));
+        commandBuffer.setViewport(0, vk::Viewport{0.0F, 0.0F, static_cast<float>(extent.width),
+                                                  static_cast<float>(extent.height), 0.0F, 1.0F});
+        commandBuffer.setScissor(0, vk::Rect2D{vk::Offset2D{0, 0}, extent});
+        recordOverlay(commandBuffer, frameIndex, view, viewSize, framebufferSize);
+        commandBuffer.endRendering();
+        rendering::transitionImage(commandBuffer, *resultImage.getImage(), rendering::kSceneToShaderRead);
+    }
+    return *targets.sets.at(result);
 }
 
 glm::vec2 VulkanRenderer::getViewSize() const { return glm::vec2{_config.virtualResolution}; }

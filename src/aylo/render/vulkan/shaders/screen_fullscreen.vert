@@ -2,11 +2,11 @@
 ** EPITECH PROJECT, 2026
 ** aylo
 ** File description:
-** postprocess_fullscreen
+** screen_fullscreen
 */
 
-// One triangle that covers the whole target, built from the vertex index: no vertex buffer. Shared by every
-// post-process pass; the uv runs 0..1 over the target, (0, 0) at its top-left corner.
+// One triangle that covers the whole target, built from the vertex index: no vertex buffer. Used by the
+// copy of the frame (screen_copy.frag); the uv runs 0..1 over the target, (0, 0) at its top-left corner.
 #version 450
 
 layout(location = 0) out vec2 outUv;

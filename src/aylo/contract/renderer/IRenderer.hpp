@@ -27,7 +27,6 @@
 #include "aylo/contract/renderer/drawing/Texture.hpp"
 #include "aylo/contract/renderer/particle/Particle.hpp"
 #include "aylo/contract/renderer/particle/ParticleSystemDesc.hpp"
-#include "aylo/contract/renderer/postprocess/PostProcess.hpp"
 #include "aylo/contract/renderer/shaders/CompiledShader.hpp"
 #include "aylo/contract/renderer/stats/FrameStats.hpp"
 #include "aylo/contract/renderer/view/ScenePreview.hpp"
@@ -163,20 +162,6 @@ class AYLO_HEADER_ONLY_API IRenderer {
     virtual void draw(const ParticleDraw& particles) = 0;
     /// @}
 
-    /// @name Post-processing
-    /// @brief The scene is drawn in a floating-point target, then brought to the window: bloom and a tonemap
-    /// (PostProcessSettings). Optional: a renderer without it shows the scene as drawn, ignoring the settings.
-    /// @{
-
-    /// @return Whether setPostProcess() changes the picture: false, the default, means the settings are ignored.
-    [[nodiscard]] virtual bool supportsPostProcess() const noexcept { return false; }
-
-    /// @brief Sets what happens to the frame between the scene and the window, from the next frame drawn. Values out of
-    /// range are brought into it (PostProcessSettings::sanitized()). Does not count in a scene drawn into a texture
-    /// (setSceneSize()): only the window gets it. Default: does nothing.
-    virtual void setPostProcess(const PostProcessSettings& /*settings*/) {}
-    /// @}
-
     /// @name Shaders and materials
     /// @brief Shaders written by the game (docs/Shaders.md), compiled by the shader plugin into a CompiledShader that
     /// says nothing of any graphics API, and drawn through the materials Sprite, Shape, Text and ParticleDraw name.
@@ -216,6 +201,13 @@ class AYLO_HEADER_ONLY_API IRenderer {
     /// @brief Destroys a material. Safe while the backend may still be drawing with it; does nothing for one already
     /// destroyed. Drawings that still name it get the default material. Default: does nothing.
     virtual void destroy(MaterialId /*material*/) {}
+
+    /// @brief Sets the screen effects: materials of shaders that serve ShaderTarget::kScreen, run in this order over
+    /// the whole scene once the world is drawn, each reading what the previous one wrote, from the next frame drawn.
+    /// The scene they read is in floating point, so a colour may exceed 1 (a bloom, a tonemap). The overlay is drawn
+    /// after them, so they leave it alone. A material destroyed, or whose shader does not serve kScreen, is skipped.
+    /// Empty, the default: the scene is shown as drawn. Default: does nothing.
+    virtual void setScreenMaterials(std::span<const MaterialId> /*materials*/) {}
     /// @}
 
     /// @name Tools
