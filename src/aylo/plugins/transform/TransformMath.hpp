@@ -22,4 +22,9 @@ namespace aylo::plugins::transform {
 /// @details A parent scaled to 0 on an axis loses that axis: the result is 0 on it, not a division by 0.
 [[nodiscard]] AYLO_PLUGIN_TRANSFORM_API Transform toLocal(const GlobalTransform& parent,
                                                           const GlobalTransform& world) noexcept;
+
+/// @return @p from blended toward @p to by @p alpha (0: @p from, 1: @p to). The rotation turns the short way, so a pose
+/// that crossed a full turn does not spin back.
+[[nodiscard]] AYLO_PLUGIN_TRANSFORM_API Transform interpolate(const Transform& from, const Transform& to,
+                                                              float alpha) noexcept;
 }  // namespace aylo::plugins::transform
