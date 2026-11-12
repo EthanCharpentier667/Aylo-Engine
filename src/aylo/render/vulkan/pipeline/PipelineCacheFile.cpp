@@ -47,10 +47,11 @@ constexpr std::size_t kHeaderSize = (4 * sizeof(std::uint32_t)) + VK_UUID_SIZE;
 /// the driver: vkCreatePipelineCache must only get data vkGetPipelineCacheData gave
 /// (VUID-VkPipelineCacheCreateInfo-initialDataSize-00769), and some drivers crash on damaged data. 24 bytes.
 struct FileHeader {
-    std::array<char, 4> magic{'R', 'T', 'P', 'C'};  ///< Says the file is an engine pipeline cache.
-    std::uint32_t format = 1;                       ///< Version of this header.
-    std::uint64_t size = 0;                         ///< Bytes of the Vulkan data after it.
-    std::uint64_t checksum = 0;                     ///< FNV-1a 64-bit hash of the Vulkan data.
+    /// Says the file is an engine pipeline cache. Frozen: it names the format, not the engine.
+    std::array<char, 4> magic{'R', 'T', 'P', 'C'};
+    std::uint32_t format = 1;    ///< Version of this header.
+    std::uint64_t size = 0;      ///< Bytes of the Vulkan data after it.
+    std::uint64_t checksum = 0;  ///< FNV-1a 64-bit hash of the Vulkan data.
 };
 static_assert(sizeof(FileHeader) == 24, "FileHeader is written as is: no padding");
 

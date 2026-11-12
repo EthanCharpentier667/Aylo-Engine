@@ -53,6 +53,7 @@
 #include "core/DebugMessenger.hpp"
 #include "core/Instance.hpp"
 #include "core/Loader.hpp"
+#include "core/layout/Layout.hpp"
 #include "core/system/CacheDirectory.hpp"
 #include "core/system/ExecutablePath.hpp"
 #include "descriptor/DescriptorAllocator.hpp"
@@ -124,13 +125,14 @@ constexpr std::uint32_t kMaterialSetsPerPool = 64;
 /// @return @p color (x, y, z, w = red, green, blue, alpha) as a Vulkan clear value: linear, an sRGB swapchain encodes
 /// it.
 /// @return Where the pipeline cache is kept for the Config::pipelineCache @p configured: relative to the user's cache
-/// directory's aylo folder; empty if @p configured is empty or that directory is unknown.
+/// directory's engine folder (layout::kUserFolder); empty if @p configured is empty or that directory is unknown.
 std::filesystem::path resolvePipelineCachePath(const std::filesystem::path& configured) {
     if (configured.empty() || configured.is_absolute()) {
         return configured;
     }
     const std::filesystem::path cacheDirectory = ::aylo::core::system::getCacheDirectory();
-    return cacheDirectory.empty() ? std::filesystem::path{} : cacheDirectory / "aylo" / configured;
+    return cacheDirectory.empty() ? std::filesystem::path{}
+                                  : cacheDirectory / ::aylo::core::layout::kUserFolder / configured;
 }
 
 /// @return The pipeline cache saved at @p path by a previous launch on @p device, or nothing if there is none, or it is

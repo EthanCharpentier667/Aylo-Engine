@@ -41,7 +41,7 @@ The requirements are the ones from the design:
 | 17 | [Hierarchy](17-hierarchy.md) | Parent/child entities and transform propagation | v2 |
 | 18 | [Capsules](18-capsules.md) | Entities described once and spawned by copy: actors and levels alike, in `plugin-capsule` | v2 |
 | 19 | [Luau bridge](19-luau-bridge.md) | How scripts declare components, systems, plugins and inputs | v2 |
-| 20 | [Replication](20-replication.md) | The network plugins for a shoot'em up-like game | v2 |
+| 20 | [Replication](20-replication.md) | The network plugins for a shoot'em up | v2 |
 
 ## How the features depend on each other
 

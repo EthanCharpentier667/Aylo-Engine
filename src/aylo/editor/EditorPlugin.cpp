@@ -28,6 +28,7 @@
 #include "aylo/ecs/resource/Resources.hpp"
 #include "aylo/ecs/schedule/RunMode.hpp"
 #include "aylo/ecs/schedule/Schedules.hpp"
+#include "core/layout/Layout.hpp"
 #include "core/system/CacheDirectory.hpp"
 #include "editor/EditorSession.hpp"
 #include "editor/gui/GuiContext.hpp"
@@ -56,7 +57,7 @@ std::filesystem::path layoutFilePath() {
     const std::filesystem::path cache = core::system::getCacheDirectory();
     // Versioned: a layout kept by an editor with other panels would leave the new ones floating.
     return cache.empty() ? std::filesystem::path{}
-                         : cache / "aylo" / "editor" / std::format("layout-{}.ini", kLayoutVersion);
+                         : cache / core::layout::kUserFolder / "editor" / std::format("layout-{}.ini", kLayoutVersion);
 }
 
 /// @return Whether a dock node holds nothing yet: no layout was read from the file.

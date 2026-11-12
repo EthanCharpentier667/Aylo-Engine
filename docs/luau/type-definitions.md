@@ -183,11 +183,11 @@ Game data is addressed by name: `ctx.resources["aylo.Input"]`, `ctx.events.read(
 ```luau
 -- Generated from the game's ECS registry. Do not edit.
 type GameShield = { strength: number, regen: number, owner: Entity }
-type RtypeTransform = { position: vector, rotation: number, scale: vector }
+type AyloTransform = { position: vector, rotation: number, scale: vector }
 
-type GameResources = { ["aylo.Input"]: RtypeInput, ["aylo.Time"]: RtypeTime }
+type GameResources = { ["aylo.Input"]: AyloInput, ["aylo.Time"]: AyloTime }
 type GameEvents = {
-    read: ((name: "aylo.Collision") -> () -> RtypeCollision?) & ((name: "game.Hello") -> () -> GameHello?),
+    read: ((name: "aylo.Collision") -> () -> AyloCollision?) & ((name: "game.Hello") -> () -> GameHello?),
     send: ((name: "game.Hello", data: GameHello) -> ()) & ...,
 }
 type GameShieldRegenContext = Context & {

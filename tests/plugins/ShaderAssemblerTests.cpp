@@ -68,7 +68,7 @@ TEST(ShaderAssembler, StartsWithThePreludeThenTheGameLinesFromOne) {
 TEST(ShaderAssembler, DeclaresTheMaterialAsAnAnonymousBlockAndItsTextures) {
     const std::string glsl = assemble(ShaderTarget::kSprite, ShaderStage::kFragment);
     EXPECT_TRUE(has(glsl,
-                    "layout(set = 2, binding = 0, std140) uniform RtypeMaterial {\n"
+                    "layout(set = 2, binding = 0, std140) uniform AyloMaterial {\n"
                     "    layout(offset = 0) vec4 tint;\n};"));
     EXPECT_TRUE(has(glsl, "layout(set = 2, binding = 1) uniform sampler2D noise;"));
     EXPECT_FALSE(has(glsl, "#define tint"));  // no macro: it would replace `.tint` members and swizzles too

@@ -37,6 +37,8 @@ RTSAVE1
 <exactly size bytes of the game's data>
 ```
 
+- **The first line never changes.** `RTSAVE1` names the format, not the engine: it stayed when the engine was renamed,
+  so that every save written before still loads. A new format would take a new number.
 - **Atomic writes.** The file is written to `<name>.tmp`, then renamed over the old one: a crash or a full disk never
   leaves half a save.
 - **Corruption is detected.** A wrong magic, a size that does not match or a checksum that differs is reported as

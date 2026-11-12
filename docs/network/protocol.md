@@ -83,6 +83,9 @@ The first byte of every datagram is its **kind**:
 The padding makes the request at least as large as any answer, so the server cannot be used to amplify traffic towards
 a spoofed address. A server MUST drop a request shorter or longer than 64 bytes, or with another `protocolId`.
 
+Builds from before the engine was renamed wrote `0x52545950` ("RTYP") here. The two do not talk to each other: the
+request of such a client is dropped without an answer, so it times out instead of getting `Rejected(kVersionMismatch)`.
+
 A server answers with `Rejected(kVersionMismatch)` when `version` is not its own, `Rejected(kServerFull)` when it has no
 free slot, and otherwise with a `Challenge`. A client SHOULD resend its request every 100 ms (`handshakeRetry`) until it
 gets an answer, and give up after 5 s (`handshakeTimeout`).
