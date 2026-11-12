@@ -17,6 +17,7 @@
 #include "aylo/ecs/type/String.hpp"
 #include "core/asset/AssetId.hpp"
 #include "plugins/AssetIdReflection.hpp"  // IWYU pragma: keep
+#include "plugins/shader/Export.hpp"
 
 namespace aylo::plugins::shader {
 
@@ -88,6 +89,6 @@ void addShaderCalls(ecs::App& app);
 
 /// @brief Registers the setup forms of the plugin on @p registry: its library does it on every side, so a server gets
 /// the ids of what it does not load, and so does building the plugin, for a program without libraries.
-void addShaderForms(ecs::PluginRegistry& registry);
+AYLO_PLUGIN_SHADER_API void addShaderForms(ecs::PluginRegistry& registry);
 
 }  // namespace aylo::plugins::shader
