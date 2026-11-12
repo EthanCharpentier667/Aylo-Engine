@@ -146,3 +146,17 @@ TEST(ShaderParser, RejectsInstanceValuesPastTheBudgetAndTooManyTextures) {
 TEST(ShaderParser, RejectsAShaderWithoutFunction) {
     EXPECT_NE(errorOf("uniform float a;").find("neither"), std::string::npos);
 }
+
+TEST(ShaderParser, ReadsTheScreenPragmaAndBlanksItsLine) {
+    const ParsedShader shader = parseShader("#pragma screen\nvoid fragment() {}", "test");
+    EXPECT_TRUE(shader.screen);
+    EXPECT_EQ(shader.body, "\nvoid fragment() {}");
+    EXPECT_FALSE(parseShader("void fragment() {}", "test").screen);
+}
+
+TEST(ShaderParser, ReservesTheScreenBuiltins) {
+    for (const std::string_view name : {"SCREEN_TEXTURE", "SCREEN_UV", "SCREEN_PIXEL_SIZE"}) {
+        const std::string message = errorOf(std::string{"uniform vec2 "} + std::string{name} + ";\nvoid fragment() {}");
+        EXPECT_NE(message.find("reserved"), std::string::npos) << name;
+    }
+}
