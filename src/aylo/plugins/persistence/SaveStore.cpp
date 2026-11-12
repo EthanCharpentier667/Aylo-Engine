@@ -23,6 +23,8 @@
 
 namespace aylo::plugins::persistence {
 namespace {
+/// The first line of a save. Frozen: it names the format, not the engine, and every save written so far starts with
+/// it. A new format takes a new number, and read() keeps reading this one.
 constexpr std::string_view kMagic = "RTSAVE1";
 constexpr std::string_view kExtension = ".sav";
 constexpr std::string_view kTemporary = ".tmp";
