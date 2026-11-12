@@ -108,3 +108,27 @@ TEST(ToLocal, GivesZeroOnAnAxisTheParentFlattens) {
     expectNear(local.position, {0.0F, 5.0F});
     expectNear(local.scale, {0.0F, 0.5F});
 }
+
+TEST(Interpolate, BlendsPositionRotationAndScale) {
+    const Transform from{.position = {0.0F, 10.0F}, .rotation = 0.0F, .scale = {1.0F, 1.0F}};
+    const Transform to{.position = {10.0F, 30.0F}, .rotation = kQuarterTurn, .scale = {3.0F, 1.0F}};
+    const Transform half = aylo::plugins::transform::interpolate(from, to, 0.5F);
+    expectNear(half.position, {5.0F, 20.0F});
+    EXPECT_NEAR(half.rotation, kQuarterTurn / 2.0F, kTolerance);
+    expectNear(half.scale, {2.0F, 1.0F});
+}
+
+TEST(Interpolate, GivesItsEndsAtZeroAndOne) {
+    const Transform from{.position = {1.0F, 2.0F}, .rotation = 0.25F};
+    const Transform to{.position = {7.0F, -4.0F}, .rotation = 0.75F};
+    expectNear(aylo::plugins::transform::interpolate(from, to, 0.0F).position, from.position);
+    expectNear(aylo::plugins::transform::interpolate(from, to, 1.0F).position, to.position);
+    EXPECT_NEAR(aylo::plugins::transform::interpolate(from, to, 1.0F).rotation, to.rotation, kTolerance);
+}
+
+TEST(Interpolate, TurnsTheShortWayAcrossAFullTurn) {
+    const float almostTurn = (2.0F * std::numbers::pi_v<float>)-0.1F;
+    const Transform from{.rotation = almostTurn};
+    const Transform to{.rotation = 0.1F};  // 0.2 radians further clockwise, not 6.08 back
+    EXPECT_NEAR(aylo::plugins::transform::interpolate(from, to, 0.5F).rotation, almostTurn + 0.1F, kTolerance);
+}

@@ -33,6 +33,7 @@
 #include "aylo/luau/Result.hpp"
 #include "aylo/luau/Runtime.hpp"
 #include "aylo/luau/RuntimeConfig.hpp"
+#include "core/layout/GameName.hpp"
 #include "core/layout/Layout.hpp"
 #include "core/vfs/Pack.hpp"
 #include "core/vfs/exceptions/PackException.hpp"
@@ -52,21 +53,9 @@ using core::layout::kNoticesByLibraryFolder;
 using core::layout::kNoticesFile;
 using core::layout::kProgramExtension;
 
-/// @return The name of the game when the request gives none: `MyGame` for `MyGame/game`, else the folder's own name.
-std::string defaultName(const std::filesystem::path& game) {
-    const std::filesystem::path folder = game.filename().empty() ? game.parent_path() : game;
-    if (folder.filename() == kGameFolder && !folder.parent_path().filename().empty()) {
-        return folder.parent_path().filename().string();
-    }
-    return folder.filename().string();
-}
-
 /// @brief Refuses a name that is not one file name: the export's folder and program are named after it.
 void checkName(const std::string& name) {
-    const bool bad = name.empty() || name == "." || name == ".." ||
-                     name.find_first_of("/\\:*?\"<>|") != std::string::npos ||
-                     std::ranges::any_of(name, [](const char c) { return static_cast<unsigned char>(c) < 0x20; });
-    if (bad) {
+    if (!core::layout::isFileName(name)) {
         throw exceptions::RuntimeError{
             std::format("Invalid name '{}': it names a folder and a program, so it must be a file name", name)};
     }
@@ -428,7 +417,7 @@ ExportReport exportGame(const ExportRequest& request) {
     if (!absolute.game.has_filename()) {
         absolute.game = absolute.game.parent_path();
     }
-    const std::string name = request.name.empty() ? defaultName(absolute.game) : request.name;
+    const std::string name = request.name.empty() ? core::layout::gameName(absolute.game) : request.name;
     checkName(name);
     if (!std::filesystem::is_regular_file(absolute.runtime / runtimeProgramName())) {
         throw exceptions::RuntimeError{

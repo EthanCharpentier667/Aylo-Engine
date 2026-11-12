@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <glm/ext/vector_float2.hpp>
 
 #include "aylo/ecs/component/ComponentTraits.hpp"
@@ -35,5 +36,25 @@ struct GlobalTransform {
     glm::vec2 scale{1.0F};     ///< Combined scale.
 };
 AYLO_ECS_COMPONENT(GlobalTransform, "aylo.GlobalTransform", position, rotation, scale);
+
+/// @brief Draws an entity between its last two fixed ticks, so what moves in FixedUpdate looks smooth whatever the
+/// frame rate.
+/// @details Add it next to the Transform of an entity moved in FixedUpdate (by gameplay or by the physics). On the
+/// client (and standalone), the TransformPlugin records the Transform after each fixed tick and computes the
+/// GlobalTransform from the pose blended between the last two ticks by Time::alpha: what is drawn is at most one tick
+/// behind the simulation. A Transform changed when no tick ran (a teleport in Update, the editor) is drawn where it is
+/// at once. Only GlobalTransform is blended: Transform, the physics and the server keep the simulated pose. The members
+/// are the plugin's state, not reflected: a script sees a component without fields.
+/// @code
+/// commands.spawn().add(aylo::plugins::transform::Transform{}).add(aylo::plugins::transform::TransformInterpolation{});
+/// @endcode
+struct TransformInterpolation {
+    Transform previous;      ///< The pose recorded after the tick before the last one.
+    Transform current;       ///< The pose recorded after the last tick.
+    Transform drawn;         ///< `previous` blended toward `current` by Time::alpha: what GlobalTransform starts from.
+    std::uint32_t tick = 0;  ///< Time::tick when `current` was recorded.
+    bool recorded = false;   ///< Whether a pose was recorded yet; until then the Transform is drawn as it is.
+};
+AYLO_ECS_COMPONENT(TransformInterpolation, "aylo.TransformInterpolation");
 
 }  // namespace aylo::plugins::transform

@@ -63,6 +63,7 @@
 #include "aylo/scripting/plugin/ScriptingPlugin.hpp"
 #include "core/asset/exceptions/AssetExceptions.hpp"
 #include "core/config/exceptions/ConfigExceptions.hpp"
+#include "core/layout/GameName.hpp"
 #include "core/library/LibraryEntry.hpp"
 #include "core/system/ExecutablePath.hpp"
 #include "core/vfs/DirectorySource.hpp"
@@ -252,6 +253,27 @@ std::unique_ptr<aylo::ecs::Plugin> makeNetworkPlugin(const aylo::ecs::RunMode mo
     }
     return nullptr;
 }
+
+/// The setting naming the game: the default folder of its saves.
+constexpr std::string_view kNameSetting = "name";
+
+/// @brief Gives @p settings the game's name when its project sets none: the name of its folder @p game
+/// (aylo::core::layout::gameName()), if that can name a folder.
+/// @throws aylo::engine::exceptions::RuntimeError If the project sets a name that cannot name a folder.
+void nameGame(aylo::core::config::Settings& settings, const std::filesystem::path& game) {
+    if (settings.has(kNameSetting)) {
+        const std::string name = settings.getString(kNameSetting, "");
+        if (!aylo::core::layout::isFileName(name)) {
+            throw aylo::engine::exceptions::RuntimeError{
+                std::format("Invalid setting 'name': '{}' names the game's folders, so it must be a file name", name)};
+        }
+        return;
+    }
+    std::string name = aylo::core::layout::gameName(game);
+    if (aylo::core::layout::isFileName(name)) {
+        settings.set(std::string{kNameSetting}, std::move(name));
+    }
+}
 }  // namespace
 
 namespace aylo::engine {
@@ -281,16 +303,21 @@ bool Engine::isPacked() const noexcept { return _game.packed; }
 
 core::config::Settings Engine::readSettings() const {
     const bool isDebug = _config.debug.value_or(kIsDebug);
+    core::config::Settings settings;
     if (!_game.packed) {
-        return scripting::loadProjectSettings(_gameDirectory / kProjectFile, _config.mode, _commandLine, isDebug);
+        settings = scripting::loadProjectSettings(_gameDirectory / kProjectFile, _config.mode, _commandLine, isDebug);
+    } else {
+        std::string source;
+        try {
+            source = _game.files->read(kProjectFile);
+        } catch (const core::asset::exceptions::AssetLoadException& error) {
+            throw exceptions::RuntimeError{error.what()};
+        }
+        settings =
+            scripting::loadProjectSettings(std::string{kProjectFile}, source, _config.mode, _commandLine, isDebug);
     }
-    std::string source;
-    try {
-        source = _game.files->read(kProjectFile);
-    } catch (const core::asset::exceptions::AssetLoadException& error) {
-        throw exceptions::RuntimeError{error.what()};
-    }
-    return scripting::loadProjectSettings(std::string{kProjectFile}, source, _config.mode, _commandLine, isDebug);
+    nameGame(settings, _gameDirectory);
+    return settings;
 }
 
 ecs::RunMode Engine::mode() const noexcept { return _config.mode; }

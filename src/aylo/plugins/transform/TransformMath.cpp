@@ -8,6 +8,7 @@
 #include "TransformMath.hpp"
 
 #include <cmath>
+#include <glm/ext/scalar_constants.hpp>
 #include <glm/ext/vector_float2.hpp>
 
 #include "Transform.hpp"
@@ -41,4 +42,11 @@ Transform toLocal(const GlobalTransform& parent, const GlobalTransform& world) n
                      .rotation = rotationDirection(parent.scale) * (world.rotation - parent.rotation),
                      .scale = divide(world.scale, parent.scale)};
 }
+Transform interpolate(const Transform& from, const Transform& to, float alpha) noexcept {
+    const float turn = std::remainder(to.rotation - from.rotation, 2.0F * glm::pi<float>());
+    return Transform{.position = from.position + ((to.position - from.position) * alpha),
+                     .rotation = from.rotation + (turn * alpha),
+                     .scale = from.scale + ((to.scale - from.scale) * alpha)};
+}
+
 }  // namespace aylo::plugins::transform
