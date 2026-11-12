@@ -5,8 +5,6 @@
 ** Function
 */
 
-#include "Function.hpp"
-
 #include <lua.h>
 #include <lualib.h>
 
@@ -20,6 +18,7 @@
 #include "ErrorKind.hpp"
 #include "Exceptions.hpp"
 #include "Failure.hpp"
+#include "Function.hpp"
 #include "FunctionRef.hpp"
 #include "Ref.hpp"
 #include "Result.hpp"
@@ -155,8 +154,7 @@ int Function::handle(lua_State* state) {
     }
     if (self->_type != BindingType::kNative) {
         throw exceptions::InvalidOperation{
-            "somehow, a script function was bound to a native function, that's a massive fuck up, this is a critical "
-            "bug"};
+            "a script function is bound to the native closure of a Function: this is a bug of the luau module"};
     }
     std::string error{};
     std::size_t resultCount{};
