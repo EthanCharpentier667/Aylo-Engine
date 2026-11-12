@@ -10,7 +10,8 @@ add_requires("imgui v1.92.9+b-docking", {alias = "imgui"})
 target("editor")
     -- Static, linked into the program: it links the plugins, so no plugin may link it.
     set_kind("static")
-    set_basename("aylo-editor")
+    -- Not the name of the program below: on Windows both would write aylo-editor.lib and aylo-editor.pdb.
+    set_basename("aylo-editor-lib")
     add_defines("AYLO_EDITOR_BUILD", {public = false})
     add_defines("AYLO_EDITOR_STATIC", {public = true})
     add_deps("core", "ecs", "contract-platform", "contract-renderer", "plugin-graphics", "plugin-capsule", "plugin-particle", {public = true})
