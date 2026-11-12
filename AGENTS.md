@@ -11,7 +11,7 @@ the files it opens, so do it by hand.
 
 AYLO Engine (Another Yet Lightweight Optimized Engine) is an Epitech Tek3 project: a game engine (C++23,
 `xmake`, clang) with a Vulkan renderer, Luau scripting, physics, audio and a replicated client/server network model. It
-does not contain a game; it runs one.
+does not contain a game; it runs one, and is made for every kind of game, not one genre (2D today, 3D next).
 
 There are two kinds of work, with different rules:
 

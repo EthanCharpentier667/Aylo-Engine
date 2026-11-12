@@ -29,8 +29,9 @@ added later without touching gameplay code.
 
 ## 1. Scope
 
-- **What a 2D shoot'em up needs:** one music track with crossfades, a few dozen short sound effects at once, volume
-  per bus (music, effects), and left/right panning from where the sound happens on screen.
+- **What a 2D game needs:** one music track with crossfades, a few dozen short sound effects at once, volume per bus
+  (music, effects), and left/right panning from where the sound happens on screen. The engine makes every kind of
+  game: sound in 3D (a listener in space, distance attenuation) comes with 3D.
 - **Gameplay never sees a backend.** It loads sounds by path into `AssetId`s, sends events and adds components, as it
   does for sprites. No miniaudio or FMOD type leaves its backend module.
 - **Client only.** The server simulates and replicates; each client decides what to play from what it receives.
@@ -391,8 +392,8 @@ instead, for the source and for the listener.
 the plugin keeps the last values it applied, so only a real change reaches the backend.
 
 **Panning**, for a spatial source or a `PlaySound` with a position: `pan = clamp(dx / panDistance, -1, 1)` with `dx`
-the source's x minus the listener's, in world units. Distance attenuation is left out for now: everything happens on
-screen in a shoot'em up.
+the source's x minus the listener's, in world units. Distance attenuation is left out for now: in a 2D game, what is
+heard is on screen.
 
 **A sound not loaded yet** when `PlaySound` arrives (asked for and played in the same frame, file still loading) is
 played once loaded if that happens within the frame, else dropped with no error: a late shot sound is worse than a

@@ -12,8 +12,8 @@ array of raw bytes).
 ## Why we need it
 
 - **Fast iteration:** systems walk the dense arrays linearly, which is what CPUs are fastest at.
-- **Cheap structural changes:** adding or removing a component is O(1). A shoot'em up adds and removes
-  constantly (bullets, tags like `Invincible`, script components).
+- **Cheap structural changes:** adding or removing a component is O(1). An action game adds and removes
+  constantly (projectiles, tags like `Invincible`, script components).
 - **R2 (Luau):** the pool stores **raw bytes** described by a [`ComponentInfo`](02-component-registry.md),
   so it works for components that have no C++ type.
 - **R3 (network):** the tick columns are what [change detection](08-change-detection.md) and

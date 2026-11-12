@@ -28,7 +28,7 @@ the CPU when the renderer cannot simulate it, so every backend can show every ef
 
 ## 1. Scope
 
-- **A general-purpose engine, not a shoot'em up only.** Tens of thousands of particles on screen (smoke, sparks,
+- **A general-purpose engine, for every kind of game.** Tens of thousands of particles on screen (smoke, sparks,
   debris, rain, magic) without the CPU noticing, not a few hundred.
 - **Effects are data.** An effect is a value describing how particles spawn, move, age and look; it is built in C++, or
   by a script with the `engine.assets.particle` setup form ([Luau](#12-luau)).

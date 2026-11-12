@@ -328,8 +328,8 @@ the whole plugin (sync + step + write-back + events), "step" Jolt's part of it:
 | 5 000 | 4 | 6.1 | 4.9 | 1.2 | 7.7 | ~3 |
 | 5 000 | 8 | 8.5 | 6.4 | 1.7 | 18–20 | ~2 |
 
-- **A room of a few hundred bodies costs well under a millisecond per tick**: the room budget of a shoot'em up is not the
-  physics. 1 000 bodies use under 4 % of a core at 60 Hz.
+- **A room of a few hundred bodies costs well under a millisecond per tick**: physics is not what fills the room
+  budget of a 2D game. 1 000 bodies use under 4 % of a core at 60 Hz.
 - **Rooms scale with cores**, one thread each, with no shared state but the refcounted runtime. On the M2, 8 rooms
   land on the efficiency cores too, hence the slower 8-room rows.
 - **The ECS share** (tick minus step: syncing `Transform`, `Velocity`, events) is about a third of the tick at 1 000

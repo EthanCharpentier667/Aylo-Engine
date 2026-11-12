@@ -6,8 +6,9 @@ Replication is how the **server's world is mirrored on the clients**. The model 
 down**: clients send their inputs; the authoritative server simulates and sends back what changed.
 There is no client-side prediction or rollback.
 
-This doc describes the network plugins for a **shoot'em up**: one shared screen, a few players
-(typically up to 4), and many short-lived bullets and enemies.
+This doc describes the network plugins. The engine makes every kind of game; the design starts from a
+case it must serve well: one shared screen, a few players (typically up to 4), and many short-lived projectiles and
+enemies.
 
 ## Why we need it
 
@@ -28,7 +29,7 @@ This doc describes the network plugins for a **shoot'em up**: one shared screen,
 
 Quake 3-style **deltas from the last acknowledged tick**, driven by the ECS's
 [change detection](08-change-detection.md) and [reflection](15-reflection-and-serialization.md), with a
-per-component **replication mode** suited to a shoot'em up's bullets.
+per-component **replication mode** suited to short-lived, predictable entities such as projectiles.
 
 ## How it works
 
@@ -123,7 +124,7 @@ changed since a client's acknowledged tick (see [Systems](12-systems.md#configur
 
 ### Replication modes
 
-A shoot'em up has hundreds of bullets whose motion is predictable. Each component chooses a mode:
+A game can have hundreds of projectiles whose motion is predictable. Each component chooses a mode:
 
 | Mode | Sent | Example |
 |---|---|---|

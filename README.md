@@ -8,6 +8,8 @@
 a Vulkan renderer, Luau scripting, physics, audio and an authoritative client/server network model over UDP. It does
 not contain a game: it runs one. A game is a folder of Luau scripts and assets (see `examples/games/`).
 
+It is made for every kind of game, not one genre: 2D today, 3D next.
+
 ## Features
 
 - **Entity Component System** on paged sparse sets, with change detection, events, hierarchy and scenes (capsules).

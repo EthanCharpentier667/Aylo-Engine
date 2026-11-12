@@ -2,8 +2,9 @@
 
 **Context:** our engine is C++23, built with `xmake`, around our own ECS (`aylo::ecs`). Audio was removed from the
 backend contracts until a library is chosen (see [`ecs/design.md`](../ecs/design.md)): it will come back as its own
-plugin, with a resource of sounds by `AssetId` and sounds triggered by events. The game is a 2D shoot'em up: a music
-track, a few dozen short sound effects at once (shots, explosions, hits), left/right panning at most.
+plugin, with a resource of sounds by `AssetId` and sounds triggered by events. The engine makes every kind of game; the
+first ones are 2D: a music track, a few dozen short sound effects at once (shots, explosions, hits), left/right
+panning at most.
 
 What our architecture imposes on the choice:
 

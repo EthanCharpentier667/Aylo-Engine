@@ -700,7 +700,7 @@ server has not processed yet.
 ### 7.6 Client prediction and reconciliation
 
 Without prediction, the local player's ship reacts only after a round trip plus the interpolation delay (100 ms
-or more), which feels sluggish in a shooter. The client therefore **predicts its own entity** and corrects it
+or more), which feels sluggish in an action game. The client therefore **predicts its own entity** and corrects it
 with the server's answer. Every other entity stays interpolated. The server stays authoritative: prediction is a
 local guess that is replaced as soon as the truth arrives.
 

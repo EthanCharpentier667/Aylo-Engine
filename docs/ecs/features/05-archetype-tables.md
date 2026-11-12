@@ -13,7 +13,7 @@ This is a v3 feature. v1 accepts `StorageKind::kTable` on a component but stores
 
 - **R4 (generic):** other games may have tens of thousands of entities with stable composition (crowds,
   particles, tiles), where tables iterate faster than sparse-set joins.
-- A shoot'em up does not need it: its counts are moderate and its composition changes often.
+- The first games do not need it: their counts are moderate and their composition changes often.
 
 ## How others do it
 
