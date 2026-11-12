@@ -279,6 +279,29 @@ TEST(ComponentView, RefusesABadVectorAndNamesTheField) {
     EXPECT_EQ((fixture.read<std::array<float, 2>>("position")), (std::array<float, 2>{0.0F, 0.0F}));
 }
 
+TEST(ComponentView, GivesACopyOfAVectorThatChangingLeavesTheComponentAlone) {
+    Fixture fixture{makeSpatial()};
+    fixture.expose("v");
+
+    EXPECT_EQ(fixture.run(R"(
+        v.position = { x = 1, y = 2 }
+        local position = v.position
+        position.x = 100
+        x = v.position.x
+    )"),
+              "");
+    EXPECT_EQ(fixture.number("x"), 1);
+    EXPECT_EQ((fixture.read<std::array<float, 2>>("position")), (std::array<float, 2>{1.0F, 2.0F}));
+}
+
+TEST(ComponentView, RefusesAVectorWrittenAsAnArray) {
+    Fixture fixture{makeSpatial()};
+    fixture.expose("v");
+
+    const auto error = fixture.run("v.position = { 1, 2 }");
+    EXPECT_NE(error.find("unexpected key '(not a string)'"), std::string::npos) << error;
+}
+
 TEST(ComponentView, RefusesABadAssetIdAndNamesTheField) {
     Fixture fixture{makeSpatial()};
     fixture.expose("v");
