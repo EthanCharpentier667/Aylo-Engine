@@ -371,9 +371,9 @@ There is no universally best model: one memory order cannot be contiguous for ev
 components, so each design chooses which operations it makes cheap.
 
 **Our choice.** **Hybrid as the target, sparse set first.** `StorageKind` is part of `ComponentInfo`
-from day one; v1 implements `kSparseSet` only and treats `kTable` as `kSparseSet`. A shoot'em up is
-churn-heavy (bullets, tags, script components) with moderate entity counts, where sparse sets win;
-tables come in v3 for generic games with large, stable populations.
+from day one; v1 implements `kSparseSet` only and treats `kTable` as `kSparseSet`. The engine makes every kind
+of game; the first ones are churn-heavy (projectiles, tags, script components) with moderate entity counts, where
+sparse sets win; tables come in v3 for games with large, stable populations.
 
 #### Sparse set (v1)
 
@@ -794,7 +794,7 @@ real need appears. Serves: Principles, R4.
 
 ### 13. Hierarchy & Relationships
 
-**What it is.** Links between entities: a ship and its attached force pod, a UI panel and its buttons,
+**What it is.** Links between entities: a character and the item in its hand, a UI panel and its buttons,
 a camera following a player.
 
 **What exists.** Bevy `ChildOf` / `Children` components with transform propagation; flecs
@@ -1138,8 +1138,8 @@ this document.
 
 ## Collisions: From Overlap to Event
 
-Collisions are the busiest workload of a shoot'em up: hundreds of bullets against dozens of
-enemies, every tick. This section follows one tick of the `CollisionPlugin` (C++, server side) from
+Collisions are often the busiest workload of an action game: hundreds of projectiles against
+dozens of targets, every tick. This section follows one tick of the `CollisionPlugin` (C++, server side) from
 component data to `Collision` events read by gameplay, and lists what makes it fast.
 
 ### Data
@@ -1257,7 +1257,7 @@ flowchart LR
 | Damage applied in C++ | The C++ damage system reads every `Collision`; Luau only receives rarer, higher-level events (`game.EnemyKilled`), so the per-event C++ → Luau crossing stays small |
 | Started / ended events (optional) | For long contacts (a laser beam), compare this tick's sorted pair list with the previous one and emit `CollisionStarted` / `CollisionEnded` instead of one event per tick |
 
-Expected cost: a few microseconds to a few tens of microseconds per tick at the scale of a shoot'em up, an order of
+Expected cost: a few microseconds to a few tens of microseconds per tick for a few hundred moving bodies, an order of
 magnitude to measure with the benchmark harness rather than assume.
 
 Other broad phases, for reference:
@@ -1415,7 +1415,7 @@ The public include path is `src/`: `#include <aylo/ecs/world/World.hpp>`.
 | Version | Content | Unlocks |
 |---|---|---|
 | **v1: core + App** | `Entity`, registry + `AYLO_ECS_COMPONENT`, sparse sets, typed + type-erased API, queries, `Mut<T>` + ticks, commands, resources (incl. `NonSend`), events, phases + fixed timestep, `App` / `Plugin`, `WindowPlugin` + `InputPlugin` + `RenderPlugin` over Ethan's backends, `StandalonePlugin` (single player without a server), tests | A window showing sprites driven by systems |
-| **v2: game features** | Luau components, systems and plugins, input actions declared from Luau, generated `.d.luau` for script components, actors, hierarchy, run conditions, States, `AssetPlugin`, `CollisionPlugin` (AABB, collision events), replication + `ClientPlugin` / `ServerPlugin`, `PlayerInput` | A multiplayer shoot'em up with scripted gameplay |
+| **v2: game features** | Luau components, systems and plugins, input actions declared from Luau, generated `.d.luau` for script components, actors, hierarchy, run conditions, States, `AssetPlugin`, `CollisionPlugin` (AABB, collision events), replication + `ClientPlugin` / `ServerPlugin`, `PlayerInput` | A multiplayer 2D game with scripted gameplay |
 | **v3: generic engine** | Archetype tables, mixed-storage queries, parallel scheduler, observers, shared components, scenes | Reuse in other games |
 | **Later** | Copy-on-write snapshots (replays, lag compensation), benchmarks-driven optimizations | |
 
@@ -1429,7 +1429,7 @@ any v3 work, so changes are kept only when measurements support them.
 | Can the `luau` xmake package expose `Luau.Ast` to parse `export type` annotations? Is the fallback (`ecs.f32(50)`) needed? | Charles |
 | Which aliases does `generateTypes()` emit (`f32`, `i32`, `Entity`, `vec2`, `AssetId`)? | Charles + ECS |
 | What must Luau plugins reach beyond components and systems (resources, events, States, assets, plugin dependencies)? | Charles + ECS |
-| Which parts of a shoot'em up need a C++ game plugin for speed (collisions, bullet patterns)? Decide from benchmarks. | Team |
+| Which parts of a game need a C++ plugin for speed (collisions, projectile patterns, crowds)? Decide from benchmarks. | Team |
 | `IRenderer` as a `NonSend` resource; a batched `draw(std::span<const Sprite>)` | Ethan |
 | Naming: renderer `Sprite` (draw command) vs ECS `SpriteRenderer` | Ethan |
 | Text rendering in `IRenderer` (score, menus, "Game Over") | Ethan |

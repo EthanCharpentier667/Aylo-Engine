@@ -2,15 +2,15 @@
 
 ## What it is
 
-A hierarchy links entities as **parent and children**: the "Force" pod of a shoot'em up attached to the player
-ship, turrets on a boss, a UI panel and its buttons. A child's position is relative to its parent, and
+A hierarchy links entities as **parent and children**: a sword in a character's hand, turrets on a boss, a UI
+panel and its buttons. A child's position is relative to its parent, and
 despawning the parent despawns the children.
 
 ## Why we need it
 
 - **R1:** UI, cameras following targets and attached effects all need it.
 - **R4:** every generic engine has scene hierarchies.
-- A shoot'em up: bosses made of parts, ships with attachments.
+- Games of every kind: bosses made of parts, vehicles with attachments, characters holding items.
 
 ## How others do it
 

@@ -100,5 +100,5 @@ If those needs appear, observers can be added on top of the same events, without
 
 ## Open questions
 
-- Is there a shoot'em up feature that truly needs immediate observers (a spatial index for collisions)?
+- Is there a game feature that truly needs immediate observers (a spatial index for collisions)?
   (Team, after `CollisionPlugin` design)

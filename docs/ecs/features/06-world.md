@@ -126,7 +126,7 @@ then never becomes alive.
 3. **Frees the index**: the slot's generation is bumped, so every copy of the handle becomes stale.
 
 **Removal scans every pool.** Each pool answers with one O(1) sparse lookup, so a despawn costs one lookup
-per registered component (a few dozen in a shoot'em up), with no bookkeeping anywhere else. The alternative, a
+per registered component (a few dozen in a typical game), with no bookkeeping anywhere else. The alternative, a
 per-entity list of the pools it is in, would make despawn proportional to the entity's own components but
 cost memory and work on every add and remove, which are far more frequent than despawns.
 
