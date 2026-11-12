@@ -19,15 +19,16 @@ class App;
 
 namespace aylo::plugins::shader {
 
-/// @brief Game shaders and materials: inserts the ShaderAssets, MaterialAssets and ShaderHandles resources, registers
-/// MaterialInstance, and keeps the renderer up to date with them.
+/// @brief Game shaders and materials: inserts the ShaderAssets, MaterialAssets, ShaderHandles and ScreenMaterials
+/// resources, registers MaterialInstance, and keeps the renderer up to date with them.
 ///
-/// @details One system: Render "aylo.Shader.Update", on the client, after the GraphicsPlugin loads the textures and
-/// before it begins the frame: ShaderHandles::update() creates the shaders and materials added during this frame's
-/// Update, so they are drawn in this frame, and destroys the unloaded ones. A SpriteRenderer names its material by
-/// AssetId; the GraphicsPlugin draws it with the material ShaderHandles created, or the default one until then.
-/// It requires the GraphicsPlugin. Its system is ordered against the GraphicsPlugin's, so an App without a window (a
-/// server) does not add it: it inserts ShaderAssets and MaterialAssets itself if its gameplay code names materials.
+/// @details Two systems, on the client, after the GraphicsPlugin loads the textures and before it begins the frame:
+/// Render "aylo.Shader.Update", where ShaderHandles::update() creates the shaders and materials added during this
+/// frame's Update, so they are drawn in this frame, and destroys the unloaded ones; then Render "aylo.Shader.Screen",
+/// which gives the renderer the screen effects of ScreenMaterials whose material is created. A SpriteRenderer names its
+/// material by AssetId; the GraphicsPlugin draws it with the material ShaderHandles created, or the default one until
+/// then. It requires the GraphicsPlugin. Its system is ordered against the GraphicsPlugin's, so an App without a window
+/// (a server) does not add it: it inserts ShaderAssets and MaterialAssets itself if its gameplay code names materials.
 ///
 /// In a game with hot reload on (the `hotReload` setting), it adds a ShaderReloadable to the HotReload resource, which
 /// follows `assets/shaders` of the game. Without an AssetDirectory or a HotReload resource, nothing is followed.
@@ -41,6 +42,7 @@ class AYLO_PLUGIN_SHADER_API ShaderPlugin : public ecs::Plugin {
   public:
     static constexpr std::string_view kName = "aylo.Shader";                 ///< The plugin's name.
     static constexpr std::string_view kUpdateSystem = "aylo.Shader.Update";  ///< Updates the renderer.
+    static constexpr std::string_view kScreenSystem = "aylo.Shader.Screen";  ///< Gives the renderer the screen effects.
 
     ShaderPlugin() = default;
     ~ShaderPlugin() override = default;

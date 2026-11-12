@@ -36,7 +36,8 @@ struct ParsedShader {
     std::vector<contract::renderer::ShaderTexture> textures;      ///< `uniform sampler2D`, slots in declaration order.
     bool hasVertex{false};                                        ///< Whether it defines `void vertex()`.
     bool hasFragment{false};                                      ///< Whether it defines `void fragment()`.
-    std::string body;  ///< The source, every declaration line left empty, so line numbers stay the game's.
+    bool screen{false};  ///< Whether it says `#pragma screen`: a screen effect, drawn over the whole scene.
+    std::string body;    ///< The source, every declaration line left empty, so line numbers stay the game's.
 };
 
 /// @brief Reads the declarations of a shader, written in the engine's GLSL dialect (docs/Shaders.md), one per line:

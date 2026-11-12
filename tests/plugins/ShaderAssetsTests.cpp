@@ -16,6 +16,7 @@
 #include <system_error>
 #include <vector>
 
+#include "aylo/contract/renderer/shaders/CompiledShader.hpp"
 #include "aylo/ecs/resource/ResourceTraits.hpp"
 #include "core/asset/AssetId.hpp"
 #include "plugins/shader/ShaderAssets.hpp"
@@ -173,4 +174,26 @@ TEST(ShaderAssets, RefusesAPathThatLeavesItsDirectory) {
     EXPECT_EQ(shaders.get(id), nullptr);
     ASSERT_NE(shaders.getEntry(id), nullptr);
     EXPECT_TRUE(shaders.getEntry(id)->error.contains("outside the assets directory"));
+}
+
+TEST(ShaderAssets, LoadsTheEnginesScreenShaders) {
+    ShaderAssets shaders;
+    for (const std::string_view name : {"@aylo/bloom.glsl", "@aylo/tonemap.glsl"}) {
+        const AssetId id = shaders.load(std::string{name});
+        ASSERT_NE(shaders.get(id), nullptr) << name << ": " << shaders.getEntry(id)->error;
+        ASSERT_EQ(shaders.get(id)->variants.size(), 1U);
+        EXPECT_EQ(shaders.get(id)->variants.front().target, aylo::contract::renderer::ShaderTarget::kScreen);
+    }
+    const AssetId bloom = AssetId::fromPath("@aylo/bloom.glsl");
+    const auto& values = shaders.get(bloom)->materialValues;
+    EXPECT_EQ(values.size(), 4U);
+    EXPECT_EQ(values.front().name, "threshold");
+}
+
+TEST(ShaderAssets, RecordsAnEngineShaderThatDoesNotExist) {
+    ShaderAssets shaders;
+    const AssetId id = shaders.load("@aylo/vignette.glsl");
+    EXPECT_EQ(shaders.get(id), nullptr);
+    ASSERT_NE(shaders.getEntry(id), nullptr);
+    EXPECT_TRUE(shaders.getEntry(id)->error.contains("no such shader")) << shaders.getEntry(id)->error;
 }

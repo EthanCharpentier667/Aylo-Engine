@@ -201,6 +201,13 @@ class AYLO_HEADER_ONLY_API IRenderer {
     /// @brief Destroys a material. Safe while the backend may still be drawing with it; does nothing for one already
     /// destroyed. Drawings that still name it get the default material. Default: does nothing.
     virtual void destroy(MaterialId /*material*/) {}
+
+    /// @brief Sets the screen effects: materials of shaders that serve ShaderTarget::kScreen, run in this order over
+    /// the whole scene once the world is drawn, each reading what the previous one wrote, from the next frame drawn.
+    /// The scene they read is in floating point, so a colour may exceed 1 (a bloom, a tonemap). The overlay is drawn
+    /// after them, so they leave it alone. A material destroyed, or whose shader does not serve kScreen, is skipped.
+    /// Empty, the default: the scene is shown as drawn. Default: does nothing.
+    virtual void setScreenMaterials(std::span<const MaterialId> /*materials*/) {}
     /// @}
 
     /// @name Tools

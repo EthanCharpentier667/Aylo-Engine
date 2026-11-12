@@ -195,7 +195,7 @@ A tool built on the renderer (the editor, [`Editor.md`](Editor.md)) uses two opt
   draw per `MeshCommand`. Its set 0 is its own `FrameGlobals` (`_meshGlobals`), with one unit per pixel, origin at the
   top-left corner: updating the overlay's would change what the overlay already recorded.
 - `setSceneSize(size)` draws the scene (sprites, particles, shapes, overlay) into a texture instead of the window. The
-  change is made by the next `beginFrame()`. The texture is in the swapchain's format, an entry of the texture table whose
+  change is made by the next `beginFrame()`. The texture is half-float (`RGBA16F`, like the scene the screen effects read, so a colour may exceed 1), an entry of the texture table whose
   `TextureId` stays the same when the size changes, and the `recordScene()` that draws into it is the one that draws into
   the swapchain image without it. Its barriers are `kSceneToColorAttachment` (it waits for the previous frame's fragment
   shaders that sampled it) and `kSceneToShaderRead`.
@@ -208,6 +208,30 @@ A tool built on the renderer (the editor, [`Editor.md`](Editor.md)) uses two opt
 
 `getFrameStats()` gives the sprites, shapes, overlay items, mesh triangles and textures of the last frame.
 
+## HDR scene and screen effects
+
+Every pass that draws the world (sprites, particles, shapes, the overlay, the game materials) renders into an
+`RGBA16F` image (`kSceneFormat` in `VulkanRenderer.cpp`), not into the swapchain image, so a shader can write a colour
+above 1. Only the meshes and the copy to the window use the swapchain's format. `setScreenMaterials(materials)` is read
+by the next frame recorded: game materials whose shader serves `ShaderTarget::kScreen` (`docs/Shaders.md`, *Screen
+effects*). For a scene of `W x H`, the window's or a tool's (`setSceneSize()`), `recordScene()` goes:
+
+1. The world is drawn into image 0 of `postprocess::ScreenPass::Targets`, then transitioned with `kSceneToShaderRead`.
+   `acquireScreenTargets()` makes the two images for the scene's size and defers the previous ones to the deletion
+   queue when the size changes.
+2. `recordEffects()`: each effect draws a fullscreen triangle (no vertex buffer, `ScreenPass::createMaterialPipeline`,
+   opaque) into the other image, with the frame's uniforms at set 0, the image the previous effect wrote at set 1 and
+   its material at set 2: the two images take turns. A material that is destroyed, or whose shader does not serve
+   `kScreen`, is skipped.
+3. The overlay is drawn over the image holding the result (`kShaderReadToColorAttachment`, loaded), so the effects
+   leave the interface alone.
+4. `recordCopy()` copies that image (`screen_fullscreen.vert`, `screen_copy.frag`) into the swapchain, in its rendering
+   scope, before the meshes; or into the tool's scene texture, which has the scene's format.
+
+Nothing is allocated per frame. With no effect, the copy shows the scene as it is drawn. The preview
+(`setScenePreview()`) does not get the effects. The engine's bloom and tonemap are not in the renderer: they are game
+shaders the shader plugin gives (`@aylo/bloom.glsl`, `@aylo/tonemap.glsl`).
+
 ## Shaders
 
 Shaders are written in GLSL and compiled to SPIR-V, then turned into `vk::raii::ShaderModule`s by
@@ -215,7 +239,7 @@ Shaders are written in GLSL and compiled to SPIR-V, then turned into `vk::raii::
 
 ### Built-in shaders (engine)
 
-Shaders the engine itself uses (rectangles, sprites, post-processing) live in `src/aylo/render/vulkan/shaders/` and
+Shaders the engine itself uses (rectangles, sprites, the copy of the screen) live in `src/aylo/render/vulkan/shaders/` and
 are **embedded in the renderer** at build time: nothing to find on disk at runtime, and they cannot get out of sync
 with the code. The `glsl.spirv` rule of [`render/vulkan/xmake.lua`](../src/aylo/render/vulkan/xmake.lua) compiles
 `shaders/<name>.<stage>` (`vert`, `frag`, `comp`, `geom`, `tesc`, `tese`) with `glslangValidator` from the `glslang`

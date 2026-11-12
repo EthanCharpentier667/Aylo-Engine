@@ -126,7 +126,9 @@ Server side, with `aylo.Http` added. Prefer `engine.http.request`, see [HTTP](ht
 
 ### Shaders and particles
 
-The shader plugin has `engine.assets.shader` and `engine.assets.material` forms, see [Setup forms](setup-forms.md).
+The shader plugin has `engine.assets.shader` and `engine.assets.material` forms, see [Setup forms](setup-forms.md),
+and the call `aylo.shader.setScreenMaterials` (`materials`, client), which sets the screen effects: see
+[Post-processing](post-processing.md), and its form `engine.screenEffects`.
 Particle effects have the `engine.assets.particle` form, see [Particles](particles.md). It is made of the calls
 `aylo.particle.beginEffect`, `aylo.particle.addBurst`, `aylo.particle.addColorKey`, `aylo.particle.addCurveKey` and
 `aylo.particle.addEffect` (client); use the form rather than the calls.

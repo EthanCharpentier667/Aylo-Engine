@@ -26,8 +26,8 @@ namespace aylo::render::vulkan::material {
 namespace {
 
 /// @brief What a target is called in the name of its pipeline, in ShaderTarget order.
-constexpr std::array<std::string_view, contract::renderer::kShaderTargetCount> kTargetNames{"sprite", "glyph",
-                                                                                            "particle", "shape"};
+constexpr std::array<std::string_view, contract::renderer::kShaderTargetCount> kTargetNames{
+    "sprite", "glyph", "particle", "shape", "screen"};
 
 /// @return A module named @p name for @p spirv, checked first.
 vk::raii::ShaderModule createModule(const core::Device& device, std::span<const std::uint32_t> spirv,
@@ -51,7 +51,11 @@ GameShader::GameShader(const core::Device& device, const contract::renderer::Com
 }
 
 bool GameShader::serves(contract::renderer::ShaderTarget target) const noexcept {
-    return *_variants.at(static_cast<std::size_t>(target)).vertex != nullptr;
+    // Every ShaderTarget has its variant (an array of kShaderTargetCount): no index can be out of range, but at() could
+    // throw from a noexcept function, so the span is walked instead.
+    const auto index = static_cast<std::size_t>(target);
+    const std::span<const Variant> variants{_variants};
+    return index < variants.size() && *variants.subspan(index).front().vertex != nullptr;
 }
 
 const pipeline::GraphicsPipeline* GameShader::getPipeline(contract::renderer::ShaderTarget target,

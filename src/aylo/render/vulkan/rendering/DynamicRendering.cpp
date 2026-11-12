@@ -22,6 +22,14 @@ vk::RenderingAttachmentInfo colorAttachment(vk::ImageView view, const vk::ClearC
         .setClearValue(clearColor);
 }
 
+vk::RenderingAttachmentInfo loadedColorAttachment(vk::ImageView view) {
+    return vk::RenderingAttachmentInfo{}
+        .setImageView(view)
+        .setImageLayout(vk::ImageLayout::eColorAttachmentOptimal)
+        .setLoadOp(vk::AttachmentLoadOp::eLoad)
+        .setStoreOp(vk::AttachmentStoreOp::eStore);
+}
+
 vk::RenderingAttachmentInfo depthAttachment(vk::ImageView view, float clearDepth) {
     return vk::RenderingAttachmentInfo{}
         .setImageView(view)

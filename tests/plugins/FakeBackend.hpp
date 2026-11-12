@@ -85,6 +85,8 @@ struct FakeBackendState {
     std::vector<std::optional<glm::uvec2>> sceneSizeRequests;  ///< Every setSceneSize() call.
     std::optional<glm::uvec2> sceneSize;                       ///< What getSceneSize() returns: the last request.
     aylo::contract::renderer::TextureId sceneTexture;          ///< What getSceneTexture() returns.
+    std::vector<std::vector<aylo::contract::renderer::MaterialId>>
+        screenMaterials;  ///< Every setScreenMaterials() call.
 };
 
 /// @brief A window that returns scripted events.
@@ -223,6 +225,9 @@ class FakeRenderer : public aylo::contract::renderer::IRenderer {
         _state->destroyedMaterials.push_back(material);
     }
     void drawMesh(const aylo::contract::renderer::Mesh& mesh) override { _state->meshes.push_back(mesh); }
+    void setScreenMaterials(std::span<const aylo::contract::renderer::MaterialId> materials) override {
+        _state->screenMaterials.emplace_back(materials.begin(), materials.end());
+    }
     void setSceneSize(std::optional<glm::uvec2> size) override {
         _state->sceneSizeRequests.push_back(size);
         _state->sceneSize = size;

@@ -57,7 +57,7 @@ std::string errorOf(std::string_view source) {
 TEST(ShaderCompiler, CompilesAShaderForEveryTarget) {
     const CompiledShader shader = compileShader(kFlash, "flash");
     ASSERT_EQ(shader.variants.size(), 4U);
-    for (const ShaderTarget target : aylo::plugins::shader::detail::kAllTargets) {
+    for (const ShaderTarget target : aylo::plugins::shader::detail::kDrawingTargets) {
         const auto* variant = shader.findVariant(target);
         ASSERT_NE(variant, nullptr);
         ASSERT_FALSE(variant->vertex.empty());
@@ -103,12 +103,78 @@ TEST(ShaderCompiler, RejectsInvalidGlslForAStage) {
 }
 
 TEST(ShaderCompiler, CompilesTheDefaultShaderOfEveryTarget) {
-    for (const ShaderTarget target : aylo::plugins::shader::detail::kAllTargets) {
+    for (const ShaderTarget target : aylo::plugins::shader::detail::kDrawingTargets) {
         for (const ShaderStage stage : {ShaderStage::kVertex, ShaderStage::kFragment}) {
             const std::vector<std::uint32_t> spirv =
                 compileStage(assembleShader(ParsedShader{}, target, stage), stage, "default");
             ASSERT_FALSE(spirv.empty());
             EXPECT_EQ(spirv.front(), kSpirvMagic);
         }
+    }
+}
+
+TEST(ShaderCompiler, CompilesAScreenShaderForTheScreenOnly) {
+    const CompiledShader shader = compileShader(
+        "#pragma screen\n"
+        "uniform float strength = 0.5;\n"
+        "void fragment() {\n"
+        "    vec3 left = texture(SCREEN_TEXTURE, SCREEN_UV - vec2(SCREEN_PIXEL_SIZE.x, 0.0)).rgb;\n"
+        "    COLOR.rgb = mix(COLOR.rgb, left, strength);\n"
+        "}\n",
+        "blur");
+    ASSERT_EQ(shader.variants.size(), 1U);
+    EXPECT_EQ(shader.variants.front().target, ShaderTarget::kScreen);
+    EXPECT_EQ(shader.variants.front().fragment.front(), kSpirvMagic);
+}
+
+TEST(ShaderCompiler, GivesAScreenShaderItsInstanceDefaultsAsConstants) {
+    const CompiledShader shader = compileShader(
+        "#pragma screen\ninstance uniform vec2 shift = vec2(0.25, 1.0);\ninstance uniform int mode = 3;\n"
+        "void fragment() { COLOR.rg += shift * float(mode); }\n",
+        "shifted");
+    ASSERT_EQ(shader.variants.size(), 1U);
+    const std::string vertex =
+        assembleShader(aylo::plugins::shader::detail::parseShader(
+                           "#pragma screen\ninstance uniform int mode = 3;\nvoid fragment() {}\n", "mode"),
+                       ShaderTarget::kScreen, ShaderStage::kVertex);
+    EXPECT_NE(vertex.find("    ayloInstance = vec4[4](uintBitsToFloat(uvec4(3u, 0u, 0u, 0u))"), std::string::npos)
+        << vertex;
+}
+
+TEST(ShaderCompiler, TheScreenBuiltinsAreOnlyForScreenShaders) {
+    const std::string message = errorOf("void fragment() { COLOR = texture(SCREEN_TEXTURE, SCREEN_UV); }\n");
+    EXPECT_NE(message.find("SCREEN_TEXTURE"), std::string::npos) << message;
+}
+
+TEST(ShaderCompiler, CompilesTheDefaultScreenShader) {
+    for (const ShaderStage stage : {ShaderStage::kVertex, ShaderStage::kFragment}) {
+        const std::vector<std::uint32_t> spirv =
+            compileStage(assembleShader(ParsedShader{}, ShaderTarget::kScreen, stage), stage, "default");
+        ASSERT_FALSE(spirv.empty());
+        EXPECT_EQ(spirv.front(), kSpirvMagic);
+    }
+}
+
+TEST(ShaderCompiler, CompilesTheManualsScreenEffects) {
+    // manual/pages/post-processing.md: "Writing a screen effect" and "The whole game in ASCII art".
+    constexpr std::string_view kGrayscale =
+        "#pragma screen\n"
+        "uniform float amount = 1.0;\n"
+        "void fragment() {\n"
+        "    float gray = dot(COLOR.rgb, vec3(0.299, 0.587, 0.114));\n"
+        "    COLOR.rgb = mix(COLOR.rgb, vec3(gray), amount);\n"
+        "}\n";
+    constexpr std::string_view kAscii =
+        "#pragma screen\n"
+        "uniform float cellSize = 8.0;\n"
+        "void fragment() {\n"
+        "    vec2 cell = cellSize * SCREEN_PIXEL_SIZE;\n"
+        "    vec2 center = (floor(SCREEN_UV / cell) + 0.5) * cell;\n"
+        "    float brightness = dot(texture(SCREEN_TEXTURE, center).rgb, vec3(0.299, 0.587, 0.114));\n"
+        "    float mark = step(length(fract(SCREEN_UV / cell) - 0.5), 0.5 * clamp(brightness, 0.0, 1.0));\n"
+        "    COLOR = vec4(vec3(0.2, 1.0, 0.3) * mark, 1.0);\n"
+        "}\n";
+    for (const std::string_view source : {kGrayscale, kAscii}) {
+        EXPECT_EQ(errorOf(source), "") << source;
     }
 }

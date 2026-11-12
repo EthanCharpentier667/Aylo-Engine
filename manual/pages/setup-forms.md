@@ -34,7 +34,7 @@ Game.assets = {
 | `engine.assets.sound(path, { stream })` | sound id | `stream = true` decodes while playing, for music |
 | `engine.assets.font(path)` | font id | a font atlas made with msdf-atlas-gen (`.json` next to its `.png`) |
 | `engine.assets.tilemap(path)` | map id | a Tiled `.tmj` |
-| `engine.assets.shader(path)` | shader id | written in the engine's GLSL dialect |
+| `engine.assets.shader(path)` | shader id | written in the engine's GLSL dialect; `@aylo/bloom.glsl` and `@aylo/tonemap.glsl` are the engine's, see [Post-processing](post-processing.md) |
 | `engine.assets.material({ name, shader, values, textures })` | material id | a shader and its values |
 | `engine.assets.atlas({ path \| texture, name, linear, grid, frames, animations })` | atlas id | see below |
 | `engine.assets.particle({ name, ... })` | effect id | a particle effect, see [Particles](particles.md) |
@@ -94,6 +94,17 @@ engine.input.action("shoot", "button", { bind = { "MouseLeft", { control = "Game
 The names of controls are in [Engine calls](engine-calls.md#input). In a networked game the action is also declared in
 the network input layout on both sides, and the client sends its state to the server each tick. See
 [Networking](networking.md).
+
+## `engine.screenEffects`
+
+```luau
+local tonemap = engine.assets.material({ name = "game.tonemap", shader = engine.assets.shader("@aylo/tonemap.glsl") })
+engine.screenEffects({ tonemap })
+```
+
+`engine.screenEffects(materials)` sets the screen effects, materials of `#pragma screen` shaders run in this order over
+the whole picture; `{}` removes them. It does nothing on a server, so a script of both sides can call it. To change the
+effects from a system, use the call `aylo.shader.setScreenMaterials`. See [Post-processing](post-processing.md).
 
 ## Forms you use in a system
 

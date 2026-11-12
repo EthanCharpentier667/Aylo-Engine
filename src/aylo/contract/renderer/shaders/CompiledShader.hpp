@@ -43,12 +43,13 @@ enum class ShaderTarget : std::uint8_t {
     kGlyph,     ///< The glyphs of a Text: an MSDF atlas, read as distances.
     kParticle,  ///< Particles, of a CPU or a GPU simulation.
     kShape,     ///< Shapes: a quad over the shape's box, coloured from its signed distance.
+    kScreen,  ///< The whole screen, once the world is drawn: a fullscreen triangle reading the scene (a screen effect).
 };
 
 /// @brief Number of ShaderTarget values.
-inline constexpr std::size_t kShaderTargetCount = 4;
-static_assert(static_cast<std::size_t>(ShaderTarget::kShape) + 1 == kShaderTargetCount,
-              "kShaderTargetCount must count every ShaderTarget: kShape is the last one");
+inline constexpr std::size_t kShaderTargetCount = 5;
+static_assert(static_cast<std::size_t>(ShaderTarget::kScreen) + 1 == kShaderTargetCount,
+              "kShaderTargetCount must count every ShaderTarget: kScreen is the last one");
 
 /// @brief The type of a value a shader declares (`uniform float flash;`), as the shader reads it (std140 in a
 /// material, std430 in an instance).

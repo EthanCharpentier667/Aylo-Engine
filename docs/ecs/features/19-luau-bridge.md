@@ -206,6 +206,7 @@ engine.input.action("fire", "button", { bind = { "Space", "GamepadSouth" } })
 | `engine.assets.sound(path, {stream})` | `aylo.audio.loadSound` | the sound's `AssetId` |
 | `engine.assets.shader(path)` | `aylo.shader.load` | the shader's `AssetId` |
 | `engine.assets.material({name, shader, values, textures})` | `aylo.shader.addMaterial`, then `aylo.shader.setMaterialValue` and `aylo.shader.setMaterialTexture` | the material's `AssetId` |
+| `engine.screenEffects(materials)` | `aylo.shader.setScreenMaterials` (clients; nothing on a server) | nothing |
 | `engine.assets.font(path)` | `aylo.text.loadFont` | the font's `AssetId` |
 | `engine.assets.tilemap(path)` | `aylo.tilemap.load` | the map's `AssetId` |
 | `engine.assets.atlas{path \| texture, name, linear, grid, frames, animations}` | `aylo.sprite.loadAtlas` (a `path`) or `aylo.sprite.createAtlas` (a `texture`, named after it unless `name` is given), then `aylo.sprite.addFrame` per frame and `aylo.sprite.addAnimation` per animation, by name | the atlas's `AssetId` |

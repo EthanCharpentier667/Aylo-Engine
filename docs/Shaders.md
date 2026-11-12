@@ -52,7 +52,9 @@ the engine keeps for itself.
 
 ### Targets
 
-A shader is compiled for every target, so it must compile for all of them: a failure in one fails the shader.
+A shader is compiled for every target that draws something (`kDrawingTargets`), so it must compile for all of them: a
+failure in one fails the shader. A shader whose first lines hold `#pragma screen` is a **screen effect** instead, and is
+compiled for `kScreen` only (see *Screen effects* below).
 
 | Target      | Drawn on                    | `UV`                                    | `COLOR` in `fragment()` before the shader  |
 |-------------|-----------------------------|-----------------------------------------|--------------------------------------------|
@@ -60,6 +62,7 @@ A shader is compiled for every target, so it must compile for all of them: a fai
 | `kGlyph`    | The glyphs of a `Text`      | The atlas coordinates                   | The colour, covering the glyph (MSDF)      |
 | `kParticle` | Particles, on CPU or GPU    | The texture coordinates, by flipbook    | The texture times the colour               |
 | `kShape`    | `Shape`s                    | The position in the shape's box, 0 to 1 | The antialiased fill and outline           |
+| `kScreen`   | The whole screen, once      | The position on the screen, 0 to 1      | The pixel of the picture so far            |
 
 `UV` goes a little past 0 and 1 on a shape, in the margin of its antialiased edge. A shape has no texture: `TEXTURE`
 reads a white pixel there.
@@ -68,6 +71,33 @@ Sprites, shapes, texts and particles are all drawn with game shaders. A `TextRen
 `SpriteRenderer` does. A `ParticleEffect` names one for all its emitters, and a `ParticleEmitter` can replace it. The
 `instance uniform` values of a text or an emitter come from its entity's `MaterialInstance`, and are shared by all
 its glyphs or particles.
+
+### Screen effects
+
+A screen effect (`#pragma screen`) runs over the whole picture once the world is drawn: a fullscreen triangle into a
+half-float image, reading the scene or the previous effect's output. Its built-ins:
+
+| Name                | Type        | What it is                                                                     |
+|---------------------|-------------|--------------------------------------------------------------------------------|
+| `COLOR`             | `vec4`      | Starts as the pixel of `SCREEN_TEXTURE` at `SCREEN_UV`; written as is, no blend |
+| `SCREEN_TEXTURE`    | `sampler2D` | The picture so far (half float, may exceed 1); `TEXTURE` is the same           |
+| `SCREEN_UV`         | `vec2`      | The pixel on the screen, 0 to 1, top-left at (0, 0); `UV` is the same          |
+| `SCREEN_PIXEL_SIZE` | `vec2`      | One pixel in `SCREEN_UV` units                                                 |
+| `TIME`              | `float`     | As everywhere                                                                  |
+
+`VERTEX` is in pixels of the screen in `vertex()`. An `instance uniform` keeps its declared default: no drawing carries
+values, so the assembler writes the defaults into the vertex stage. The `SCREEN_*` names are reserved in every shader
+but only declared in a screen effect.
+
+The game chooses its effects with `aylo.shader.setScreenMaterials` (or the form `engine.screenEffects`), a list of
+materials kept in the client resource `aylo.ScreenMaterials`. The Render system `aylo.Shader.Screen`, after
+`aylo.Shader.Update`, hands the renderer the ones created (`IRenderer::setScreenMaterials()`) every frame, so a reload
+or a late material follows. The renderer skips a material whose shader does not serve `kScreen`.
+
+The plugin gives two effects written in the same dialect, compiled from `shader/builtin/` (`BuiltinShaders`): a path
+starting with `@aylo/` names one of them instead of a file. `@aylo/bloom.glsl` (one pass, 64 samples on a spiral, with
+`threshold`, `softKnee`, `intensity`, `radius`) and `@aylo/tonemap.glsl` (`exposure`, and `mode` 0 none, 1 Reinhard,
+2 ACES). The manual's page is `manual/pages/post-processing.md`.
 
 ## Using a shader
 
@@ -203,6 +233,7 @@ A backend feeds these resources:
 | Shape instances                     | Attributes 0 to 7, instance values at 8 to 11                     |
 | Particle instances                  | Attributes 0 to 5                                                 |
 | A particle draw's constants         | A push constant block, instance values at offset 48               |
+| A screen effect                     | No vertex input: 3 vertices; set 1 binding 0 is the picture so far |
 
 Instance values only exist for a shader that declares some: the assembler then defines `AYLO_INSTANCE_VALUES`.
 

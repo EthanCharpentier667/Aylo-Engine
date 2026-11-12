@@ -33,7 +33,11 @@ namespace {
 using contract::renderer::ShaderValueType;
 
 /// @brief Names a shader cannot declare: the engine's built-ins (docs/Shaders.md).
-constexpr std::array<std::string_view, 5> kBuiltins{"VERTEX", "UV", "COLOR", "TEXTURE", "TIME"};
+constexpr std::array<std::string_view, 8> kBuiltins{
+    "VERTEX", "UV", "COLOR", "TEXTURE", "TIME", "SCREEN_TEXTURE", "SCREEN_UV", "SCREEN_PIXEL_SIZE"};
+
+/// @brief The line that makes a shader a screen effect (ParsedShader::screen).
+constexpr std::string_view kScreenPragma = "#pragma screen";
 
 /// @brief What the parser knows of a value type: its GLSL name, its components, its std430 size and alignment.
 struct TypeInfo {
@@ -321,6 +325,11 @@ ParsedShader parseShader(std::string_view source, std::string_view name) {
         ++lineNumber;
         const std::string lineCode = removeComments(line, inComment);
         const std::string_view trimmed = trim(lineCode);
+        if (trimmed == kScreenPragma) {
+            shader.body += '\n';
+            shader.screen = true;
+            continue;
+        }
         if (trimmed.starts_with("uniform ") || trimmed.starts_with("instance ")) {
             shader.body += '\n';
             parser.addDeclaration(trimmed, lineNumber);

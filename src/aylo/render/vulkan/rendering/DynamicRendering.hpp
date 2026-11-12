@@ -70,6 +70,18 @@ inline constexpr ImageTransition kSceneToShaderRead{
     .dstAccess = vk::AccessFlagBits2::eShaderSampledRead,
 };
 
+/// @brief A sampled image back to color attachment, its contents kept: the drawing adds to what a previous one made
+/// (the overlay over the screen effects). Waits for the fragment shaders that sampled it, then orders the attachment's
+/// read (the load) and write.
+inline constexpr ImageTransition kShaderReadToColorAttachment{
+    .oldLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
+    .newLayout = vk::ImageLayout::eColorAttachmentOptimal,
+    .srcStage = vk::PipelineStageFlagBits2::eFragmentShader,
+    .srcAccess = vk::AccessFlagBits2::eNone,
+    .dstStage = vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+    .dstAccess = vk::AccessFlagBits2::eColorAttachmentRead | vk::AccessFlagBits2::eColorAttachmentWrite,
+};
+
 /// @brief Color attachment to presentable: after the attachment writes; presentation itself waits on a semaphore.
 inline constexpr ImageTransition kColorAttachmentToPresent{
     .oldLayout = vk::ImageLayout::eColorAttachmentOptimal,
@@ -84,6 +96,10 @@ inline constexpr ImageTransition kColorAttachmentToPresent{
 /// (CLEAR / STORE), in COLOR_ATTACHMENT_OPTIMAL.
 [[nodiscard]] AYLO_RENDER_VULKAN_API vk::RenderingAttachmentInfo colorAttachment(vk::ImageView view,
                                                                                  const vk::ClearColorValue& clearColor);
+
+/// @return A color attachment that keeps what the image holds at the start of rendering and stores it at the end
+/// (LOAD / STORE), in COLOR_ATTACHMENT_OPTIMAL.
+[[nodiscard]] AYLO_RENDER_VULKAN_API vk::RenderingAttachmentInfo loadedColorAttachment(vk::ImageView view);
 
 /// @return A depth attachment cleared to @p clearDepth and discarded at the end (CLEAR / DONT_CARE: depth is only
 /// needed while drawing), in DEPTH_ATTACHMENT_OPTIMAL.
