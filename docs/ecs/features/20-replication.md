@@ -6,7 +6,7 @@ Replication is how the **server's world is mirrored on the clients**. The model 
 down**: clients send their inputs; the authoritative server simulates and sends back what changed.
 There is no client-side prediction or rollback.
 
-This doc describes the network plugins for an **shoot'em up-like game**: one shared screen, a few players
+This doc describes the network plugins for a **shoot'em up**: one shared screen, a few players
 (typically up to 4), and many short-lived bullets and enemies.
 
 ## Why we need it
