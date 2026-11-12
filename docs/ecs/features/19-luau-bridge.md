@@ -235,9 +235,9 @@ direction, is checked where the plugin runs, and a call's error is prefixed with
 ### Plugins
 
 ```luau
-local RtypePlugin = ecs.plugin("aylo.Game")
+local GamePlugin = ecs.plugin("aylo.Game")
 
-function RtypePlugin:build(app)
+function GamePlugin:build(app)
     app:load("components/Shield.luau")       -- by path: no require() across files
     app:load("systems/ShieldRegen.luau")
     app:addPlugin("scripts/aylo/weapons/plugin.luau")
@@ -246,7 +246,7 @@ function RtypePlugin:build(app)
     app:resource("game.Score", { type = "Score", replication = "everyChange" })
 end
 
-return RtypePlugin
+return GamePlugin
 ```
 
 This section is the original proposal. Today files `require` each other (by string path, `docs/scripting/plan.md`

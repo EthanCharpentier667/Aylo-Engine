@@ -17,6 +17,7 @@
 #include "aylo/ecs/app/App.hpp"
 #include "core/config/Settings.hpp"
 #include "core/config/exceptions/ConfigExceptions.hpp"
+#include "core/layout/Layout.hpp"
 #include "plugins/persistence/PersistenceCalls.hpp"
 #include "plugins/persistence/PersistencePlugin.hpp"
 #include "plugins/persistence/PersistenceSettings.hpp"
@@ -161,11 +162,45 @@ TEST_F(PersistenceFixture, RejectsNamesThatEscapeTheDirectory) {
     EXPECT_TRUE(SaveStore::isValidName("profile_1.v2-backup"));
 }
 
+TEST_F(PersistenceFixture, AdoptsTheSavesOfAnotherFolderWhenItHasNoneYet) {
+    const std::filesystem::path other = _directory / "before";
+    const SaveStore old{other};
+    ASSERT_TRUE(old.write("profile", "kept").ok);
+    ASSERT_TRUE(old.write("slot2", "also kept").ok);
+    // Not a save: a temporary file a crash left, and a folder.
+    std::ofstream{other / "profile.sav.tmp", std::ios::binary} << "partial";
+    std::filesystem::create_directory(other / "folder.sav");
+
+    const SaveStore store{_directory / "now"};
+    EXPECT_EQ(store.adopt(other), 2U);
+    EXPECT_EQ(store.read("profile").data, "kept");
+    EXPECT_EQ(store.read("slot2").data, "also kept");
+    EXPECT_FALSE(std::filesystem::exists(_directory / "now" / "profile.sav.tmp"));
+    EXPECT_FALSE(std::filesystem::exists(_directory / "now" / "folder.sav"));
+    // The other folder is left as it was.
+    EXPECT_EQ(old.read("profile").data, "kept");
+}
+
+TEST_F(PersistenceFixture, AdoptsNothingOnceItsFolderExists) {
+    const std::filesystem::path other = _directory / "before";
+    ASSERT_TRUE(SaveStore{other}.write("profile", "old").ok);
+    const SaveStore store{_directory / "now"};
+    ASSERT_TRUE(store.write("profile", "new").ok);
+    EXPECT_EQ(store.adopt(other), 0U);
+    EXPECT_EQ(store.read("profile").data, "new");
+}
+
+TEST_F(PersistenceFixture, AdoptsNothingFromAFolderThatDoesNotExist) {
+    const SaveStore store{_directory / "now"};
+    EXPECT_EQ(store.adopt(_directory / "missing"), 0U);
+    EXPECT_FALSE(std::filesystem::exists(_directory / "now"));
+}
+
 TEST(PersistenceSettings, ReadsDirectoryAndFolder) {
     using aylo::plugins::persistence::PersistenceSettings;
     const auto defaults = PersistenceSettings::fromSettings(aylo::core::config::Settings{});
     EXPECT_TRUE(defaults.directory.empty());
-    EXPECT_EQ(defaults.folder, "aylo");
+    EXPECT_EQ(defaults.folder, aylo::core::layout::kUserFolder);
 }
 
 TEST_F(PersistenceFixture, PluginRegistersTheCallsOnItsDirectory) {

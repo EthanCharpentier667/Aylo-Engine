@@ -23,6 +23,8 @@
 
 namespace aylo::plugins::persistence {
 namespace {
+/// The first line of a save. Frozen: it names the format, not the engine, and every save written so far starts with
+/// it. A new format takes a new number, and read() keeps reading this one.
 constexpr std::string_view kMagic = "RTSAVE1";
 constexpr std::string_view kExtension = ".sav";
 constexpr std::string_view kTemporary = ".tmp";
@@ -53,6 +55,29 @@ bool SaveStore::isValidName(const std::string_view name) {
                return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' ||
                       c == '-' || c == '.';
            });
+}
+
+std::size_t SaveStore::adopt(const std::filesystem::path& other) const noexcept {
+    std::size_t copied = 0;
+    try {
+        std::error_code code;
+        if (std::filesystem::exists(_directory, code) || !std::filesystem::is_directory(other, code)) {
+            return 0;
+        }
+        for (const std::filesystem::directory_entry& entry : std::filesystem::directory_iterator{other, code}) {
+            if (!entry.is_regular_file(code) || entry.path().extension() != kExtension) {
+                continue;
+            }
+            std::filesystem::create_directories(_directory, code);
+            if (std::filesystem::copy_file(entry.path(), _directory / entry.path().filename(), code)) {
+                ++copied;
+            }
+        }
+    } catch (const std::exception&) {
+        // What was copied stays; the rest is still in the other folder.
+        return copied;
+    }
+    return copied;
 }
 
 const std::filesystem::path& SaveStore::getDirectory() const noexcept { return _directory; }

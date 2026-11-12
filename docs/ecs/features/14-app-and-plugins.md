@@ -249,15 +249,15 @@ later replace the explicit ordering, so other producers (replays, the network) j
 (see [Luau bridge](19-luau-bridge.md)):
 
 ```luau
-local RtypePlugin = ecs.plugin("aylo.Game")
+local GamePlugin = ecs.plugin("aylo.Game")
 
-function RtypePlugin:build(app)
+function GamePlugin:build(app)
     app:load("components/Shield.luau")
     app:load("systems/ShieldRegen.luau")
     app:addPlugin("scripts/aylo/weapons/plugin.luau")
 end
 
-return RtypePlugin
+return GamePlugin
 ```
 
 A C++ game plugin is added beside it when part of the game needs native speed

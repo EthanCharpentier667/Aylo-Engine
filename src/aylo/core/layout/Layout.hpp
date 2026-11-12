@@ -43,6 +43,13 @@ inline constexpr std::string_view kNoticesFile = "THIRD_PARTY_NOTICES.md";  ///<
 inline constexpr std::string_view kNoticesByLibraryFolder = "by-library";   ///< Those of each binary.
 /// @}
 
+/// @name In the user's directories
+/// @{
+/// The engine's folder in the user's cache directory (the pipeline cache, the editor's layout), and the default folder
+/// of a game's saves in the user's data directory.
+inline constexpr std::string_view kUserFolder = "aylo";
+/// @}
+
 /// @name Next to a plugin library
 /// @{
 inline constexpr std::string_view kLinksExtension = ".links";    ///< The plugin libraries it links (the build's).

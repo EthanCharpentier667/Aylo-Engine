@@ -19,6 +19,7 @@ task("package-release")
         import("core.base.option")
         import("core.base.semver")
         import("core.project.config")
+        import("core.project.project")
         import("lib.detect.find_tool")
         import("utils.archive")
         import("engine_version")
@@ -93,6 +94,11 @@ task("package-release")
             end
         end
         local pluginsdir = path.join(builddir, layout.pluginsFolder)
+        -- The file names of the two plugins copied next to the program on Windows, as their targets name them.
+        local nextToTheProgram = {}
+        for _, name in ipairs({"plugin-transform", "plugin-input"}) do
+            nextToTheProgram[project.target(name):filename()] = true
+        end
         for _, file in ipairs(os.files(path.join(pluginsdir, "**" .. libext))) do
             if not isTestLibrary(file) then
                 local to = path.join(runtime, layout.pluginsFolder, path.relative(file, pluginsdir))
@@ -102,9 +108,8 @@ task("package-release")
                 if os.isfile(file .. layout.linksExtension) then
                     os.cp(file .. layout.linksExtension, to .. layout.linksExtension)
                 end
-                local filename = path.filename(file)
-                if windows and (filename == "aylo-plugin-transform.dll" or filename == "aylo-plugin-input.dll") then
-                    os.cp(file, path.join(runtime, filename))
+                if windows and nextToTheProgram[path.filename(file)] then
+                    os.cp(file, path.join(runtime, path.filename(file)))
                 end
             end
         end

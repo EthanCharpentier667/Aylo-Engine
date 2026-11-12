@@ -11,7 +11,7 @@
 // a prefix shaders cannot use. Kept ASCII: it is embedded as chars. It has no #version: the assembler writes it first,
 // as a backend's built-in shaders (the default shader, which #include these files) do.
 
-layout(set = 0, binding = 0, std140) uniform RtypeFrame {
+layout(set = 0, binding = 0, std140) uniform AyloFrame {
     float time;            // Seconds since the renderer started.
     float deltaTime;       // Seconds since the previous frame.
     vec2 framebufferSize;  // In pixels.

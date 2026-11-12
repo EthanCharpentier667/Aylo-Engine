@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <cstddef>
 #include <filesystem>
 #include <string>
 #include <string_view>
@@ -42,6 +43,11 @@ class AYLO_PLUGIN_PERSISTENCE_API SaveStore {
     [[nodiscard]] SaveResult remove(std::string_view name) const;
     /// @return Whether a file exists for @p name (it may still be corrupt).
     [[nodiscard]] bool exists(std::string_view name) const;
+
+    /// @brief Copies the saves of @p other here, if this directory does not exist yet and @p other does: how the saves
+    /// of a folder the game used before are kept. @p other is left as it was; a save that cannot be copied is skipped.
+    /// @return The number of saves copied.
+    [[nodiscard]] std::size_t adopt(const std::filesystem::path& other) const noexcept;
 
     /// @return The directory of the saves.
     [[nodiscard]] const std::filesystem::path& getDirectory() const noexcept;

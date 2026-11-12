@@ -1016,9 +1016,9 @@ assembled from.
 
 ```luau
 -- scripts/aylo/plugin.luau
-local RtypePlugin = ecs.plugin("aylo.Game")
+local GamePlugin = ecs.plugin("aylo.Game")
 
-function RtypePlugin:build(app)
+function GamePlugin:build(app)
     -- Components and systems, from files laid out however the game prefers.
     app:load("components/Shield.luau")
     app:load("components/Bydo.luau")
@@ -1034,7 +1034,7 @@ function RtypePlugin:build(app)
     app:state("game.Phase", { "Menu", "Lobby", "Playing", "GameOver" })
 end
 
-return RtypePlugin
+return GamePlugin
 ```
 
 Files are referenced by **path** through `app:load()` rather than `require()`: cross-file `require` is a
@@ -1138,7 +1138,7 @@ this document.
 
 ## Collisions: From Overlap to Event
 
-Collisions are the busiest workload of a shoot'em up-like game: hundreds of bullets against dozens of
+Collisions are the busiest workload of a shoot'em up: hundreds of bullets against dozens of
 enemies, every tick. This section follows one tick of the `CollisionPlugin` (C++, server side) from
 component data to `Collision` events read by gameplay, and lists what makes it fast.
 
@@ -1257,7 +1257,7 @@ flowchart LR
 | Damage applied in C++ | The C++ damage system reads every `Collision`; Luau only receives rarer, higher-level events (`game.EnemyKilled`), so the per-event C++ → Luau crossing stays small |
 | Started / ended events (optional) | For long contacts (a laser beam), compare this tick's sorted pair list with the previous one and emit `CollisionStarted` / `CollisionEnded` instead of one event per tick |
 
-Expected cost: a few microseconds to a few tens of microseconds per tick at shoot'em up scale, an order of
+Expected cost: a few microseconds to a few tens of microseconds per tick at the scale of a shoot'em up, an order of
 magnitude to measure with the benchmark harness rather than assume.
 
 Other broad phases, for reference:
@@ -1415,7 +1415,7 @@ The public include path is `src/`: `#include <aylo/ecs/world/World.hpp>`.
 | Version | Content | Unlocks |
 |---|---|---|
 | **v1: core + App** | `Entity`, registry + `AYLO_ECS_COMPONENT`, sparse sets, typed + type-erased API, queries, `Mut<T>` + ticks, commands, resources (incl. `NonSend`), events, phases + fixed timestep, `App` / `Plugin`, `WindowPlugin` + `InputPlugin` + `RenderPlugin` over Ethan's backends, `StandalonePlugin` (single player without a server), tests | A window showing sprites driven by systems |
-| **v2: game features** | Luau components, systems and plugins, input actions declared from Luau, generated `.d.luau` for script components, actors, hierarchy, run conditions, States, `AssetPlugin`, `CollisionPlugin` (AABB, collision events), replication + `ClientPlugin` / `ServerPlugin`, `PlayerInput` | Multiplayer R-Type with scripted gameplay |
+| **v2: game features** | Luau components, systems and plugins, input actions declared from Luau, generated `.d.luau` for script components, actors, hierarchy, run conditions, States, `AssetPlugin`, `CollisionPlugin` (AABB, collision events), replication + `ClientPlugin` / `ServerPlugin`, `PlayerInput` | A multiplayer shoot'em up with scripted gameplay |
 | **v3: generic engine** | Archetype tables, mixed-storage queries, parallel scheduler, observers, shared components, scenes | Reuse in other games |
 | **Later** | Copy-on-write snapshots (replays, lag compensation), benchmarks-driven optimizations | |
 

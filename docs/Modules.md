@@ -35,7 +35,8 @@ architecture rules, and this file keeps the detail, which changes with every fea
       when they change.
     - `core/layout/` (`aylo::core::layout`) — `Layout.hpp`: the names of the folders and files the engine, its tools
       and its release agree on (`game`, `project.luau`, `scripts`, `assets`, `plugins`, `game.pak`, `runtime`, `lib`,
-      `backends`, `licenses`, `.links`, `.sig`, `export.json`...), written once in C++; the constants of `Engine` and
+      `backends`, `licenses`, `.links`, `.sig`, `export.json`...) and the engine's folder in the user's directories
+      (`kUserFolder`: the pipeline cache, the editor's layout, the default folder of the saves), written once in C++; the constants of `Engine` and
       of the export are aliases of them. The build and the release write the same names in Lua,
       `xmake/modules/layout.lua`: change both together. The format versions stay with their format
       (`kLibraryAbiVersion` in `LibraryEntry.hpp`, `kPackVersion` in `vfs/Pack.hpp`).

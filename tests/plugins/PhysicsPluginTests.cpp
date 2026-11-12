@@ -32,7 +32,7 @@ PhysicsSettings smallSettings() {
 }
 }  // namespace
 
-TEST(PhysicsPlugin, IsNamedRtypePhysics) { EXPECT_EQ(PhysicsPlugin{}.getName(), "aylo.Physics"); }
+TEST(PhysicsPlugin, IsNamedAyloPhysics) { EXPECT_EQ(PhysicsPlugin{}.getName(), "aylo.Physics"); }
 
 TEST(PhysicsPlugin, RegistersTheComponents) {
     aylo::ecs::App app;
