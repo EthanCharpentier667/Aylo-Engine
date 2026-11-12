@@ -184,7 +184,7 @@ TEST_F(ServerStateTest, StartsWithoutClientsNorEntities) {
 TEST_F(ServerStateTest, PrepareFreezesTheInputLayoutAndBuildsTheManifest) {
     makeState();
     EXPECT_TRUE(_layout.isFrozen());
-    // net.Owner, aylo.Parent, test.server.Follow and test.server.Position, by name.
+    // aylo.Parent, net.Owner, test.server.Follow and test.server.Position, by name.
     EXPECT_EQ(_state->manifest().components().size(), 4U);
     EXPECT_EQ(_state->manifest().actions().size(), 3U);
 }
