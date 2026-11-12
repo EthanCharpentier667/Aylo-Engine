@@ -74,7 +74,7 @@ std::vector<std::string_view> replicatedNames(const App& app) {
 }
 }  // namespace
 
-TEST(ReplicationPlugin, IsNamedRtypeReplication) {
+TEST(ReplicationPlugin, IsNamedAyloReplication) {
     EXPECT_EQ(ReplicationPlugin{}.getName(), "aylo.replication");
     EXPECT_EQ(ReplicationPlugin::kName, "aylo.replication");
 }
