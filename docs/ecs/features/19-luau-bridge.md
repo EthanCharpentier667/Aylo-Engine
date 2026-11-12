@@ -155,7 +155,7 @@ adds run on clients):
 | Plugin | Calls |
 |---|---|
 | Sprite | `aylo.sprite.loadAtlas`, `aylo.sprite.createAtlas`, `aylo.sprite.addFrame`, `aylo.sprite.addAnimation` ([Sprites](../../Sprites.md#from-scripts)) |
-| Backend | `aylo.backend.loadTexture` |
+| Backend | `aylo.backend.loadTexture`, `aylo.backend.setPostProcess` ([Vulkan](../../Vulkan.md#hdr-scene-and-post-processing)) |
 | Text | `aylo.text.loadFont` ([Text](../../Text.md#from-scripts)) |
 | Tilemap | `aylo.tilemap.load`, `aylo.tilemap.spawn` ([Tilemaps](../../Tilemap.md#from-scripts)) |
 | Particle | `aylo.particle.beginEffect`, `aylo.particle.addBurst`, `aylo.particle.addColorKey`, `aylo.particle.addCurveKey`, `aylo.particle.addEffect` (clients) ([Particles](../../particles/design.md#12-luau)) |
