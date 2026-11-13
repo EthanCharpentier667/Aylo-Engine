@@ -21,9 +21,13 @@
 #include "aylo/ecs/exceptions/StateException.hpp"
 
 namespace aylo::ecs {
-void States::add(std::string name, std::vector<std::string> values) {
+void States::add(std::string name, std::vector<std::string> values, const Replication replication) {
     if (name.empty()) {
         throw exceptions::StateException{"A state machine needs a name"};
+    }
+    if (name.size() > kMaxLength) {
+        throw exceptions::StateException{
+            std::format("State machine '{}...': its name is longer than {} bytes", name.substr(0, 32), kMaxLength)};
     }
     if (values.empty()) {
         throw exceptions::StateException{std::format("State machine '{}' needs at least one value", name)};
@@ -31,6 +35,10 @@ void States::add(std::string name, std::vector<std::string> values) {
     for (auto value = values.begin(); value != values.end(); ++value) {
         if (value->empty()) {
             throw exceptions::StateException{std::format("State machine '{}' has an empty value", name)};
+        }
+        if (value->size() > kMaxLength) {
+            throw exceptions::StateException{
+                std::format("State machine '{}' has a value longer than {} bytes", name, kMaxLength)};
         }
         if (std::find(std::next(value), values.end(), *value) != values.end()) {
             throw exceptions::StateException{std::format("State machine '{}' has the value '{}' twice", name, *value)};
@@ -41,9 +49,20 @@ void States::add(std::string name, std::vector<std::string> values) {
             throw exceptions::StateException{
                 std::format("State machine '{}' is already declared with other values", name)};
         }
+        if (known->replication != replication) {
+            throw exceptions::StateException{
+                std::format("State machine '{}' is already declared with another replication", name)};
+        }
         return;
     }
-    _machines.push_back(Machine{.name = std::move(name), .values = std::move(values)});
+    // A machine of the server, where the world follows it, waits for the server's value instead of its first one.
+    const bool waits = _followsServer && replication == Replication::kFromServer;
+    _machines.push_back(Machine{
+        .name = std::move(name),
+        .values = std::move(values),
+        .next = waits ? kNone : 0,
+        .replication = replication,
+    });
 }
 
 bool States::has(const std::string_view name) const noexcept { return find(name) != nullptr; }
@@ -72,7 +91,51 @@ void States::request(const std::string_view name, const std::string_view value) 
     if (index == kNone) {
         throw exceptions::StateException{std::format("State machine '{}' has no value '{}'", name, value)};
     }
+    if (_followsServer && machine->replication == Replication::kFromServer) {
+        throw exceptions::StateException{
+            std::format("State machine '{}' is replicated: only the server changes it", name)};
+    }
     machine->next = index == machine->current ? kNone : index;
+}
+
+bool States::isReplicated(const std::string_view name) const noexcept {
+    const Machine* machine = find(name);
+    return machine != nullptr && machine->replication == Replication::kFromServer;
+}
+
+std::vector<std::string_view> States::getReplicated() const {
+    std::vector<std::string_view> names;
+    for (const Machine& machine : _machines) {
+        if (machine.replication == Replication::kFromServer) {
+            names.emplace_back(machine.name);
+        }
+    }
+    return names;
+}
+
+void States::followServer() noexcept {
+    _followsServer = true;
+    for (Machine& machine : _machines) {
+        // Declared before: it has not entered its first value yet, and waits for the server's instead.
+        if (machine.replication == Replication::kFromServer && machine.current == kNone) {
+            machine.next = kNone;
+        }
+    }
+}
+
+bool States::followsServer() const noexcept { return _followsServer; }
+
+bool States::follow(const std::string_view name, const std::string_view value) noexcept {
+    Machine* machine = find(name);
+    if (!_followsServer || machine == nullptr || machine->replication != Replication::kFromServer) {
+        return false;
+    }
+    const std::size_t index = indexOf(*machine, value);
+    if (index == kNone) {
+        return false;
+    }
+    machine->next = index == machine->current ? kNone : index;
+    return true;
 }
 
 bool States::hasPending() const noexcept {
