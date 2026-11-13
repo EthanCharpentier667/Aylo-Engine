@@ -282,7 +282,7 @@ void drawEmitters(ecs::NonSendMut<plugins::graphics::Backend> backend, ecs::Res<
             draw.material = material->material;
             draw.instanceValues = instance != nullptr ? instance->values : material->instanceDefaults;
         }
-        queue->push(emitter.layer, draw);
+        queue->push(emitter.layer, draw, entity.getIndex());
     }
 }
 }  // namespace

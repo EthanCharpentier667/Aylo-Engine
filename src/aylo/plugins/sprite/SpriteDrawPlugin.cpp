@@ -60,7 +60,7 @@ void drawEntities(
             drawn.material = material->material;
             drawn.instanceValues = instance != nullptr ? instance->values : material->instanceDefaults;
         }
-        queue->push(sprite.layer, drawn);
+        queue->push(sprite.layer, drawn, entity.getIndex());
     }
 }
 }  // namespace

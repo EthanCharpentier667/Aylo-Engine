@@ -87,7 +87,7 @@ void drawTexts(
             text.material = material->material;
             text.instanceValues = instance != nullptr ? instance->values : material->instanceDefaults;
         }
-        queue->push(drawn.layer, std::move(text));
+        queue->push(drawn.layer, std::move(text), entity.getIndex());
     }
 }
 }  // namespace
