@@ -66,17 +66,25 @@ std::span<const InputAction> InputLayout::actions() const noexcept { return _act
 bool InputLayout::isFrozen() const noexcept { return _frozen; }
 
 void InputLayout::add(std::string name, const InputKind kind) {
-    if (_frozen) {
+    const auto position = std::ranges::lower_bound(_actions, name, std::ranges::less{}, &InputAction::name);
+    if (position != _actions.end() && position->name == name) {
+        // The same declaration again (a script that runs again on a hot reload) changes nothing, frozen or not.
+        if (position->kind == kind) {
+            return;
+        }
         throw exceptions::InputLayoutException{
-            std::format("Cannot add the input action '{}': the layout is frozen, declare actions at startup", name)};
+            std::format("The input action '{}' is already declared with another kind{}", name,
+                        _frozen ? ": the layout is frozen, restart the game to change it" : "")};
+    }
+    if (_frozen) {
+        throw exceptions::InputLayoutException{std::format(
+            "Cannot add the input action '{}': the layout is frozen, declare actions at startup (restart the game to "
+            "add one)",
+            name)};
     }
     if (name.empty() || name.size() > kMaxNameLength) {
         throw exceptions::InputLayoutException{
             std::format("Invalid input action name of {} bytes: it must have 1 to {}", name.size(), kMaxNameLength)};
-    }
-    const auto position = std::ranges::lower_bound(_actions, name, std::ranges::less{}, &InputAction::name);
-    if (position != _actions.end() && position->name == name) {
-        throw exceptions::InputLayoutException{std::format("The input action '{}' is already declared", name)};
     }
     const std::size_t buttons = _buttonCount + (kind == InputKind::kButton ? 1 : 0);
     const std::size_t slots = _axisSlotCount + slotsOf(kind);

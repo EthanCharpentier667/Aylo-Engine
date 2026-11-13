@@ -61,10 +61,12 @@ class AYLO_REPLICATION_API InputLayout {
     /// @return True once freeze() was called.
     [[nodiscard]] bool isFrozen() const noexcept;
 
-    /// @brief Declares an action.
-    /// @param name The action's name, 1 to 255 bytes, not declared yet.
+    /// @brief Declares an action. Declaring an action again with the same kind does nothing, even once frozen: a script
+    /// that runs again on a hot reload declares its actions again.
+    /// @param name The action's name, 1 to 255 bytes.
     /// @param kind What the action carries.
-    /// @throws exceptions::InputLayoutException When the layout is frozen or the name is empty, too long or taken.
+    /// @throws exceptions::InputLayoutException When the name is taken by an action of another kind, the layout is
+    /// frozen and the action is new, or the name is empty or too long.
     void add(std::string name, InputKind kind);
 
     /// @brief Forbids any further add().
