@@ -301,17 +301,20 @@ Luau plugins load on the **server and the clients** (both need layouts, capsules
 System sides decide what runs where: `server` (gameplay, default), `client` (presentation), `both`
 (identical simulation such as bullet motion). In standalone mode both sides run in one App.
 
-A system is declared on both sides, whatever its side, and only its engine calls may be missing on the side it does not
-run on: its components, resources and events must exist there, and the systems it is ordered against too. A script that
-names what only one side has (the sprites, the audio, `net.applyInputs`) lives in files only that side's entry requires (`server/main`, `client/main`), as `examples/games/aylo_duel/game/scripts/` does; a test of `engine.isClient` is the way to share one file:
+A system is resolved only on the side it runs on (`registerSystem()`, #413). On the other side it becomes a
+stand-in: its name, phase and side, with nothing it names resolved (components, resources, events, engine calls) and
+no `after`/`before` of its own, since those may only exist on its side (the sprites, the audio, `net.applyInputs`). The
+stand-in keeps the schedule's graph alike on both sides, so a system that runs there can still be ordered after or
+before it. A file may therefore declare systems of either side and load everywhere, with no test of
+`engine.isClient`:
 
 ```luau
 engine.ecs.component("game.Explosion", { fields = {}, presence = "clientOnly" }) -- on both sides
-if not engine.isClient then
-    return
-end
-engine.ecs.system("game.RemoveExplosions", { side = "client", ... })
+engine.ecs.system("game.RemoveExplosions", { side = "client", ... })              -- resolved on clients only
 ```
+
+What a system declares is still checked where it runs: an unknown name there is an error. Components and input
+actions are still declared on both sides (the manifest compares them).
 
 ## Connections
 
