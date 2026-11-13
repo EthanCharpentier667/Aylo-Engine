@@ -1,7 +1,26 @@
--- The client's assets: the sprite atlases, the sounds, the planets and the background. The forms load them; the
--- module returns their ids, for the client modules that use them.
+-- The client's assets: the sprite atlases, the sounds, the planets, the background and the menu's pieces. The forms
+-- load them; the module returns their ids, for the client modules that use them.
+
+-- The menu's pieces are pixel art (assets/ui, from a UI pack): drawn without smoothing.
+local function pixelArt(path: string)
+	return engine.assets.texture(path, { linear = false })
+end
 
 return {
+	-- The menu: a panel with a roof, its buttons at rest, under the pointer and held, a loading wheel (11 frames of
+	-- 16x16 in a row) and a planet for the roof.
+	ui = {
+		titlePanel = pixelArt("ui/title_panel.png"),
+		panel = pixelArt("ui/panel.png"),
+		button = {
+			normal = pixelArt("ui/button_normal.png"),
+			hovered = pixelArt("ui/button_hover.png"),
+			pressed = pixelArt("ui/button_clicked.png"),
+		},
+		loadingWheel = pixelArt("ui/loading_wheel.png"),
+		planet = pixelArt("ui/planet.png"),
+	},
+
 	-- The left sheet: 5 frames of 48x48, every 65 pixels.
 	leftShip = engine.assets.atlas({
 		name = "game.leftShip",

@@ -13,13 +13,14 @@ if engine.isClient then
 end
 
 -- A top-down arena: the physics without gravity, and F3 outlines every collider (hidden at first).
--- The arena and what the server spawns in it are capsules (assets/scenes, assets/actors).
+-- The arena and what the server spawns in it are capsules (assets/scenes, assets/actors). A client opens on its main
+-- menu (aylo.Ui) and joins from there.
 engine.settings.plugins = { "aylo.Physics", "aylo.Capsule" }
 if engine.isClient then
 	engine.settings.plugins = {
 		"aylo.Physics", "aylo.Capsule", "aylo.Input", "aylo.graphics", "aylo.Shader", "aylo.Sprite",
 		"aylo.SpriteDraw", "aylo.Shape", "aylo.Tilemap", "aylo.Text", "aylo.Particle", "aylo.audio",
-		"aylo.PhysicsDebug",
+		"aylo.PhysicsDebug", "aylo.Ui",
 	}
 end
 -- `aylo-editor <this folder>` opens the arena to edit it; `--open actors/ship_left.actor` opens
