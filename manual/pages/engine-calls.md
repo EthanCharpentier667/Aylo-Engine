@@ -124,6 +124,15 @@ Server side, with `aylo.Http` added. Prefer `engine.http.request`, see [HTTP](ht
 | `aylo.http.request` | `url`, `method` (`"GET"`), `headers` (`Name: value` lines), `body`, `timeout` | the request's id; its response comes as `aylo.HttpResponse` |
 | `aylo.http.cancel` | `request` | `true`, or `false` when it had already ended |
 
+### States
+
+On both sides, in every game. See [States](states.md).
+
+| Call | Arguments | Result |
+|---|---|---|
+| `aylo.state.get` | `state` (a machine of `engine.ecs.state`) | its current value, `""` before its first frame |
+| `aylo.state.set` | `state`, `value` | nothing; the machine changes at the next frame |
+
 ### Shaders and particles
 
 The shader plugin has `engine.assets.shader` and `engine.assets.material` forms, see [Setup forms](setup-forms.md),

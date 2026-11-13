@@ -23,7 +23,8 @@ your game never needs a program of its own.
 - **Entry points and modules**: the scripts you name in `project.luau` run, and every other file runs when one
   `require`s it. Each file has its own variables. See [Modules and `require`](modules.md).
 - **Components** are the data of your game. See [Components](components.md).
-- **Systems** are the rules that run on that data every tick or frame. See [Systems](systems.md).
+- **Systems** are the rules that run on that data every tick or frame. See [Systems](systems.md), and
+  [States](states.md) for the phases of a game (menu, match, game over).
 - **Engine calls** let scripts use what plain data cannot express: loading an asset, playing a sound, asking the
   physics. See [Engine calls](engine-calls.md) and [Setup forms](setup-forms.md).
 - **Capsules** are entity trees (an enemy, a boss and its turrets, a level) described in files under `assets/` and

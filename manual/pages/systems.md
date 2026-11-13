@@ -23,7 +23,7 @@ engine.ecs.system("game.MoveShips", {
 
 | Option | Meaning |
 |---|---|
-| `phase` | **Required.** When it runs, see below. |
+| `phase` | **Required** (except with `onEnter` or `onExit`). When it runs, see below. |
 | `query` | Which entities it visits, see [Queries](#queries). Leave it out (or write `{}`) for a system that visits none. |
 | `run` | **Required.** The function, called with `ctx`. |
 | `side` | `"server"` (default), `"client"` or `"both"`: where it runs. |
@@ -31,6 +31,7 @@ engine.ecs.system("game.MoveShips", {
 | `events` | `{ read = {...}, send = {...} }`: the events it reads or sends. |
 | `calls` | The [engine calls](engine-calls.md) it makes with `ctx.call`. |
 | `after`, `before` | Names of systems it must run after or before. |
+| `inState`, `onEnter`, `onExit` | `{ machine, value }`: runs only in a game state, or once when the game enters or leaves it. See [States](states.md). |
 
 Any other option is an error naming the system. A system must declare everything it touches: using an undeclared
 resource, event or call is an error.
@@ -43,6 +44,7 @@ A frame runs its phases in this order.
 |---|---|
 | `Startup` | Once, before the first frame: setup, initial entities. |
 | `PreUpdate` | Polling the window and input, receiving network packets. |
+| `StateTransition` | Only when a [state](states.md) changes: its `onExit`, then its `onEnter` systems. Never written as a `phase`. |
 | `FixedUpdate` | Gameplay at a fixed rate; also the physics and the server's network send. |
 | `Update` | Once per frame: animation, camera, UI. |
 | `PostUpdate` | Transform propagation, sending input (client). |
