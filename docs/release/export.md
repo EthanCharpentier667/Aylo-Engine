@@ -97,7 +97,8 @@ runtime's folder and returns the libraries the game needs, each with the reasons
 ([`../engine/design.md`](../engine/design.md#what-a-game-needs)):
 
 - read `project.luau` once per side, as the `Engine` does (`scripting::loadProjectSettings()`, shared with it);
-- load the libraries of `plugins/`, `plugins/backends/` and `<game>/plugins/` (`plugin::PluginLoader`), and register
+- load the libraries of `plugins/`, the backends of `plugins/backends/` the settings name (`plugin::backendLibraries()`,
+  as the Engine does) and `<game>/plugins/` (`plugin::PluginLoader`), and register
   them one at a time, comparing the registries before and after each, to know which library registers which plugin
   and which backend. A backend registers into a registry typed by its contract, which `engine` cannot name: the plugin
   that offers the registry also offers its names (`LibraryRegistrar::provideNames()`, `kLibraryAbiVersion` 2);

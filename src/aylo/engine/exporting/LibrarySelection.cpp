@@ -35,6 +35,7 @@
 #include "aylo/engine/CommandLine.hpp"
 #include "aylo/engine/Engine.hpp"
 #include "aylo/engine/Exceptions.hpp"
+#include "aylo/engine/plugin/BackendLibraries.hpp"
 #include "aylo/engine/plugin/PluginLoader.hpp"
 #include "aylo/engine/plugin/SharedLibrary.hpp"
 #include "aylo/engine/scripting/SettingsLoader.hpp"
@@ -131,7 +132,10 @@ class SideSelection {
         const std::filesystem::path plugins = _request->runtime / Engine::kPluginsDirectory;
         loader.load(plugins);
         if (backends) {
-            loader.load(plugins / Engine::kBackendsDirectory);
+            // The backends the settings name only, as the Engine loads them; a name no library provides is refused
+            // here.
+            loader.loadFiles(
+                plugin::backendLibraries(plugins / Engine::kBackendsDirectory, settings, Engine::kBackendSettings));
         }
         const std::filesystem::path gamePlugins = _request->game / Engine::kPluginsDirectory;
         loader.load(gamePlugins, _request->verifyGamePlugin);

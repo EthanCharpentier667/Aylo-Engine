@@ -380,6 +380,11 @@ the null backend does, and the renderer refuses any other platform. Settings: th
 Colours are linear in the engine; the renderer encodes them in sRGB, as Vulkan's sRGB framebuffer does, so both look
 the same.
 
-Known limit: raylib 6.0 carries its own GLFW. The engine loads every backend library, so on macOS the Objective-C
-classes of GLFW exist twice in the process and the runtime prints a warning. Only one window is ever opened, by one of
-them, so it works; on Linux the library hides its GLFW symbols (`--exclude-libs`).
+raylib 6.0 carries its own GLFW, as `platform-glfw` does. The engine opens only the backend libraries `project.luau`
+names (`plugin::backendLibraries()`: for `platform = "raylib"`, the library whose name ends with `-raylib`), so the two
+never meet in one process: on macOS, two copies of GLFW's Objective-C classes in one process would clash. On Linux the
+library also hides its GLFW symbols (`--exclude-libs`).
+
+A backend library is therefore named after what it registers: `aylo-<kind>-<name>`, where `<name>` is the name
+`project.luau` gives (`aylo-platform-glfw` registers `"glfw"`, `aylo-backend-raylib` registers the platform and the
+renderer `"raylib"`). A library that registers several names under different ones cannot be selected by name.

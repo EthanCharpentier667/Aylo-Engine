@@ -12,6 +12,7 @@
 #include <filesystem>
 #include <format>
 #include <functional>
+#include <span>
 #include <system_error>
 #include <utility>
 #include <vector>
@@ -45,6 +46,16 @@ void PluginLoader::load(const std::filesystem::path& directory, const Verifier& 
     std::ranges::sort(files);
     for (const std::filesystem::path& file : files) {
         loadFile(file, verify);
+    }
+}
+
+void PluginLoader::loadFiles(const std::span<const std::filesystem::path> files) {
+    for (const std::filesystem::path& file : files) {
+        const bool loaded =
+            std::ranges::any_of(_libraries, [&file](const Loaded& library) { return library.file == file; });
+        if (!loaded) {
+            loadFile(file, Verifier{});
+        }
     }
 }
 
