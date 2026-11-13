@@ -749,8 +749,8 @@ both: the registry for the plugins, forms for the setup everybody writes.
 
 #### Existing issue not in this list
 
-- #361, "Script systems without a query": a system with no `query` term. It touches `SystemDeclarationReader` and
-  `SystemRun`; no blocker, so it can be done at any time, and it is a good first task.
+- #361, "Script systems without a query": done. `query` is optional; without it a system has no terms, visits no
+  entity and runs once per run of its phase (`ctx.query` ends at once).
 
 #### M2 order
 
