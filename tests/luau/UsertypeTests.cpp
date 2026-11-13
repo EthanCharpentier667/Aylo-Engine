@@ -349,9 +349,8 @@ TEST(Usertype, DestroysItsObjectsWhenTheyAreCollected) {
     run(runtime, R"(
         Counter.new(1)
         Counter.new(2)
+        collectgarbage()
     )");
-    // `collectgarbage` does not work in scripts of this runtime yet (it fails with or without usertypes).
-    lua_gc(aylo::luau::detail::rawState(runtime), LUA_GCCOLLECT, 0);
 
     EXPECT_EQ(tracker.use_count(), 2);  // the test and the constructor handler
 }

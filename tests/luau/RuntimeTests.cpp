@@ -14,6 +14,7 @@
 #include <utility>
 
 #include "aylo/luau/ErrorKind.hpp"
+#include "aylo/luau/FunctionRef.hpp"
 #include "aylo/luau/Runtime.hpp"
 #include "aylo/luau/RuntimeConfig.hpp"
 #include "aylo/luau/Value.hpp"
@@ -420,4 +421,39 @@ TEST(Runtime, PrecompileReturnsTheCompilationError) {
 
     ASSERT_FALSE(chunk);
     EXPECT_EQ(chunk.error().kind(), aylo::luau::ErrorKind::kCompilation);
+}
+
+TEST(Runtime, CollectGarbageCountsAndCollectsFromAScript) {
+    const auto runtime = makeRuntime();
+    const auto script = runtime.load("gc", R"(
+        local garbage = {}
+        for i = 1, 10000 do garbage[i] = { i } end
+        garbage = nil
+        local before = collectgarbage("count")
+        local collected = collectgarbage()
+        local after = collectgarbage("count")
+        return type(before) == "number" and before > 0, collected, after < before
+    )");
+    ASSERT_TRUE(script) << script.error().message();
+    const auto results = runtime.call(*script, {});
+    ASSERT_TRUE(results) << results.error().message();
+    ASSERT_EQ(results->size(), 3U);
+    EXPECT_TRUE(results->values()[0].as<bool>());
+    EXPECT_EQ(results->values()[1].as<double>(), 0.0);
+    EXPECT_TRUE(results->values()[2].as<bool>());
+}
+
+TEST(Runtime, CollectGarbageRefusesAnUnknownOption) {
+    const auto runtime = makeRuntime();
+    const auto script = runtime.load("gc", "collectgarbage('step')");
+    ASSERT_TRUE(script);
+    const auto result = runtime.run(*script);
+    ASSERT_FALSE(result);
+    EXPECT_TRUE(std::string{result.error().message()}.contains("unknown option 'step'")) << result.error().message();
+}
+
+TEST(Runtime, CollectGarbageExistsOnlyWithTheBaseLibrary) {
+    const auto bare = aylo::luau::Runtime::create({.libs = aylo::luau::RuntimeConfig::Libs::kMath});
+    ASSERT_TRUE(bare);
+    EXPECT_FALSE(bare->globals().get("collectgarbage")->is<aylo::luau::FunctionRef>());
 }
