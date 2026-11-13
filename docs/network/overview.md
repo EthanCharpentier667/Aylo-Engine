@@ -231,7 +231,9 @@ Implemented subset (client → server commands, validated, from Luau): [Custom p
 - **Windows trap:** after a client crashes, Windows reports an error on the server's next receive. The
   server turns that report off and never stops its receive loop on an error, or one crash would cut off
   every player.
-- Encryption is **out of scope**: the session token stops impersonation, not eavesdropping.
+- Everything after the handshake is **encrypted and authenticated** (X25519, ChaCha20-Poly1305, libsodium): no one on
+  the path can read, change or replay it, and a client that pins the server's key (`network.serverKey`) talks to that
+  server only.
 
 Details: [Robustness and security](design.md#10-robustness-and-security).
 

@@ -57,14 +57,16 @@ architecture rules, and this file keeps the detail, which changes with every fea
       Only internal parts get a sub-namespace, named after their folder: `aylo::ecs::storage`,
       `aylo::ecs::detail` (`detail/`), `aylo::ecs::exceptions` (`exceptions/`).
 - `src/aylo/network/` — `network` target, static library (`aylo-network`): the transport, which moves bytes
-  between machines (sockets, connections, acks, reliability). It knows nothing about the ECS and depends on
-  Asio only, as a private package: no public header includes Asio, and only `.cpp` files of `io/` do.
+  between machines (sockets, connections, acks, reliability), encrypted. It knows nothing about the ECS and depends on
+  Asio and libsodium only, as private packages: no public header includes them; only `.cpp` files of `io/` include
+  Asio, and only those of `crypto/` libsodium.
   Exported symbols are marked `AYLO_NETWORK_API`. Design in `docs/network/design.md`, task plan in
   `docs/network/implementation.md`.
     - Namespaces mirror the folders (no flat-namespace exception as in `ecs`): `aylo::network` for the root
       (`Types.hpp`, `NetworkSettings.hpp`, `RandomSource.hpp`), then one folder and sub-namespace per feature:
-      `protocol/` (`aylo::network::protocol`, wire constants, sequences, packets), `bytes/`, `connection/`,
-      `io/`, `server/`, `client/`, `exceptions/`. A folder is created only when a file goes in it.
+      `protocol/` (`aylo::network::protocol`, wire constants, sequences, packets, `Handshake.hpp`: the sealed parts
+      of the handshake), `crypto/` (`Crypto.hpp`: key exchange, server identity, ChaCha20-Poly1305 seals, the replay
+      window), `bytes/`, `connection/`, `io/`, `server/`, `client/`, `exceptions/`. A folder is created only when a file goes in it.
 - `src/aylo/replication/` — `replication` target, static library (`aylo-replication`): the only code that
   knows both the ECS and the network; it turns a `World` into messages and back (`aylo::replication`).
   Exported symbols are marked `AYLO_REPLICATION_API`. Feature folders and sub-namespaces as in `network`:
@@ -295,7 +297,7 @@ scripting, replication, plugin-transform, plugin-input  ←  engine  ←  execut
   the contracts stay shared: they hold the registries and the type information plugins and backends share, so every
   binary must see one copy. A static module marks its exports with `AYLO_<LIB>_API`, which expands to nothing
   through the public define `AYLO_<LIB>_STATIC`.
-- `network` depends on Asio only (private): never on the ECS, a plugin or any other project target. `replication`
+- `network` depends on Asio and libsodium only (private): never on the ECS, a plugin or any other project target. `replication`
   depends on `ecs` and `network` and is the only module that knows both; the renderer, the platforms and `luau` never
   include its headers.
 - A contract depends on `core` and glm only (`contract-renderer` also on `contract-platform`, as `IRenderer` takes an

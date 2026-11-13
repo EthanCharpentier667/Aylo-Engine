@@ -165,7 +165,7 @@ says (no flat-namespace exception as in `ecs`). Only what every feature shares s
 `exceptions/` holds local setup errors.
 
 ```
-src/aylo/network/                aylo::network — aylo-network (shared), Asio only
+src/aylo/network/                aylo::network — aylo-network (static), Asio and libsodium only
 ├── xmake.lua
 ├── Export.hpp                    AYLO_NETWORK_API
 ├── Types.hpp                     ClientId, Channel, DisconnectReason, RejectReason, Clock, TimePoint, Bytes
@@ -425,7 +425,7 @@ This task creates the empty shells and the vocabulary they share:
 
 **What it must do.**
 
-1. `network` builds as a static library `aylo-network` that depends on Asio only. Asio is a **private** package:
+1. `network` builds as a static library `aylo-network` that depends on Asio (and, since protocol version 2, libsodium) only. Asio is a **private** package:
    no public header includes it, so the libraries and executables that use `network` never see Asio
    (as GLFW never leaves `platform/glfw/`).
 2. `replication` builds as a static library `aylo-replication` that depends on `ecs` and `network`, both public

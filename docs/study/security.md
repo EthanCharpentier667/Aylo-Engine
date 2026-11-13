@@ -7,7 +7,7 @@ over time.
 
 | Who | Can | Must not be able to |
 |---|---|---|
-| A remote attacker on the network | Send any bytes to the server's UDP port, spoof source addresses | Crash or stall the server, exhaust its memory, impersonate a player, use the server to flood someone |
+| A remote attacker on the network | Send any bytes to the server's UDP port, spoof source addresses, read or change the traffic on the path | Crash or stall the server, exhaust its memory, impersonate a player, read or change a session, use the server to flood someone |
 | A cheating player | Run a modified client, send any input or packet | Change the world directly, teleport, shoot from anywhere, edit another player |
 | A malicious game or plugin author | Ship scripts, assets and native plugins | Run native code on a release player's machine without a signature the project vouches for |
 | A careless game script | Loop, error, read files | Take the game down, escape the game folder, read secrets |
@@ -16,7 +16,7 @@ over time.
 
 | Technology | Main risks | What we do |
 |---|---|---|
-| **Our UDP protocol** | Malformed packets, buffer overflows, amplification, spoofing, resource exhaustion | Bounds-checked reader that invalidates itself instead of throwing; every count checked against the bytes left before allocating; caps on clients, pending challenges, reliable windows, queues, strings; challenge + random session token; padded handshake requests; fuzz-style tests on malformed bytes ([protocol §12](../network/protocol.md#12-security-considerations)) |
+| **Our UDP protocol** | Malformed packets, buffer overflows, amplification, spoofing, resource exhaustion | Bounds-checked reader that invalidates itself instead of throwing; every count checked against the bytes left before allocating; caps on clients, pending challenges, reliable windows, queues, strings; challenge + random session token; padded handshake requests; everything after the handshake encrypted and authenticated (X25519 key exchange, ChaCha20-Poly1305, a replay window), the server's exchange key signed by an identity clients may pin; fuzz-style tests on malformed bytes ([protocol §12](../network/protocol.md#12-security-considerations)) |
 | **The game simulation** | Cheating clients | The server is authoritative: clients send held inputs only, never positions; shooting is an input; custom packets to the server are declared, typed and validated |
 | **Asio** | Bugs in a socket wrapper | We use only UDP sockets; on Windows we turn off `SIO_UDP_CONNRESET` so a crashed client cannot stop the receive loop |
 | **Luau** | Scripts escaping their sandbox, infinite loops, errors | `luaL_sandbox`, frozen standard libraries and `engine` table, one environment per file; `require` cannot leave `scripts/`; a script error is logged and the system skipped, never a crash ([`luau/sandbox.md`](../luau/sandbox.md)) |
@@ -29,8 +29,10 @@ over time.
 
 ## Known limits
 
-- **No encryption.** Traffic, including tokens, can be read by anyone on the path. The protocol prevents impersonation
-  from elsewhere, not eavesdropping. Adding encryption would mean a key exchange in the handshake (libsodium has it).
+- **A server in the middle, without a pinned key.** A client that does not set `network.serverKey` gets an encrypted
+  session with whoever answers its handshake; one that sets it talks to that server only
+  ([protocol 12](../network/protocol.md#12-security-considerations)). `Rejected` is not authenticated, so a machine on
+  the path can make a handshake fail, as it can by dropping datagrams.
 - **Signatures cannot be revoked** yet: a leaked developer key stays valid until the root key changes.
 - **Local saves can be edited** by their player: the checksum detects damage, not tampering.
 
