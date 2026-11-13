@@ -11,6 +11,7 @@
 #include <optional>
 
 #include "aylo/ecs/change/Tick.hpp"
+#include "aylo/ecs/entity/Entity.hpp"
 #include "aylo/ecs/query/QueryState.hpp"
 #include "aylo/ecs/query/TermTraits.hpp"
 
@@ -53,6 +54,18 @@ class Query {
 
     /// @return The end of the pass.
     [[nodiscard]] static std::default_sentinel_t end() noexcept;
+
+    /// @return What @p entity yields if it matches the query, as iterating would yield it, or nothing; found in each
+    /// term's pool, without walking the other matches (QueryState::get()).
+    /// @code
+    /// if (auto found = velocities.get(arguments.entity)) {
+    ///     std::get<1>(*found)->linear += arguments.value;  // a mutable term: written through its Mut
+    /// }
+    /// @endcode
+    [[nodiscard]] std::optional<Item> get(Entity entity) const noexcept;
+
+    /// @return Whether @p entity matches the query.
+    [[nodiscard]] bool contains(Entity entity) const noexcept;
 
   private:
     const State* _state;                             ///< The query built once.

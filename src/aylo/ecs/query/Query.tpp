@@ -30,4 +30,16 @@ template <typename... Terms>
 std::default_sentinel_t Query<Terms...>::end() noexcept {
     return std::default_sentinel;
 }
+template <typename... Terms>
+    requires ValidQuery<Terms...>
+std::optional<typename Query<Terms...>::Item> Query<Terms...>::get(const Entity entity) const noexcept {
+    return _state->get(entity, _lastRun);
+}
+
+template <typename... Terms>
+    requires ValidQuery<Terms...>
+bool Query<Terms...>::contains(const Entity entity) const noexcept {
+    return get(entity).has_value();
+}
+
 }  // namespace aylo::ecs
