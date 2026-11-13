@@ -152,3 +152,37 @@ TEST(ScriptState, AWrongStateOptionIsRefusedWithAMessage) {
     )"),
                          "must be { machine, value }"));
 }
+
+TEST(ScriptState, AReplicatedMachineIsTheServers) {
+    Fixture fixture;
+    ASSERT_EQ(fixture.run(R"(engine.ecs.state("game.Round", { "Warmup", "Live" }, { replicate = true }))"), "");
+    auto& states = *fixture.app.getWorld().getResources().getMut<aylo::ecs::States>();
+    EXPECT_TRUE(states.isReplicated("game.Round"));
+    EXPECT_FALSE(states.isReplicated("game.Phase"));
+    // Again as it is: nothing; with another replication: refused.
+    EXPECT_EQ(fixture.run(R"(engine.ecs.state("game.Round", { "Warmup", "Live" }, { replicate = true }))"), "");
+    EXPECT_TRUE(
+        contains(fixture.run(R"(engine.ecs.state("game.Round", { "Warmup", "Live" }))"), "another replication"));
+    EXPECT_TRUE(contains(fixture.run(R"(engine.ecs.state("game.Mode", { "A" }, { replicated = true }))"),
+                         "unknown option 'replicated'"));
+}
+
+TEST(ScriptState, AClientCannotSetAMachineOfTheServer) {
+    Fixture fixture;
+    ASSERT_EQ(fixture.run(R"(engine.ecs.state("game.Round", { "Warmup", "Live" }, { replicate = true }))"), "");
+    fixture.app.getWorld().getResources().getMut<aylo::ecs::States>()->followServer();  // what a client's network does
+    ASSERT_EQ(fixture.run(R"(
+        engine.ecs.system("game.Cheat", {
+            phase = "Update",
+            calls = { "aylo.state.set" },
+            run = function(ctx)
+                probe.ok, probe.error = pcall(ctx.call, "aylo.state.set", { state = "game.Round", value = "Live" })
+            end,
+        })
+    )"),
+              "");
+    fixture.app.runFrame();
+    EXPECT_EQ(fixture.run(R"(assert(probe.ok == false and string.find(probe.error, "only the server changes it"),
+                                    tostring(probe.error)))"),
+              "");
+}
