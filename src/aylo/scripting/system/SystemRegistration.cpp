@@ -240,9 +240,9 @@ namespace {
 /// sides alike. Nothing it names is resolved, its own order included: those may only exist on its side (a client
 /// component, an event of the audio plugin, the server's net.applyInputs).
 [[nodiscard]] Result<BuiltSystem> makeStandIn(ecs::App& app, const SystemDeclaration& declaration) {
-    ecs::ScriptCallable never{[](const ecs::DynamicQueries /*queries*/, ecs::DynamicResources /*resources*/,
-                                 const ecs::DynamicEvents /*events*/, const ecs::DynamicCalls /*calls*/,
-                                 const ecs::Res<ecs::Time> /*time*/, ecs::Commands& /*commands*/) {}};
+    const ecs::ScriptCallable never{[](const ecs::DynamicQueries /*queries*/, ecs::DynamicResources /*resources*/,
+                                       const ecs::DynamicEvents /*events*/, const ecs::DynamicCalls /*calls*/,
+                                       const ecs::Res<ecs::Time> /*time*/, ecs::Commands& /*commands*/) {}};
     try {
         return BuiltSystem{
             .phase = declaration.phase,
