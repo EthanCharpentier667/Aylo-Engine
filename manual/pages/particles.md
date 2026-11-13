@@ -121,7 +121,7 @@ straight line; before the first and after the last it stays. Two keys at the sam
 | `texture` | texture id | none | From [`engine.assets.texture`](setup-forms.md) |
 | `source` | `{ position, size }` | the whole texture | The part of the texture to show, in pixels |
 | `flipbook` | `{ columns, rows, frames, cycles }` | one frame | Frames of `source` in a grid, played over each life: `frames` is how many (`0`: every cell), `cycles` how many times |
-| `blend` | string | `"additive"` | `"additive"` (glows: sparks, fire), `"alpha"` (smoke, dust) or `"cutout"` |
+| `blend` | string | `"additive"` | `"additive"` (glows: sparks, fire), `"alpha"` (smoke, dust) or `"cutout"`; it also places the emitter among the sprites of its layer ([draw order](components.md#draw-order)) |
 | `alignment` | string | `"fixed"` | `"fixed"`, or `"velocity"`: each quad turns along its motion (the texture's +X forward) |
 | `stretch` | number | `0` | With `"velocity"`: the quad grows longer by speed × `stretch` |
 | `material` | material id | the default one | From [`engine.assets.material`](setup-forms.md), for a shader of your own |

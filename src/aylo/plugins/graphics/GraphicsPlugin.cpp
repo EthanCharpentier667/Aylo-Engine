@@ -25,6 +25,7 @@
 #include <vector>
 
 #include "aylo/contract/platform/event/Event.hpp"
+#include "aylo/contract/renderer/drawing/BlendMode.hpp"
 #include "aylo/contract/renderer/drawing/Overlay.hpp"
 #include "aylo/contract/renderer/drawing/Texture.hpp"
 #include "aylo/contract/renderer/view/CameraView.hpp"
@@ -199,19 +200,45 @@ void applyCamera(ecs::NonSendMut<plugins::graphics::Backend> backend, ecs::ResMu
                              viewSize, framebufferSize);
 }
 
-/// @brief Render: draws what the plugins pushed to the SpriteQueue, by layer then by texture, and empties it.
+/// @return Where an item goes in its layer: the cutout ones first, then the alpha-blended ones, then the additive ones.
+int blendRank(const SpriteQueue::Item& item) {
+    switch (item.getBlend()) {
+        case contract::renderer::BlendMode::kCutout:
+            return 0;
+        case contract::renderer::BlendMode::kAlpha:
+            return 1;
+        case contract::renderer::BlendMode::kAdditive:
+            return 2;
+    }
+    return 1;
+}
+
+/// @return Whether @p left is drawn before @p right (see SpriteQueue): by layer, then cutout, alpha and additive; the
+/// cutout and alpha items by their order, since swapping two that overlap changes the picture; the additive ones by
+/// texture, since adding is the same in any order and grouping them makes fewer draws.
+bool drawsBefore(const SpriteQueue::Item& left, const SpriteQueue::Item& right) {
+    if (left.layer != right.layer) {
+        return left.layer < right.layer;
+    }
+    const int leftRank = blendRank(left);
+    const int rightRank = blendRank(right);
+    if (leftRank != rightRank) {
+        return leftRank < rightRank;
+    }
+    if (left.getBlend() == contract::renderer::BlendMode::kAdditive) {
+        return left.getTexture().index < right.getTexture().index;
+    }
+    return left.order < right.order;
+}
+
+/// @brief Render: draws what the plugins pushed to the SpriteQueue in the order SpriteQueue describes, and empties it.
 void drawSprites(ecs::NonSendMut<plugins::graphics::Backend> backend, ecs::ResMut<SpriteQueue> queue) {
     plugins::graphics::Backend& started = *backend;
     std::vector<SpriteQueue::Item> items = queue->take();
     if (!isStarted(started) || isMinimized(started)) {
         return;
     }
-    std::ranges::stable_sort(items, [](const SpriteQueue::Item& left, const SpriteQueue::Item& right) {
-        if (left.layer != right.layer) {
-            return left.layer < right.layer;
-        }
-        return left.getTexture().index < right.getTexture().index;
-    });
+    std::ranges::stable_sort(items, &drawsBefore);
     for (const SpriteQueue::Item& item : items) {
         std::visit([&started](const auto& drawn) { started.renderer->draw(drawn); }, item.drawing);
     }

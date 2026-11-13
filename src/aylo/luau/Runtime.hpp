@@ -147,6 +147,13 @@ class AYLO_LUAU_API Runtime {
     [[nodiscard]] Usertype<T> usertype() const;
 
   private:
+    /// @brief Opens the standard libraries the configuration asks for.
+    void openLibraries();
+
+    /// @brief `collectgarbage(option)`: `"collect"` (the default) runs a full collection and returns 0, `"count"`
+    /// returns the memory in use in kilobytes; another option raises an error. Luau's base library no longer has it.
+    static int collectGarbage(lua_State* state);
+
     friend lua_State* detail::rawState(const Runtime& runtime) noexcept;
 
     /// @brief Deleter closing a `lua_State`.

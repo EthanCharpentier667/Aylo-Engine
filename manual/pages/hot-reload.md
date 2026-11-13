@@ -42,8 +42,14 @@ Some changes cannot be applied in place, so the game is rebuilt (and the log say
 Every file has its own variables, so a file that runs again starts from a clean set of globals; the state a system kept
 in a `local` of its file starts again too.
 
-Top-level code of a script runs again on every save: setup forms are safe (assets are known by path), but a call that
-spawns or changes the world at the top level will run again. Put such code in a system.
+Top-level code of a script runs again on every save: setup forms are safe (assets are known by path, and an input
+action declared again with the same kind is kept as it is), but a call that spawns or changes the world at the top level
+will run again. Put such code in a system.
+
+Input actions are fixed once the game runs. A save that **adds** an action, or **changes the kind** of one, fails and
+keeps the old code, with `Cannot add the input action 'jump': the layout is frozen, declare actions at startup (restart
+the game to add one)` or `The input action 'move' is already declared with another kind: the layout is frozen, restart
+the game to change it`. Restart the game to apply it.
 
 ## When the game cannot be built
 

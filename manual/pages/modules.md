@@ -29,6 +29,11 @@ The standard libraries (`math`, `string`, `table`...) and `engine` are the same 
 script cannot add a field to them, change one, or replace `engine`. This includes what is inside `engine`
 (`engine.assets.x = 1` is an error), so one file cannot break another.
 
+`collectgarbage` works as Luau documents it: `collectgarbage("count")` gives the memory your scripts use, in
+kilobytes, and `collectgarbage()` (or `collectgarbage("collect")`) runs a full collection and returns `0`. Any other
+option is an error: `collectgarbage: unknown option 'step' (expected 'collect' or 'count')`. You rarely need it: the
+collector runs by itself.
+
 A global variable you create (`Counter = 1`, without `local`) belongs to your file only: no other file sees it. Use
 `local` for what is private, and return a table from the file for what others need:
 

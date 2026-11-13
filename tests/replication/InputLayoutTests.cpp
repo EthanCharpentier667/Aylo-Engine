@@ -80,6 +80,23 @@ TEST(InputLayout, RefusesDeclarationsAfterFreeze) {
     EXPECT_THROW(layout.add("extra", InputKind::kButton), InputLayoutException);
 }
 
+TEST(InputLayout, TakesTheSameDeclarationAgainEvenFrozen) {
+    InputLayout layout = makeLayout();
+    const std::size_t count = layout.actions().size();
+    layout.add("fire", InputKind::kButton);  // before the freeze: a module required twice
+    layout.freeze();
+
+    layout.add("fire", InputKind::kButton);  // after it: the script runs again on a hot reload
+    EXPECT_EQ(layout.actions().size(), count);
+    try {
+        layout.add("fire", InputKind::kAxis);
+        FAIL() << "a change of kind was accepted";
+    } catch (const InputLayoutException& error) {
+        EXPECT_TRUE(std::string{error.what()}.contains("another kind")) << error.what();
+        EXPECT_TRUE(std::string{error.what()}.contains("restart")) << error.what();
+    }
+}
+
 TEST(InputLayout, ReadsButtonsThroughPreviousButtons) {
     const InputLayout layout = makeLayout();
     PlayerInput input;

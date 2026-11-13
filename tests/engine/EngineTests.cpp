@@ -1079,3 +1079,37 @@ TEST(Engine, RefusesANativeSettingThatIsNotABoolean) {
     )");
     EXPECT_TRUE(error.contains("scripts.native") || error.contains("native")) << error;
 }
+
+TEST(EngineHotReload, AppliesAScriptThatDeclaresItsInputActionsAgain) {
+    const GameDirectory game{"aylo-engine-hot-inputs", kHotProject};
+    // Declares two actions, then ends the game with @p code; the first version gives up with 1 after 5 s, so a reload
+    // that fails ends the test instead of hanging it.
+    const auto script = [](const int code) {
+        return std::format(R"(engine.input.action("shoot")
+engine.input.action("move", "vector2")
+engine.ecs.system("game.Quit", {{
+    phase = "Update",
+    query = {{}},
+    events = {{ send = {{ "aylo.AppExit" }} }},
+    run = function(ctx)
+        if {} ~= 0 then ctx.events.send("aylo.AppExit", {{ code = {} }})
+        elseif ctx.time.elapsed > 5 then ctx.events.send("aylo.AppExit", {{ code = 1 }}) end
+    end,
+}}))",
+                           code, code);
+    };
+    game.write("scripts/main.luau", "require('./quit')");
+    game.write("scripts/quit.luau", script(0));
+    EngineConfig config = serverConfig(game);
+    config.setup = &registerExit;
+    Engine engine{std::move(config)};
+    game.write("scripts/quit.luau", script(7));
+
+    testing::internal::CaptureStderr();
+    const int code = engine.run();
+    const std::string log = testing::internal::GetCapturedStderr();
+
+    EXPECT_EQ(code, 7) << "the script ran again and declared its actions again\n" << log;
+    EXPECT_NE(log.find("[HotReload] scripts: applied in"), std::string::npos) << log;
+    EXPECT_EQ(log.find("the layout is frozen"), std::string::npos) << log;
+}

@@ -67,12 +67,47 @@ aylo::luau::Result<> runClosure(lua_State* state, const aylo::luau::Ref& closure
 namespace aylo::luau {
 void Runtime::StateDeleter::operator()(lua_State* state) const noexcept { lua_close(state); }
 
+int Runtime::collectGarbage(lua_State* state) {
+    const char* option = luaL_optstring(state, 1, "collect");
+    if (std::string_view{option} == "collect") {
+        lua_gc(state, LUA_GCCOLLECT, 0);
+        lua_pushinteger(state, 0);
+        return 1;
+    }
+    if (std::string_view{option} == "count") {
+        // Kilobytes in use, with the bytes beyond as a fraction, as Lua's `collectgarbage("count")`.
+        constexpr double kBytesPerKilobyte = 1024.0;
+        const double kilobytes = static_cast<double>(lua_gc(state, LUA_GCCOUNT, 0)) +
+                                 (static_cast<double>(lua_gc(state, LUA_GCCOUNTB, 0)) / kBytesPerKilobyte);
+        lua_pushnumber(state, kilobytes);
+        return 1;
+    }
+    {
+        // Built before the error, which unwinds: the string is copied onto the Lua stack and released here.
+        const std::string message =
+            std::format("collectgarbage: unknown option '{}' (expected 'collect' or 'count')", option);
+        luaL_where(state, 1);  // the position of the script, as `error` gives it
+        lua_pushlstring(state, message.data(), message.size());
+        lua_concat(state, 2);
+    }
+    lua_error(state);
+}
+
 Runtime::Runtime(lua_State* state, const RuntimeConfig config)
     : _config{config}, _state{state}, _usertypes{std::make_unique<detail::UsertypeRegistry>(state)} {
     _config.nativeCode = _config.nativeCode && luau_codegen_supported() != 0;
     if (_config.nativeCode) {
         luau_codegen_create(_state.get());
     }
+    openLibraries();
+    if (has(_config.libs, RuntimeConfig::Libs::kBase)) {
+        // Luau's base library no longer has `collectgarbage`, which its reference still documents: scripts get ours.
+        lua_pushcfunction(_state.get(), &collectGarbage, "collectgarbage");
+        lua_setglobal(_state.get(), "collectgarbage");
+    }
+}
+
+void Runtime::openLibraries() {
     if (_config.libs == RuntimeConfig::Libs::kStandard) {
         luaL_openlibs(_state.get());
         return;

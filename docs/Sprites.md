@@ -98,6 +98,22 @@ local ship = engine.assets.atlas({
 })
 ```
 
+## Draw order
+
+There is no depth buffer in 2D: the order of the draws is the order things cover each other. The GraphicsPlugin's
+`aylo.graphics.sprites` sorts the `SpriteQueue` (sprites, texts, particle emitters), stably:
+
+1. by `layer`;
+2. in a layer, by blend: `kCutout`, then `kAlpha`, then `kAdditive` (a text or emitter in `kCutout` is drawn as
+   `kAlpha`, so it is ranked as one);
+3. cutout and alpha items by `Item::order`, the index of the entity that pushed them, so two overlapping items keep
+   their order however the ECS iterates (a despawn moves the last value of a pool into the hole);
+4. additive items by texture, since adding commutes: they merge into fewer instanced draws.
+
+A layer of alpha sprites alternating between two textures makes one draw call per run of a texture; grouping them by
+texture, as the queue did before, broke the order of overlapping sprites. Give such sprites one atlas, or put the ones
+that never overlap in their own layer.
+
 ## Performance
 
 `examples/plugins/SpriteBenchmark` animates N sprites (10 000 by default) of one atlas, drifting and bouncing, and

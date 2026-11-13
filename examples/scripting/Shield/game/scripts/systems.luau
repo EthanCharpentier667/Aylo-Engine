@@ -1,12 +1,9 @@
 -- main.luau requires shield.luau first, which declares "game.Shield" before this one uses it.
 
-engine.ecs.component("game.Spawner", { fields = {}, presence = "serverOnly" })
-
--- Startup runs once: the spawner entity the program created makes one shielded ship.
+-- Startup runs once: it makes one shielded ship. It visits no entity, so it has no query.
 engine.ecs.system("game.SpawnShip", {
     phase = "Startup",
     side = "server", -- gameplay: only the server spawns
-    query = { with = { "game.Spawner" } },
     run = function(ctx)
         ctx.commands:spawn({ ["game.Shield"] = { strength = 10, regen = 5 } })
         print("spawned a ship")
