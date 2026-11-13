@@ -5,8 +5,8 @@ local Duel = require("@scripts/shared/arena")
 local Match = require("@scripts/server/match")
 local Weapons = require("@scripts/server/weapons")
 
--- The server's systems only, and only with the network: the ships are the players'.
-if not engine.isServer or not Duel.networked then
+-- Only with the network: the ships are the players'.
+if not Duel.networked then
 	return
 end
 

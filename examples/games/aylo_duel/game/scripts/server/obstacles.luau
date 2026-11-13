@@ -3,8 +3,8 @@
 
 local Duel = require("@scripts/shared/arena")
 
--- The server's systems only, and only with the network: run alone, the clients' systems see the Transform itself.
-if not engine.isServer or not Duel.networked then
+-- Only with the network: run alone, the clients' systems see the Transform itself.
+if not Duel.networked then
 	return
 end
 
