@@ -10,6 +10,7 @@
 #include <chrono>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -129,4 +130,56 @@ TEST(States, RefusesWhatDoesNotExistAndAnotherDeclaration) {
     EXPECT_THROW(states.request("game.Nope", "Menu"), aylo::ecs::exceptions::StateException);
     EXPECT_THROW(states.request("game.Phase", "Paused"), aylo::ecs::exceptions::StateException);
     EXPECT_FALSE(states.isIn("game.Nope", "Menu"));
+}
+
+TEST(States, AWorldThatFollowsTheServerWaitsForItsValueAndRunsTheSameTransitions) {
+    StatesApp follower;
+    follower.states().followServer();
+    // Declared before following (by a script) or after (below): both wait for the server.
+    follower.states().add("game.Round", {"Warmup", "Live"}, States::Replication::kFromServer);
+    follower.app.runFrame();
+    EXPECT_FALSE(follower.states().get("game.Round").has_value());
+
+    EXPECT_TRUE(follower.states().follow("game.Round", "Live"));
+    follower.app.runFrame();
+    EXPECT_EQ(follower.states().get("game.Round"), "Live");
+}
+
+TEST(States, AMachineDeclaredBeforeFollowingWaitsToo) {
+    StatesApp follower;
+    follower.states().add("game.Round", {"Warmup", "Live"}, States::Replication::kFromServer);
+    follower.states().followServer();
+    follower.app.runFrame();
+    EXPECT_FALSE(follower.states().get("game.Round").has_value());
+    EXPECT_EQ(follower.states().get("game.Phase"), "Menu");  // a local machine starts as always
+}
+
+TEST(States, OnlyTheServerChangesAReplicatedMachine) {
+    StatesApp server;
+    server.states().add("game.Round", {"Warmup", "Live"}, States::Replication::kFromServer);
+    server.states().request("game.Round", "Live");               // the server owns it
+    EXPECT_FALSE(server.states().follow("game.Round", "Live"));  // and follows no one
+
+    StatesApp client;
+    client.states().add("game.Round", {"Warmup", "Live"}, States::Replication::kFromServer);
+    client.states().followServer();
+    EXPECT_THROW(client.states().request("game.Round", "Live"), aylo::ecs::exceptions::StateException);
+    client.states().request("game.Phase", "Playing");               // its own machines still change
+    EXPECT_FALSE(client.states().follow("game.Phase", "Playing"));  // the server does not own it
+    EXPECT_FALSE(client.states().follow("game.Nope", "Live"));
+    EXPECT_FALSE(client.states().follow("game.Round", "Paused"));
+}
+
+TEST(States, ListsTheReplicatedMachinesAndRefusesAnotherReplicationOrALongValue) {
+    States states;
+    states.add("game.Phase", {"Menu"});
+    states.add("game.Round", {"Warmup", "Live"}, States::Replication::kFromServer);
+    EXPECT_EQ(states.getReplicated(), std::vector<std::string_view>{"game.Round"});
+    EXPECT_TRUE(states.isReplicated("game.Round"));
+    EXPECT_FALSE(states.isReplicated("game.Phase"));
+    EXPECT_NO_THROW(states.add("game.Round", {"Warmup", "Live"}, States::Replication::kFromServer));
+    EXPECT_THROW(states.add("game.Round", {"Warmup", "Live"}), aylo::ecs::exceptions::StateException);
+    EXPECT_THROW(states.add("game.Long", {std::string(States::kMaxLength + 1, 'a')}),
+                 aylo::ecs::exceptions::StateException);
+    EXPECT_THROW(states.add(std::string(States::kMaxLength + 1, 'a'), {"A"}), aylo::ecs::exceptions::StateException);
 }
