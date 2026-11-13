@@ -10,6 +10,9 @@ messages: you decide **which side owns what**, and the engine replicates the res
   and decides.
 - **Replication copies data from the server to the clients.** A component declared with `replication = "everyChange"`
   or `"spawnOnly"` (see [Components](components.md)) appears on the clients, with its entity, and is updated.
+- **A state the server owns is followed by the clients.** A [state machine](states.md#states-the-server-owns) declared
+  with `replicate = true` (the phase of a match) is changed by the server only, and every client goes through the same
+  changes.
 - **Events do not cross the network.** To tell the other side something lasting, put it in a replicated component (for
   example the duel's `game.Winner`, spawned by the server when a laser hits). For a moment or a request (a kick, a
   goal, a player picking a team), send [your own messages](#your-own-messages).

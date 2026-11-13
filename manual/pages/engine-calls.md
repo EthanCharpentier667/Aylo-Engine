@@ -131,7 +131,7 @@ On both sides, in every game. See [States](states.md).
 | Call | Arguments | Result |
 |---|---|---|
 | `aylo.state.get` | `state` (a machine of `engine.ecs.state`) | its current value, `""` before its first frame |
-| `aylo.state.set` | `state`, `value` | nothing; the machine changes at the next frame |
+| `aylo.state.set` | `state`, `value` | nothing; the machine changes at the next frame. On a client, an error for a machine declared with `replicate = true` |
 
 ### Shaders and particles
 

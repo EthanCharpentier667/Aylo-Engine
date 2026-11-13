@@ -19,10 +19,13 @@ engine.ecs.system("game.MoveShips", {
 
 ## Declaring a machine
 
-`engine.ecs.state(name, values)` declares a machine: its name, like a component's (`game.Phase`), and the list of its
-values, as strings. Call it at load time, before the systems that name it, in a file every side that uses it loads.
+`engine.ecs.state(name, values, options)` declares a machine: its name, like a component's (`game.Phase`), and the
+list of its values, as strings (255 bytes at most each). `options` is optional; its only key is `replicate` (`false` by
+default), see [States the server owns](#states-the-server-owns). Call it at load time, before the systems that name
+it, in a file every side that uses it loads.
 
-The machine starts in its **first value**: it enters it at the start of the first frame, so the `onEnter` systems of
+The machine starts in its **first value** (on a client, a machine the server owns waits for the server's instead): it
+enters it at the start of the first frame, so the `onEnter` systems of
 that value run then. Declaring it again with the same values does nothing, so a [hot reload](hot-reload.md) keeps the
 current value.
 
@@ -102,10 +105,56 @@ the network are read:
 If several systems ask in the same frame, the last one wins. Asking for the value the machine is already in cancels a
 change that was asked before it. While the game is paused (in the [editor](editor.md)), nothing changes.
 
-!!! note "Each side has its own states"
-    States are not sent over the network: the server and each client declare their own machines and change them
-    themselves. To make the clients follow the server's phase, put the phase in a replicated component or resource
-    and have a client system call `aylo.state.set` when it changes. See [Networking](networking.md).
+## States the server owns
+
+Each side has its own machines: a client's menu or pause screen is its own business. A phase of the match, though,
+is the server's to decide, and every client must follow it. Declare that machine with `replicate = true`, in a file
+both sides load (one the shared `main` entry requires):
+
+```luau
+engine.ecs.state("game.Round", { "Warmup", "Live", "Over" }, { replicate = true })
+```
+
+Then:
+
+- **the server** changes it with `aylo.state.set`, as any machine, and sends its value to every client;
+- **a client** has no value until the server's arrives (its `inState` systems wait), then goes through the same
+  changes: its `onExit` and `onEnter` systems run, at the start of the frame after the value arrives;
+- a client that joins late gets the current value;
+- a client cannot change it: `aylo.state.set` raises `State machine 'game.Round' is replicated: only the server
+  changes it`.
+
+```luau
+-- server: end the round when one ship is left
+engine.ecs.system("game.EndRound", {
+	phase = "FixedUpdate",
+	side = "server",
+	inState = { "game.Round", "Live" },
+	query = { read = { "game.Ship" } },
+	calls = { "aylo.state.set" },
+	run = function(ctx)
+		local alive = 0
+		for _ in ctx.query do
+			alive += 1
+		end
+		if alive <= 1 then
+			ctx.call("aylo.state.set", { state = "game.Round", value = "Over" })
+		end
+	end,
+})
+
+-- client: show the result when the server says the round is over
+engine.ecs.system("game.ShowResult", {
+	onEnter = { "game.Round", "Over" },
+	side = "client",
+	run = function(ctx)
+		print("Round over")
+	end,
+})
+```
+
+A client must declare the machine with the same values: a value it does not know is ignored. Standalone (one process
+plays both sides) and in the editor, the machine behaves like any other.
 
 ## Errors
 
@@ -120,8 +169,11 @@ All are raised when the script loads and name the system or the machine:
 | `... takes one of 'inState', 'onEnter' and 'onExit'` | Two of these options on one system. |
 | `... 'inState' must be { machine, value }, such as { "game.Phase", "Playing" }` | The option is not a pair of strings. |
 | `State machine 'game.Mode': its values must be a list of strings` | `engine.ecs.state` with a value that is not a string. |
+| `State machine 'game.Mode': unknown option 'replicated' (expected 'replicate', true or false)` | A third argument with another key, or a `replicate` that is not a boolean. |
+| `State machine 'game.Round' is already declared with another replication` | The same machine declared with and without `replicate`. |
 
-Declaring a machine again with other values, with no value, or with a value twice is an error naming the machine.
+Declaring a machine again with other values, with no value, with a value twice, or with a name or value longer than
+255 bytes is an error naming the machine.
 `aylo.state.set` with an unknown machine or value raises a Luau error in the system that made the call.
 
 ## See also
