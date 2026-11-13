@@ -188,18 +188,14 @@ void addTerm(ecs::QueryBuilder& builder, const ecs::TermKind kind, const ecs::Co
 }
 
 /// @return The engine calls the system declared, found in the world, with the list the scheduler takes their access
-/// from. A call no plugin registered is refused, unless the system does not run in this App's mode: the plugin that
-/// registers it may only be added on the other side (the audio calls exist on clients only).
+/// from. A call no plugin registered is refused (a system that does not run in this App's mode is not made: see
+/// makeStandIn()).
 [[nodiscard]] Result<std::pair<std::vector<const ecs::CallInfo*>, ecs::CallList>> makeCalls(
     const ecs::App& app, const SystemDeclaration& declaration) {
-    const bool runs = ecs::runsIn(declaration.side.value_or(ecs::Side::kServer), app.getSchedules().getRunMode());
     std::pair<std::vector<const ecs::CallInfo*>, ecs::CallList> made;
     for (const std::string& name : declaration.calls) {
         const ecs::CallInfo* info = app.getWorld().getCalls().findByName(name);
         if (info == nullptr) {
-            if (!runs) {
-                continue;
-            }
             return fail(ErrorKind::kInvalidDeclaration,
                         std::format("System '{}': unknown engine call '{}'", declaration.name, name));
         }
@@ -238,7 +234,32 @@ void warnAboutServerOnlyWrites(const ecs::Components& components, const SystemDe
 }
 }  // namespace
 
+namespace {
+/// @return The stand-in of a system that does not run in this App's mode: its name, phase and side, so the systems
+/// that run here and are ordered against it find it, as the schedule keeps the other side's systems to order both
+/// sides alike. Nothing it names is resolved, its own order included: those may only exist on its side (a client
+/// component, an event of the audio plugin, the server's net.applyInputs).
+[[nodiscard]] Result<BuiltSystem> makeStandIn(ecs::App& app, SystemDeclaration declaration) {
+    ecs::ScriptCallable never{[](const ecs::DynamicQueries /*queries*/, ecs::DynamicResources /*resources*/,
+                                 const ecs::DynamicEvents /*events*/, const ecs::DynamicCalls /*calls*/,
+                                 const ecs::Res<ecs::Time> /*time*/, ecs::Commands& /*commands*/) {}};
+    try {
+        return BuiltSystem{
+            .phase = declaration.phase,
+            .side = declaration.side,
+            .spec = {.system = ecs::System{app.getWorld(), declaration.name, std::move(never), ecs::QueryList{},
+                                           ecs::ResourceList{}, ecs::EventList{}, ecs::CallList{}}},
+        };
+    } catch (const ecs::exceptions::ScheduleException& error) {
+        return fail(ErrorKind::kRegistration, error.what());
+    }
+}
+}  // namespace
+
 Result<BuiltSystem> makeSystem(ecs::App& app, SystemDeclaration declaration, std::shared_ptr<RuntimeHandle> runtime) {
+    if (!ecs::runsIn(declaration.side.value_or(ecs::Side::kServer), app.getSchedules().getRunMode())) {
+        return makeStandIn(app, std::move(declaration));
+    }
     auto& components = app.getWorld().getComponents();
     auto query = makeQuery(components, declaration);
     if (!query) {
