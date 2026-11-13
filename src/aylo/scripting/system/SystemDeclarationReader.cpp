@@ -120,6 +120,9 @@ struct Source {
             return phase;
         }
     }
+    if (*name == ecs::toString(ecs::Phase::kStateTransition)) {
+        return invalid(system, "the StateTransition phase is not written: give the system 'onEnter' or 'onExit'");
+    }
     return invalid(system, std::format("unknown phase '{}'", *name));
 }
 
@@ -256,7 +259,61 @@ struct Options {
     std::vector<std::string> after;
     std::vector<std::string> before;
     std::vector<std::string> calls;
+    std::optional<StateDeclaration> state;
+    std::optional<StateTrigger> trigger;
 };
+
+/// @return The machine and value of a state option, `{ "game.Phase", "Playing" }`, or an error naming @p option.
+[[nodiscard]] Result<StateDeclaration> readState(const std::string_view system, const luau::Value& value,
+                                                 const std::string_view option) {
+    const auto* table = value.tryAs<luau::Table>();
+    std::optional<std::string> stateName;
+    std::optional<std::string> valueName;
+    if (table != nullptr) {
+        const auto first = table->getAt(1);
+        const auto second = table->getAt(2);
+        if (first && first->tryAs<std::string>() != nullptr) {
+            stateName = *first->tryAs<std::string>();
+        }
+        if (second && second->tryAs<std::string>() != nullptr) {
+            valueName = *second->tryAs<std::string>();
+        }
+    }
+    if (!stateName || !valueName) {
+        return invalid(
+            system, std::format(R"('{}' must be {{ machine, value }}, such as {{ "game.Phase", "Playing" }})", option));
+    }
+    return StateDeclaration{.state = *stateName, .value = *valueName};
+}
+
+/// @return The trigger an option sets (`inState`, `onEnter` or `onExit`), or nothing for any other option.
+[[nodiscard]] std::optional<StateTrigger> triggerOf(const std::string_view option) noexcept {
+    if (option == "inState") {
+        return StateTrigger::kInState;
+    }
+    if (option == "onEnter") {
+        return StateTrigger::kOnEnter;
+    }
+    if (option == "onExit") {
+        return StateTrigger::kOnExit;
+    }
+    return std::nullopt;
+}
+
+/// @brief Reads `inState`, `onEnter` or `onExit` into `options`: a system takes only one of them.
+[[nodiscard]] Result<void> readTrigger(const std::string_view system, const std::string_view option,
+                                       const StateTrigger trigger, const luau::Value& value, Options& options) {
+    if (options.trigger) {
+        return invalid(system, "takes one of 'inState', 'onEnter' and 'onExit'");
+    }
+    auto state = readState(system, value, option);
+    if (!state) {
+        return tl::unexpected{std::move(state.error())};
+    }
+    options.state = std::move(*state);
+    options.trigger = trigger;
+    return {};
+}
 
 /// @return The list of names an option fills (`after`, `before` or `calls`), or null for any other option.
 [[nodiscard]] std::vector<std::string>* nameListOf(const std::string_view option, Options& options) noexcept {
@@ -308,6 +365,8 @@ struct Options {
             return tl::unexpected{std::move(names.error())};
         }
         *list = std::move(*names);
+    } else if (const auto trigger = triggerOf(option)) {
+        return readTrigger(system, option, *trigger, value, options);
     } else if (option == "run") {
         const auto* function = value.tryAs<luau::FunctionRef>();
         if (function == nullptr) {
@@ -315,9 +374,10 @@ struct Options {
         }
         options.run = *function;
     } else {
-        return invalid(system, std::format("unknown option '{}' (expected 'phase', 'side', 'query', 'resources', "
-                                           "'events', 'calls', 'after', 'before' or 'run')",
-                                           option));
+        return invalid(system,
+                       std::format("unknown option '{}' (expected 'phase', 'side', 'query', 'resources', "
+                                   "'events', 'calls', 'after', 'before', 'inState', 'onEnter', 'onExit' or 'run')",
+                                   option));
     }
     return {};
 }
@@ -334,6 +394,13 @@ Result<SystemDeclaration> readSystemDeclaration(std::string name, const luau::Ta
         if (auto read = readOption(name, key.as<std::string>(), value, options); !read) {
             return tl::unexpected{std::move(read.error())};
         }
+    }
+    const bool onTransition = options.trigger == StateTrigger::kOnEnter || options.trigger == StateTrigger::kOnExit;
+    if (onTransition && options.phase) {
+        return invalid(name, "runs when a state changes ('onEnter' or 'onExit'): it takes no 'phase'");
+    }
+    if (onTransition) {
+        options.phase = ecs::Phase::kStateTransition;
     }
     if (!options.phase) {
         return invalid(name, "needs a 'phase'");
@@ -352,6 +419,8 @@ Result<SystemDeclaration> readSystemDeclaration(std::string name, const luau::Ta
         .after = std::move(options.after),
         .before = std::move(options.before),
         .run = std::move(*options.run),
+        .state = std::move(options.state),
+        .trigger = options.trigger.value_or(StateTrigger::kInState),
     };
 }
 }  // namespace aylo::scripting::system

@@ -8,6 +8,7 @@
 #pragma once
 
 #include <cstddef>
+#include <functional>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -135,6 +136,18 @@ class AYLO_ECS_API System {
     /// @return The world's change tick at the system's last run.
     [[nodiscard]] Tick getLastRun() const noexcept;
 
+    /// @brief Whether the system runs this time, asked before each run (inState(), onEnter(), onExit()).
+    using RunCondition = std::function<bool(const World&)>;
+
+    /// @brief Sets the condition the system runs under; a skipped run does not count (its last-run tick stays).
+    void setRunCondition(RunCondition condition);
+
+    /// @return Whether the system has a run condition.
+    [[nodiscard]] bool hasRunCondition() const noexcept;
+
+    /// @return Whether the system runs now: its condition holds, or it has none.
+    [[nodiscard]] bool canRun() const;
+
     /// @brief Sets where the system runs.
     void setSide(Side side) noexcept;
 
@@ -169,6 +182,7 @@ class AYLO_ECS_API System {
     World* _world;                              ///< The world the system runs on.
     std::string _name;                          ///< Its stable name.
     Side _side{Side::kServer};                  ///< Where it runs.
+    RunCondition _condition;                    ///< When it runs; always when empty.
     SystemAccess _access;                       ///< What it reads and writes; filled by the body when it is made.
     Commands _commands;                         ///< Its command buffer.
     Tick _lastRun;                              ///< The world's change tick at its last run.

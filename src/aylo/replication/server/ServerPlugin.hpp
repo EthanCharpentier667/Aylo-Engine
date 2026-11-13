@@ -52,6 +52,7 @@ class AYLO_REPLICATION_API ServerPlugin : public ecs::Plugin {
     static constexpr std::string_view kApplyInputsSystem = "net.applyInputs";  ///< FixedUpdate: game systems run after.
     static constexpr std::string_view kAssignIdsSystem = "net.assignIds";      ///< PostUpdate: gives NetworkIds.
     static constexpr std::string_view kSnapshotSystem = "net.snapshot";        ///< PostUpdate: sends snapshots.
+    static constexpr std::string_view kSendStatesSystem = "net.sendStates";    ///< PostUpdate: sends server states.
 
     /// @param network The transport settings (port, limits, delays).
     /// @param settings The tick rate and the snapshot rate, which divides it.

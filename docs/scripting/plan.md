@@ -658,16 +658,19 @@ Not startable: the ECS part has to exist first. Create it as an `ecs` issue (fea
 |            |                                                                 |
 |------------|-----------------------------------------------------------------|
 | Module     | `ecs`, then `scripting`                                         |
-| Blocked by | ECS feature 13 v2 (run conditions, states), **not implemented** |
+| Blocked by | ECS feature 13 v2 (run conditions, states), done                |
 
 **Goal.** `inState = "Playing"` on a system, and `OnEnter` / `OnExit` systems.
 
-Not startable, for the same reason as SCR-08.
+*Done:* `engine.ecs.state(name, values)` declares a machine (`ecs::States`); a system takes `inState`, `onEnter` or
+`onExit = { machine, value }` (the last two run in the `StateTransition` phase, which a script never names); the
+engine calls `aylo.state.get` and `aylo.state.set` read the value and request a change. Tests:
+`tests/ecs/StatesTests.cpp`, `tests/scripting/ScriptStateTests.cpp`.
 
 **Done when**
 
-- [ ] A system with `inState` runs only in that state.
-- [ ] An `OnEnter` system runs once on the change.
+- [x] A system with `inState` runs only in that state.
+- [x] An `OnEnter` system runs once on the change.
 
 #### SCR-10: Engine calls and declarative setup from scripts
 

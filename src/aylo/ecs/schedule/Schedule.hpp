@@ -67,6 +67,10 @@ class AYLO_ECS_API Schedule {
         /// left as it was.
         SystemConfig& setSide(Side side);
 
+        /// @brief Runs the system only while @p condition holds (System::setRunCondition()): inState(), or onEnter()
+        /// and onExit() for a system of the StateTransition phase.
+        SystemConfig& runIf(System::RunCondition condition);
+
       private:
         Schedule* _schedule;  ///< The schedule the system was added to.
         std::size_t _index;   ///< The system's position among the schedule's systems.

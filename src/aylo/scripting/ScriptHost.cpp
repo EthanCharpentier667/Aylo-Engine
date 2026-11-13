@@ -30,9 +30,11 @@
 #include "aylo/ecs/call/CallInfo.hpp"
 #include "aylo/ecs/call/Calls.hpp"
 #include "aylo/ecs/exceptions/ScheduleException.hpp"
+#include "aylo/ecs/exceptions/StateException.hpp"
 #include "aylo/ecs/schedule/Phase.hpp"
 #include "aylo/ecs/schedule/Schedule.hpp"
 #include "aylo/ecs/schedule/Schedules.hpp"
+#include "aylo/ecs/state/States.hpp"
 #include "aylo/ecs/system/Side.hpp"
 #include "aylo/ecs/type/TypeInfo.hpp"
 #include "aylo/ecs/world/World.hpp"
@@ -293,6 +295,11 @@ luau::Result<> ScriptHost::installEngine(const Options options) {
         declareSystem(std::move(name), spec);
         return luau::ValuePack{};
     });
+    ecsBuilder.function("state").bind(
+        [this](std::string name, const luau::Table& values, const std::optional<luau::Table>& options) {
+            declareState(std::move(name), values, options);
+            return luau::ValuePack{};
+        });
     ecsBuilder.function("plugin").bind([this](const std::string& name, const luau::Table& spec) {
         declarePlugin(name, spec);
         return luau::ValuePack{};
@@ -364,6 +371,44 @@ void ScriptHost::declareComponent(std::string name, const luau::Table& spec) {
     }
     (_staging ? _staging->declared[_owner] : _files[_owner]).components.insert(declaration->name);
     _components.insert_or_assign(declaration->name, std::move(*layout));
+}
+
+void ScriptHost::declareState(std::string name, const luau::Table& values, const std::optional<luau::Table>& options) {
+    auto replication = ecs::States::Replication::kLocal;
+    if (options) {
+        const auto entries = options->toMap();
+        if (!entries) {
+            throw luau::exceptions::RuntimeError{
+                std::format("State machine '{}': its options must be a table such as {{ replicate = true }}", name)};
+        }
+        for (const auto& [key, value] : *entries) {
+            if (key != "replicate" || !value.is<bool>()) {
+                throw luau::exceptions::RuntimeError{std::format(
+                    "State machine '{}': unknown option '{}' (expected 'replicate', true or false)", name, key)};
+            }
+            if (value.as<bool>()) {
+                replication = ecs::States::Replication::kFromServer;
+            }
+        }
+    }
+    std::vector<std::string> names;
+    for (std::size_t index = 1;; ++index) {
+        const auto value = values.getAt(index);
+        if (!value || value->is<luau::Value::Nil>()) {
+            break;
+        }
+        const auto* text = value->tryAs<std::string>();
+        if (text == nullptr) {
+            throw luau::exceptions::RuntimeError{
+                std::format("State machine '{}': its values must be a list of strings", name)};
+        }
+        names.push_back(*text);
+    }
+    try {
+        _app.getWorld().getResources().getMut<ecs::States>()->add(std::move(name), std::move(names), replication);
+    } catch (const ecs::exceptions::StateException& error) {
+        throw luau::exceptions::RuntimeError{error.what()};
+    }
 }
 
 void ScriptHost::declareSystem(std::string name, const luau::Table& spec) {
@@ -799,6 +844,12 @@ luau::Result<> ScriptHost::registerAppType() {
                 [](const AppHandle& handle, std::string name, const luau::Table& spec) {
                     checkAlive(handle);
                     handle.host->declareSystem(std::move(name), spec);
+                })
+        .method("state",
+                [](const AppHandle& handle, std::string name, const luau::Table& values,
+                   const std::optional<luau::Table>& options) {
+                    checkAlive(handle);
+                    handle.host->declareState(std::move(name), values, options);
                 })
         .method("addPlugin",
                 [](const AppHandle& handle, const std::string& name) {

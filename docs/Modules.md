@@ -50,7 +50,8 @@ architecture rules, and this file keeps the detail, which changes with every fea
       data: fields, hooks, descriptions, registry), `component/`, `resource/`, `event/`, `storage/`, `change/`
       (change ticks), `world/`, `command/` (deferred structural changes), `hierarchy/` (`Parent`, `Children`),
       `query/`, `system/`, `call/` (engine calls: named functions plugins give to scripts, and `CallBuffer`, the bytes of
-      their arguments and results), `schedule/`, `time/`, `app/` (the App and its plugins)), included as
+      their arguments and results), `schedule/`, `state/` (`States`, the state machines of the world, their run
+      conditions and the `aylo.state.*` calls), `time/`, `app/` (the App and its plugins)), included as
       `aylo/ecs/<feature>/<File>.hpp`.
     - Exception to the namespace rule: the types users write every day stay in the flat `aylo::ecs`
       namespace whatever their folder (`aylo/ecs/entity/Entity.hpp` declares `aylo::ecs::Entity`).
@@ -71,7 +72,8 @@ architecture rules, and this file keeps the detail, which changes with every fea
   knows both the ECS and the network; it turns a `World` into messages and back (`aylo::replication`).
   Exported symbols are marked `AYLO_REPLICATION_API`. Feature folders and sub-namespaces as in `network`:
   `component/`, `event/`, `serialization/`, `manifest/`, `input/`, `snapshot/`, `server/`, `client/`,
-  `packet/`, `admin/` (the world messages of the admin channel), `exceptions/`. `input/InputCalls.hpp` holds its engine calls (`aylo.replication.addInput`, `readInput`),
+  `packet/`, `state/` (the `State` message: the values of the state machines the server owns), `admin/` (the world
+  messages of the admin channel), `exceptions/`. `input/InputCalls.hpp` holds its engine calls (`aylo.replication.addInput`, `readInput`),
   `client/ClientCalls.hpp` the client's (`aylo.replication.localClient`), both registered by `ReplicationPlugin`.
 - `src/aylo/engine/` — `engine` target, static library (`aylo-engine`): `Engine` runs a game directory (`game/` by
   default, `<dir>`): it reads its `project.luau` through Luau (`scripting/SettingsLoader`, which also exposes

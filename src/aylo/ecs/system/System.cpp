@@ -8,6 +8,7 @@
 #include "System.hpp"
 
 #include <string_view>
+#include <utility>
 
 #include "aylo/ecs/change/Tick.hpp"
 #include "aylo/ecs/system/Side.hpp"
@@ -25,6 +26,12 @@ const SystemAccess& System::getAccess() const noexcept { return _access; }
 Tick System::getLastRun() const noexcept { return _lastRun; }
 
 void System::setSide(Side side) noexcept { _side = side; }
+
+void System::setRunCondition(RunCondition condition) { _condition = std::move(condition); }
+
+bool System::hasRunCondition() const noexcept { return static_cast<bool>(_condition); }
+
+bool System::canRun() const { return !_condition || _condition(*_world); }
 
 void System::run() {
     const Tick thisRun = _world->getChangeTick();

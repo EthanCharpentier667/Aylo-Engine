@@ -25,7 +25,7 @@ phase, how many times (fixed timestep), and whether it runs at all (run conditio
 ## Our choice
 
 Bevy's model, in two steps: **phases + ordering + fixed timestep** in v1, **run conditions + States** in
-v2. Sequential execution first; access sets are recorded from the start so a parallel version can come
+v2 (both done). Sequential execution first; access sets are recorded from the start so a parallel version can come
 later.
 
 ## How it works
@@ -35,7 +35,8 @@ later.
 ```mermaid
 flowchart LR
     startup(["Startup<br/>(once)"]) --> pre
-    pre["PreUpdate<br/>poll window, input,<br/>network receive"] -- "flush" --> fixed
+    pre["PreUpdate<br/>poll window, input,<br/>network receive"] -- "flush" --> states
+    states["StateTransition<br/>OnExit, then OnEnter<br/>(only on a change)"] -- "flush" --> fixed
     fixed[["FixedUpdate × N<br/>gameplay, Luau systems,<br/>physics, network send (server)"]] -- "flush" --> update
     update["Update<br/>animation, camera, UI"] -- "flush" --> post
     post["PostUpdate<br/>transform propagation,<br/>input send (client)"] -- "flush" --> render
@@ -168,7 +169,8 @@ schedules.runFrame();                             // a whole frame (above)
 schedules.getOrder(aylo::ecs::Phase::kFixedUpdate);
 ```
 
-The schedules are keyed by `Phase` for now; named schedules (States' `OnEnter` / `OnExit`) come with v2.
+The schedules are keyed by `Phase`. The `OnEnter` / `OnExit` systems of the [states](#states-v2) share one phase,
+`StateTransition`, and their run conditions pick which of them run.
 
 When a schedule is built (by `build()`, or before it runs after a change), the `before` / `after`
 constraints of its systems become a graph (`detail::DependencyGraph`) that is sorted topologically. **Systems with no order between them run by name**, so the order depends only on names and
@@ -202,34 +204,55 @@ structural changes are visible from the next phase, never to the other systems o
 
 ```c++
 app.addSystem(aylo::ecs::Phase::kFixedUpdate, "game.spawnWaves", &spawnWaves)
-    .runIf(&aylo::ecs::inState<GamePhase::kPlaying>);
+    .runIf(aylo::ecs::inState("game.Phase", "Playing"));
 ```
 
-A run condition is a small read-only function evaluated before the system; if it returns false the
-system is skipped (its `lastRun` does not move).
+A run condition (`System::RunCondition`, `system/System.hpp`) is a small read-only function of the world, evaluated
+before the system each time its phase runs; if it returns false the system is skipped (its `lastRun` does not move, so
+its change detection sees everything that changed while it waited). A system has at most one.
 
 ### States (v2)
 
-A `State<T>` resource holds the current value of a game-flow enum; changing it runs the `OnExit` systems
-of the old value and the `OnEnter` systems of the new one, at a defined point of the frame.
+`aylo::ecs::States` (`state/States.hpp`, the resource `aylo.States`, which every `App` inserts) holds the **state
+machines** of the world: each has a name, a list of values (strings) and a current value. A machine is declared with
+`add(name, values)` (from scripts: `engine.ecs.state`); it has no value until it enters its first one, on the next
+frame. Declaring it again with the same values does nothing, with others throws a `StateException`, as do an empty
+name, no value or a value given twice.
 
 ```mermaid
 stateDiagram-v2
     [*] --> Menu
     Menu --> Lobby: host or join
     Lobby --> Playing: all players ready
-    Playing --> GameOver: all ships destroyed
+    Playing --> GameOver: the round ends
     GameOver --> Lobby: retry
 ```
 
-```luau
-app:state("game.Phase", { "Menu", "Lobby", "Playing", "GameOver" })
+A change is a request: `request(name, value)` (from scripts: the engine call `aylo.state.set`) records the next value,
+and the last request of a frame wins; a request for the current value cancels a pending one. Requests are applied once
+per frame, **after `PreUpdate`**, on the frames that simulate (not while the game is paused), in two passes of the
+`StateTransition` phase:
 
-local SpawnFirstWave = ecs.system("game.SpawnFirstWave", { onEnter = { "game.Phase", "Playing" } })
+1. **Exit**: the systems with `onExit(name, old)` run, the machine still in its old value.
+2. **Enter**: the machine takes the new value, then the systems with `onEnter(name, new)` run.
+
+Commands are flushed after each pass, so what an `OnExit` system despawned is gone for the `OnEnter` systems. The
+gameplay of the same frame (`FixedUpdate`, `Update`) already runs in the new value; a request made during it is
+applied the next frame. A system with `inState(name, value)` runs in its own phase only while the machine is in that
+value.
+
+```c++
+app.addSystem(aylo::ecs::Phase::kStateTransition, "game.showMenu", &showMenu).runIf(aylo::ecs::onEnter("game.Phase", "Menu"));
 ```
 
-On the server, each room's world has its own state, which is how lobby → game → game over is handled
-per room.
+A system of the `StateTransition` phase is meant to have an `onEnter` or `onExit` condition: one without runs in both
+passes of every change. The phase is ordered and checked like the others, so two transition systems that touch the
+same data need an order between them even when they never run on the same change.
+
+States are **per world**: the server and each client declare and change their own, unless a machine is declared
+`States::Replication::kFromServer`. Then the server owns it: a world that follows the server (`followServer()`, which a
+client's replication calls) waits for the server's value instead of entering its first one, takes the values the server
+sends through `follow()`, and refuses `request()`. See [Replication](20-replication.md#replicated-states).
 
 ### Parallelism (later)
 
@@ -240,7 +263,7 @@ and no ordering constraint links them. Nothing in the systems changes.
 ## Connections
 
 - Uses: [Systems](12-systems.md) (access sets, sides), [Commands](09-commands.md) (flushes),
-  [Resources](10-resources.md) (`Time`, `State<T>`, main-thread flags).
+  [Resources](10-resources.md) (`Time`, `States`, main-thread flags).
 - Used by: [App and plugins](14-app-and-plugins.md) (owns the `Schedules` and runs a frame until `AppExit`;
   the time plugin installs the frame clock).
 

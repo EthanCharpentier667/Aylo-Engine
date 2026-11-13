@@ -268,3 +268,51 @@ TEST(ScriptSystem, ASystemOfBothSidesWritingAServerOnlyComponentWarns) {
     EXPECT_NE(warning.find("game.Secret"), std::string::npos) << warning;
     EXPECT_NE(fixture.find(aylo::ecs::Phase::kUpdate, "game.Writer"), nullptr);
 }
+
+TEST(ScriptSystemSides, AClientSystemNamingWhatOnlyClientsHaveLoadsOnAServer) {
+    Fixture fixture{aylo::ecs::RunMode::kServer};
+    // No audio plugin, no such component or event on a server: only the client that runs it has them.
+    EXPECT_EQ(fixture.run(R"(
+        engine.ecs.system("game.Sparkle", {
+            side = "client",
+            phase = "Update",
+            query = { read = { "game.OnlyOnClients" } },
+            events = { read = { "game.ClientEvent" } },
+            calls = { "game.clientCall" },
+            after = { "game.ClientOnlySystem" },
+            run = function(ctx) end,
+        })
+    )"),
+              "");
+    ASSERT_NE(fixture.find(aylo::ecs::Phase::kUpdate, "game.Sparkle"), nullptr);  // a stand-in, ordered against
+    fixture.app.runFrame();                                                       // builds and runs: never called
+}
+
+TEST(ScriptSystemSides, AServerSystemOrderedAfterAServerOnlySystemLoadsOnAClient) {
+    Fixture fixture{aylo::ecs::RunMode::kClient};
+    EXPECT_EQ(fixture.run(R"(
+        engine.ecs.system("game.MoveShips", {
+            phase = "FixedUpdate",
+            query = { write = { "game.Position" } },
+            after = { "net.applyInputs" },
+            run = function(ctx) error("a server system never runs on a client") end,
+        })
+        engine.ecs.system("game.Follow", {
+            side = "both",
+            phase = "FixedUpdate",
+            after = { "game.MoveShips" },
+            run = function(ctx) end,
+        })
+    )"),
+              "");
+    fixture.app.runFrame();  // the schedule resolves game.Follow's order against the stand-in
+    EXPECT_NE(fixture.find(aylo::ecs::Phase::kFixedUpdate, "game.Follow"), nullptr);
+}
+
+TEST(ScriptSystemSides, ASystemOfTheSideThatRunsStillReportsWhatIsMissing) {
+    Fixture fixture{aylo::ecs::RunMode::kServer};
+    const std::string error = fixture.run(R"(
+        engine.ecs.system("game.Bad", { phase = "Update", query = { read = { "game.Nope" } }, run = function() end })
+    )");
+    EXPECT_NE(error.find("unknown component 'game.Nope'"), std::string::npos) << error;
+}

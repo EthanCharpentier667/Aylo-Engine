@@ -126,6 +126,10 @@ class AYLO_ECS_API Schedules {
     /// @brief Moves every other queue forward: at the end of the frame.
     void updateFrameEvents() noexcept;
 
+    /// @brief Applies the changes the state machines were asked for (States): runs StateTransition once with the
+    /// exit pass, then once with the enter pass, each with its commands applied. Does nothing when none changes.
+    void runStateTransitions();
+
     World* _world;                                 ///< The world the systems run on.
     RunMode _mode;                                 ///< What this process runs.
     std::array<Schedule, kPhaseCount> _schedules;  ///< One schedule per phase, in phase order.

@@ -21,5 +21,6 @@ enum class MessageType : std::uint8_t {
     kSnapshot = 0x30,             ///< S → C: the state of the world.
     kInput = 0x31,                ///< C → S: the last inputs of the player.
     kCustomPacket = 0x32,         ///< Both ways: a game-defined packet.
+    kState = 0x33,                ///< S → C: the value of a state machine the server owns.
 };
 }  // namespace aylo::replication

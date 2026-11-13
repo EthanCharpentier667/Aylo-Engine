@@ -207,6 +207,18 @@ return OnJoin
 Plus `replication = "everyChange"` or `replication = "spawnOnly"` on its components. That is all the networking the
 game code sees; the same systems run in standalone mode, where `PlayerInput` comes from local input.
 
+### Replicated states
+
+A [state machine](13-scheduler.md#states-v2) declared `Replication::kFromServer` (from scripts: `engine.ecs.state(name,
+values, { replicate = true })`) is the server's. The server's `net.sendStates` system (PostUpdate, between
+`net.assignIds` and `net.snapshot`) sends each ready client the values it was not sent yet, as reliable `State`
+messages (`docs/network/protocol.md` section 12); a client that joins late gets the current ones. The client plugin
+makes the client's `States` follow the server (`States::followServer()`): its replicated machines enter no value of
+their own, `net.receive` hands each value to `States::follow()` (a bad one is dropped and counted), and the change is
+applied after `PreUpdate` like a local one, so the client's `onExit` and `onEnter` systems run. A client cannot request
+a replicated machine: `aylo.state.set` raises an error there. Standalone, the one world is the server's, and the
+machine behaves like a local one.
+
 ### Looking at the world from a tool
 
 In a debug run the server can open the admin channel (`docs/network/design.md`, Admin channel). The world messages

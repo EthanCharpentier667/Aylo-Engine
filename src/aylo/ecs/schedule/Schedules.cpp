@@ -23,10 +23,12 @@
 #include "aylo/ecs/event/EventInfo.hpp"
 #include "aylo/ecs/event/Events.hpp"
 #include "aylo/ecs/exceptions/ScheduleException.hpp"
+#include "aylo/ecs/resource/Resources.hpp"
 #include "aylo/ecs/schedule/FrameClock.hpp"
 #include "aylo/ecs/schedule/Phase.hpp"
 #include "aylo/ecs/schedule/RunMode.hpp"
 #include "aylo/ecs/schedule/Schedule.hpp"
+#include "aylo/ecs/state/States.hpp"
 #include "aylo/ecs/system/System.hpp"
 #include "aylo/ecs/world/World.hpp"
 
@@ -115,6 +117,9 @@ void Schedules::runFrame() {
         _started = true;
     }
     run(Phase::kPreUpdate);
+    if (simulates) {
+        runStateTransitions();  // after the inputs and the network of the frame, before the gameplay
+    }
     for (std::uint32_t done = 0; done < ticks; ++done) {
         run(Phase::kFixedUpdate);
         updateFixedEvents();
@@ -131,6 +136,20 @@ void Schedules::runFrame() {
     run(Phase::kPostUpdate);
     run(Phase::kRender);
     updateFrameEvents();
+}
+
+void Schedules::runStateTransitions() {
+    Resources& resources = _world->getResources();
+    const auto* states = resources.get<States>();
+    if (states == nullptr || !states->hasPending()) {
+        return;
+    }
+    // Fetched again at each step: a system of the transition may insert resources and move the storage.
+    resources.getMut<States>()->beginExit();
+    run(Phase::kStateTransition);
+    resources.getMut<States>()->beginEnter();
+    run(Phase::kStateTransition);
+    resources.getMut<States>()->finish();
 }
 
 Schedule& Schedules::at(Phase phase) noexcept {

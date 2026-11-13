@@ -23,7 +23,7 @@ engine.ecs.system("game.MoveShips", {
 
 | Option | Meaning |
 |---|---|
-| `phase` | **Required.** When it runs, see below. |
+| `phase` | **Required** (except with `onEnter` or `onExit`). When it runs, see below. |
 | `query` | Which entities it visits, see [Queries](#queries). Leave it out (or write `{}`) for a system that visits none. |
 | `run` | **Required.** The function, called with `ctx`. |
 | `side` | `"server"` (default), `"client"` or `"both"`: where it runs. |
@@ -31,6 +31,7 @@ engine.ecs.system("game.MoveShips", {
 | `events` | `{ read = {...}, send = {...} }`: the events it reads or sends. |
 | `calls` | The [engine calls](engine-calls.md) it makes with `ctx.call`. |
 | `after`, `before` | Names of systems it must run after or before. |
+| `inState`, `onEnter`, `onExit` | `{ machine, value }`: runs only in a game state, or once when the game enters or leaves it. See [States](states.md). |
 
 Any other option is an error naming the system. A system must declare everything it touches: using an undeclared
 resource, event or call is an error.
@@ -43,6 +44,7 @@ A frame runs its phases in this order.
 |---|---|
 | `Startup` | Once, before the first frame: setup, initial entities. |
 | `PreUpdate` | Polling the window and input, receiving network packets. |
+| `StateTransition` | Only when a [state](states.md) changes: its `onExit`, then its `onEnter` systems. Never written as a `phase`. |
 | `FixedUpdate` | Gameplay at a fixed rate; also the physics and the server's network send. |
 | `Update` | Once per frame: animation, camera, UI. |
 | `PostUpdate` | Transform propagation, sending input (client). |
@@ -198,8 +200,29 @@ runs on the server and needs no test of `engine.isClient`. The components and in
 alike go in a file that the shared `main` entry requires, see [Getting started](getting-started.md#your-scripts).
 
 A system's `side` still decides where it runs. A client system may not write replicated or server-only components.
-What exists on only one side (sprites and audio on a client) must be named only by files that side loads. Only engine
-calls may be missing on the side a system does not run on. See [Networking](networking.md).
+
+A file that both sides load (one the `main` entry requires) may declare systems of either side. A system is only
+checked on the side it runs on: a `side = "client"` system can name the sprites, the sounds, a client-only component
+or event and the systems it follows (`after`), and still load on a server, which has none of them. On the side where
+it does not run, it is only its name, so the systems that run there can still be ordered after or before it. On its
+own side, a name that does not exist is an error, as always (`System 'game.Bad': unknown component 'game.Nope'`):
+
+```luau
+-- A shared file: loads on the server and on every client, with no test of engine.isClient.
+engine.ecs.component("game.Explosion", { fields = {}, presence = "clientOnly" })
+engine.ecs.system("game.RemoveExplosions", {
+	side = "client",
+	phase = "Update",
+	query = { read = { "game.Explosion" } },
+	run = function(ctx)
+		for entity in ctx.query do
+			ctx.commands:despawn(entity)
+		end
+	end,
+})
+```
+
+See [Networking](networking.md).
 
 ## Errors
 

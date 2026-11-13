@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <vector>
@@ -36,6 +37,19 @@ struct EventDeclaration {
     bool send{false};  ///< Whether the system sends events of this type (`events.send`).
 };
 
+/// @brief A state machine and one of its values, as a system names them: `{ "game.Phase", "Playing" }`.
+struct StateDeclaration {
+    std::string state;  ///< The machine, declared with engine.ecs.state.
+    std::string value;  ///< One of its values.
+};
+
+/// @brief When a system runs with the state machines (ecs::States): in a value, or once when one is entered or left.
+enum class StateTrigger : std::uint8_t {
+    kInState,  ///< `inState`: on its phase, while the machine is in the value.
+    kOnEnter,  ///< `onEnter`: once, in StateTransition, when the machine enters the value.
+    kOnExit,   ///< `onExit`: once, in StateTransition, when the machine leaves the value.
+};
+
 /// @brief A system as a script declares it, before its components are looked up.
 struct SystemDeclaration {
     std::string name;                            ///< Name of the system, unique: "game.ShieldRegen".
@@ -48,5 +62,7 @@ struct SystemDeclaration {
     std::vector<std::string> after;              ///< Names of the systems it runs after.
     std::vector<std::string> before;             ///< Names of the systems it runs before.
     luau::FunctionRef run;                       ///< The `run` function of the declaration.
+    std::optional<StateDeclaration> state;       ///< The machine and value of its state condition, if any.
+    StateTrigger trigger{StateTrigger::kInState};  ///< What `state` means; StateTransition for onEnter and onExit.
 };
 }  // namespace aylo::scripting::system

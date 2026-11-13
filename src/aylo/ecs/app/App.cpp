@@ -26,6 +26,8 @@
 #include "aylo/ecs/exceptions/PluginException.hpp"
 #include "aylo/ecs/schedule/RunMode.hpp"
 #include "aylo/ecs/schedule/Schedules.hpp"
+#include "aylo/ecs/state/StateCalls.hpp"
+#include "aylo/ecs/state/States.hpp"
 #include "aylo/ecs/time/TimePlugin.hpp"
 #include "aylo/ecs/world/World.hpp"
 
@@ -33,6 +35,9 @@ namespace aylo::ecs {
 App::App(RunMode mode) : _schedules{_world, mode} {
     // Registered up front, so a script can name "aylo.AppExit" in its events before any system sends one.
     static_cast<void>(_world.getEvents().registerType<AppExit>());
+    // Every App has its state machines, empty until a game declares one, and the calls that read and change them.
+    insertResource(States{});
+    addStateCalls(*this);
 }
 
 App::~App() = default;  // defined here, where Plugin is complete, for the unique_ptrs to destroy it

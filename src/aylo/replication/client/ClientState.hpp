@@ -36,6 +36,7 @@
 #include "aylo/replication/manifest/Manifest.hpp"
 #include "aylo/replication/manifest/ManifestReceiver.hpp"
 #include "aylo/replication/snapshot/Snapshot.hpp"
+#include "aylo/replication/state/StateMessage.hpp"
 
 namespace aylo::ecs {
 class Commands;
@@ -130,8 +131,9 @@ class AYLO_REPLICATION_API ClientState {
     /// @return The local entity, or the null entity if none is known.
     [[nodiscard]] ecs::Entity find(std::uint32_t networkId) const noexcept;
 
-    /// @return The entity whose Owner is the id of this client, if there is one.
-    [[nodiscard]] std::optional<ecs::Entity> localPlayer() const noexcept;
+    /// @return The entity whose Owner is the id of this client, if there is one. Not noexcept: it reads the components
+    /// of the world.
+    [[nodiscard]] std::optional<ecs::Entity> localPlayer() const;
 
     /// @brief Replaces the source of the transport time (the default is network::Clock::now()), so that a test drives
     /// it with the clock of the App.
@@ -176,6 +178,13 @@ class AYLO_REPLICATION_API ClientState {
     /// @brief Takes the custom packet messages the server sent since the last call, oldest first. At most
     /// kMaxPendingPackets are kept between two calls: the rest are dropped.
     [[nodiscard]] std::vector<network::Bytes> takePackets();
+
+    /// @brief Takes the values of state machines the server sent since the last call, oldest first. At most
+    /// kMaxPendingPackets are kept between two calls: the rest are dropped.
+    [[nodiscard]] std::vector<state::StateMessage> takeStates();
+
+    /// @brief Counts a state value that names no machine the server owns here, or no value of it.
+    void noteDroppedState() noexcept;
 
     /// @brief Sends a custom packet message to the server.
     /// @param channel How to send it.
@@ -253,6 +262,7 @@ class AYLO_REPLICATION_API ClientState {
     std::optional<component::PlayerInput> _input;   ///< The game's input for the frame.
     std::deque<input::InputSample> _recentInputs;   ///< The last three, oldest first.
     std::vector<network::Bytes> _packets;           ///< Custom packets waiting for takePackets().
+    std::vector<state::StateMessage> _states;       ///< State values waiting for takeStates().
     bool _serverReady{false};                       ///< The server answered after our `Ready`.
     std::size_t _dropped{0};                        ///< Messages that could not be used.
     std::size_t _stale{0};                          ///< Snapshots that were not applied.

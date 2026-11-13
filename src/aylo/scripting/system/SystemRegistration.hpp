@@ -38,7 +38,10 @@ struct BuiltSystem {
 /// `before()` for its order.
 ///
 /// @details The system's access set is the one of its query terms. An `after` or `before` naming a system that no
-/// script or plugin added is only found when the schedule is built, since it may be added later.
+/// script or plugin added is only found when the schedule is built, since it may be added later. A system that does
+/// not run in the App's mode (a client system on a server) is added as a stand-in: its name, phase and side only,
+/// with nothing it names resolved and no order of its own, so a script loads on both sides without testing
+/// `engine.isClient` while the systems that run are still ordered against it.
 /// @param app The App to add the system to.
 /// @param declaration The system, as the script declared it.
 /// @param runtime Gives the system its runtime, and tells it when the runtime is gone.

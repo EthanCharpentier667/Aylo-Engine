@@ -9,11 +9,6 @@ local explosionScale = 1.5
 -- A finished explosion: removed when its animation ends.
 engine.ecs.component("game.Explosion", { fields = {}, presence = "clientOnly" })
 
--- The rest draws and plays: the server has none of the plugins it names.
-if not engine.isClient then
-	return
-end
-
 -- PostUpdate: gives the ships their sprite, animated. PostUpdate also runs while the editor edits, so a ship's actor
 -- opened alone shows its look.
 engine.ecs.system("game.DressShips", {

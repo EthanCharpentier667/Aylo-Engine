@@ -2,8 +2,8 @@
 
 local Duel = require("@scripts/shared/arena")
 
--- The server's systems only, and only with the network: players join through it.
-if not engine.isServer or not Duel.networked then
+-- Only with the network: players join through it.
+if not Duel.networked then
 	return
 end
 
