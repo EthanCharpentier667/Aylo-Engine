@@ -198,8 +198,29 @@ runs on the server and needs no test of `engine.isClient`. The components and in
 alike go in a file that the shared `main` entry requires, see [Getting started](getting-started.md#your-scripts).
 
 A system's `side` still decides where it runs. A client system may not write replicated or server-only components.
-What exists on only one side (sprites and audio on a client) must be named only by files that side loads. Only engine
-calls may be missing on the side a system does not run on. See [Networking](networking.md).
+
+A file that both sides load (one the `main` entry requires) may declare systems of either side. A system is only
+checked on the side it runs on: a `side = "client"` system can name the sprites, the sounds, a client-only component
+or event and the systems it follows (`after`), and still load on a server, which has none of them. On the side where
+it does not run, it is only its name, so the systems that run there can still be ordered after or before it. On its
+own side, a name that does not exist is an error, as always (`System 'game.Bad': unknown component 'game.Nope'`):
+
+```luau
+-- A shared file: loads on the server and on every client, with no test of engine.isClient.
+engine.ecs.component("game.Explosion", { fields = {}, presence = "clientOnly" })
+engine.ecs.system("game.RemoveExplosions", {
+	side = "client",
+	phase = "Update",
+	query = { read = { "game.Explosion" } },
+	run = function(ctx)
+		for entity in ctx.query do
+			ctx.commands:despawn(entity)
+		end
+	end,
+})
+```
+
+See [Networking](networking.md).
 
 ## Errors
 
