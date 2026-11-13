@@ -41,62 +41,70 @@ std::optional<P> roundTrip(const P& packet) {
     return std::get<P>(*decoded);
 }
 
-/// @brief A valid 64-byte connect request, to be altered by the tests.
-network::Bytes validConnectRequest() { return protocol::PacketCodec::encode(protocol::ConnectRequest{.version = 1}); }
+/// @brief A valid 160-byte connect request, to be altered by the tests.
+network::Bytes validConnectRequest() { return protocol::PacketCodec::encode(protocol::ConnectRequest{.version = 2}); }
+
+/// @return A key whose bytes are all @p value.
+aylo::network::crypto::Key keyOf(const int value) {
+    aylo::network::crypto::Key key{};
+    key.fill(static_cast<std::byte>(value));
+    return key;
+}
 }  // namespace
 
-TEST(Packets, ConnectRequestRoundTripsAndIs64Bytes) {
-    const protocol::ConnectRequest packet{.version = 3, .resumeClient = 7, .resumeToken = 0x1122334455667788ULL};
+TEST(Packets, ConnectRequestRoundTripsAndIs160Bytes) {
+    const protocol::ConnectRequest packet{.version = 3};
 
-    EXPECT_EQ(protocol::PacketCodec::encode(packet).size(), 64U);
+    EXPECT_EQ(protocol::PacketCodec::encode(packet).size(), 160U);
     const auto decoded = roundTrip(packet);
     ASSERT_TRUE(decoded);
     EXPECT_EQ(decoded->version, 3);
-    EXPECT_EQ(decoded->resumeClient, 7U);
-    EXPECT_EQ(decoded->resumeToken, 0x1122334455667788ULL);
 }
 
 TEST(Packets, ConnectRequestLayout) {
-    const network::Bytes encoded = protocol::PacketCodec::encode(
-        protocol::ConnectRequest{.version = 0x0102, .resumeClient = 0x0A0B0C0D, .resumeToken = 1});
+    const network::Bytes encoded = protocol::PacketCodec::encode(protocol::ConnectRequest{.version = 0x0102});
 
-    ASSERT_EQ(encoded.size(), 64U);
-    const std::vector<std::byte> head =
-        toBytes({0x01, 0x4F, 0x4C, 0x59, 0x41, 0x02, 0x01, 0x0D, 0x0C, 0x0B, 0x0A, 1, 0, 0, 0, 0, 0, 0, 0});
+    ASSERT_EQ(encoded.size(), 160U);
+    const std::vector<std::byte> head = toBytes({0x01, 0x4F, 0x4C, 0x59, 0x41, 0x02, 0x01});
     EXPECT_TRUE(std::equal(head.begin(), head.end(), encoded.begin()));
     for (std::size_t index = head.size(); index < encoded.size(); ++index) {
         EXPECT_EQ(encoded[index], std::byte{0}) << index;
     }
 }
 
-TEST(Packets, ChallengeRoundTripsAndIs9Bytes) {
-    const protocol::Challenge packet{.challenge = 0xAABBCCDD11223344ULL};
+TEST(Packets, ChallengeRoundTripsWithTheServerKeysAndIs137Bytes) {
+    protocol::Challenge packet{.challenge = 0xAABBCCDD11223344ULL, .identity = keyOf(1), .exchange = keyOf(2)};
+    packet.signature.fill(std::byte{3});
 
-    EXPECT_EQ(protocol::PacketCodec::encode(packet).size(), 9U);
+    EXPECT_EQ(protocol::PacketCodec::encode(packet).size(), 137U);
     const auto decoded = roundTrip(packet);
     ASSERT_TRUE(decoded);
     EXPECT_EQ(decoded->challenge, packet.challenge);
+    EXPECT_EQ(decoded->identity, keyOf(1));
+    EXPECT_EQ(decoded->exchange, keyOf(2));
+    EXPECT_EQ(decoded->signature, packet.signature);
 }
 
-TEST(Packets, ChallengeResponseRoundTripsAndIs64Bytes) {
-    const protocol::ChallengeResponse packet{.challenge = 99};
+TEST(Packets, ChallengeResponseRoundTripsWithTheClientKeyAndIs160Bytes) {
+    protocol::ChallengeResponse packet{.challenge = 99, .exchange = keyOf(4)};
+    packet.sealedResume.fill(std::byte{5});
 
-    EXPECT_EQ(protocol::PacketCodec::encode(packet).size(), 64U);
+    EXPECT_EQ(protocol::PacketCodec::encode(packet).size(), 160U);
     const auto decoded = roundTrip(packet);
     ASSERT_TRUE(decoded);
     EXPECT_EQ(decoded->challenge, 99U);
+    EXPECT_EQ(decoded->exchange, keyOf(4));
+    EXPECT_EQ(decoded->sealedResume, packet.sealedResume);
 }
 
-TEST(Packets, AcceptedRoundTripsAndIs17Bytes) {
-    const protocol::Accepted packet{.sessionToken = 0xA1B2C3D4, .client = 7, .resumeToken = 1};
-    const network::Bytes encoded = protocol::PacketCodec::encode(packet);
+TEST(Packets, AcceptedCarriesOnlyItsSealAndIs33Bytes) {
+    protocol::Accepted packet;
+    packet.sealed.fill(std::byte{6});
 
-    EXPECT_EQ(encoded, toBytes({0x04, 0xD4, 0xC3, 0xB2, 0xA1, 7, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0}));
+    EXPECT_EQ(protocol::PacketCodec::encode(packet).size(), 33U);
     const auto decoded = roundTrip(packet);
     ASSERT_TRUE(decoded);
-    EXPECT_EQ(decoded->sessionToken, 0xA1B2C3D4U);
-    EXPECT_EQ(decoded->client, 7U);
-    EXPECT_EQ(decoded->resumeToken, 1U);
+    EXPECT_EQ(decoded->sealed, packet.sealed);
 }
 
 TEST(Packets, RejectedRoundTripsAndIs2Bytes) {
@@ -114,32 +122,21 @@ TEST(Packets, RejectedRefusesAReasonOutOfRangeAndZero) {
     EXPECT_TRUE(protocol::PacketCodec::decode(toBytes({0x05, 3})));
 }
 
-TEST(Packets, DataRoundTripsAndPointsIntoTheDatagram) {
-    const std::vector<std::byte> payload = toBytes({1, 2, 3, 4, 5});
-    const network::Bytes encoded = protocol::PacketCodec::encode(protocol::Data{
-        .sessionToken = 0x01020304, .sequence = 0x0506, .ack = 0x0708, .ackBits = 0x090A0B0C, .messages = payload});
+TEST(Packets, DataKeepsTheTokenAndCounterInClearAndPointsIntoTheDatagram) {
+    const std::vector<std::byte> sealed = toBytes({1, 2, 3, 4, 5});
+    const network::Bytes encoded = protocol::PacketCodec::encode(
+        protocol::Data{.sessionToken = 0x01020304, .counter = 0x05060708090A0B0CULL, .sealed = sealed});
 
-    EXPECT_EQ(encoded.size(), 13U + payload.size());
+    EXPECT_EQ(encoded.size(), 13U + sealed.size());
     EXPECT_EQ(std::vector<std::byte>(encoded.begin(), encoded.begin() + 13),
-              toBytes({0x06, 4, 3, 2, 1, 6, 5, 8, 7, 0x0C, 0x0B, 0x0A, 9}));
+              toBytes({0x06, 4, 3, 2, 1, 0x0C, 0x0B, 0x0A, 9, 8, 7, 6, 5}));
     const std::optional<protocol::Packet> decoded = protocol::PacketCodec::decode(encoded);
     ASSERT_TRUE(decoded);
     const auto& data = std::get<protocol::Data>(*decoded);
     EXPECT_EQ(data.sessionToken, 0x01020304U);
-    EXPECT_EQ(data.sequence, 0x0506);
-    EXPECT_EQ(data.ack, 0x0708);
-    EXPECT_EQ(data.ackBits, 0x090A0B0CU);
-    ASSERT_EQ(data.messages.size(), payload.size());
-    EXPECT_EQ(data.messages.data(), encoded.data() + 13);
-}
-
-TEST(Packets, DataWithoutMessagesIs13Bytes) {
-    const network::Bytes encoded = protocol::PacketCodec::encode(protocol::Data{.sessionToken = 1});
-
-    EXPECT_EQ(encoded.size(), 13U);
-    const auto decoded = roundTrip(protocol::Data{.sessionToken = 1});
-    ASSERT_TRUE(decoded);
-    EXPECT_TRUE(decoded->messages.empty());
+    EXPECT_EQ(data.counter, 0x05060708090A0B0CULL);
+    ASSERT_EQ(data.sealed.size(), sealed.size());
+    EXPECT_EQ(data.sealed.data(), encoded.data() + 13);
 }
 
 TEST(Packets, DataTruncatedInItsHeaderIsRejected) {
@@ -150,21 +147,18 @@ TEST(Packets, DataTruncatedInItsHeaderIsRejected) {
     }
 }
 
-TEST(Packets, DisconnectRoundTripsAndIs6Bytes) {
-    const protocol::Disconnect packet{.sessionToken = 0xCAFEBABE, .reason = network::DisconnectReason::kTimeout};
+TEST(Packets, DisconnectRoundTripsAndIs30Bytes) {
+    protocol::Disconnect packet{.sessionToken = 0xCAFEBABE, .counter = 7};
+    packet.sealed.fill(std::byte{8});
     const network::Bytes encoded = protocol::PacketCodec::encode(packet);
 
-    EXPECT_EQ(encoded, toBytes({0x07, 0xBE, 0xBA, 0xFE, 0xCA, 2}));
+    EXPECT_EQ(encoded.size(), 30U);
+    EXPECT_EQ(std::vector<std::byte>(encoded.begin(), encoded.begin() + 5), toBytes({0x07, 0xBE, 0xBA, 0xFE, 0xCA}));
     const auto decoded = roundTrip(packet);
     ASSERT_TRUE(decoded);
     EXPECT_EQ(decoded->sessionToken, 0xCAFEBABEU);
-    EXPECT_EQ(decoded->reason, network::DisconnectReason::kTimeout);
-}
-
-TEST(Packets, DisconnectRefusesAReasonOutOfRangeAndZero) {
-    EXPECT_FALSE(protocol::PacketCodec::decode(toBytes({0x07, 0, 0, 0, 0, 0})));
-    EXPECT_FALSE(protocol::PacketCodec::decode(toBytes({0x07, 0, 0, 0, 0, 8})));
-    EXPECT_TRUE(protocol::PacketCodec::decode(toBytes({0x07, 0, 0, 0, 0, 7})));
+    EXPECT_EQ(decoded->counter, 7U);
+    EXPECT_EQ(decoded->sealed, packet.sealed);
 }
 
 TEST(Packets, ConnectRequestWithAWrongProtocolIdIsRejected) {
@@ -176,7 +170,7 @@ TEST(Packets, ConnectRequestWithAWrongProtocolIdIsRejected) {
     EXPECT_TRUE(protocol::PacketCodec::decode(validConnectRequest()));
 }
 
-TEST(Packets, PaddedPacketsOf63And65BytesAreRejected) {
+TEST(Packets, PaddedPacketsOneByteShortOrLongAreRejected) {
     network::Bytes connect = validConnectRequest();
     connect.pop_back();
     EXPECT_FALSE(protocol::PacketCodec::decode(connect));
@@ -185,7 +179,7 @@ TEST(Packets, PaddedPacketsOf63And65BytesAreRejected) {
     EXPECT_FALSE(protocol::PacketCodec::decode(connect));
 
     network::Bytes response = protocol::PacketCodec::encode(protocol::ChallengeResponse{.challenge = 1});
-    ASSERT_EQ(response.size(), 64U);
+    ASSERT_EQ(response.size(), 160U);
     response.pop_back();
     EXPECT_FALSE(protocol::PacketCodec::decode(response));
     response.push_back(std::byte{0});
@@ -223,17 +217,14 @@ TEST(Packets, DecodeVisitsTheMatchingAlternative) {
 }
 
 TEST(Packets, EveryServerReplyIsSmallerThanTheHandshakeRequests) {
-    // Anti-amplification: no answer to a 64-byte request is bigger than the request.
-    constexpr std::size_t kChallengeSize = 1 + sizeof(std::uint64_t);
-    constexpr std::size_t kAcceptedSize = 1 + sizeof(std::uint32_t) + sizeof(network::ClientId) + sizeof(std::uint64_t);
-    constexpr std::size_t kRejectedSize = 1 + sizeof(network::RejectReason);
-
-    static_assert(kChallengeSize < protocol::kHandshakePadding);
-    static_assert(kAcceptedSize < protocol::kHandshakePadding);
-    static_assert(kRejectedSize < protocol::kHandshakePadding);
-    EXPECT_EQ(protocol::PacketCodec::encode(protocol::Challenge{}).size(), kChallengeSize);
-    EXPECT_EQ(protocol::PacketCodec::encode(protocol::Accepted{}).size(), kAcceptedSize);
-    EXPECT_EQ(protocol::PacketCodec::encode(protocol::Rejected{}).size(), kRejectedSize);
+    // Anti-amplification: no answer to a 160-byte request is bigger than the request.
+    for (const std::size_t size : {protocol::PacketCodec::encode(protocol::Challenge{}).size(),
+                                   protocol::PacketCodec::encode(protocol::Accepted{}).size(),
+                                   protocol::PacketCodec::encode(protocol::Rejected{}).size()}) {
+        EXPECT_LT(size, protocol::kHandshakePadding);
+    }
+    EXPECT_EQ(protocol::PacketCodec::encode(protocol::ConnectRequest{}).size(), protocol::kHandshakePadding);
+    EXPECT_EQ(protocol::PacketCodec::encode(protocol::ChallengeResponse{}).size(), protocol::kHandshakePadding);
 }
 
 TEST(WireValues, ZeroIsNeverValid) {

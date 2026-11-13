@@ -10,18 +10,22 @@
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <optional>
 #include <utility>
 #include <variant>
 #include <vector>
 
 #include "FakeClock.hpp"
+#include "TestKeys.hpp"
 #include "aylo/network/NetworkSettings.hpp"
 #include "aylo/network/RandomSource.hpp"
 #include "aylo/network/Types.hpp"
 #include "aylo/network/connection/Connection.hpp"
+#include "aylo/network/crypto/Crypto.hpp"
 #include "aylo/network/io/Address.hpp"
 #include "aylo/network/protocol/Constants.hpp"
+#include "aylo/network/protocol/Handshake.hpp"
 #include "aylo/network/protocol/Packets.hpp"
 #include "aylo/network/server/RoomMessages.hpp"
 #include "aylo/network/server/ServerCore.hpp"
@@ -30,6 +34,7 @@ namespace network = aylo::network;
 namespace protocol = aylo::network::protocol;
 namespace server = aylo::network::server;
 namespace tests = aylo::network::tests;
+namespace crypto = aylo::network::crypto;
 
 namespace {
 constexpr std::uint8_t kReadyType = 0x09;
@@ -64,11 +69,20 @@ std::vector<P> packetsOf(const std::vector<server::OutgoingDatagram>& datagrams,
     return result;
 }
 
-/// @brief What a client knows after a handshake.
+/// @brief What a client knows after a handshake, and its end of the connection: its counters go on from one send to
+/// the next, as a real client's do.
 struct Handshake {
     std::uint32_t token{0};
     network::ClientId client{network::kNoClient};
+    std::shared_ptr<network::connection::Connection> connection;
 };
+
+/// @return The key exchange key the test client always uses.
+crypto::KeyExchange clientExchange() {
+    crypto::Key seed{};
+    seed.fill(std::byte{9});
+    return crypto::KeyExchange::fromSeed(seed);
+}
 
 class ServerCoreTest : public ::testing::Test {
   protected:
@@ -99,8 +113,30 @@ class ServerCoreTest : public ::testing::Test {
         return challenges.front();
     }
 
+    /// @return The session keys the test client derives with the server's key exchange key.
+    crypto::SessionKeys clientSessionKeys() const {
+        return *crypto::clientSessionKeys(clientExchange(), _core.exchangeKey());
+    }
+
     void sendChallengeResponse(const network::io::Address& from, const std::uint64_t value) {
-        send(from, protocol::PacketCodec::encode(protocol::ChallengeResponse{.challenge = value}));
+        send(from, protocol::PacketCodec::encode(protocol::ChallengeResponse{
+                       .challenge = value,
+                       .exchange = clientExchange().publicKey,
+                       .sealedResume = protocol::sealResume(clientSessionKeys().transmit, value, {}),
+                   }));
+    }
+
+    /// @return A copy of @p handshake whose end of the connection writes @p token instead.
+    Handshake withToken(const Handshake& handshake, const std::uint32_t token) const {
+        return Handshake{
+            token, handshake.client,
+            std::make_shared<network::connection::Connection>(token, _settings, _clock.now(), clientSessionKeys())};
+    }
+
+    /// @return The reason of a `Disconnect` the server sent to @p handshake's client.
+    static std::optional<network::DisconnectReason> reasonOf(const Handshake& handshake,
+                                                             const protocol::Disconnect& disconnect) {
+        return handshake.connection->openDisconnect(disconnect);
     }
 
     std::optional<Handshake> connect(const network::io::Address& from) {
@@ -113,13 +149,20 @@ class ServerCoreTest : public ::testing::Test {
         if (accepted.empty()) {
             return std::nullopt;
         }
-        return Handshake{accepted.front().sessionToken, accepted.front().client};
+        const crypto::SessionKeys keys = clientSessionKeys();
+        const auto body = protocol::openAccepted(keys.receive, accepted.front());
+        if (!body) {
+            return std::nullopt;
+        }
+        return Handshake{
+            body->sessionToken, body->client,
+            std::make_shared<network::connection::Connection>(body->sessionToken, _settings, _clock.now(), keys)};
     }
 
     /// @brief Sends `payload` reliably from a client holding `handshake`.
     void sendFromClient(const network::io::Address& from, const Handshake& handshake, const network::Bytes& payload,
                         const network::Channel channel = network::Channel::kReliable) {
-        network::connection::Connection client{handshake.token, _settings, _clock.now()};
+        network::connection::Connection& client = *handshake.connection;
         client.send(channel, payload);
         for (const auto& datagram : client.buildPackets(_clock.now())) {
             send(from, datagram);
@@ -280,9 +323,10 @@ TEST_F(ServerCoreTest, RepeatedChallengeResponseGetsTheSameAccepted) {
 
     ASSERT_EQ(first.size(), 1U);
     ASSERT_EQ(second.size(), 1U);
-    EXPECT_EQ(first.front().sessionToken, second.front().sessionToken);
-    EXPECT_EQ(first.front().client, second.front().client);
-    EXPECT_EQ(first.front().resumeToken, second.front().resumeToken);
+    EXPECT_EQ(first.front().sealed, second.front().sealed);  // the same datagram, not a new session
+    const auto body = protocol::openAccepted(clientSessionKeys().receive, second.front());
+    ASSERT_TRUE(body);
+    EXPECT_EQ(body->client, 1U);
     EXPECT_EQ(_core.sessionCount(), 1U);
 }
 
@@ -291,7 +335,7 @@ TEST_F(ServerCoreTest, DataWithAWrongTokenIsDropped) {
     const auto handshake = connect(address);
     ASSERT_TRUE(handshake);
 
-    sendFromClient(address, Handshake{handshake->token + 1, handshake->client}, message(kReadyType));
+    sendFromClient(address, withToken(*handshake, handshake->token + 1), message(kReadyType));
 
     EXPECT_TRUE(_core.takeEvents().empty());
 }
@@ -311,8 +355,7 @@ TEST_F(ServerCoreTest, MalformedDataIsDroppedAndCounted) {
     ASSERT_TRUE(handshake);
     // A reliable message announcing 5 bytes but carrying none.
     network::Bytes messages{std::byte{1}, std::byte{0}, std::byte{0}, std::byte{0}, std::byte{5}};
-    send(address,
-         protocol::PacketCodec::encode(protocol::Data{.sessionToken = handshake->token, .messages = messages}));
+    send(address, tests::sealData(clientSessionKeys().transmit, handshake->token, 1000, 0, 0, 0, messages));
 
     EXPECT_EQ(_core.malformedPacketCount(), 1U);
     EXPECT_TRUE(_core.takeEvents().empty());
@@ -357,7 +400,7 @@ TEST_F(ServerCoreTest, SecondReadyIsIgnoredAndOtherTransportTypesAreCounted) {
     const auto address = makeAddress(1);
     const auto handshake = connect(address);
     ASSERT_TRUE(handshake);
-    network::connection::Connection client{handshake->token, _settings, _clock.now()};
+    network::connection::Connection& client = *handshake->connection;
     client.send(network::Channel::kReliable, message(kReadyType));
     client.send(network::Channel::kReliable, message(kReadyType));
     client.send(network::Channel::kReliable, message(0x01));
@@ -395,8 +438,7 @@ TEST_F(ServerCoreTest, GracefulDisconnectClosesTheSession) {
     const auto handshake = join(address);
     ASSERT_TRUE(handshake);
 
-    send(address, protocol::PacketCodec::encode(protocol::Disconnect{.sessionToken = handshake->token,
-                                                                     .reason = network::DisconnectReason::kGraceful}));
+    send(address, handshake->connection->makeDisconnect(network::DisconnectReason::kGraceful));
     const auto events = _core.takeEvents();
 
     EXPECT_EQ(_core.sessionCount(), 0U);
@@ -409,8 +451,7 @@ TEST_F(ServerCoreTest, DisconnectReasonSentByTheClientIsReportedAsGraceful) {
     const auto handshake = join(address);
     ASSERT_TRUE(handshake);
 
-    send(address, protocol::PacketCodec::encode(protocol::Disconnect{.sessionToken = handshake->token,
-                                                                     .reason = network::DisconnectReason::kKicked}));
+    send(address, handshake->connection->makeDisconnect(network::DisconnectReason::kKicked));
     const auto events = _core.takeEvents();
 
     ASSERT_EQ(events.size(), 1U);
@@ -422,8 +463,8 @@ TEST_F(ServerCoreTest, DisconnectWithAWrongTokenIsDropped) {
     const auto handshake = join(address);
     ASSERT_TRUE(handshake);
 
-    send(address, protocol::PacketCodec::encode(protocol::Disconnect{.sessionToken = handshake->token + 1,
-                                                                     .reason = network::DisconnectReason::kGraceful}));
+    send(address,
+         withToken(*handshake, handshake->token + 1).connection->makeDisconnect(network::DisconnectReason::kGraceful));
 
     EXPECT_EQ(_core.sessionCount(), 1U);
 }
@@ -440,7 +481,7 @@ TEST_F(ServerCoreTest, KickSendsDisconnectThreeTimesThenCloses) {
 
     ASSERT_EQ(disconnects.size(), 3U);
     EXPECT_EQ(disconnects.front().sessionToken, handshake->token);
-    EXPECT_EQ(disconnects.front().reason, network::DisconnectReason::kKicked);
+    EXPECT_EQ(reasonOf(*handshake, disconnects.front()), network::DisconnectReason::kKicked);
     EXPECT_EQ(_core.sessionCount(), 0U);
     ASSERT_EQ(events.size(), 1U);
     EXPECT_EQ(std::get<server::ClientLeft>(events.front()).reason, network::DisconnectReason::kKicked);
@@ -462,7 +503,7 @@ TEST_F(ServerCoreTest, OverflowedSessionIsDisconnected) {
     const auto events = _core.takeEvents();
 
     ASSERT_EQ(disconnects.size(), 3U);
-    EXPECT_EQ(disconnects.front().reason, network::DisconnectReason::kOverflow);
+    EXPECT_EQ(reasonOf(*handshake, disconnects.front()), network::DisconnectReason::kOverflow);
     ASSERT_EQ(events.size(), 1U);
     EXPECT_EQ(std::get<server::ClientLeft>(events.front()).reason, network::DisconnectReason::kOverflow);
 }
@@ -470,7 +511,8 @@ TEST_F(ServerCoreTest, OverflowedSessionIsDisconnected) {
 TEST_F(ServerCoreTest, ShutdownDisconnectsEveryoneAndIgnoresDatagrams) {
     const auto first = makeAddress(1);
     const auto second = makeAddress(2);
-    ASSERT_TRUE(join(first));
+    const auto firstHandshake = join(first);
+    ASSERT_TRUE(firstHandshake);
     ASSERT_TRUE(join(second));
     static_cast<void>(flush());
 
@@ -480,7 +522,7 @@ TEST_F(ServerCoreTest, ShutdownDisconnectsEveryoneAndIgnoresDatagrams) {
 
     EXPECT_EQ(packetsOf<protocol::Disconnect>(datagrams, first).size(), 3U);
     EXPECT_EQ(packetsOf<protocol::Disconnect>(datagrams, second).size(), 3U);
-    EXPECT_EQ(packetsOf<protocol::Disconnect>(datagrams, first).front().reason,
+    EXPECT_EQ(reasonOf(*firstHandshake, packetsOf<protocol::Disconnect>(datagrams, first).front()),
               network::DisconnectReason::kServerShutdown);
     EXPECT_EQ(_core.sessionCount(), 0U);
     EXPECT_EQ(events.size(), 2U);
@@ -562,7 +604,7 @@ TEST_F(ServerCoreTest, ClosedClientIdIsNeverGivenAgain) {
     const auto address = makeAddress(1);
     const auto first = join(address);
     ASSERT_TRUE(first);
-    send(address, protocol::PacketCodec::encode(protocol::Disconnect{.sessionToken = first->token}));
+    send(address, first->connection->makeDisconnect(network::DisconnectReason::kGraceful));
 
     const auto second = connect(address);
 
@@ -637,4 +679,84 @@ TEST(ServerCoreDeterminism, SameInputsGiveTheSameOutput) {
     };
 
     EXPECT_EQ(run(), run());
+}
+
+TEST_F(ServerCoreTest, AChallengeCarriesTheServerKeysSignedByItsIdentity) {
+    const auto challenge = requestChallenge(makeAddress(1));
+    ASSERT_TRUE(challenge);
+
+    EXPECT_EQ(challenge->identity, _core.identityKey());
+    EXPECT_EQ(challenge->exchange, _core.exchangeKey());
+    EXPECT_TRUE(crypto::verify(challenge->identity, protocol::exchangeSignedMessage(challenge->exchange),
+                               challenge->signature));
+}
+
+TEST_F(ServerCoreTest, AnIdentitySeedGivesTheSameIdentityEveryRun) {
+    crypto::Key seed{};
+    seed.fill(std::byte{5});
+    _settings.identitySeed = seed;
+    const crypto::Key first = makeCore(_settings).identityKey();
+
+    EXPECT_EQ(makeCore(_settings).identityKey(), first);
+    EXPECT_EQ(first, crypto::Identity::fromSeed(seed).publicKey());
+    _settings.identitySeed.reset();
+    EXPECT_NE(makeCore(_settings).identityKey(), first);
+}
+
+TEST_F(ServerCoreTest, AResponseWhoseSealDoesNotOpenCreatesNoSessionAndKeepsTheChallenge) {
+    const auto address = makeAddress(1);
+    const auto challenge = requestChallenge(address);
+    ASSERT_TRUE(challenge);
+
+    // Someone who saw the challenge but holds no key: a key of their own, a seal of garbage.
+    crypto::Key forged{};
+    forged.fill(std::byte{3});
+    send(address, protocol::PacketCodec::encode(protocol::ChallengeResponse{
+                      .challenge = challenge->challenge,
+                      .exchange = crypto::KeyExchange::fromSeed(forged).publicKey,
+                  }));
+
+    EXPECT_EQ(_core.sessionCount(), 0U);
+    EXPECT_EQ(_core.pendingChallengeCount(), 1U);
+    sendChallengeResponse(address, challenge->challenge);
+    EXPECT_EQ(_core.sessionCount(), 1U);
+}
+
+TEST_F(ServerCoreTest, AChangedDataIsDroppedAndCounted) {
+    const auto address = makeAddress(1);
+    const auto handshake = connect(address);
+    ASSERT_TRUE(handshake);
+    handshake->connection->send(network::Channel::kReliable, message(kReadyType));
+    network::Bytes datagram = handshake->connection->buildPackets(_clock.now()).front();
+    datagram.back() ^= std::byte{0x01};
+
+    send(address, datagram);
+
+    EXPECT_EQ(_core.malformedPacketCount(), 1U);
+    EXPECT_TRUE(_core.takeEvents().empty());
+}
+
+TEST_F(ServerCoreTest, AReplayedDataIsDropped) {
+    const auto address = makeAddress(1);
+    const auto handshake = join(address);
+    ASSERT_TRUE(handshake);
+    handshake->connection->send(network::Channel::kUnreliable, message(kGameType));
+    const network::Bytes datagram = handshake->connection->buildPackets(_clock.now()).front();
+
+    send(address, datagram);
+    send(address, datagram);
+
+    EXPECT_EQ(_core.takeEvents().size(), 1U);
+    EXPECT_EQ(_core.malformedPacketCount(), 1U);
+}
+
+TEST_F(ServerCoreTest, ADisconnectSealedWithAnotherKeyIsIgnored) {
+    const auto address = makeAddress(1);
+    const auto handshake = join(address);
+    ASSERT_TRUE(handshake);
+    network::connection::Connection stranger{handshake->token, _settings, _clock.now(), tests::clientKeys()};
+
+    send(address, stranger.makeDisconnect(network::DisconnectReason::kGraceful));
+
+    EXPECT_EQ(_core.sessionCount(), 1U);
 }
