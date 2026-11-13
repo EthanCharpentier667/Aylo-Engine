@@ -44,6 +44,7 @@
 #include "aylo/engine/EngineConfig.hpp"
 #include "aylo/engine/Exceptions.hpp"
 #include "aylo/engine/NetworkInput.hpp"
+#include "aylo/engine/plugin/BackendLibraries.hpp"
 #include "aylo/engine/plugin/PluginSignature.hpp"
 #include "aylo/engine/plugin/RequiredPlugin.hpp"
 #include "aylo/engine/reload/ProjectReloadable.hpp"
@@ -529,10 +530,10 @@ void Engine::addHotReloadSources() {
 void Engine::registerLibraries() {
     const std::filesystem::path plugins = core::system::getExecutableDirectory() / kPluginsDirectory;
     _loader.load(plugins);
-    // Only a client whose game opens a window or plays sound loads what does it: a server never does.
-    if (runsClient(_config.mode) &&
-        std::ranges::any_of(kBackendSettings, [this](const std::string_view key) { return _settings.has(key); })) {
-        _loader.load(plugins / kBackendsDirectory);
+    // Only a client whose game opens a window or plays sound loads what does it, and only the backends it names: a
+    // server never does, and two backends carrying the same library (GLFW) never meet in one process.
+    if (runsClient(_config.mode)) {
+        _loader.loadFiles(plugin::backendLibraries(plugins / kBackendsDirectory, _settings, kBackendSettings));
     }
     _loader.load(_gameDirectory / kPluginsDirectory, plugin::gamePluginVerifier());
     ecs::PluginRegistry& registry = _app->getPluginRegistry();
