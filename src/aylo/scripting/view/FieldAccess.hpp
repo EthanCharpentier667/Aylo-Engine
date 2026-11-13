@@ -15,6 +15,7 @@
 #include "aylo/ecs/type/Field.hpp"
 #include "aylo/ecs/type/TypeInfo.hpp"
 #include "aylo/luau/Runtime.hpp"
+#include "aylo/luau/StackAccess.hpp"
 #include "aylo/luau/Table.hpp"
 #include "aylo/luau/Usertype.hpp"
 #include "aylo/luau/Value.hpp"
@@ -61,6 +62,20 @@ struct FieldReadContext {
 /// out of range or not whole, a vector table with a missing, extra or non-number key, an unsupported field type).
 [[nodiscard]] AYLO_SCRIPTING_API Result<void> writeField(std::string_view component, const ecs::FieldInfo& field,
                                                          std::span<std::byte> bytes, const luau::Value& value);
+
+/// @brief Reads a field as readField() does, pushing the value straight onto the Luau stack: what a view gives a
+/// script on each access, where a `vec2` table or an `Entity` is not held through the registry first.
+/// @param result Where the value goes: exactly one value on success, none on failure.
+/// @return Nothing, or the error readField() gives.
+[[nodiscard]] AYLO_SCRIPTING_API Result<void> pushField(std::string_view component, const ecs::FieldInfo& field,
+                                                        std::span<const std::byte> bytes,
+                                                        const FieldReadContext& context, luau::Pusher& result);
+
+/// @brief Writes a field as writeField() does, from the value where it is on the Luau stack: a vector table is read
+/// in place instead of being copied first.
+/// @return Nothing, or the error writeField() gives.
+[[nodiscard]] AYLO_SCRIPTING_API Result<void> writeFieldFrom(std::string_view component, const ecs::FieldInfo& field,
+                                                             std::span<std::byte> bytes, const luau::StackSlot& value);
 
 /// @brief Writes the fields a Luau table names into a component's bytes, leaving the others as they are.
 ///

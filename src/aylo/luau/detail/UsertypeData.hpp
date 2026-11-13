@@ -19,6 +19,7 @@
 #include "aylo/luau/MapHelper.hpp"
 #include "aylo/luau/Ref.hpp"
 #include "aylo/luau/Result.hpp"
+#include "aylo/luau/StackAccess.hpp"
 #include "aylo/luau/Userdata.hpp"
 #include "aylo/luau/Value.hpp"
 #include "aylo/luau/ValuePack.hpp"
@@ -55,6 +56,10 @@ class AYLO_LUAU_API UsertypeData {
     using IndexFallback = std::function<Value(void* self, std::string_view key)>;
     /// @brief Writes a member that has no setter.
     using NewIndexFallback = std::function<void(void* self, std::string_view key, const Value& value)>;
+    /// @brief Reads a member that has no getter nor method, pushing exactly one value.
+    using RawIndexFallback = std::function<void(void* self, std::string_view key, Pusher& result)>;
+    /// @brief Writes a member that has no setter from the value where it is on the stack.
+    using RawNewIndexFallback = std::function<void(void* self, std::string_view key, const StackSlot& value)>;
     /// @brief Compares two objects.
     using Equality = std::function<bool(const void* lhs, const void* rhs)>;
     /// @brief Converts an object to a string.
@@ -96,6 +101,10 @@ class AYLO_LUAU_API UsertypeData {
     ///         userdata, or of kind `kRuntime` if @p initialize threw.
     [[nodiscard]] Result<Userdata> create(Initializer initialize, void* source) const;
 
+    /// @brief Pushes a new userdata for an object onto the stack of @p state, without a handle.
+    /// @throws The exception of @p initialize, or of Luau when it cannot allocate; nothing is left on the stack then.
+    void push(lua_State* state, Initializer initialize, void* source) const;
+
     /// @brief Gets the object of the userdata at a stack index.
     /// @param state The Lua thread to read from.
     /// @param index Stack index of the userdata.
@@ -115,6 +124,12 @@ class AYLO_LUAU_API UsertypeData {
     void setIndexFallback(IndexFallback fallback);
     /// @brief Sets the handler of the members that have no setter; without it, writing them raises an error.
     void setNewIndexFallback(NewIndexFallback fallback);
+
+    /// @brief Like setIndexFallback(), with a handler that pushes its value itself; it takes precedence.
+    void setRawIndexFallback(RawIndexFallback fallback);
+
+    /// @brief Like setNewIndexFallback(), with a handler that reads the value where it is; it takes precedence.
+    void setRawNewIndexFallback(RawNewIndexFallback fallback);
     /// @brief Sets `__eq`: two userdata of the type compare equal when it says so.
     void setEquality(Equality equality);
     /// @brief Sets `__tostring`.
@@ -156,18 +171,20 @@ class AYLO_LUAU_API UsertypeData {
     /// @brief Pushes the metatable of the type.
     void pushMetatable() const;
 
-    lua_State* _state;                   ///< Main thread of the Lua state the type is registered in.
-    std::string _name;                   ///< Name of the type.
-    int _tag;                            ///< Userdata tag of the type.
-    std::size_t _size;                   ///< Size in bytes of the object held by a userdata.
-    MemberMap<Getter> _getters;          ///< Readable members.
-    MemberMap<Setter> _setters;          ///< Writable members.
-    std::deque<MethodEntry> _methods;    ///< Methods; a deque keeps the entries the closures point to in place.
-    Constructor _constructor;            ///< Builds an object from the arguments of `<name>.new`.
-    IndexFallback _indexFallback;        ///< Reads the members that have no getter nor method.
-    NewIndexFallback _newIndexFallback;  ///< Writes the members that have no setter.
-    Equality _equality;                  ///< `__eq`.
-    Stringifier _stringifier;            ///< `__tostring`.
-    Ref _metatable;                      ///< Keeps the metatable alive while no object of the type exists.
+    lua_State* _state;                         ///< Main thread of the Lua state the type is registered in.
+    std::string _name;                         ///< Name of the type.
+    int _tag;                                  ///< Userdata tag of the type.
+    std::size_t _size;                         ///< Size in bytes of the object held by a userdata.
+    MemberMap<Getter> _getters;                ///< Readable members.
+    MemberMap<Setter> _setters;                ///< Writable members.
+    std::deque<MethodEntry> _methods;          ///< Methods; a deque keeps the entries the closures point to in place.
+    Constructor _constructor;                  ///< Builds an object from the arguments of `<name>.new`.
+    IndexFallback _indexFallback;              ///< Reads the members that have no getter nor method.
+    NewIndexFallback _newIndexFallback;        ///< Writes the members that have no setter.
+    RawIndexFallback _rawIndexFallback;        ///< Reads the members that have no getter nor method, on the stack.
+    RawNewIndexFallback _rawNewIndexFallback;  ///< Writes the members that have no setter, from the stack.
+    Equality _equality;                        ///< `__eq`.
+    Stringifier _stringifier;                  ///< `__tostring`.
+    Ref _metatable;                            ///< Keeps the metatable alive while no object of the type exists.
 };
 }  // namespace aylo::luau::detail

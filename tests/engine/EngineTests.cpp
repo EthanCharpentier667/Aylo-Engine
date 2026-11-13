@@ -13,6 +13,7 @@
 #include <cstdint>
 #include <cstring>
 #include <filesystem>
+#include <format>
 #include <fstream>
 #include <future>
 #include <limits>
@@ -1004,4 +1005,25 @@ TEST(Engine, RefusesANameThatCannotNameAFolder) {
         engine.settings.name = "a/b"
     )");
     EXPECT_TRUE(error.contains("Invalid setting 'name'")) << error;
+}
+
+TEST(Engine, RunsTheScriptsInterpretedOrAsMachineCode) {
+    for (const std::string_view native : {"true", "false"}) {
+        const GameDirectory game{"aylo-engine-native-scripts", std::format(R"(
+            engine.settings.network.port = 0
+            engine.settings.scripts.native = {}
+        )",
+                                                                           native)};
+        game.write("scripts/main.luau", R"(engine.ecs.component("game.Ran", { fields = {} }))");
+        const Engine engine{serverConfig(game)};
+        EXPECT_TRUE(engine.app().getWorld().getComponents().find("game.Ran").has_value()) << native;
+    }
+}
+
+TEST(Engine, RefusesANativeSettingThatIsNotABoolean) {
+    const std::string error = buildError("aylo-engine-native-not-bool", R"(
+        engine.settings.network.port = 0
+        engine.settings.scripts.native = "yes"
+    )");
+    EXPECT_TRUE(error.contains("scripts.native") || error.contains("native")) << error;
 }

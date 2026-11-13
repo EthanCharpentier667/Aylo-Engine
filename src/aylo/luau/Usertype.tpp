@@ -179,6 +179,27 @@ Usertype<T>& Usertype<T>::newIndex(F&& function) {
 
 template <typename T>
 template <typename F>
+Usertype<T>& Usertype<T>::rawIndex(F&& function) {
+    // The callable is kept as it is, not in a std::function of its own: one indirect call per access, not two.
+    _data->setRawIndexFallback(
+        [function = std::forward<F>(function)](void* self, const std::string_view key, Pusher& result) {
+            function(*static_cast<T*>(self), key, result);
+        });
+    return *this;
+}
+
+template <typename T>
+template <typename F>
+Usertype<T>& Usertype<T>::rawNewIndex(F&& function) {
+    _data->setRawNewIndexFallback(
+        [function = std::forward<F>(function)](void* self, const std::string_view key, const StackSlot& value) {
+            function(*static_cast<T*>(self), key, value);
+        });
+    return *this;
+}
+
+template <typename T>
+template <typename F>
 Usertype<T>& Usertype<T>::eq(F&& function) {
     _data->setEquality([function = std::function<bool(const T&, const T&)>{std::forward<F>(function)}](
                            const void* lhs, const void* rhs) {
@@ -199,5 +220,11 @@ template <typename T>
 Result<Userdata> Usertype<T>::create(T value) const {
     return _data->create([](void* storage, void* source) { ::new (storage) T(std::move(*static_cast<T*>(source))); },
                          &value);
+}
+
+template <typename T>
+void Usertype<T>::push(Pusher& result, T value) const {
+    result.pushUserdata(
+        *_data, [](void* storage, void* source) { ::new (storage) T(std::move(*static_cast<T*>(source))); }, &value);
 }
 }  // namespace aylo::luau
