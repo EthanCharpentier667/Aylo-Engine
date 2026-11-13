@@ -46,11 +46,8 @@ void addInput(ecs::ResMut<InputLayout> layout, const AddInputArguments& argument
 InputState readInput(ecs::Res<InputLayout> layout, ecs::Query<const component::PlayerInput> inputs,
                      const ReadInputArguments& arguments) {
     const InputHandle action = layout->find(arguments.action);
-    // A Query has no lookup by entity: the inputs are walked until the entity's.
-    for (auto [entity, input] : inputs) {
-        if (entity != arguments.entity) {
-            continue;
-        }
+    if (const auto found = inputs.get(arguments.entity)) {
+        const component::PlayerInput& input = std::get<1>(*found);
         InputState state;
         switch (action.kind) {
             case InputKind::kButton:

@@ -81,15 +81,12 @@ OverlapResult overlap(ecs::Res<PhysicsWorld> world, const OverlapArguments& argu
 
 MoveAndSlideResult slide(ecs::Res<PhysicsWorld> world, ecs::Query<const Collider> colliders,
                          const MoveAndSlideArguments& arguments) {
-    // A Query has no lookup by entity: the colliders are walked until the one that moves.
-    for (auto [entity, collider] : colliders) {
-        if (entity == arguments.entity) {
-            return MoveAndSlideResult{
-                .position =
-                    physics::moveAndSlide(*world, entity, collider, arguments.from, arguments.delta,
-                                          SlideSettings{.skin = arguments.skin, .maxSlides = arguments.maxSlides}),
-            };
-        }
+    if (const auto found = colliders.get(arguments.entity)) {
+        const auto& [entity, collider] = *found;
+        return MoveAndSlideResult{
+            .position = physics::moveAndSlide(*world, entity, collider, arguments.from, arguments.delta,
+                                              SlideSettings{.skin = arguments.skin, .maxSlides = arguments.maxSlides}),
+        };
     }
     throw exceptions::PhysicsException{
         std::format("{}: entity {} has no Collider", kMoveAndSlideCall, arguments.entity.getIndex())};
