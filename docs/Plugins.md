@@ -95,7 +95,7 @@ start, and the message lists those that exist.
 | Folder | What it holds | Loaded by |
 |---|---|---|
 | `plugins/`, next to the executable | the engine's plugins | every side |
-| `plugins/backends/`, next to the executable | the platforms, renderers and audio devices | a client that names a `platform`, a `renderer` or an `audio.backend` |
+| `plugins/backends/`, next to the executable | the platforms, renderers and audio devices | a client, only the libraries its `platform`, `renderer` and `audio.backend` name (`aylo-platform-glfw` for `"glfw"`, see [Backend.md](Backend.md)) |
 | `<game>/plugins/` | the game's own plugins | every side |
 | `lib/`, next to the executable | the libraries that are not plugins (`ecs`, the contracts, the C++ runtime...) | nothing: it is not scanned |
 
