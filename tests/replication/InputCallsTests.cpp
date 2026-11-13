@@ -88,7 +88,8 @@ TEST(InputCalls, AddInputRefusesAnUnknownKindATakenNameAndAFrozenLayout) {
                             AddInputArguments{.name = "move", .kind = "vector"}),
                  InputLayoutException);
     call<void>(inputs.app, aylo::replication::input::kAddInputCall, AddInputArguments{.name = "shoot"});
-    EXPECT_THROW(call<void>(inputs.app, aylo::replication::input::kAddInputCall, AddInputArguments{.name = "shoot"}),
+    EXPECT_THROW(call<void>(inputs.app, aylo::replication::input::kAddInputCall,
+                            AddInputArguments{.name = "shoot", .kind = "axis"}),
                  InputLayoutException);
     inputs.app.getWorld().getResources().requireMut<InputLayout>()->freeze();
     EXPECT_THROW(call<void>(inputs.app, aylo::replication::input::kAddInputCall, AddInputArguments{.name = "jump"}),
