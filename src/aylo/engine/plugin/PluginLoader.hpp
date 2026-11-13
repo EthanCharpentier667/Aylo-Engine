@@ -10,6 +10,7 @@
 #include <cstddef>
 #include <filesystem>
 #include <functional>
+#include <span>
 #include <vector>
 
 #include "aylo/engine/Export.hpp"
@@ -47,6 +48,10 @@ class AYLO_ENGINE_API PluginLoader {
     /// @param directory The folder.
     /// @param verify Checks a library's file, and throws to refuse it.
     void load(const std::filesystem::path& directory, const Verifier& verify);
+
+    /// @brief Opens the libraries @p files, in their order; one already opened from the same file is not opened again.
+    /// @throws exceptions::RuntimeError As load() does.
+    void loadFiles(std::span<const std::filesystem::path> files);
 
     /// @brief Calls the registration of every library, in the order they were loaded.
     void registerInto(core::library::LibraryRegistrar& registrar) const;
