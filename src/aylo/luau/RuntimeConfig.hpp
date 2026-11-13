@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include <chrono>
+#include <cstddef>
 #include <cstdint>
 
 #include "Export.hpp"
@@ -49,6 +51,15 @@ struct RuntimeConfig {
     /// Compiles the scripts to machine code when they are loaded, where Luau can (x64 and arm64); elsewhere, and when
     /// false, they are interpreted. Runtime::isNative() tells which.
     bool nativeCode{false};
+    /// The most memory the runtime's scripts may hold together, in bytes; 0: no limit. An allocation past it fails
+    /// with `ErrorKind::kOutOfMemory`, and the runtime stays usable. It counts from the creation of the runtime, the
+    /// standard libraries included.
+    std::size_t memoryLimit{0};
+    /// How long a call from C++ into a script may run (`Runtime::run`, `Runtime::call`, `Function::call`, a module's
+    /// first `require`); zero: no limit. Past it the script is stopped with `ErrorKind::kTimeout`. It is wall-clock
+    /// time from the outermost call, which the calls nested in it share; checked at loop back edges and calls, so a
+    /// script that runs no Luau code (one long C++ call) is not cut.
+    std::chrono::milliseconds callBudget{0};
 };
 
 /// @brief Combines two sets of libraries.

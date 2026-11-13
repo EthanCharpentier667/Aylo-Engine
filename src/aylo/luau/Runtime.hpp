@@ -30,6 +30,7 @@ template <typename T>
 class Usertype;
 
 namespace detail {
+class Budget;
 class UsertypeRegistry;
 }  // namespace detail
 
@@ -122,6 +123,9 @@ class AYLO_LUAU_API Runtime {
     /// platform Luau supports).
     [[nodiscard]] bool isNative() const noexcept;
 
+    /// @return The bytes the runtime's state holds now, what RuntimeConfig::memoryLimit bounds.
+    [[nodiscard]] std::size_t memoryInUse() const noexcept;
+
     /// @brief Gets the shared global table.
     /// @return The global table; frozen once `sandbox()` has been called.
     [[nodiscard]] Table globals() const;
@@ -164,10 +168,11 @@ class AYLO_LUAU_API Runtime {
     };
 
     /// @brief Takes ownership of a Lua state and opens the configured libraries.
-    /// @param state Lua state created with `luaL_newstate`.
+    /// @param budget The limits of the state, its allocator's userdata.
+    /// @param state Lua state created with `lua_newstate` and the allocator of @p budget.
     /// @param config Runtime configuration.
     /// @throws std::runtime_error If the library configuration is not supported.
-    explicit Runtime(lua_State* state, RuntimeConfig config);
+    Runtime(std::unique_ptr<detail::Budget> budget, lua_State* state, RuntimeConfig config);
 
     /// @brief Compiles Luau source code to bytecode using the configured optimization level.
     /// @param source Luau source code.
@@ -181,7 +186,10 @@ class AYLO_LUAU_API Runtime {
     /// @return The registry.
     [[nodiscard]] detail::UsertypeRegistry& usertypes() const;
 
-    RuntimeConfig _config;                            ///< Configuration the runtime was created with.
+    RuntimeConfig _config;  ///< Configuration the runtime was created with.
+    /// The limits of the state and its allocator's userdata. Declared before the state, so it is destroyed after it:
+    /// closing the state frees through it.
+    std::unique_ptr<detail::Budget> _budget;
     std::unique_ptr<lua_State, StateDeleter> _state;  ///< Owned Lua state.
     bool _sandboxed{false};                           ///< Whether `sandbox()` has been called.
 

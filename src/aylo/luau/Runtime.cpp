@@ -39,6 +39,7 @@
 #include "Script.hpp"
 #include "Table.hpp"
 #include "ValuePack.hpp"
+#include "detail/Budget.hpp"
 #include "detail/UsertypeRegistry.hpp"
 
 namespace {
@@ -54,11 +55,14 @@ bool has(const aylo::luau::RuntimeConfig::Libs libs, const aylo::luau::RuntimeCo
 /// @param closure Reference to the closure to call.
 /// @return Success, or an `ErrorKind::kRuntime` error carrying the Lua error message.
 aylo::luau::Result<> runClosure(lua_State* state, const aylo::luau::Ref& closure) {
+    const aylo::luau::detail::CallScope scope{state};
     closure.push(state);
-    if (lua_pcall(state, 0, 0, 0) != LUA_OK) {
-        const std::string message{lua_tostring(state, -1)};
+    if (const int status = lua_pcall(state, 0, 0, 0); status != LUA_OK) {
+        const char* text = lua_tostring(state, -1);
+        const std::string message{text != nullptr ? text : "error object is not a string"};
         lua_pop(state, 1);
-        return aylo::luau::Failure{aylo::luau::ErrorKind::kRuntime, std::format("unable to run script: {}", message)};
+        return aylo::luau::Failure{aylo::luau::detail::failureKind(state, status, message),
+                                   std::format("unable to run script: {}", message)};
     }
     return {};
 }
@@ -93,8 +97,14 @@ int Runtime::collectGarbage(lua_State* state) {
     lua_error(state);
 }
 
-Runtime::Runtime(lua_State* state, const RuntimeConfig config)
-    : _config{config}, _state{state}, _usertypes{std::make_unique<detail::UsertypeRegistry>(state)} {
+Runtime::Runtime(std::unique_ptr<detail::Budget> budget, lua_State* state, const RuntimeConfig config)
+    : _config{config},
+      _budget{std::move(budget)},
+      _state{state},
+      _usertypes{std::make_unique<detail::UsertypeRegistry>(state)} {
+    if (_budget->limitsTime()) {
+        lua_callbacks(_state.get())->interrupt = &detail::Budget::interrupt;
+    }
     _config.nativeCode = _config.nativeCode && luau_codegen_supported() != 0;
     if (_config.nativeCode) {
         luau_codegen_create(_state.get());
@@ -151,6 +161,7 @@ Runtime& Runtime::operator=(Runtime&& other) noexcept {
         _config = other._config;
         _sandboxed = other._sandboxed;
         _state = std::move(other._state);
+        _budget = std::move(other._budget);
         _usertypes = std::move(other._usertypes);
     }
     return *this;
@@ -181,12 +192,13 @@ Result<Bytecode> Runtime::compile(const std::string& source) const {
 }
 
 Result<Runtime> Runtime::create(const RuntimeConfig config) {
-    lua_State* state = luaL_newstate();
+    auto budget = std::make_unique<detail::Budget>(config.memoryLimit, config.callBudget);
+    lua_State* state = lua_newstate(&detail::Budget::allocate, budget.get());
     if (state == nullptr) {
         return Failure{ErrorKind::kUnknown, "unable to create lua state"};
     }
     try {
-        return Runtime{state, config};
+        return Runtime{std::move(budget), state, config};
     } catch (const std::exception& e) {
         return Failure{ErrorKind::kUnknown, std::format("unable to create runtime: {}", e.what())};
     } catch (...) {
@@ -243,7 +255,7 @@ Result<Script> Runtime::loadBytecode(std::string name, const char* bytecode, con
     }
 
     if (_config.nativeCode) {
-        luau_codegen_compile(threadState, -1);  // the chunk and every function it defines
+        luau_codegen_compile(threadState, -1);
     }
     Ref closure = Ref::pop(threadState);
     return Script{threadState, std::move(thread), std::move(closure), std::move(name)};
@@ -293,6 +305,8 @@ void Runtime::sandbox() {
 }
 
 bool Runtime::isNative() const noexcept { return _config.nativeCode; }
+
+std::size_t Runtime::memoryInUse() const noexcept { return _budget->used(); }
 
 bool Runtime::isSandboxed() const noexcept { return _sandboxed; }
 
