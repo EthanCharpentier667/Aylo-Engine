@@ -338,9 +338,6 @@ Result<SystemDeclaration> readSystemDeclaration(std::string name, const luau::Ta
     if (!options.phase) {
         return invalid(name, "needs a 'phase'");
     }
-    if (!options.terms) {
-        return invalid(name, "needs a 'query' table");
-    }
     if (!options.run) {
         return invalid(name, "needs a 'run' function");
     }
@@ -348,7 +345,7 @@ Result<SystemDeclaration> readSystemDeclaration(std::string name, const luau::Ta
         .name = std::move(name),
         .phase = *options.phase,
         .side = options.side,
-        .terms = std::move(*options.terms),
+        .terms = std::move(options.terms).value_or(std::vector<TermDeclaration>{}),  // no query: visits no entity
         .resources = std::move(options.resources),
         .events = std::move(options.events),
         .calls = std::move(options.calls),
