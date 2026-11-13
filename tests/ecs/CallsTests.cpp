@@ -293,7 +293,7 @@ TEST_F(CallsTest, ThrowsWhenAResourceHasNoValue) {
 
 TEST_F(CallsTest, FindsNothingForAnUnknownName) {
     EXPECT_EQ(app.getWorld().getCalls().findByName("test.unknown"), nullptr);
-    EXPECT_EQ(app.getWorld().getCalls().findById(0), nullptr);
+    EXPECT_EQ(app.getWorld().getCalls().findById(1000), nullptr);  // an App has calls of its own (aylo.state)
 }
 
 TEST_F(CallsTest, GivesASystemTheCallsItDeclared) {
