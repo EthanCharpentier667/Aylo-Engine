@@ -37,6 +37,8 @@ that cannot name a folder stops the start with `Invalid setting 'name'`.
 |---|---|---|---|
 | `network.port` | both | `4242` | a whole number from 1 to 65535; `0` also on a server (the system picks a free port) |
 | `network.host` | client | `"127.0.0.1"` | must resolve to an address |
+| `network.identityFile` | server | none: a new identity on each run | a path to the file of the server's identity; made the first time, then kept (see [Networking](networking.md#security)) |
+| `network.serverKey` | client | none: any server is accepted | the server's public key, 64 hexadecimal digits; the client connects to that server only |
 
 ## Scripts
 
