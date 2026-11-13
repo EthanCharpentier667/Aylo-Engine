@@ -1,7 +1,0 @@
-[capsule format=1]
-
-# The rock in the middle of the arena: a static circle, an obstacle like the walls.
-[node path="."]
-game.Obstacle = {}
-aylo.Transform = {}
-aylo.Collider = { shape = 1, radius = 36, layer = 1 }

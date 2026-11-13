@@ -2,5 +2,6 @@
 
 require("@scripts/server/obstacles")
 require("@scripts/server/players")
+require("@scripts/server/round")
 require("@scripts/server/ships")
 require("@scripts/server/lasers")

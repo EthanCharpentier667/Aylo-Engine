@@ -12,6 +12,8 @@ local Duel = {
 	playerCount = 2,
 	misfireOdds = 10, -- one shot in ten misfires
 	misfireLifetime = 0.25, -- seconds a Misfire lives on the server, long enough for a snapshot to carry it
+	rematchDelay = 4, -- seconds between a hit and the next round
+	joinTimeout = 5, -- seconds a client looks for the server before it gives up
 
 	-- The collision categories: each Collider belongs to some (layer) and collides with some (mask).
 	obstacleLayer = 1,
