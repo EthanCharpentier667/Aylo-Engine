@@ -13,20 +13,22 @@
 
 namespace aylo::ecs {
 /// @brief A step of the frame: systems are registered in one phase, and the phases run in this order.
-/// @details Startup runs once, before the first frame. Each frame then runs PreUpdate, FixedUpdate (zero or more
-/// times: once per fixed tick), Update, PostUpdate and Render. The commands systems record are applied after each
+/// @details Startup runs once, before the first frame. Each frame then runs PreUpdate, StateTransition (only when a
+/// state machine changes: see States), FixedUpdate (zero or more times: once per fixed tick), Update, PostUpdate and
+/// Render. The commands systems record are applied after each
 /// phase. A dedicated server runs only PreUpdate, FixedUpdate and PostUpdate.
 enum class Phase : std::uint8_t {
-    kStartup,      ///< Once, before the first frame: setup, initial entities.
-    kPreUpdate,    ///< Poll the window and input, receive network packets.
-    kFixedUpdate,  ///< Gameplay at a fixed rate: Luau systems, physics, network send (server).
-    kUpdate,       ///< Once per frame: animation, camera, UI.
-    kPostUpdate,   ///< Transform propagation, input send (client).
-    kRender,       ///< Extract what to draw, then draw.
+    kStartup,          ///< Once, before the first frame: setup, initial entities.
+    kPreUpdate,        ///< Poll the window and input, receive network packets.
+    kStateTransition,  ///< When a state machine changes: its onExit systems, then its onEnter systems (States).
+    kFixedUpdate,      ///< Gameplay at a fixed rate: Luau systems, physics, network send (server).
+    kUpdate,           ///< Once per frame: animation, camera, UI.
+    kPostUpdate,       ///< Transform propagation, input send (client).
+    kRender,           ///< Extract what to draw, then draw.
 };
 
 /// @brief The number of phases.
-inline constexpr std::size_t kPhaseCount = 6;
+inline constexpr std::size_t kPhaseCount = 7;
 
 /// @return The phase's name ("FixedUpdate"), for messages.
 [[nodiscard]] constexpr std::string_view toString(Phase phase) noexcept {
@@ -35,6 +37,8 @@ inline constexpr std::size_t kPhaseCount = 6;
             return "Startup";
         case Phase::kPreUpdate:
             return "PreUpdate";
+        case Phase::kStateTransition:
+            return "StateTransition";
         case Phase::kFixedUpdate:
             return "FixedUpdate";
         case Phase::kUpdate:
