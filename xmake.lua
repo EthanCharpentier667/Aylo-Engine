@@ -30,6 +30,9 @@ end
 
 -- Shared by several modules, so declared once here.
 add_requires("glm 1.0.x", {alias = "glm"})
+-- libsodium: the network's encryption, the engine's plugin signatures, aylo-sign. Built by xmake and linked statically:
+-- the system's is a shared library a release does not hold (docs/release/self-contained.md).
+add_requires("libsodium", {alias = "libsodium", system = false})
 -- Wayland as well as X11 on Linux: GLFW picks Wayland in a Wayland session and X11 otherwise, or if Wayland fails
 -- (`window.system` can force one). GLFW opens their libraries itself when it starts, so neither becomes a link
 -- dependency (see platform-glfw). Never the system's GLFW: built here, it is linked statically into the backend.
