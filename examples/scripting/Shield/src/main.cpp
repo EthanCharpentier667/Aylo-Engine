@@ -6,8 +6,7 @@
 */
 
 // A game made of Luau files: the ScriptingPlugin runs the entry game/scripts/main.luau, which requires the other
-// files, and the components and systems they declare join the App. The program only creates the entity the scripts
-// start from.
+// files, and the components and systems they declare join the App.
 
 #include <chrono>
 #include <exception>
@@ -29,14 +28,6 @@ int main() {
             .directory = "examples/scripting/Shield/game/scripts",
             .options = {.isClient = true, .isServer = true},
         }});
-
-        auto& components = app.getWorld().getComponents();
-        const auto spawner = components.find("game.Spawner");
-        if (!spawner) {
-            std::cerr << "error: component 'game.Spawner' is not declared\n";
-            return 1;
-        }
-        components.add(app.getWorld().spawn(), *spawner, {});
 
         for (int frame = 0; frame < 4; ++frame) {
             std::cout << "frame " << frame << '\n';
