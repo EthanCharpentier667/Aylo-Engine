@@ -131,8 +131,9 @@ class AYLO_REPLICATION_API ClientState {
     /// @return The local entity, or the null entity if none is known.
     [[nodiscard]] ecs::Entity find(std::uint32_t networkId) const noexcept;
 
-    /// @return The entity whose Owner is the id of this client, if there is one.
-    [[nodiscard]] std::optional<ecs::Entity> localPlayer() const noexcept;
+    /// @return The entity whose Owner is the id of this client, if there is one. Not noexcept: it reads the components
+    /// of the world.
+    [[nodiscard]] std::optional<ecs::Entity> localPlayer() const;
 
     /// @brief Replaces the source of the transport time (the default is network::Clock::now()), so that a test drives
     /// it with the clock of the App.

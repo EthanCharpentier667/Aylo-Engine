@@ -223,7 +223,7 @@ ecs::Entity ClientState::find(const std::uint32_t networkId) const noexcept {
     return found == _entities.end() ? ecs::Entity{} : found->second;
 }
 
-std::optional<ecs::Entity> ClientState::localPlayer() const noexcept {
+std::optional<ecs::Entity> ClientState::localPlayer() const {
     if (!_clientId) {
         return std::nullopt;
     }
