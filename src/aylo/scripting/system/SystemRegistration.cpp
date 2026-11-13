@@ -239,7 +239,7 @@ namespace {
 /// that run here and are ordered against it find it, as the schedule keeps the other side's systems to order both
 /// sides alike. Nothing it names is resolved, its own order included: those may only exist on its side (a client
 /// component, an event of the audio plugin, the server's net.applyInputs).
-[[nodiscard]] Result<BuiltSystem> makeStandIn(ecs::App& app, SystemDeclaration declaration) {
+[[nodiscard]] Result<BuiltSystem> makeStandIn(ecs::App& app, const SystemDeclaration& declaration) {
     ecs::ScriptCallable never{[](const ecs::DynamicQueries /*queries*/, ecs::DynamicResources /*resources*/,
                                  const ecs::DynamicEvents /*events*/, const ecs::DynamicCalls /*calls*/,
                                  const ecs::Res<ecs::Time> /*time*/, ecs::Commands& /*commands*/) {}};
@@ -247,7 +247,7 @@ namespace {
         return BuiltSystem{
             .phase = declaration.phase,
             .side = declaration.side,
-            .spec = {.system = ecs::System{app.getWorld(), declaration.name, std::move(never), ecs::QueryList{},
+            .spec = {.system = ecs::System{app.getWorld(), declaration.name, never, ecs::QueryList{},
                                            ecs::ResourceList{}, ecs::EventList{}, ecs::CallList{}}},
         };
     } catch (const ecs::exceptions::ScheduleException& error) {
@@ -258,7 +258,7 @@ namespace {
 
 Result<BuiltSystem> makeSystem(ecs::App& app, SystemDeclaration declaration, std::shared_ptr<RuntimeHandle> runtime) {
     if (!ecs::runsIn(declaration.side.value_or(ecs::Side::kServer), app.getSchedules().getRunMode())) {
-        return makeStandIn(app, std::move(declaration));
+        return makeStandIn(app, declaration);
     }
     auto& components = app.getWorld().getComponents();
     auto query = makeQuery(components, declaration);
