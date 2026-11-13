@@ -44,8 +44,11 @@ struct RuntimeConfig {
         kAggressive = 2,  ///< Optimizations that may impair debugging (e.g. function inlining).
     };
 
-    Libs libs;                            ///< Standard libraries to open (bitwise combination of `Libs` flags).
-    OptimizationLevel optimizationLevel;  ///< Optimization level used to compile scripts.
+    Libs libs{Libs::kNone};  ///< Standard libraries to open (bitwise combination of `Libs` flags).
+    OptimizationLevel optimizationLevel{OptimizationLevel::kDisabled};  ///< Optimization level used to compile scripts.
+    /// Compiles the scripts to machine code when they are loaded, where Luau can (x64 and arm64); elsewhere, and when
+    /// false, they are interpreted. Runtime::isNative() tells which.
+    bool nativeCode{false};
 };
 
 /// @brief Combines two sets of libraries.

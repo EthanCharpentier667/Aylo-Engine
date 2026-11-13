@@ -24,6 +24,7 @@
 #include "Ref.hpp"
 #include "Result.hpp"
 #include "Runtime.hpp"
+#include "StackAccess.hpp"
 #include "ValuePack.hpp"
 #include "detail/Stack.hpp"
 
@@ -53,7 +54,8 @@ Function::Function(Function&& other) noexcept
       _type{other._type},
       _ref{std::move(other._ref)},
       _name{std::move(other._name)},
-      _handler{std::move(other._handler)} {
+      _handler{std::move(other._handler)},
+      _rawHandler{std::move(other._rawHandler)} {
     if (_type == BindingType::kNative) {
         rebindUpvalue(&other, this);
     }
@@ -69,6 +71,7 @@ Function& Function::operator=(Function&& other) noexcept {
         _ref = std::move(other._ref);
         _name = std::move(other._name);
         _handler = std::move(other._handler);
+        _rawHandler = std::move(other._rawHandler);
         if (_type == BindingType::kNative) {
             rebindUpvalue(&other, this);
         }
@@ -79,6 +82,8 @@ Function& Function::operator=(Function&& other) noexcept {
 const FunctionRef& Function::ref() const noexcept { return _ref; }
 
 void Function::setHandler(Handler handler) { _handler = std::move(handler); }
+
+void Function::setRawHandler(RawHandler handler) { _rawHandler = std::move(handler); }
 
 Result<ValuePack> Function::call(const ValuePack& args) const {
     if (_type == BindingType::kNative) {
@@ -147,6 +152,21 @@ void Function::rebindUpvalue(const Function* from, Function* to) const noexcept 
     lua_pop(_state, 1);
 }
 
+std::size_t Function::runRawHandler(lua_State* state, std::string& error) const {
+    try {
+        Pusher results{state};
+        _rawHandler(results);
+        return static_cast<std::size_t>(results.count());
+    } catch (const exceptions::Base& e) {
+        error = std::format("native function '{}': {}", _name, e.what());
+    } catch (const std::exception&) {
+        throw;  // a Lua error, or one Luau turns into a Lua error itself
+    } catch (...) {
+        error = std::format("native function '{}' threw an unknown exception", _name);
+    }
+    return 0;
+}
+
 int Function::handle(lua_State* state) {
     auto* self = static_cast<Function*>(lua_touserdata(state, lua_upvalueindex(1)));
     if (self == nullptr) {
@@ -155,15 +175,16 @@ int Function::handle(lua_State* state) {
     }
     if (self->_type != BindingType::kNative) {
         throw exceptions::InvalidOperation{
-            "somehow, a script function was bound to a native function, that's a massive fuck up, this is a critical "
-            "bug"};
+            "a script function is bound to the native closure of a Function: this is a bug of the luau module"};
     }
     std::string error{};
     std::size_t resultCount{};
     // Every C++ object of the call lives in the scope below, so it is destroyed before the Lua error is raised. Only
     // the exceptions of the module and the ones that do not derive from std::exception are caught: a Lua error
     // raised inside the handler is a C++ exception too, and must reach Luau untouched.
-    if (!self->_handler) {
+    if (self->_rawHandler) {
+        resultCount = self->runRawHandler(state, error);
+    } else if (!self->_handler) {
         error = std::format("native function '{}' has no handler", self->_name);
     } else {
         auto context = detail::readCallContext(state);

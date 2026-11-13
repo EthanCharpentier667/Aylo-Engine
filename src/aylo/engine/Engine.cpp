@@ -587,7 +587,8 @@ void Engine::build() {
     const bool client = runsClient(_config.mode);
     const bool server = runsServer(_config.mode);
     const aylo::core::config::Settings scripts = _settings.section("scripts");
-    scripts.checkKeys({"main", "server", "client", "aliases"}, "scripts");
+    scripts.checkKeys({"main", "server", "client", "aliases", "native"}, "scripts");
+    const bool nativeCode = scripts.getBool("native", true);
     const std::shared_ptr<const core::vfs::FileSource> scriptFiles =
         _game.packed ? std::make_shared<core::vfs::SubSource>(_game.files, std::string{kScriptsDirectory}) : nullptr;
     std::map<std::string, std::string> aliases =
@@ -642,7 +643,7 @@ void Engine::build() {
         .server = std::move(serverEntry),
         .client = std::move(clientEntry),
         .aliases = std::move(aliases),
-        .options = {.isClient = client, .isServer = server, .isDebug = isDebug},
+        .options = {.isClient = client, .isServer = server, .isDebug = isDebug, .nativeCode = nativeCode},
         .onBuilt = [this](aylo::scripting::ScriptHost& host) { _scriptHost = &host; },
     }});
     if (networkPlugin) {

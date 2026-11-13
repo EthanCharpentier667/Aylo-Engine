@@ -79,11 +79,15 @@ namespace aylo::scripting {
 /// is destroyed first, but their script is gone with the runtime: they can no longer run it.
 class AYLO_SCRIPTING_API ScriptHost {
   public:
-    /// @brief What the scripts can tell about the process they run in, as the constant flags of `engine`.
+    /// @brief What the scripts can tell about the process they run in, as the constant flags of `engine`, and how
+    /// they run.
     struct Options {
         bool isClient{false};  ///< `engine.isClient`: this process runs the client side (also true when standalone).
         bool isServer{false};  ///< `engine.isServer`: this process runs the server side (also true when standalone).
         bool isDebug{false};   ///< `engine.isDebug`: this is a debug run.
+        /// `scripts.native`: the scripts are compiled to machine code where Luau can (x64, arm64), interpreted
+        /// elsewhere or when false.
+        bool nativeCode{true};
     };
 
     /// @brief Creates the runtime and the `engine` global.

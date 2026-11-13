@@ -22,6 +22,7 @@
 #include "aylo/luau/Exceptions.hpp"
 #include "aylo/luau/Failure.hpp"
 #include "aylo/luau/Result.hpp"
+#include "aylo/luau/StackAccess.hpp"
 #include "aylo/luau/Userdata.hpp"
 #include "aylo/luau/Value.hpp"
 #include "aylo/luau/ValuePack.hpp"
@@ -191,6 +192,17 @@ Result<Userdata> UsertypeData::create(const Initializer initialize, void* source
     return userdata;
 }
 
+void UsertypeData::push(lua_State* state, const Initializer initialize, void* source) const {
+    void* storage{allocate(state)};
+    try {
+        initialize(storage, source);
+    } catch (...) {
+        lua_pop(state, 1);  // not sealed yet: no tag, so no destructor runs on the half-built object
+        throw;
+    }
+    seal(state);
+}
+
 void* UsertypeData::allocate(lua_State* state) const { return lua_newuserdatatagged(state, _size, 0); }
 
 void UsertypeData::seal(lua_State* state) const {
@@ -263,6 +275,10 @@ void UsertypeData::setIndexFallback(IndexFallback fallback) { _indexFallback = s
 
 void UsertypeData::setNewIndexFallback(NewIndexFallback fallback) { _newIndexFallback = std::move(fallback); }
 
+void UsertypeData::setRawIndexFallback(RawIndexFallback fallback) { _rawIndexFallback = std::move(fallback); }
+
+void UsertypeData::setRawNewIndexFallback(RawNewIndexFallback fallback) { _rawNewIndexFallback = std::move(fallback); }
+
 void UsertypeData::setEquality(Equality equality) {
     _equality = std::move(equality);
     pushMetatable();
@@ -291,16 +307,29 @@ int UsertypeData::index(lua_State* state) {
         [&] -> int {
             void* object{requireObject(state, data, kSelfIndex)};
             member = readKey(state, kKeyIndex);
-            if (const auto getter = data._getters.find(member); getter != data._getters.end()) {
-                pushValueOrThrow(state, getter->second(object));
+            // Checked empty first: finding in an empty map still hashes the name, on every access of a view.
+            if (!data._getters.empty()) {
+                if (const auto getter = data._getters.find(member); getter != data._getters.end()) {
+                    pushValueOrThrow(state, getter->second(object));
+                    return 1;
+                }
+            }
+            if (!data._methods.empty()) {
+                lua_pushvalue(state, kKeyIndex);
+                lua_rawget(state, lua_upvalueindex(kSecondUpvalue));
+                if (!lua_isnil(state, -1)) {
+                    return 1;
+                }
+                lua_pop(state, 1);
+            }
+            if (data._rawIndexFallback) {
+                Pusher result{state};
+                data._rawIndexFallback(object, member, result);
+                if (result.count() != 1) {
+                    throw exceptions::RuntimeError{std::format("reading '{}' gave {} values", member, result.count())};
+                }
                 return 1;
             }
-            lua_pushvalue(state, kKeyIndex);
-            lua_rawget(state, lua_upvalueindex(kSecondUpvalue));
-            if (!lua_isnil(state, -1)) {
-                return 1;
-            }
-            lua_pop(state, 1);
             if (data._indexFallback) {
                 pushValueOrThrow(state, data._indexFallback(object, member));
                 return 1;
@@ -318,8 +347,14 @@ int UsertypeData::newIndex(lua_State* state) {
         [&] -> int {
             void* object{requireObject(state, data, kSelfIndex)};
             member = readKey(state, kKeyIndex);
-            if (const auto setter = data._setters.find(member); setter != data._setters.end()) {
-                setter->second(object, readValueOrThrow(state, kValueIndex));
+            if (!data._setters.empty()) {
+                if (const auto setter = data._setters.find(member); setter != data._setters.end()) {
+                    setter->second(object, readValueOrThrow(state, kValueIndex));
+                    return 0;
+                }
+            }
+            if (data._rawNewIndexFallback) {
+                data._rawNewIndexFallback(object, member, StackSlot{state, kValueIndex});
                 return 0;
             }
             if (data._newIndexFallback) {

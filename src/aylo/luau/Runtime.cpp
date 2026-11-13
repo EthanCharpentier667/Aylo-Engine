@@ -9,6 +9,7 @@
 
 #include <lua.h>
 #include <luacode.h>
+#include <luacodegen.h>
 #include <lualib.h>
 
 #include <array>
@@ -68,6 +69,10 @@ void Runtime::StateDeleter::operator()(lua_State* state) const noexcept { lua_cl
 
 Runtime::Runtime(lua_State* state, const RuntimeConfig config)
     : _config{config}, _state{state}, _usertypes{std::make_unique<detail::UsertypeRegistry>(state)} {
+    _config.nativeCode = _config.nativeCode && luau_codegen_supported() != 0;
+    if (_config.nativeCode) {
+        luau_codegen_create(_state.get());
+    }
     if (_config.libs == RuntimeConfig::Libs::kStandard) {
         luaL_openlibs(_state.get());
         return;
@@ -202,6 +207,9 @@ Result<Script> Runtime::loadBytecode(std::string name, const char* bytecode, con
         return Failure{ErrorKind::kRuntime, std::format("unable to load script '{}': {}", name, message)};
     }
 
+    if (_config.nativeCode) {
+        luau_codegen_compile(threadState, -1);  // the chunk and every function it defines
+    }
     Ref closure = Ref::pop(threadState);
     return Script{threadState, std::move(thread), std::move(closure), std::move(name)};
 }
@@ -248,6 +256,8 @@ void Runtime::sandbox() {
     luaL_sandbox(_state.get());
     _sandboxed = true;
 }
+
+bool Runtime::isNative() const noexcept { return _config.nativeCode; }
 
 bool Runtime::isSandboxed() const noexcept { return _sandboxed; }
 

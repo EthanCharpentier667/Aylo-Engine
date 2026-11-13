@@ -18,6 +18,7 @@
 #include <glm/ext/vector_float3.hpp>
 #include <iterator>
 #include <limits>
+#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
@@ -29,6 +30,7 @@
 #include "aylo/ecs/type/Field.hpp"
 #include "aylo/ecs/type/String.hpp"
 #include "aylo/ecs/type/TypeInfo.hpp"
+#include "aylo/luau/StackAccess.hpp"
 #include "aylo/luau/Table.hpp"
 #include "aylo/luau/Userdata.hpp"
 #include "aylo/luau/Usertype.hpp"
@@ -163,36 +165,42 @@ Result<luau::Value> readVector(const std::string_view component, const ecs::Fiel
     return luau::Value{std::move(*table)};
 }
 
-/// @brief Writes the components of a vector field from a table that names every one of them and nothing else.
-Result<void> writeVectorTable(const std::string_view component, const ecs::FieldInfo& field,
-                              const std::span<std::byte> bytes, const luau::Table& table) {
+/// @brief Writes the components of a vector field from the entries of a table that names every one of them and
+/// nothing else.
+/// @param forEach Calls its argument with the key of each entry (nothing when it is not a string) and its number (null
+/// when it is not one), until it returns false.
+template <typename ForEach>
+Result<void> writeVectorEntries(const std::string_view component, const ecs::FieldInfo& field,
+                                const std::span<std::byte> bytes, const ForEach& forEach) {
     const auto keys = vectorKeys(field.type);
-    const auto entries = table.entries();
-    if (!entries) {
-        return tl::unexpected{fieldError(component, field, entries.error().message())};
-    }
     std::array<float, 4> components{};
     std::array<bool, 4> seen{};
-    for (const auto& [key, value] : *entries) {
-        const auto* name = key.tryAs<std::string>();
+    std::optional<Error> error;
+    forEach([&](const std::optional<std::string_view> name, const double* number) {
         // A span's iterator is a pointer on libstdc++ and libc++ but a class on MSVC, so it cannot be spelled `auto*`.
         // NOLINTNEXTLINE(readability-qualified-auto)
-        const auto found = name != nullptr ? std::ranges::find(keys, *name) : keys.end();
+        const auto found = name ? std::ranges::find(keys, *name) : keys.end();
         if (found == keys.end()) {
-            const std::string_view given = name != nullptr ? std::string_view{*name} : "(not a string)";
-            return tl::unexpected{fieldError(
-                component, field, std::format("unexpected key '{}', expected {}", given, expectedKeys(field.type)))};
+            const std::string_view given = name ? *name : "(not a string)";
+            error = fieldError(component, field,
+                               std::format("unexpected key '{}', expected {}", given, expectedKeys(field.type)));
+            return false;
         }
-        const auto* number = value.tryAs<double>();
         if (number == nullptr) {
-            return tl::unexpected{fieldError(component, field, std::format("'{}' must be a number", *found))};
+            error = fieldError(component, field, std::format("'{}' must be a number", *found));
+            return false;
         }
         if (!fitsFloat(*number)) {
-            return tl::unexpected{fieldError(component, field, std::format("'{}' is out of range", *found))};
+            error = fieldError(component, field, std::format("'{}' is out of range", *found));
+            return false;
         }
         const auto index = static_cast<std::size_t>(std::ranges::distance(keys.begin(), found));
         components.at(index) = static_cast<float>(*number);
         seen.at(index) = true;
+        return true;
+    });
+    if (error) {
+        return tl::unexpected{std::move(*error)};
     }
     for (std::size_t index = 0; index < keys.size(); ++index) {
         if (!seen.at(index)) {
@@ -203,6 +211,29 @@ Result<void> writeVectorTable(const std::string_view component, const ecs::Field
     std::memcpy(bytes.subspan(field.offset, keys.size() * sizeof(float)).data(), components.data(),
                 keys.size() * sizeof(float));
     return {};
+}
+
+/// @brief Writes the components of a vector field from a table that names every one of them and nothing else.
+Result<void> writeVectorTable(const std::string_view component, const ecs::FieldInfo& field,
+                              const std::span<std::byte> bytes, const luau::Table& table) {
+    const auto entries = table.entries();
+    if (!entries) {
+        return tl::unexpected{fieldError(component, field, entries.error().message())};
+    }
+    return writeVectorEntries(component, field, bytes, [&entries](const auto& visit) {
+        for (const auto& [key, value] : *entries) {
+            const auto* name = key.tryAs<std::string>();
+            const auto given = name != nullptr ? std::optional<std::string_view>{*name} : std::nullopt;
+            if (!visit(given, value.tryAs<double>())) {
+                return;
+            }
+        }
+    });
+}
+
+/// @return Whether a field type is a vector.
+bool isVector(const ecs::FieldType type) {
+    return type == ecs::FieldType::kVec2 || type == ecs::FieldType::kVec3 || type == ecs::FieldType::kVec4;
 }
 
 /// @brief Writes a `vec2`, `vec3` or `vec4` field from a table, or from a `vector` for a `vec3`.
@@ -242,6 +273,81 @@ Result<void> writeAssetId(const std::string_view component, const ecs::FieldInfo
     }
     store<std::uint64_t>(bytes, field, id->value);
     return {};
+}
+
+/// @return Whether a field type is a number a script reads and writes without a range check: every integer up to 32
+/// bits and both floats.
+bool isPlainNumber(const ecs::FieldType type) {
+    switch (type) {
+        case ecs::FieldType::kI8:
+        case ecs::FieldType::kI16:
+        case ecs::FieldType::kI32:
+        case ecs::FieldType::kU8:
+        case ecs::FieldType::kU16:
+        case ecs::FieldType::kU32:
+        case ecs::FieldType::kF32:
+        case ecs::FieldType::kF64:
+            return true;
+        default:
+            return false;
+    }
+}
+
+/// @return The value of a plain number field (isPlainNumber()), as a Luau number.
+double loadPlainNumber(const std::span<const std::byte> bytes, const ecs::FieldInfo& field) {
+    switch (field.type) {
+        case ecs::FieldType::kI8:
+            return load<std::int8_t>(bytes, field);
+        case ecs::FieldType::kI16:
+            return load<std::int16_t>(bytes, field);
+        case ecs::FieldType::kI32:
+            return load<std::int32_t>(bytes, field);
+        case ecs::FieldType::kU8:
+            return load<std::uint8_t>(bytes, field);
+        case ecs::FieldType::kU16:
+            return load<std::uint16_t>(bytes, field);
+        case ecs::FieldType::kU32:
+            return load<std::uint32_t>(bytes, field);
+        case ecs::FieldType::kF32:
+            return load<float>(bytes, field);
+        default:
+            return load<double>(bytes, field);
+    }
+}
+
+/// @brief Writes a number into a number field, checking that it fits.
+Result<void> writeNumber(const std::string_view component, const ecs::FieldInfo& field,
+                         const std::span<std::byte> bytes, const double number) {
+    switch (field.type) {
+        case ecs::FieldType::kI8:
+            return writeInteger<std::int8_t>(component, field, bytes, number);
+        case ecs::FieldType::kI16:
+            return writeInteger<std::int16_t>(component, field, bytes, number);
+        case ecs::FieldType::kI32:
+            return writeInteger<std::int32_t>(component, field, bytes, number);
+        case ecs::FieldType::kI64:
+            return writeInteger<std::int64_t>(component, field, bytes, number);
+        case ecs::FieldType::kU8:
+            return writeInteger<std::uint8_t>(component, field, bytes, number);
+        case ecs::FieldType::kU16:
+            return writeInteger<std::uint16_t>(component, field, bytes, number);
+        case ecs::FieldType::kU32:
+            return writeInteger<std::uint32_t>(component, field, bytes, number);
+        case ecs::FieldType::kU64:
+            return writeInteger<std::uint64_t>(component, field, bytes, number);
+        case ecs::FieldType::kF32:
+            if (!fitsFloat(number)) {
+                return tl::unexpected{fieldError(component, field, std::format("{} is out of range", number))};
+            }
+            store<float>(bytes, field, static_cast<float>(number));
+            return {};
+        case ecs::FieldType::kF64:
+            store<double>(bytes, field, number);
+            return {};
+        default:
+            break;
+    }
+    return tl::unexpected{fieldError(component, field, "this field type is not supported")};
 }
 
 Result<luau::Value> readScalar(const std::string_view component, const ecs::FieldInfo& field,
@@ -345,36 +451,7 @@ Result<void> writeScalar(const std::string_view component, const ecs::FieldInfo&
     if (number == nullptr) {
         return tl::unexpected{fieldError(component, field, "expected a number")};
     }
-    switch (field.type) {
-        case ecs::FieldType::kI8:
-            return writeInteger<std::int8_t>(component, field, bytes, *number);
-        case ecs::FieldType::kI16:
-            return writeInteger<std::int16_t>(component, field, bytes, *number);
-        case ecs::FieldType::kI32:
-            return writeInteger<std::int32_t>(component, field, bytes, *number);
-        case ecs::FieldType::kI64:
-            return writeInteger<std::int64_t>(component, field, bytes, *number);
-        case ecs::FieldType::kU8:
-            return writeInteger<std::uint8_t>(component, field, bytes, *number);
-        case ecs::FieldType::kU16:
-            return writeInteger<std::uint16_t>(component, field, bytes, *number);
-        case ecs::FieldType::kU32:
-            return writeInteger<std::uint32_t>(component, field, bytes, *number);
-        case ecs::FieldType::kU64:
-            return writeInteger<std::uint64_t>(component, field, bytes, *number);
-        case ecs::FieldType::kF32:
-            if (!fitsFloat(*number)) {
-                return tl::unexpected{fieldError(component, field, std::format("{} is out of range", *number))};
-            }
-            store<float>(bytes, field, static_cast<float>(*number));
-            return {};
-        case ecs::FieldType::kF64:
-            store<double>(bytes, field, *number);
-            return {};
-        default:
-            break;
-    }
-    return tl::unexpected{fieldError(component, field, "this field type is not supported")};
+    return writeNumber(component, field, bytes, *number);
 }
 
 /// @return The field of one value of the list @p field, at the start of its bytes.
@@ -471,6 +548,83 @@ Result<void> writeField(const std::string_view component, const ecs::FieldInfo& 
                         const luau::Value& value) {
     return field.list != nullptr ? writeList(component, field, bytes, value)
                                  : writeScalar(component, field, bytes, value);
+}
+
+Result<void> pushField(const std::string_view component, const ecs::FieldInfo& field,
+                       const std::span<const std::byte> bytes, const FieldReadContext& context, luau::Pusher& result) {
+    // Numbers, tables and userdata are pushed as they are made: a Value would be built and destroyed around each, and
+    // a table or a userdata held through the registry first.
+    const bool fast =
+        field.list == nullptr &&
+        (isPlainNumber(field.type) || field.type == ecs::FieldType::kBool || field.type == ecs::FieldType::kVec2 ||
+         field.type == ecs::FieldType::kVec4 || field.type == ecs::FieldType::kEntity);
+    if (!fast) {
+        auto value = readField(component, field, bytes, context);
+        if (!value) {
+            return tl::unexpected{std::move(value.error())};
+        }
+        result.value(*value);
+        return {};
+    }
+    if (auto supported = checkSupported(component, field, bytes); !supported) {
+        return supported;
+    }
+    if (isPlainNumber(field.type)) {
+        result.number(loadPlainNumber(bytes, field));
+        return {};
+    }
+    if (field.type == ecs::FieldType::kBool) {
+        result.boolean(load<std::uint8_t>(bytes, field) != 0);
+        return {};
+    }
+    if (field.type == ecs::FieldType::kEntity) {
+        result.userdata(context.entities, load<ecs::Entity>(bytes, field));
+        return {};
+    }
+    const auto keys = vectorKeys(field.type);
+    std::array<float, 4> components{};
+    std::memcpy(components.data(), bytes.subspan(field.offset, keys.size() * sizeof(float)).data(),
+                keys.size() * sizeof(float));
+    std::array<double, 4> numbers{};
+    std::ranges::copy(components, numbers.begin());
+    result.record(keys, std::span{numbers}.first(keys.size()));
+    return {};
+}
+
+Result<void> writeFieldFrom(const std::string_view component, const ecs::FieldInfo& field,
+                            const std::span<std::byte> bytes, const luau::StackSlot& value) {
+    if (field.list == nullptr &&
+        (isPlainNumber(field.type) || field.type == ecs::FieldType::kI64 || field.type == ecs::FieldType::kU64)) {
+        if (const auto number = value.number()) {
+            if (auto supported = checkSupported(component, field, bytes); !supported) {
+                return supported;
+            }
+            return writeNumber(component, field, bytes, *number);
+        }
+    }
+    if (field.list == nullptr && field.type == ecs::FieldType::kBool) {
+        if (const auto flag = value.boolean()) {
+            if (auto supported = checkSupported(component, field, bytes); !supported) {
+                return supported;
+            }
+            store<std::uint8_t>(bytes, field, *flag ? 1 : 0);
+            return {};
+        }
+    }
+    if (field.list != nullptr || !isVector(field.type) || !value.isTable()) {
+        // Anything else, and every wrong type, goes the general way: same values, same messages.
+        return writeField(component, field, bytes, value.value());
+    }
+    if (auto supported = checkSupported(component, field, bytes); !supported) {
+        return supported;
+    }
+    // The table is visited where it is: no copy of it, nor of its keys.
+    return writeVectorEntries(component, field, bytes, [&value](const auto& visit) {
+        value.forEachEntry([&visit](const std::optional<std::string_view> key, const luau::StackSlot& entry) {
+            const std::optional<double> number = entry.number();
+            return visit(key, number ? &*number : nullptr);
+        });
+    });
 }
 
 Result<void> fillFromTable(const ecs::TypeInfo& type, const luau::Table& table, const std::span<std::byte> bytes) {

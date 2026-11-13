@@ -118,6 +118,10 @@ class AYLO_LUAU_API Runtime {
     /// @brief Tells whether `sandbox()` has been called.
     [[nodiscard]] bool isSandboxed() const noexcept;
 
+    /// @return Whether the scripts this runtime loads are compiled to machine code (RuntimeConfig::nativeCode, on a
+    /// platform Luau supports).
+    [[nodiscard]] bool isNative() const noexcept;
+
     /// @brief Gets the shared global table.
     /// @return The global table; frozen once `sandbox()` has been called.
     [[nodiscard]] Table globals() const;
