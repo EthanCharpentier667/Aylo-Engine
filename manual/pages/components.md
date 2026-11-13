@@ -51,6 +51,28 @@ spawns), `aylo.Transform`, `aylo.TransformInterpolation` (no fields: draws the e
 example the physics `shape` is `0` box, `1` circle, `2` capsule. What exists depends on the plugins the program and
 `project.luau` add: a server has no sprites.
 
+### Draw order
+
+Sprites (`aylo.SpriteRenderer`), texts (`aylo.TextRenderer`) and particle emitters are drawn without a depth buffer:
+what is drawn later covers what is drawn before. The engine draws them in this order, every frame the same:
+
+1. **By `layer`**, lowest first: a higher layer is always on top.
+2. **In one layer, by blend**: the cutout ones first (`blend = 2`), then the alpha-blended ones (`blend = 0`, the
+   default), then the additive ones (`blend = 1`).
+3. **Among cutout or alpha ones of the same layer, by entity**: the order does not change from one frame to the next,
+   even when other entities are spawned or despawned. Additive ones need no order (adding light gives the same picture
+   in any order), so the engine groups them to draw them faster.
+
+```luau
+ctx.commands:spawn({
+	["aylo.Transform"] = { position = { x = 400, y = 300 } },
+	["aylo.SpriteRenderer"] = { texture = "sprites/smoke.png", layer = 2 },  -- over every sprite of layer 1 and below
+})
+```
+
+To put one sprite over another, give it a higher `layer`: within a layer, which of two overlapping sprites covers the
+other follows the rules above, not the order you spawned them in.
+
 ## Reading and writing
 
 A system receives a *view* of a component for each entity it matches (see [Systems](systems.md)). Fields read and write
