@@ -270,3 +270,12 @@ TEST(ScriptHost, FormsRegisteredBeforeTheFirstScriptAreLoadedThenSealed) {
     EXPECT_EQ(fixture.run("assert(engine.early.value == 1)"), "");
     EXPECT_NE(fixture.run("engine.early.value = 2"), "");
 }
+
+TEST(ScriptHost, AScriptCanCollectGarbageAndReadTheMemoryInUse) {
+    Fixture fixture;
+    EXPECT_EQ(fixture.run(R"(
+        assert(type(collectgarbage("count")) == "number" and collectgarbage("count") > 0)
+        assert(collectgarbage() == 0)
+    )"),
+              "");
+}
