@@ -49,10 +49,50 @@ that cannot name a folder stops the start with `Invalid setting 'name'`.
 | `scripts.client` | none | the entry of the client side |
 | `scripts.aliases.<name>` | none | the folder inside `scripts/` that `@<name>` points to, a string |
 | `scripts.native` | `true` | a boolean: compile the scripts to machine code when they load, on x64 and arm64 processors; elsewhere they are interpreted |
+| `scripts.timeout` | `5` | seconds one run of your Luau may take, from `0` (no limit) to `3600` |
+| `scripts.memoryLimit` | `1024` | megabytes your scripts may hold together, from `0` (no limit) to `1048576` |
 
 Machine code runs the Luau of your systems about twice as fast; it behaves the same way, and errors name the same
 lines. Set `engine.settings.scripts.native = false` to interpret them, for example to compare when you suspect the
 compiler.
+
+### Script limits
+
+A mistake in a script, such as a `while` loop that never ends or a table that grows forever, must not freeze or crash
+the game. The engine stops it and prints its error, as for any script error, and the game goes on.
+
+```luau
+engine.settings.scripts.timeout = 2       -- seconds
+engine.settings.scripts.memoryLimit = 256 -- megabytes
+```
+
+A stopped system prints its name and the reason, then the next systems run:
+
+```
+[ScriptSystem] 'game.Loop' failed, skipped this tick: scripts/main.luau:2: the script ran longer than its budget of 2000 ms
+```
+
+| What went wrong | Reason printed |
+|---|---|
+| A run took longer than `scripts.timeout` | `scripts/main.luau:2: the script ran longer than its budget of 2000 ms`, with the line it was running |
+| The scripts hold more than `scripts.memoryLimit` | `not enough memory` |
+| Functions call each other too deep (about 20000 calls) | `scripts/main.luau:9: stack overflow` |
+
+- **One run** is one call from the engine into your Luau: a system's `run` for one tick or frame, or the first
+  `require` of a file (its top level). Each run gets the whole timeout again; what it calls, such as an engine call
+  that runs another of your functions, counts in it.
+- The time is real time, engine calls included, but only your Luau is stopped, at its next loop turn or function
+  call: one slow engine call is not cut in the middle.
+- A stopped script is stopped for good: `pcall` around the loop does not keep it running.
+- The memory counts every script and table of your game together. After a memory error, what the failed run held is
+  freed, so the next frame runs.
+- A system that is stopped runs again on its next tick or frame, and fails again if the mistake is still there. A file
+  stopped while it loads fails to load, like one with an error.
+- `project.luau` has fixed limits of its own, 5 seconds and 256 megabytes: a loop there stops the start with its
+  error instead of freezing it.
+
+Raise the timeout if a file of yours loads many assets at once; lower it while you develop to find a slow system
+early.
 
 An **entry** is a path inside `scripts/`, with no extension and no prefix: `"shared/main"` is
 `scripts/shared/main.luau` (or `scripts/shared/main/init.luau`). A process requires `main`, then `server` if it runs
