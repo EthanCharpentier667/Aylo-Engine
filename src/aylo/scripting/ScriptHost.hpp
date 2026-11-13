@@ -224,6 +224,11 @@ class AYLO_SCRIPTING_API ScriptHost {
     /// @brief Builds `engine` and its `ecs` library, and makes it a global.
     [[nodiscard]] luau::Result<> installEngine(Options options);
 
+    /// @brief `engine.ecs.state(name, values)`: declares a state machine of the world (ecs::States), entering its first
+    /// value on the next frame. Declaring it again with the same values does nothing.
+    /// @throws luau::exceptions::RuntimeError When the values are not a list of strings, or ecs::States refuses them.
+    void declareState(std::string name, const luau::Table& values);
+
     /// @brief The body of `engine.ecs.component`.
     /// @throws luau::exceptions::RuntimeError When the declaration is wrong or the component cannot be registered.
     void declareComponent(std::string name, const luau::Table& spec);

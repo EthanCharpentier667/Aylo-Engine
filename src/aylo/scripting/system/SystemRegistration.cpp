@@ -39,6 +39,8 @@
 #include "aylo/ecs/resource/Resources.hpp"
 #include "aylo/ecs/schedule/RunMode.hpp"
 #include "aylo/ecs/schedule/Schedules.hpp"
+#include "aylo/ecs/state/StateConditions.hpp"
+#include "aylo/ecs/state/States.hpp"
 #include "aylo/ecs/system/DynamicEvents.hpp"
 #include "aylo/ecs/system/DynamicQueries.hpp"
 #include "aylo/ecs/system/DynamicResources.hpp"
@@ -235,6 +237,35 @@ void warnAboutServerOnlyWrites(const ecs::Components& components, const SystemDe
 }  // namespace
 
 namespace {
+/// @return The run condition of the system's state option, none without one, or an error when the machine or the value
+/// was not declared (engine.ecs.state).
+[[nodiscard]] Result<ecs::System::RunCondition> makeStateCondition(const ecs::World& world,
+                                                                   const SystemDeclaration& declaration) {
+    if (!declaration.state) {
+        return ecs::System::RunCondition{};
+    }
+    const auto& [state, value] = *declaration.state;
+    const auto* states = world.getResources().get<ecs::States>();
+    if (states == nullptr || !states->has(state)) {
+        return fail(ErrorKind::kInvalidDeclaration,
+                    std::format("System '{}': unknown state machine '{}' (declare it with engine.ecs.state)",
+                                declaration.name, state));
+    }
+    if (std::ranges::find(states->getValues(state), value) == states->getValues(state).end()) {
+        return fail(ErrorKind::kInvalidDeclaration,
+                    std::format("System '{}': state machine '{}' has no value '{}'", declaration.name, state, value));
+    }
+    switch (declaration.trigger) {
+        case StateTrigger::kOnEnter:
+            return ecs::onEnter(state, value);
+        case StateTrigger::kOnExit:
+            return ecs::onExit(state, value);
+        case StateTrigger::kInState:
+            break;
+    }
+    return ecs::inState(state, value);
+}
+
 /// @return The stand-in of a system that does not run in this App's mode: its name, phase and side, so the systems
 /// that run here and are ordered against it find it, as the schedule keeps the other side's systems to order both
 /// sides alike. Nothing it names is resolved, its own order included: those may only exist on its side (a client
@@ -299,16 +330,28 @@ Result<BuiltSystem> makeSystem(ecs::App& app, SystemDeclaration declaration, std
             runScriptSystem(*system, queries, resources, events, calls, time.get(), commands);
         },
     };
+    auto condition = makeStateCondition(app.getWorld(), declaration);
+    if (!condition) {
+        return tl::unexpected{std::move(condition.error())};
+    }
     warnAboutServerOnlyWrites(components, declaration);
     try {
+        ecs::System system{app.getWorld(),
+                           declaration.name,
+                           std::move(callable),
+                           ecs::QueryList{std::move(*query)},
+                           std::move(resources->second),
+                           std::move(events->second),
+                           std::move(calls->second)};
+        if (*condition) {
+            system.setRunCondition(std::move(*condition));
+        }
         return BuiltSystem{
             .phase = declaration.phase,
             .side = declaration.side,
             .spec =
                 {
-                    .system = ecs::System{app.getWorld(), declaration.name, std::move(callable),
-                                          ecs::QueryList{std::move(*query)}, std::move(resources->second),
-                                          std::move(events->second), std::move(calls->second)},
+                    .system = std::move(system),
                     .after = std::move(declaration.after),
                     .before = std::move(declaration.before),
                 },
