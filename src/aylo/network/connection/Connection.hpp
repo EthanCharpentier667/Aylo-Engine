@@ -10,6 +10,7 @@
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <ratio>
 #include <span>
 #include <utility>
@@ -20,6 +21,7 @@
 #include "aylo/network/Types.hpp"
 #include "aylo/network/connection/ReliableReceiver.hpp"
 #include "aylo/network/connection/ReliableSender.hpp"
+#include "aylo/network/crypto/Crypto.hpp"
 #include "aylo/network/protocol/Constants.hpp"
 #include "aylo/network/protocol/Packets.hpp"
 #include "aylo/network/protocol/SequenceBuffer.hpp"
@@ -35,14 +37,16 @@ struct ReceivedMessage {
 /// clock.
 ///
 /// @details It does not know the address of the peer and does not check the session token of the datagrams it
-/// receives: the core does that before calling it.
+/// receives: the core does that before calling it. It seals every datagram it builds with the session keys and opens
+/// every one it receives, dropping what was forged, changed or received already (`crypto::ReplayWindow`).
 class AYLO_NETWORK_API Connection {
   public:
     /// @brief Builds the state of a new connection.
     /// @param sessionToken The token written in every datagram built.
     /// @param settings The keepalive interval and the RTT assumed before the first measure.
     /// @param now The time of creation: the connection counts as just heard from and just sent to.
-    Connection(std::uint32_t sessionToken, const NetworkSettings& settings, TimePoint now);
+    /// @param keys The keys of the handshake: what this side seals with and what it opens with.
+    Connection(std::uint32_t sessionToken, const NetworkSettings& settings, TimePoint now, crypto::SessionKeys keys);
 
     /// @brief Destroys the connection and the messages it still holds.
     ~Connection() = default;
@@ -69,9 +73,17 @@ class AYLO_NETWORK_API Connection {
     /// @brief Processes one kData packet whose session token the caller already checked.
     /// @param data The packet; its messages are copied, so it need not outlive the call.
     /// @param now The time of arrival.
-    /// @return False, and nothing changed, if one of its messages is malformed. A reliable message with an id far
-    /// beyond the window is dropped and counted in `protocolErrorCount`, the rest of the datagram is kept.
+    /// @return False, and nothing changed, if it does not open with the session keys (forged, changed, or a counter
+    /// already received) or one of its messages is malformed. A reliable message with an id far beyond the window is
+    /// dropped and counted in `protocolErrorCount`, the rest of the datagram is kept.
     bool receive(const protocol::Data& data, TimePoint now);
+
+    /// @return A `Disconnect` datagram for @p reason, sealed with the next counter.
+    [[nodiscard]] Bytes makeDisconnect(DisconnectReason reason);
+
+    /// @return The reason of a `Disconnect` from the peer, or nothing if it does not open with the session keys or was
+    /// received already.
+    [[nodiscard]] std::optional<DisconnectReason> openDisconnect(const protocol::Disconnect& disconnect);
 
     /// @brief Turns the queued messages into datagrams, or a keepalive when idle for too long.
     ///
@@ -127,13 +139,16 @@ class AYLO_NETWORK_API Connection {
     [[nodiscard]] Bytes makeDatagram(std::span<const std::byte> body, std::vector<std::uint16_t> reliableIds,
                                      TimePoint now);
 
-    std::uint32_t _sessionToken;                                               ///< Written in every datagram.
-    std::chrono::milliseconds _keepalive;                                      ///< Idle time before a keepalive.
-    std::chrono::milliseconds _minResendInterval;                              ///< Floor of the resend delay.
-    std::uint16_t _nextSequence{0};                                            ///< Sequence of the next datagram.
-    std::uint16_t _ack{0};                                                     ///< Newest sequence received.
-    std::uint32_t _ackBits{0};                                                 ///< Bit N: `_ack - 1 - N` too.
-    bool _receivedAny{false};                                                  ///< False until a datagram came.
+    std::uint32_t _sessionToken;                   ///< Written in every datagram.
+    crypto::SessionKeys _keys;                     ///< Seal and open the datagrams.
+    std::uint64_t _nextCounter{1};                 ///< Nonce of the next datagram sealed; 0 is the handshake's.
+    crypto::ReplayWindow _replay;                  ///< Counters received from the peer.
+    std::chrono::milliseconds _keepalive;          ///< Idle time before a keepalive.
+    std::chrono::milliseconds _minResendInterval;  ///< Floor of the resend delay.
+    std::uint16_t _nextSequence{0};                ///< Sequence of the next datagram.
+    std::uint16_t _ack{0};                         ///< Newest sequence received.
+    std::uint32_t _ackBits{0};                     ///< Bit N: `_ack - 1 - N` too.
+    bool _receivedAny{false};                      ///< False until a datagram came.
     protocol::SequenceBuffer<SentPacket, protocol::kSentPacketHistory> _sent;  ///< Datagrams awaiting an ack.
     std::vector<std::pair<Channel, Bytes>> _queue;                             ///< Messages to send.
     std::vector<ReceivedMessage> _received;                                    ///< Messages to take.

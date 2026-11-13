@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <ranges>
 #include <span>
 #include <utility>
@@ -21,8 +22,10 @@
 #include "aylo/network/Types.hpp"
 #include "aylo/network/bytes/Overloaded.hpp"
 #include "aylo/network/connection/Connection.hpp"
+#include "aylo/network/crypto/Crypto.hpp"
 #include "aylo/network/io/Address.hpp"
 #include "aylo/network/protocol/Constants.hpp"
+#include "aylo/network/protocol/Handshake.hpp"
 #include "aylo/network/protocol/Packets.hpp"
 #include "aylo/network/server/ClientInfo.hpp"
 #include "aylo/network/server/RoomMessages.hpp"
@@ -40,8 +43,20 @@ constexpr std::uint8_t kFirstGameMessageType = 0x20;
 constexpr std::uint8_t kDisconnectRepeat = 3;
 }  // namespace
 
+namespace {
+/// @return The identity of @p settings, or a new one from @p random.
+crypto::Identity makeIdentity(const NetworkSettings& settings, const RandomSource& random) {
+    crypto::initialize();
+    return crypto::Identity::fromSeed(settings.identitySeed.value_or(crypto::makeSeed(random)));
+}
+}  // namespace
+
 ServerCore::ServerCore(const NetworkSettings& settings, RandomSource random)
-    : _settings{settings}, _random{std::move(random)} {}
+    : _settings{settings},
+      _random{std::move(random)},
+      _identity{makeIdentity(_settings, _random)},
+      _exchange{crypto::KeyExchange::fromSeed(crypto::makeSeed(_random))},
+      _exchangeSignature{_identity.sign(protocol::exchangeSignedMessage(_exchange.publicKey))} {}
 
 void ServerCore::setWelcomeMessages(std::vector<Bytes> messages) { _welcomeMessages = std::move(messages); }
 
@@ -172,6 +187,10 @@ std::uint64_t ServerCore::malformedPacketCount() const noexcept { return _malfor
 
 std::uint64_t ServerCore::unexpectedMessageCount() const noexcept { return _unexpectedMessages; }
 
+const crypto::Key& ServerCore::identityKey() const noexcept { return _identity.publicKey(); }
+
+const crypto::Key& ServerCore::exchangeKey() const noexcept { return _exchange.publicKey; }
+
 void ServerCore::handleConnectRequest(const io::Address& from, const protocol::ConnectRequest& request,
                                       const TimePoint now) {
     if (request.version != protocol::kProtocolVersion) {
@@ -184,7 +203,7 @@ void ServerCore::handleConnectRequest(const io::Address& from, const protocol::C
         pending = _pending.end();
     }
     if (pending != _pending.end()) {
-        reply(from, protocol::Challenge{.challenge = pending->second.value});
+        reply(from, makeChallenge(pending->second.value));
         return;
     }
     if (isFull(_clientsByAddress.contains(from))) {
@@ -197,14 +216,8 @@ void ServerCore::handleConnectRequest(const io::Address& from, const protocol::C
         _pending.erase(oldest);
     }
     const std::uint64_t value = _random();
-    _pending.emplace(from, PendingChallenge{
-                               .value = value,
-                               .created = now,
-                               .order = _nextOrder++,
-                               .resumeClient = request.resumeClient,
-                               .resumeToken = request.resumeToken,
-                           });
-    reply(from, protocol::Challenge{.challenge = value});
+    _pending.emplace(from, PendingChallenge{.value = value, .created = now, .order = _nextOrder++});
+    reply(from, makeChallenge(value));
 }
 
 void ServerCore::handleChallengeResponse(const io::Address& from, const protocol::ChallengeResponse& response,
@@ -213,16 +226,18 @@ void ServerCore::handleChallengeResponse(const io::Address& from, const protocol
     if (existing != _clientsByAddress.end()) {
         if (const auto session = _sessions.find(existing->second);
             session != _sessions.end() && session->second.challenge == response.challenge) {
-            reply(from, protocol::Accepted{
-                            .sessionToken = session->second.sessionToken,
-                            .client = session->second.client,
-                            .resumeToken = session->second.resumeToken,
-                        });
+            replyBytes(from, session->second.accepted);
             return;
         }
     }
     const auto pending = _pending.find(from);
     if (pending == _pending.end() || pending->second.value != response.challenge) {
+        return;
+    }
+    // The address is proven: only now is the key exchange worth its cost. A response whose seal does not open was
+    // not made by the holder of the key it carries, and leaves the challenge waiting.
+    const std::optional<crypto::SessionKeys> keys = crypto::serverSessionKeys(_exchange, response.exchange);
+    if (!keys || !protocol::openResume(keys->receive, response)) {
         return;
     }
     const bool isExpired = now - pending->second.created > _settings.challengeExpiry;
@@ -234,7 +249,7 @@ void ServerCore::handleChallengeResponse(const io::Address& from, const protocol
         reply(from, protocol::Rejected{.reason = RejectReason::kServerFull});
         return;
     }
-    accept(from, response.challenge, now);
+    accept(from, response.challenge, *keys, now);
 }
 
 void ServerCore::handleData(const io::Address& from, const protocol::Data& data, const TimePoint now) {
@@ -250,7 +265,8 @@ void ServerCore::handleData(const io::Address& from, const protocol::Data& data,
 }
 
 void ServerCore::handleDisconnect(const io::Address& from, const protocol::Disconnect& disconnect) {
-    if (const Session* session = findSession(from, disconnect.sessionToken); session != nullptr) {
+    if (Session* session = findSession(from, disconnect.sessionToken);
+        session != nullptr && session->connection.openDisconnect(disconnect)) {
         close(session->client, DisconnectReason::kGraceful);
     }
 }
@@ -281,24 +297,29 @@ void ServerCore::processMessages(Session& session) {
     }
 }
 
-void ServerCore::accept(const io::Address& from, const std::uint64_t challenge, const TimePoint now) {
+void ServerCore::accept(const io::Address& from, const std::uint64_t challenge, const crypto::SessionKeys& keys,
+                        const TimePoint now) {
     if (const auto previous = _clientsByAddress.find(from); previous != _clientsByAddress.end()) {
         close(previous->second, DisconnectReason::kGraceful);
     }
     const ClientId id = _nextClient++;
     const std::uint32_t token = makeSessionToken();
     const std::uint64_t resumeToken = _random();
-    auto [entry, inserted] = _sessions.emplace(id, Session{
-                                                       .address = from,
-                                                       .client = id,
-                                                       .sessionToken = token,
-                                                       .resumeToken = resumeToken,
-                                                       .challenge = challenge,
-                                                       .state = SessionState::kWelcoming,
-                                                       .connection = connection::Connection{token, _settings, now},
-                                                   });
+    auto [entry, inserted] = _sessions.emplace(
+        id, Session{
+                .address = from,
+                .client = id,
+                .sessionToken = token,
+                .resumeToken = resumeToken,
+                .challenge = challenge,
+                .state = SessionState::kWelcoming,
+                .connection = connection::Connection{token, _settings, now, keys},
+                .accepted = protocol::PacketCodec::encode(protocol::Accepted{
+                    .sealed = protocol::sealAccepted(
+                        keys.transmit, {.sessionToken = token, .client = id, .resumeToken = resumeToken})}),
+            });
     _clientsByAddress[from] = id;
-    reply(from, protocol::Accepted{.sessionToken = token, .client = id, .resumeToken = resumeToken});
+    replyBytes(from, entry->second.accepted);
     for (const Bytes& message : _welcomeMessages) {
         entry->second.connection.send(Channel::kReliable, message);
     }
@@ -350,10 +371,22 @@ void ServerCore::disconnect(const ClientId client, const DisconnectReason reason
         return;
     }
     for (std::uint8_t sent = 0; sent < kDisconnectRepeat; ++sent) {
-        reply(session->second.address,
-              protocol::Disconnect{.sessionToken = session->second.sessionToken, .reason = reason});
+        replyBytes(session->second.address, session->second.connection.makeDisconnect(reason));
     }
     close(client, reason);
+}
+
+void ServerCore::replyBytes(const io::Address& to, Bytes bytes) {
+    if (!bytes.empty()) {
+        _outgoing.push_back(OutgoingDatagram{.to = to, .bytes = std::move(bytes)});
+    }
+}
+
+protocol::Challenge ServerCore::makeChallenge(const std::uint64_t value) const {
+    return protocol::Challenge{.challenge = value,
+                               .identity = _identity.publicKey(),
+                               .exchange = _exchange.publicKey,
+                               .signature = _exchangeSignature};
 }
 
 void ServerCore::reply(const io::Address& to, const protocol::Packet& packet) {

@@ -29,5 +29,6 @@ struct Session {
     std::uint64_t challenge;            ///< The challenge value that created this session.
     SessionState state;                 ///< Welcoming or ready.
     connection::Connection connection;  ///< The transport state.
+    Bytes accepted;                     ///< The `Accepted` datagram, sent again if the challenge response repeats.
 };
 }  // namespace aylo::network::server

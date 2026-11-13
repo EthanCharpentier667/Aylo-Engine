@@ -10,6 +10,9 @@
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
+#include <optional>
+
+#include "aylo/network/crypto/Crypto.hpp"
 
 namespace aylo::network {
 
@@ -35,6 +38,12 @@ struct NetworkSettings {
     std::chrono::milliseconds challengeExpiry{5000};
     /// @brief Maximum number of challenges a server keeps at once.
     std::size_t maxPendingChallenges{256};
+    /// @brief Server: the seed of its identity (Ed25519). The same seed always gives the same public key, which
+    /// clients may pin; none: a new identity every run.
+    std::optional<crypto::Key> identitySeed;
+    /// @brief Client: the public key of the identity the server must prove. None: any server is accepted; the traffic
+    /// is still encrypted, but a machine on the path could pose as the server.
+    std::optional<crypto::Key> trustedServerKey;
 };
 
 }  // namespace aylo::network
