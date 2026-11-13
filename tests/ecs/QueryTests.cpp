@@ -336,3 +336,66 @@ TEST(Query, WritesStampTheWorldTickOnlyWhenWritten) {
     EXPECT_EQ(world.getComponents().getTicks<Health>(first)->changed, 0U);
     EXPECT_EQ(world.getComponents().getTicks<Health>(second)->changed, 4U);
 }
+
+TEST(QueryLookup, GivesTheItemsOfAMatchingEntity) {
+    World world;
+    world.spawn(Position{.x = 9.F, .y = 9.F}, Velocity{});
+    const Entity ship = world.spawn(Position{.x = 1.F, .y = 2.F}, Velocity{.x = 3.F, .y = 4.F});
+    const QueryState<const Position, const Velocity> query{world.getComponents()};
+    const aylo::ecs::Query<const Position, const Velocity> view{query, 0};
+
+    const auto found = view.get(ship);
+    ASSERT_TRUE(found);
+    const auto& [entity, position, velocity] = *found;
+    EXPECT_EQ(entity, ship);
+    EXPECT_EQ(position.x, 1.F);
+    EXPECT_EQ(velocity.y, 4.F);
+    EXPECT_TRUE(view.contains(ship));
+}
+
+TEST(QueryLookup, GivesNothingForADeadEntityOrOneMissingATerm) {
+    World world;
+    const Entity dead = world.spawn(Position{}, Velocity{});
+    ASSERT_TRUE(world.despawn(dead));
+    const Entity still = world.spawn(Position{});  // no Velocity
+    const QueryState<const Position, const Velocity> query{world.getComponents()};
+
+    EXPECT_FALSE(query.get(dead, 0));
+    EXPECT_FALSE(query.get(still, 0));
+    EXPECT_FALSE(query.get(Entity{}, 0));
+}
+
+TEST(QueryLookup, HonoursWithoutOptionalAndFilters) {
+    World world;
+    const Entity alive = world.spawn(Health{.value = 1});
+    const Entity gone = world.spawn(Health{.value = 2}, Dead{});
+    const QueryState<const Health, Without<Dead>, Optional<const Velocity>> living{world.getComponents()};
+
+    const auto found = living.get(alive, 0);
+    ASSERT_TRUE(found);
+    EXPECT_EQ(std::get<2>(*found), nullptr);  // an absent optional term
+    EXPECT_FALSE(living.get(gone, 0));        // excluded by Without
+
+    const Tick lastRun = world.getComponents().getChangeTick();
+    world.advanceChangeTick(1);
+    world.getComponents().getMut<Health>(alive)->value = 5;
+    const QueryState<const Health, Changed<Health>> changed{world.getComponents()};
+    EXPECT_TRUE(changed.get(alive, lastRun));  // written since
+    EXPECT_FALSE(changed.get(gone, lastRun));  // not
+}
+
+TEST(QueryLookup, MarksAValueWrittenThroughAMutableTermChanged) {
+    World world;
+    const Entity first = world.spawn(Health{.value = 1});
+    const Entity second = world.spawn(Health{.value = 2});
+    world.advanceChangeTick(3);
+    const QueryState<Health> query{world.getComponents()};
+
+    auto found = query.get(second, 0);
+    ASSERT_TRUE(found);
+    std::get<1>(*found)->value = 20;
+
+    EXPECT_EQ(world.getComponents().get<Health>(second)->value, 20);
+    EXPECT_EQ(world.getComponents().getTicks<Health>(second)->changed, 3U);
+    EXPECT_EQ(world.getComponents().getTicks<Health>(first)->changed, 0U);  // not looked up, not stamped
+}

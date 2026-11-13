@@ -146,6 +146,28 @@ flowchart LR
 With [archetype tables](05-archetype-tables.md) (v3), table components are matched by walking the cached
 list of matching tables, and sparse components are checked per entity.
 
+### One entity: `get()` and `contains()`
+
+A system or an engine call that already knows an entity (a script passed it) reads its terms with
+`query.get(entity)`, instead of walking every match until it finds it:
+
+```cpp
+MoveAndSlideResult slide(ecs::Res<PhysicsWorld> world, ecs::Query<const Collider> colliders,
+                         const MoveAndSlideArguments& arguments) {
+    if (const auto found = colliders.get(arguments.entity)) {
+        const auto& [entity, collider] = *found;
+        ...
+    }
+}
+```
+
+It runs the same join as a pass (`detail::matchEntity`), with no driver: each term's pool is searched for the entity,
+so it costs one sparse lookup per term, whatever the number of matches. It honours every term: a dead entity, a
+missing required term, an excluded one, or an `Added` / `Changed` filter it fails gives `std::nullopt`; an absent
+optional term gives an empty item. It yields the item a pass would (the same `makeItem`), so a mutable term is a
+`Mut<T>` that stamps the value changed when written through. `contains(entity)` only tells whether it matches. Going
+through `World` instead would skip the access the system declared, which the scheduler orders systems by.
+
 ### Building once
 
 Resolving `T` to ids, checking the terms and (v3) matching tables happen **when the query is built**,

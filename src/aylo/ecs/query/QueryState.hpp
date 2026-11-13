@@ -11,6 +11,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <iterator>
+#include <optional>
 #include <span>
 #include <tuple>
 #include <utility>
@@ -123,10 +124,6 @@ class QueryState {
         template <std::size_t... Indices>
         [[nodiscard]] Item makeItem(std::index_sequence<Indices...> indices) const noexcept;
 
-        /// @return The item of term `Index` for the current entity, in a tuple; an empty tuple for a filter.
-        template <std::size_t Index>
-        [[nodiscard]] auto fetch() const noexcept;
-
         /// @brief The walk over the driver pool, with its buffers in `std::array`s.
         detail::QueryCursor<std::array<storage::SparseSetStorage*, sizeof...(Terms)>,
                             std::array<std::uint32_t, sizeof...(Terms)>>
@@ -153,7 +150,27 @@ class QueryState {
     /// @brief Starts a pass over the world's matching entities; see DynamicQuery::iter() for the ticks.
     [[nodiscard]] Iteration iter(Tick lastRun) const noexcept;
 
+    /// @return What @p entity yields if it matches the query, as a pass would yield it (a mutable term marks its value
+    /// changed when written through), or nothing: a dead entity, a missing required term, an excluded component, or
+    /// an added or changed filter it does not pass. Looks it up in each term's pool: no walk over the matches.
+    /// @param lastRun Tick the query last ran at, for the added and changed filters.
+    [[nodiscard]] std::optional<Item> get(Entity entity, Tick lastRun) const noexcept;
+
   private:
+    /// @brief The pool of each term, in term order.
+    using Pools = std::array<storage::SparseSetStorage*, sizeof...(Terms)>;
+    /// @brief An entity's position in each term's pool, in term order.
+    using Positions = std::array<std::uint32_t, sizeof...(Terms)>;
+
+    /// @return The items of the entity at @p positions of @p pools, in term order: what a pass and get() yield.
+    template <std::size_t... Indices>
+    [[nodiscard]] static Item makeItem(Entity entity, const Pools& pools, const Positions& positions, Tick thisRun,
+                                       std::index_sequence<Indices...> indices) noexcept;
+
+    /// @return The item of term `Index` at its position, in a tuple; an empty tuple for a filter.
+    template <std::size_t Index>
+    [[nodiscard]] static auto fetch(const Pools& pools, const Positions& positions, Tick thisRun) noexcept;
+
     /// @return The dynamic query of the terms, registering their components if needed.
     [[nodiscard]] static DynamicQuery build(Components& components);
 

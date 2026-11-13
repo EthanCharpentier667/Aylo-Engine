@@ -8,6 +8,7 @@
 #include <array>
 #include <cstddef>
 #include <iterator>
+#include <optional>
 #include <span>
 #include <tuple>
 #include <utility>
@@ -15,6 +16,7 @@
 
 #include "aylo/ecs/component/ComponentInfo.hpp"
 #include "aylo/ecs/error/Result.hpp"
+#include "aylo/ecs/query/QueryMatcher.hpp"
 
 namespace aylo::ecs {
 template <typename... Terms>
@@ -76,18 +78,28 @@ template <typename... Terms>
     requires ValidQuery<Terms...>
 template <std::size_t... Indices>
 typename QueryState<Terms...>::Item QueryState<Terms...>::Iteration::makeItem(
-    std::index_sequence<Indices...> /*indices*/) const noexcept {
-    return std::tuple_cat(std::tuple<Entity>{_cursor.getEntity()}, fetch<Indices>()...);
+    std::index_sequence<Indices...> indices) const noexcept {
+    return QueryState::makeItem(_cursor.getEntity(), _cursor.getPools(), _cursor.getPositions(), _cursor.getThisRun(),
+                                indices);
+}
+
+template <typename... Terms>
+    requires ValidQuery<Terms...>
+template <std::size_t... Indices>
+typename QueryState<Terms...>::Item QueryState<Terms...>::makeItem(
+    const Entity entity, const Pools& pools, const Positions& positions, const Tick thisRun,
+    std::index_sequence<Indices...> /*indices*/) noexcept {
+    return std::tuple_cat(std::tuple<Entity>{entity}, fetch<Indices>(pools, positions, thisRun)...);
 }
 
 template <typename... Terms>
     requires ValidQuery<Terms...>
 template <std::size_t Index>
-auto QueryState<Terms...>::Iteration::fetch() const noexcept {
+auto QueryState<Terms...>::fetch(const Pools& pools, const Positions& positions, const Tick thisRun) noexcept {
     using Term = std::tuple_element_t<Index, std::tuple<Terms...>>;
     if constexpr (TermTraits<Term>::kHasItem) {
-        return std::tuple<typename TermTraits<Term>::Item>{TermTraits<Term>::fetch(
-            *std::get<Index>(_cursor.getPools()), std::get<Index>(_cursor.getPositions()), _cursor.getThisRun())};
+        return std::tuple<typename TermTraits<Term>::Item>{
+            TermTraits<Term>::fetch(*std::get<Index>(pools), std::get<Index>(positions), thisRun)};
     } else {
         return std::tuple<>{};
     }
@@ -113,6 +125,21 @@ template <typename... Terms>
     requires ValidQuery<Terms...>
 typename QueryState<Terms...>::Iteration QueryState<Terms...>::iter(Tick lastRun) const noexcept {
     return Iteration{_query, lastRun, _components->getChangeTick()};
+}
+
+template <typename... Terms>
+    requires ValidQuery<Terms...>
+std::optional<typename QueryState<Terms...>::Item> QueryState<Terms...>::get(const Entity entity,
+                                                                             const Tick lastRun) const noexcept {
+    Pools pools{};
+    _query.resolvePools(pools);
+    Positions positions{};
+    const Tick thisRun = _components->getChangeTick();
+    // No driver term (its index is past the last one): every term's pool is searched for the entity.
+    if (!detail::matchEntity(_query.getTerms(), entity, sizeof...(Terms), 0, pools, positions, lastRun, thisRun)) {
+        return std::nullopt;
+    }
+    return makeItem(entity, pools, positions, thisRun, std::index_sequence_for<Terms...>{});
 }
 
 template <typename... Terms>
