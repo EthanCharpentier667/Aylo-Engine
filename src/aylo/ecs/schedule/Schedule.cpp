@@ -97,6 +97,11 @@ Schedule::SystemConfig& Schedule::SystemConfig::before(std::string name) {
     return *this;
 }
 
+Schedule::SystemConfig& Schedule::SystemConfig::runIf(System::RunCondition condition) {
+    _schedule->_entries.at(_index).system.setRunCondition(std::move(condition));
+    return *this;
+}
+
 Schedule::SystemConfig& Schedule::SystemConfig::setSide(Side side) {
     System& system = std::next(_schedule->_entries.begin(), static_cast<std::ptrdiff_t>(_index))->system;
     if (side == Side::kClient) {
@@ -272,7 +277,7 @@ void Schedule::run() {
     }
     for (const std::size_t index : _order) {
         System& system = _entries.at(index).system;
-        if (runsIn(system.getSide(), _mode)) {
+        if (runsIn(system.getSide(), _mode) && system.canRun()) {
             system.run();
         }
     }
