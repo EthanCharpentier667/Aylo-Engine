@@ -13,6 +13,7 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <string>
 #include <unordered_map>
 #include <variant>
 #include <vector>
@@ -20,6 +21,7 @@
 #include "aylo/ecs/component/ComponentInfo.hpp"
 #include "aylo/ecs/entity/Entity.hpp"
 #include "aylo/ecs/resource/ResourceTraits.hpp"
+#include "aylo/ecs/state/States.hpp"
 #include "aylo/ecs/system/DynamicQueries.hpp"
 #include "aylo/network/NetworkSettings.hpp"
 #include "aylo/network/Types.hpp"
@@ -218,12 +220,18 @@ class AYLO_REPLICATION_API ServerState {
     /// @brief Builds the snapshots, hands them to the transport and sends them now.
     void sendSnapshots(std::uint32_t tick, const ecs::DynamicQueries& replicated);
 
+    /// @brief Sends each ready client, reliably, the value of every state machine the server owns that it has not been
+    /// sent yet: a change, or all of them to a client that just joined. A client the transport refuses (not ready yet)
+    /// is sent them again at the next call.
+    void sendStates(const ecs::States& states);
+
   private:
     /// @brief What the server keeps of a connected client.
     struct ClientRecord {
-        input::InputBuffer inputs;             ///< Its inputs, waiting for their tick.
-        std::uint32_t lastAppliedSnapshot{0};  ///< The tick of the last snapshot it says it applied.
-        std::size_t pendingPackets{0};         ///< Its custom packets waiting for takePackets().
+        input::InputBuffer inputs;                               ///< Its inputs, waiting for their tick.
+        std::uint32_t lastAppliedSnapshot{0};                    ///< The tick of the last snapshot it says it applied.
+        std::size_t pendingPackets{0};                           ///< Its custom packets waiting for takePackets().
+        std::map<std::string, std::string, std::less<>> states;  ///< The last value of each machine it was sent.
     };
 
     /// @brief Counts and reports a snapshot that did not list every entity.

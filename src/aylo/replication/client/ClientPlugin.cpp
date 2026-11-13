@@ -12,7 +12,11 @@
 
 #include "aylo/ecs/app/App.hpp"
 #include "aylo/ecs/command/Commands.hpp"
+#include "aylo/ecs/resource/Resources.hpp"
 #include "aylo/ecs/schedule/Phase.hpp"
+#include "aylo/ecs/schedule/RunMode.hpp"
+#include "aylo/ecs/schedule/Schedules.hpp"
+#include "aylo/ecs/state/States.hpp"
 #include "aylo/ecs/system/EventWriter.hpp"
 #include "aylo/ecs/system/ResourceParam.hpp"
 #include "aylo/ecs/system/Side.hpp"
@@ -25,6 +29,7 @@
 #include "aylo/replication/packet/PacketCalls.hpp"
 #include "aylo/replication/packet/PacketCodec.hpp"
 #include "aylo/replication/packet/PacketSchema.hpp"
+#include "aylo/replication/state/StateMessage.hpp"
 
 namespace aylo::replication::client {
 namespace {
@@ -36,8 +41,15 @@ void connect(ecs::ResMut<ClientState> state, ecs::ResMut<packet::PacketRegistry>
 
 /// @brief PreUpdate: receives, checks the manifest and records the snapshots in the commands.
 void receive(ecs::ResMut<ClientState> state, ecs::ResMut<input::InputLayout> inputs, ecs::Commands& commands,
-             ecs::Res<packet::PacketRegistry> packets, ecs::EventWriter<packet::PacketReceived> received) {
+             ecs::Res<packet::PacketRegistry> packets, ecs::EventWriter<packet::PacketReceived> received,
+             ecs::ResMut<ecs::States> states) {
     state->receive(*inputs, commands);
+    // The server's states: applied after this phase, before the gameplay of the frame.
+    for (const state::StateMessage& value : state->takeStates()) {
+        if (!states->follow(value.machine, value.value)) {
+            state->noteDroppedState();
+        }
+    }
     // Only what passes the schema reaches the scripts: the rest is dropped.
     for (const network::Bytes& message : state->takePackets()) {
         if (auto decoded = packet::decodePacket(*packets, packet::PacketDirection::kToClients, message)) {
@@ -67,6 +79,9 @@ std::string_view ClientPlugin::getName() const noexcept { return kName; }
 void ClientPlugin::build(ecs::App& app) {
     app.addPlugin(ReplicationPlugin{});
     app.insertResource(ClientState{_server, _settings, app.getWorld()});
+    if (app.getSchedules().getRunMode() != ecs::RunMode::kServer) {  // a server adds it but never runs it
+        app.getWorld().getResources().getMut<ecs::States>()->followServer();
+    }
 
     app.addSystem(ecs::Phase::kStartup, std::string{kConnectSystem}, &connect).setSide(ecs::Side::kClient);
     app.addSystem(ecs::Phase::kPreUpdate, std::string{kReceiveSystem}, &receive).setSide(ecs::Side::kClient);

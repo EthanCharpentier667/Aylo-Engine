@@ -20,6 +20,8 @@
 #include <optional>
 #include <ranges>
 #include <span>
+#include <string>
+#include <string_view>
 #include <unordered_map>
 #include <utility>
 #include <variant>
@@ -29,6 +31,7 @@
 #include "aylo/ecs/component/Components.hpp"
 #include "aylo/ecs/entity/Entity.hpp"
 #include "aylo/ecs/query/QueryMatch.hpp"
+#include "aylo/ecs/state/States.hpp"
 #include "aylo/ecs/system/DynamicQueries.hpp"
 #include "aylo/ecs/type/TypeInfo.hpp"
 #include "aylo/ecs/world/World.hpp"
@@ -55,6 +58,7 @@
 #include "aylo/replication/serialization/EntityMapper.hpp"
 #include "aylo/replication/serialization/FieldSerializer.hpp"
 #include "aylo/replication/snapshot/Snapshot.hpp"
+#include "aylo/replication/state/StateMessage.hpp"
 
 namespace aylo::replication::server {
 namespace {
@@ -357,6 +361,35 @@ bool ServerState::sendPacket(const network::ClientId client, const network::Chan
         _server->flush(_time());
     }
     return queued;
+}
+
+void ServerState::sendStates(const ecs::States& states) {
+    if (_server == nullptr || _clients.empty()) {
+        return;
+    }
+    const std::vector<std::string_view> machines = states.getReplicated();
+    bool queued = false;
+    for (auto& [client, record] : _clients) {
+        for (const std::string_view machine : machines) {
+            const std::optional<std::string_view> value = states.get(machine);
+            const auto sent = record.states.find(machine);
+            if (!value || (sent != record.states.end() && sent->second == *value)) {
+                continue;
+            }
+            std::optional<network::Bytes> message = state::encodeState(machine, *value);
+            if (message && _server->execute(network::server::SendMessage{
+                               .client = client,
+                               .channel = network::Channel::kReliable,
+                               .payload = std::move(*message),
+                           })) {
+                record.states.insert_or_assign(std::string{machine}, std::string{*value});
+                queued = true;
+            }
+        }
+    }
+    if (queued) {
+        _server->flush(_time());
+    }
 }
 
 void ServerState::noteDroppedPacket() noexcept { ++_droppedPackets; }

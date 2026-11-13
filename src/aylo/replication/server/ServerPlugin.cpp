@@ -20,6 +20,7 @@
 #include "aylo/ecs/query/Query.hpp"
 #include "aylo/ecs/query/QueryMatch.hpp"
 #include "aylo/ecs/schedule/Phase.hpp"
+#include "aylo/ecs/state/States.hpp"
 #include "aylo/ecs/system/DynamicQueries.hpp"
 #include "aylo/ecs/system/EventWriter.hpp"
 #include "aylo/ecs/system/ResourceParam.hpp"
@@ -98,6 +99,9 @@ void assignIds(ecs::ResMut<ServerState> state, ecs::Commands& commands, ecs::Dyn
     }
 }
 
+/// @brief PostUpdate: sends the clients the values of the state machines the server owns that changed.
+void sendStates(ecs::ResMut<ServerState> state, ecs::Res<ecs::States> states) { state->sendStates(*states); }
+
 /// @brief PostUpdate: sends a snapshot to every client, when one is due.
 void snapshot(ecs::ResMut<ServerState> state, ecs::Res<ecs::Time> time, ecs::DynamicQueries replicated) {
     const std::uint32_t tick = time->tick;
@@ -133,5 +137,9 @@ void ServerPlugin::build(ecs::App& app) {
     app.addSystem(ecs::Phase::kPostUpdate, std::string{kSnapshotSystem}, &snapshot,
                   query::makeReplicatedReads(app.getWorld()))
         .after(std::string{kAssignIdsSystem});
+    // Before the snapshot: a client switches its state no later than it sees the world of the new one.
+    app.addSystem(ecs::Phase::kPostUpdate, std::string{kSendStatesSystem}, &sendStates)
+        .after(std::string{kAssignIdsSystem})
+        .before(std::string{kSnapshotSystem});
 }
 }  // namespace aylo::replication::server

@@ -44,6 +44,7 @@
 #include "aylo/replication/serialization/EntityMapper.hpp"
 #include "aylo/replication/serialization/FieldSerializer.hpp"
 #include "aylo/replication/snapshot/Snapshot.hpp"
+#include "aylo/replication/state/StateMessage.hpp"
 
 namespace aylo::replication::client {
 namespace {
@@ -299,6 +300,15 @@ void ClientState::handle(const network::client::ClientEvent& clientEvent, input:
         }
         return;
     }
+    if (type == static_cast<std::uint8_t>(MessageType::kState)) {
+        std::optional<state::StateMessage> decoded = state::decodeState(message.payload);
+        if (!decoded || _manifestStatus != ManifestStatus::kAccepted || _states.size() >= kMaxPendingPackets) {
+            ++_dropped;
+        } else {
+            _states.push_back(std::move(*decoded));
+        }
+        return;
+    }
     const bool isManifest = type >= static_cast<std::uint8_t>(MessageType::kManifestComponent) &&
                             type <= static_cast<std::uint8_t>(MessageType::kManifestEnd);
     if (!isManifest || _manifestStatus != ManifestStatus::kWaiting || !_receiver.receive(message.payload)) {
@@ -543,6 +553,10 @@ void ClientState::sendInput(const input::InputLayout& inputs) {
 void ClientState::noteDroppedPacket() noexcept { ++_dropped; }
 
 std::vector<network::Bytes> ClientState::takePackets() { return std::exchange(_packets, {}); }
+
+std::vector<state::StateMessage> ClientState::takeStates() { return std::exchange(_states, {}); }
+
+void ClientState::noteDroppedState() noexcept { ++_dropped; }
 
 bool ClientState::sendPacket(const network::Channel channel, const std::span<const std::byte> payload) {
     if (!_client || _connection != ConnectionStatus::kConnected || _manifestStatus != ManifestStatus::kAccepted) {
