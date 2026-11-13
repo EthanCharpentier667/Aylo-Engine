@@ -191,7 +191,9 @@ class AYLO_ENGINE_API Engine {
     };
 
   private:
-    /// @brief Reads `project.luau` for the current mode and command line, from the game's directory or its pack.
+    /// @brief Reads `project.luau` for the current mode and command line, from the game's directory or its pack, and
+    /// names the game (`name`, the name of its folder) when the project does not.
+    /// @throws exceptions::RuntimeError If the project names the game with something that cannot name a folder.
     [[nodiscard]] core::config::Settings readSettings() const;
 
     /// @brief The mode and command line a build runs with.

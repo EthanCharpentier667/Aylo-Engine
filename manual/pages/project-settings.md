@@ -7,6 +7,16 @@
 **An unknown key is an error**, not ignored, so a typo fails at start with the key's name. A wrong value type is an error
 too.
 
+## Game
+
+| Key | Default | Meaning |
+|---|---|---|
+| `name` | the game folder's name: `MyGame` for `MyGame/game` | The game's name: the default folder of its [saves](persistence.md). It must be usable as a folder name: not empty, not `.` or `..`, and none of `/\:*?"<>|` |
+
+An exported game is named after its export, so it keeps the same name wherever it is installed. Set `name` yourself
+(`engine.settings.name = "Star Duel"`) to keep the saves in the same folder even if you rename the game's folder. A name
+that cannot name a folder stops the start with `Invalid setting 'name'`.
+
 ## Flags and arguments
 
 | Name | Meaning |

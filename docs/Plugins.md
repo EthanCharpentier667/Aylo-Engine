@@ -29,7 +29,7 @@ and the materials are in `plugin-shader`.
 | Plugin | Brings | Requires |
 |---|---|---|
 | `capsule` | `Capsules`, `CapsuleInstance`: actors and levels described once, spawned, loaded and reloaded | |
-| `transform` | `Transform`, `GlobalTransform` | |
+| `transform` | `Transform`, `GlobalTransform`, `TransformInterpolation` | |
 | `input` | `Input`, actions, `PlatformEvent` and the input events | |
 | `graphics` | Starts the window and the renderer, frames, `Camera`, `TextureAssets`, `SpriteQueue` | `input`, `transform` |
 | `shader` | The shader language, `Material`, `MaterialInstance` | `graphics` |

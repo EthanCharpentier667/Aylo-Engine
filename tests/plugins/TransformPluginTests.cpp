@@ -7,6 +7,7 @@
 
 #include <gtest/gtest.h>
 
+#include <chrono>
 #include <glm/ext/vector_float2.hpp>
 
 #include "aylo/ecs/app/App.hpp"
@@ -14,7 +15,13 @@
 #include "aylo/ecs/component/ComponentTraits.hpp"
 #include "aylo/ecs/entity/Entity.hpp"
 #include "aylo/ecs/hierarchy/Parent.hpp"
+#include "aylo/ecs/query/Query.hpp"
+#include "aylo/ecs/query/QueryTerms.hpp"
+#include "aylo/ecs/schedule/Phase.hpp"
 #include "aylo/ecs/schedule/RunMode.hpp"
+#include "aylo/ecs/system/Side.hpp"
+#include "aylo/ecs/time/FixedTimestep.hpp"
+#include "aylo/ecs/time/TimePlugin.hpp"
 #include "aylo/ecs/type/Field.hpp"
 #include "plugins/transform/Reparent.hpp"
 #include "plugins/transform/Transform.hpp"
@@ -23,12 +30,15 @@
 namespace {
 using aylo::plugins::transform::GlobalTransform;
 using aylo::plugins::transform::Transform;
+using aylo::plugins::transform::TransformInterpolation;
 
 /// @brief An App with the TransformPlugin.
 struct TransformApp {
     aylo::ecs::App app;  ///< The App under test.
 
-    TransformApp() { app.addPlugin(aylo::plugins::transform::TransformPlugin{}); }
+    explicit TransformApp(aylo::ecs::RunMode mode = aylo::ecs::RunMode::kStandalone) : app{mode} {
+        app.addPlugin(aylo::plugins::transform::TransformPlugin{});
+    }
 
     /// @return The entity's GlobalTransform, or nullptr.
     [[nodiscard]] const GlobalTransform* globalOf(aylo::ecs::Entity entity) {
@@ -261,4 +271,101 @@ TEST(TransformPlugin, RegistersTheHierarchy) {
     TransformApp fixture;
     EXPECT_TRUE(fixture.app.getWorld().getComponents().find("aylo.Parent"));
     EXPECT_TRUE(fixture.app.getWorld().getComponents().find("aylo.Children"));
+}
+
+namespace {
+/// @brief FixedUpdate: moves every root 10 units right per tick, as gameplay or the physics would.
+void moveRoots(aylo::ecs::Query<Transform, aylo::ecs::Without<aylo::ecs::Parent>> roots) {
+    for (auto [entity, transform] : roots) {
+        transform->position.x += 10.0F;
+    }
+}
+
+/// @brief An App whose frames last half a fixed tick (10 ticks per second, 50 ms frames), so they alternate between
+/// no tick (alpha 0.5) and one tick (alpha 0), with a FixedUpdate system moving the roots.
+struct InterpolatedApp : TransformApp {
+    explicit InterpolatedApp(aylo::ecs::RunMode mode = aylo::ecs::RunMode::kStandalone) : TransformApp{mode} {
+        app.addPlugin(aylo::ecs::TimePlugin::manual(std::chrono::milliseconds{50}, aylo::ecs::FixedTimestep{10, 5}));
+        app.addSystem(aylo::ecs::Phase::kFixedUpdate, "test.MoveRoots", &moveRoots).setSide(aylo::ecs::Side::kBoth);
+    }
+
+    /// @return A new root at the origin, interpolated.
+    aylo::ecs::Entity spawnInterpolated() {
+        const aylo::ecs::Entity entity = spawn(Transform{});
+        app.getWorld().getComponents().add(entity, TransformInterpolation{});
+        return entity;
+    }
+
+    /// @return Where @p entity is simulated: its Transform.
+    [[nodiscard]] float simulatedX(aylo::ecs::Entity entity) {
+        return app.getWorld().getComponents().get<Transform>(entity)->position.x;
+    }
+};
+}  // namespace
+
+TEST(TransformInterpolation, IsAComponentScriptsSeeWithoutFields) {
+    EXPECT_EQ(aylo::ecs::ComponentTraits<TransformInterpolation>::kName, "aylo.TransformInterpolation");
+    EXPECT_TRUE(aylo::ecs::ComponentTraits<TransformInterpolation>::kFields.empty());
+    TransformApp fixture;
+    EXPECT_TRUE(fixture.app.getWorld().getComponents().find("aylo.TransformInterpolation"));
+}
+
+TEST(TransformInterpolation, DrawsBetweenTheLastTwoTicks) {
+    InterpolatedApp fixture;
+    const aylo::ecs::Entity ship = fixture.spawnInterpolated();
+    fixture.app.runFrame();  // no tick: the first pose is recorded
+    EXPECT_EQ(fixture.positionOf(ship).x, 0.0F);
+
+    fixture.app.runFrame();  // tick 1, alpha 0: drawn at the pose of the tick before
+    EXPECT_EQ(fixture.simulatedX(ship), 10.0F);
+    EXPECT_EQ(fixture.positionOf(ship).x, 0.0F);
+
+    fixture.app.runFrame();  // no tick, alpha 0.5: halfway between the last two ticks
+    EXPECT_EQ(fixture.simulatedX(ship), 10.0F);
+    EXPECT_EQ(fixture.positionOf(ship).x, 5.0F);
+
+    fixture.app.runFrame();  // tick 2
+    fixture.app.runFrame();
+    EXPECT_EQ(fixture.simulatedX(ship), 20.0F);
+    EXPECT_EQ(fixture.positionOf(ship).x, 15.0F);
+}
+
+TEST(TransformInterpolation, LeavesTheOtherEntitiesAtTheirTransform) {
+    InterpolatedApp fixture;
+    const aylo::ecs::Entity rock = fixture.spawn(Transform{});
+    for (int frame = 0; frame < 3; ++frame) {
+        fixture.app.runFrame();
+    }
+    EXPECT_EQ(fixture.positionOf(rock).x, fixture.simulatedX(rock));
+}
+
+TEST(TransformInterpolation, DrawsAMoveOutOfTheTicksAtOnce) {
+    InterpolatedApp fixture;
+    const aylo::ecs::Entity ship = fixture.spawnInterpolated();
+    for (int frame = 0; frame < 4; ++frame) {
+        fixture.app.runFrame();
+    }
+    fixture.move(ship, {500.0F, 0.0F});  // a teleport, as an Update system or the editor does
+    fixture.app.runFrame();              // no tick
+    EXPECT_EQ(fixture.positionOf(ship).x, 500.0F);
+}
+
+TEST(TransformInterpolation, MovesTheChildrenWithTheirBlendedParent) {
+    InterpolatedApp fixture;
+    const aylo::ecs::Entity ship = fixture.spawnInterpolated();
+    const aylo::ecs::Entity turret = fixture.spawnChild(ship, Transform{.position = {0.0F, 3.0F}});
+    for (int frame = 0; frame < 3; ++frame) {
+        fixture.app.runFrame();
+    }
+    EXPECT_EQ(fixture.positionOf(ship).x, 5.0F);
+    EXPECT_EQ(fixture.positionOf(turret), (glm::vec2{5.0F, 3.0F}));
+}
+
+TEST(TransformInterpolation, DoesNothingOnTheServer) {
+    InterpolatedApp fixture{aylo::ecs::RunMode::kServer};
+    const aylo::ecs::Entity ship = fixture.spawnInterpolated();
+    for (int frame = 0; frame < 3; ++frame) {
+        fixture.app.runFrame();
+    }
+    EXPECT_EQ(fixture.positionOf(ship).x, fixture.simulatedX(ship));
 }

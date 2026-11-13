@@ -984,6 +984,29 @@ TEST(EngineHotReload, StopsARunWithAFrameLimitWhenTheNewGameCannotBeBuilt) {
     EXPECT_EQ(log.find("Waiting for a change"), std::string::npos) << log;
 }
 
+TEST(Engine, NamesTheGameAfterItsFolder) {
+    const GameDirectory game{"aylo-engine-named-after-folder"};
+    const Engine engine{serverConfig(game)};
+    EXPECT_EQ(engine.settings().getString("name", ""), "aylo-engine-named-after-folder");
+}
+
+TEST(Engine, KeepsTheNameTheProjectGives) {
+    const GameDirectory game{"aylo-engine-named", R"(
+        engine.settings.network.port = 0
+        engine.settings.name = "Star Duel"
+    )"};
+    const Engine engine{serverConfig(game)};
+    EXPECT_EQ(engine.settings().getString("name", ""), "Star Duel");
+}
+
+TEST(Engine, RefusesANameThatCannotNameAFolder) {
+    const std::string error = buildError("aylo-engine-bad-name", R"(
+        engine.settings.network.port = 0
+        engine.settings.name = "a/b"
+    )");
+    EXPECT_TRUE(error.contains("Invalid setting 'name'")) << error;
+}
+
 TEST(Engine, RunsTheScriptsInterpretedOrAsMachineCode) {
     for (const std::string_view native : {"true", "false"}) {
         const GameDirectory game{"aylo-engine-native-scripts", std::format(R"(

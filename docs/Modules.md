@@ -36,8 +36,9 @@ architecture rules, and this file keeps the detail, which changes with every fea
     - `core/layout/` (`aylo::core::layout`) — `Layout.hpp`: the names of the folders and files the engine, its tools
       and its release agree on (`game`, `project.luau`, `scripts`, `assets`, `plugins`, `game.pak`, `runtime`, `lib`,
       `backends`, `licenses`, `.links`, `.sig`, `export.json`...) and the engine's folder in the user's directories
-      (`kUserFolder`: the pipeline cache, the editor's layout, the default folder of the saves), written once in C++; the constants of `Engine` and
-      of the export are aliases of them. The build and the release write the same names in Lua,
+      (`kUserFolder`: the pipeline cache, the editor's layout, the saves of a game without a name), written once in C++; the constants of `Engine` and
+      of the export are aliases of them. `GameName.hpp`: `gameName()`, a game's name from its folder (`MyGame` for
+      `MyGame/game`), which names an export and fills the `name` setting a project leaves out, and `isFileName()`. The build and the release write the same names in Lua,
       `xmake/modules/layout.lua`: change both together. The format versions stay with their format
       (`kLibraryAbiVersion` in `LibraryEntry.hpp`, `kPackVersion` in `vfs/Pack.hpp`).
 - `src/aylo/ecs/` — `ecs` target, shared library (`aylo-ecs`): the Entity Component System and,
@@ -150,7 +151,9 @@ architecture rules, and this file keeps the detail, which changes with every fea
       `docs/ecs/features/18-capsules.md`.
     - `plugins/transform/` (`aylo::plugins::transform`) — `TransformPlugin`: the `Transform` component gameplay writes,
       relative to the entity's parent, and the `GlobalTransform` rendering reads, computed from it in `PostUpdate` on
-      every side. `TransformMath.hpp` (`combine`, `toLocal`), `WorldPoses` (world poses for what runs before `PostUpdate`,
+      every side, and `TransformInterpolation`: on the client, the pose of each fixed tick is recorded and
+      `GlobalTransform` is computed from the last two blended by `Time::alpha`, so what moves in `FixedUpdate` is drawn
+      smoothly. `TransformMath.hpp` (`combine`, `toLocal`), `WorldPoses` (world poses for what runs before `PostUpdate`,
       such as the physics) and `Reparent.hpp` (`detachInPlace`, `attachInPlace`). The `Engine` adds it, and the plugins that use it
       require it.
     - `plugins/physics/` (`aylo::plugins::physics`) — `PhysicsPlugin`: 2D physics on Jolt (`Collider`, `RigidBody`,
