@@ -24,7 +24,7 @@ engine.ecs.system("game.MoveShips", {
 | Option | Meaning |
 |---|---|
 | `phase` | **Required.** When it runs, see below. |
-| `query` | **Required.** Which entities it visits; `{}` for a system that visits none. |
+| `query` | Which entities it visits, see [Queries](#queries). Leave it out (or write `{}`) for a system that visits none. |
 | `run` | **Required.** The function, called with `ctx`. |
 | `side` | `"server"` (default), `"client"` or `"both"`: where it runs. |
 | `resources` | `{ read = {...}, write = {...} }`: the resources it uses. |
@@ -61,7 +61,6 @@ its `aylo.Transform`, and the engine draws it between its last two ticks instead
 engine.ecs.system("game.SpawnBall", {
 	phase = "Startup",
 	side = "server",
-	query = {},
 	run = function(ctx)
 		ctx.commands:spawn({
 			["aylo.Transform"] = { position = { x = 400, y = 300 } },
@@ -84,6 +83,21 @@ two records, blended by how far the frame is into the next tick. Its children fo
 - The server never blends: a dedicated server draws nothing, so its `aylo.GlobalTransform` is the `aylo.Transform`.
 
 ## Queries
+
+A system without a `query` visits no entity: it runs once each time its phase runs (`Startup` once, `FixedUpdate` on
+every tick, `Update` every frame), and `ctx.query` ends at once. Use it to set the game up, spawn entities, or read
+resources and events:
+
+```luau
+engine.ecs.system("game.SpawnShip", {
+	phase = "Startup",
+	run = function(ctx)
+		ctx.commands:spawn({ ["game.Shield"] = { strength = 10, regen = 5 } })
+	end,
+})
+```
+
+A system that visits entities lists what it asks of them:
 
 ```luau
 query = {
