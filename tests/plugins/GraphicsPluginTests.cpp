@@ -210,7 +210,7 @@ TEST(GraphicsPlugin, DrawsTheSpritesByLayer) {
     EXPECT_FLOAT_EQ(app.state().sprites[2].position.x, 3.0F);
 }
 
-TEST(GraphicsPlugin, GroupsTheSpritesOfALayerByTexture) {
+TEST(GraphicsPlugin, KeepsTheOrderOfTheAlphaSpritesOfALayerWhateverTheirTexture) {
     BackendApp app;
     const auto first = loadTexture(app, "first.png");
     const auto second = loadTexture(app, "second.png");
@@ -219,10 +219,61 @@ TEST(GraphicsPlugin, GroupsTheSpritesOfALayerByTexture) {
     spawnSprite(app, first, {3.0F, 0.0F}, 0);
     app.app().runFrame();
     ASSERT_EQ(app.state().sprites.size(), 3U);
-    EXPECT_EQ(app.state().sprites[0].texture, app.state().sprites[1].texture);
+    // Grouping them by texture would draw the third under the second: wrong if they overlap.
     EXPECT_FLOAT_EQ(app.state().sprites[0].position.x, 1.0F);
-    EXPECT_FLOAT_EQ(app.state().sprites[1].position.x, 3.0F);
+    EXPECT_FLOAT_EQ(app.state().sprites[1].position.x, 2.0F);
+    EXPECT_FLOAT_EQ(app.state().sprites[2].position.x, 3.0F);
+}
+
+TEST(GraphicsPlugin, DrawsTheCutoutThenTheAlphaThenTheAdditiveSpritesOfALayer) {
+    BackendApp app;
+    const auto texture = loadTexture(app, "ship.png");
+    using aylo::contract::renderer::BlendMode;
+    aylo::ecs::Components& components = app.app().getWorld().getComponents();
+    const auto blend = [&](const aylo::ecs::Entity entity, const BlendMode mode) {
+        components.getMut<aylo::plugins::sprite::SpriteRenderer>(entity)->blend = mode;
+    };
+    blend(spawnSprite(app, texture, {3.0F, 0.0F}, 0), BlendMode::kAdditive);
+    blend(spawnSprite(app, texture, {2.0F, 0.0F}, 0), BlendMode::kAlpha);
+    blend(spawnSprite(app, texture, {1.0F, 0.0F}, 0), BlendMode::kCutout);
+    blend(spawnSprite(app, texture, {0.0F, 0.0F}, -1), BlendMode::kAdditive);  // a lower layer comes first anyway
+    app.app().runFrame();
+    ASSERT_EQ(app.state().sprites.size(), 4U);
+    for (std::size_t index = 0; index < 4; ++index) {
+        EXPECT_FLOAT_EQ(app.state().sprites[index].position.x, static_cast<float>(index)) << index;
+    }
+}
+
+TEST(GraphicsPlugin, GroupsTheAdditiveSpritesOfALayerByTexture) {
+    BackendApp app;
+    const auto first = loadTexture(app, "first.png");
+    const auto second = loadTexture(app, "second.png");
+    aylo::ecs::Components& components = app.app().getWorld().getComponents();
+    for (const auto& [texture, x] : {std::pair{first, 1.0F}, std::pair{second, 2.0F}, std::pair{first, 3.0F}}) {
+        components.getMut<aylo::plugins::sprite::SpriteRenderer>(spawnSprite(app, texture, {x, 0.0F}, 0))->blend =
+            aylo::contract::renderer::BlendMode::kAdditive;
+    }
+    app.app().runFrame();
+    ASSERT_EQ(app.state().sprites.size(), 3U);
+    // Adding is the same in any order: the two of the first texture follow each other, so they make one draw.
+    EXPECT_EQ(app.state().sprites[0].texture, app.state().sprites[1].texture);
     EXPECT_NE(app.state().sprites[2].texture, app.state().sprites[0].texture);
+}
+
+TEST(GraphicsPlugin, KeepsTheOrderOfALayerWhenAnotherEntityIsDespawned) {
+    BackendApp app;
+    const auto texture = loadTexture(app, "ship.png");
+    const aylo::ecs::Entity gone = spawnSprite(app, texture, {0.0F, 0.0F}, 0);
+    spawnSprite(app, texture, {1.0F, 0.0F}, 0);
+    spawnSprite(app, texture, {2.0F, 0.0F}, 0);
+    app.app().runFrame();
+    // Removing the first moves the last into its place in the component's storage: the order drawn must not follow.
+    app.state().sprites.clear();
+    ASSERT_TRUE(app.app().getWorld().despawn(gone));
+    app.app().runFrame();
+    ASSERT_EQ(app.state().sprites.size(), 2U);
+    EXPECT_FLOAT_EQ(app.state().sprites[0].position.x, 1.0F);
+    EXPECT_FLOAT_EQ(app.state().sprites[1].position.x, 2.0F);
 }
 
 TEST(GraphicsPlugin, SkipsSpritesWhoseTextureIsNotLoaded) {
