@@ -249,9 +249,10 @@ A system of the `StateTransition` phase is meant to have an `onEnter` or `onExit
 passes of every change. The phase is ordered and checked like the others, so two transition systems that touch the
 same data need an order between them even when they never run on the same change.
 
-States are **per world** and are not replicated: the server and each client declare and change their own. A game that
-wants its clients to follow the server's phase replicates it as data (a resource) and has a client system request the
-change.
+States are **per world**: the server and each client declare and change their own, unless a machine is declared
+`States::Replication::kFromServer`. Then the server owns it: a world that follows the server (`followServer()`, which a
+client's replication calls) waits for the server's value instead of entering its first one, takes the values the server
+sends through `follow()`, and refuses `request()`. See [Replication](20-replication.md#replicated-states).
 
 ### Parallelism (later)
 

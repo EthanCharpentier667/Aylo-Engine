@@ -20,9 +20,9 @@ The protocol has two layers:
 
 1. **Transport** (section 3 to 6): the handshake, sessions, numbered datagrams, acknowledgements and a reliable,
    ordered channel next to an unreliable one. It carries opaque **messages**.
-2. **Replication** (section 7 to 11): the messages themselves. The server describes the game (the **manifest**), then
-   sends the state of the world (**snapshots**); the client sends its held buttons and axes (**inputs**); both sides
-   may send game-defined **custom packets**.
+2. **Replication** (section 7 to 12): the messages themselves. The server describes the game (the **manifest**), then
+   sends the state of the world (**snapshots**) and the values of the game's replicated **state machines**; the client
+   sends its held buttons and axes (**inputs**); both sides may send game-defined **custom packets**.
 
 The server is authoritative: a client never sends world state, only inputs and the custom packets the game allows.
 
@@ -271,6 +271,7 @@ A sender puts reliable messages first in a datagram, then unreliable ones, and s
 | `Snapshot` | `0x30` | S → C | unreliable | 9 |
 | `Input` | `0x31` | C → S | unreliable | 10 |
 | `CustomPacket` | `0x32` | both | as declared | 11 |
+| `State` | `0x33` | S → C | reliable | 12 |
 
 Values below `0x20` belong to the transport. `0x21` and `0x22` are reserved (packets and capsules in the manifest, not
 sent yet). A server ignores a game message from a client that is not `Ready` yet.
@@ -436,7 +437,25 @@ name's bytes and a 0 byte, its type (`0` bool, `1` u8, `2` u16, `3` u32, `4` i32
 `maxLength` as 2 bytes, lowest first. A receiver drops a packet whose name is unknown, whose hash differs, which comes
 in the wrong direction or on the wrong channel, or whose values break the schema.
 
-## 12. Security considerations
+## 12. State (S → C)
+
+The value of a state machine the server owns (a game declares it with `engine.ecs.state(name, values,
+{ replicate = true })`). The server sends a ready client the value of each such machine once it has one, then each
+change, on the reliable channel, so a client applies them in order; a client that joins later gets the current values.
+
+| Size | Field |
+|---|---|
+| 1 | type `0x33` |
+| 1 + n | machine (`string8`), 1 to 255 bytes |
+| 1 + n | value (`string8`), 1 to 255 bytes |
+
+The message has nothing after the value. A client drops a `State` that arrives before it accepted the manifest, that
+is malformed, that names no machine it declared as replicated, or a value that machine does not have. The client goes
+to the value at its next frame, through the same exit and enter passes as a change of its own; it never sends one.
+Adding this message did not change the protocol version: a client that does not know `0x33` drops it, as it drops any
+unknown message.
+
+## 13. Security considerations
 
 - **Spoofing.** The challenge proves the client receives at its address; the session token, carried by every later
   datagram, makes a datagram from another address useless. Tokens are random, and new on every resume.
@@ -456,10 +475,11 @@ in the wrong direction or on the wrong channel, or whose values break the schema
 - **Malformed data.** Every read is bounds-checked; a malformed datagram or message is dropped and counted, it never
   crashes, throws or asserts.
 - **Authority.** A client sends only inputs and the custom packets declared `toServer`, which the server validates.
+  The values of replicated state machines go one way, from the server.
 - **Not covered.** `Rejected` is not authenticated (no key exists yet): a machine on the path can make a handshake
   fail, as it could by dropping the datagrams. Traffic analysis (sizes and timing) is possible.
 
-## 13. Writing a client: checklist
+## 14. Writing a client: checklist
 
 1. Send `ConnectRequest` (160 bytes) every 100 ms until `Challenge`. Verify its signature (and its identity, if you
    pin one), make an X25519 key pair, derive the session keys, and answer with `ChallengeResponse` (160 bytes).
