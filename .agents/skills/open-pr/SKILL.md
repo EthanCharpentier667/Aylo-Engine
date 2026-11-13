@@ -23,11 +23,18 @@ this whole skill, the template, labels, assignee, milestone and project fields i
 - **Labels**: the area labels of the issue (`ecs`, `luau`, `scripting`, `network`, `physics`, `Vulkan`...), plus
   `documentation`, `bug` or `enhancement` as fits. Priority and size are not labels.
 - **Milestone**: the issue's, when it has one (`gh issue view <n> --json milestone`).
-- **Project**: add it to project "Aylo Engine" (number 8, owner `$OWNER`, the repository owner) with Status "In review".
+- **Issues**: the ones a pull request closes live in this repository (`Closes #n`).
+- **Project**: add it to the project "Aylo Engine" of the repository owner with Status "In review". Find its number by
+  its title, never by a remembered number. If the owner has no such project, skip this step and say so in your report.
 
 ## Single pull request
 
-Get the owner once: `OWNER=$(gh repo view --json owner --jq .owner.login)`.
+Get the owner and the project once:
+
+```sh
+OWNER=$(gh repo view --json owner --jq .owner.login)
+NUMBER=$(gh project list --owner $OWNER --format json --jq '.projects[] | select(.title == "Aylo Engine") | .number')
+```
 
 ```sh
 git push -u origin <branch>
@@ -54,18 +61,25 @@ create.
 
 ## After creating each pull request
 
+Set the Status by ids: `item-add` returns the item's id, and this works whoever owns the project
+(`gh project item-edit --url` fails with "is not an item in project" when the project and the repository have different
+owners).
+
 ```sh
 gh pr edit <n> --add-assignee @me --add-label documentation
-gh project item-add 8 --owner $OWNER --url <pr url>
-gh project item-edit 8 --owner $OWNER --url <pr url> --field Status --value "In review"
+ITEM=$(gh project item-add $NUMBER --owner $OWNER --url <pr url> --format json --jq .id)
+PROJECT=$(gh project view $NUMBER --owner $OWNER --format json --jq .id)
+STATUS=$(gh project field-list $NUMBER --owner $OWNER --format json --jq '.fields[] | select(.name == "Status") | .id')
+IN_REVIEW=$(gh project field-list $NUMBER --owner $OWNER --format json \
+  --jq '.fields[] | select(.name == "Status") | .options[] | select(.name == "In review") | .id')
+gh project item-edit --id $ITEM --project-id $PROJECT --field-id $STATUS --single-select-option-id $IN_REVIEW
 ```
 
-If this `gh` is older and `item-edit` does not take `--url`/`--field`, use ids: `gh project item-add ... --format json`
-returns the item id; `gh project field-list 8 --owner $OWNER --format json` gives the field id and the option
-id of "In review"; then `gh project item-edit --id <item> --project-id <project> --field-id <field>
---single-select-option-id <option>`. The project id comes from `gh project view 8 --owner $OWNER --format json`.
+`item-add` on a pull request already in the project returns its item, so running it again is harmless.
 
 ## Check
 
-`gh pr view <n> --json isDraft,assignees,labels,milestone,projectItems,body` shows a draft, an assignee, the labels, the
-milestone and the project item; fix what is missing.
+`gh pr view <n> --json isDraft,assignees,labels,milestone,body` shows a draft, an assignee, the labels and the
+milestone. Check the project item with `gh project item-list $NUMBER --owner $OWNER --format json --limit 1000 --jq
+'.items[] | select(.content.type == "PullRequest" and .content.number == <n>) | .status'`, which prints `In review`
+(`gh pr view --json projectItems` misses the projects of another owner). Fix what is missing.

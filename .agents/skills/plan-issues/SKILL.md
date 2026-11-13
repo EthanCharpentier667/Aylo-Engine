@@ -8,10 +8,20 @@ description: Turn a plan document or a feature into a GitHub epic with child iss
 Uses `gh` only (works in Claude Code and Codex). The repository is the current one: `OWNER=$(gh repo view --json owner --jq .owner.login)`, and `$R` is
 `repos/$(gh repo view --json nameWithOwner --jq .nameWithOwner)`. Issue types may not exist on a user-owned repository: do not set one.
 
-The project "Aylo Engine" (user project number 8) holds the metadata and is the single source of truth: **Status**
-(Backlog | Ready | In progress | In review | Done), **Priority** (P0 | P1 | P2 | P3), **Size** (XS | S | M | L | XL),
-**Sprint**. Do not use priority or weight labels; area labels (`ecs`, `luau`, `scripting`, `network`, `physics`,
-`Vulkan`, `documentation`, `bug`, `enhancement`, `epic`) stay.
+The issues live in this repository, never in another tracker. The project "Aylo Engine" of the repository owner holds
+the metadata and is the single source of truth: **Status** (Backlog | Ready | In progress | In review | Done),
+**Priority** (P0 | P1 | P2 | P3), **Size** (XS | S | M | L | XL), **Sprint**. Find its number by its title, never by a
+remembered number:
+
+```sh
+NUMBER=$(gh project list --owner $OWNER --format json --jq '.projects[] | select(.title == "Aylo Engine") | .number')
+```
+
+If the owner has no such project, file the issues without project fields and say so in your report.
+
+Do not use priority or weight labels; area labels (`ecs`, `luau`, `scripting`, `network`, `physics`, `Vulkan`,
+`documentation`, `bug`, `enhancement`, `epic`) stay. An area label the repository does not have yet is created once,
+with `gh label create <name> --color <hex> --description "<area>"`.
 
 ## 0. Check for duplicates
 
@@ -71,14 +81,15 @@ Never write "Blocked by #x" as text only: a text mention links nothing. You may 
 ## 4. Project fields
 
 ```sh
-gh project item-add 8 --owner $OWNER --url <issue url>
-gh project item-edit 8 --owner $OWNER --url <issue url> --field Status   --value Backlog
-gh project item-edit 8 --owner $OWNER --url <issue url> --field Priority --value P1
-gh project item-edit 8 --owner $OWNER --url <issue url> --field Size     --value M
+gh project item-add $NUMBER --owner $OWNER --url <issue url>
+gh project item-edit $NUMBER --owner $OWNER --url <issue url> --field Status   --value Backlog
+gh project item-edit $NUMBER --owner $OWNER --url <issue url> --field Priority --value P1
+gh project item-edit $NUMBER --owner $OWNER --url <issue url> --field Size     --value M
 ```
 
 Status is Backlog by default, Ready when nothing blocks it. Size: XS under an hour, S a few hours, M a day, L a few
-days, XL a week or more (split an XL). If `gh` is older and refuses `--url`/`--field`, use ids as in the `open-pr` skill.
+days, XL a week or more (split an XL). If `item-edit` refuses `--url`/`--field`, or answers "is not an item in
+project", use ids as in the `open-pr` skill.
 
 ## 5. Read everything back
 
@@ -87,7 +98,7 @@ Verify the graph matches the plan before you report:
 ```sh
 gh api $R/issues/<epic>/sub_issues --jq '[.[].number]'                       # every child, in order
 gh api $R/issues/<n>/dependencies/blocked_by --jq '[.[].number]'              # blockers of n
-gh project item-list 8 --owner $OWNER --limit 200 --format json    # fields of every item
+gh project item-list $NUMBER --owner $OWNER --limit 1000 --format json    # fields of every item
 ```
 
 Compare the sub-issues and every blocked-by list with the plan's graph, and every item's Status, Priority and Size. Fix
