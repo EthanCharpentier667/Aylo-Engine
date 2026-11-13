@@ -154,6 +154,7 @@ adds run on clients):
 
 | Plugin | Calls |
 |---|---|
+| App (every `App`, both sides) | `aylo.state.get`, `aylo.state.set` ([States](13-scheduler.md#states-v2)) |
 | Sprite | `aylo.sprite.loadAtlas`, `aylo.sprite.createAtlas`, `aylo.sprite.addFrame`, `aylo.sprite.addAnimation` ([Sprites](../../Sprites.md#from-scripts)) |
 | Backend | `aylo.backend.loadTexture` |
 | Text | `aylo.text.loadFont` ([Text](../../Text.md#from-scripts)) |

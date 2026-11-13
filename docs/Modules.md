@@ -50,7 +50,8 @@ architecture rules, and this file keeps the detail, which changes with every fea
       data: fields, hooks, descriptions, registry), `component/`, `resource/`, `event/`, `storage/`, `change/`
       (change ticks), `world/`, `command/` (deferred structural changes), `hierarchy/` (`Parent`, `Children`),
       `query/`, `system/`, `call/` (engine calls: named functions plugins give to scripts, and `CallBuffer`, the bytes of
-      their arguments and results), `schedule/`, `time/`, `app/` (the App and its plugins)), included as
+      their arguments and results), `schedule/`, `state/` (`States`, the state machines of the world, their run
+      conditions and the `aylo.state.*` calls), `time/`, `app/` (the App and its plugins)), included as
       `aylo/ecs/<feature>/<File>.hpp`.
     - Exception to the namespace rule: the types users write every day stay in the flat `aylo::ecs`
       namespace whatever their folder (`aylo/ecs/entity/Entity.hpp` declares `aylo::ecs::Entity`).
