@@ -133,7 +133,7 @@ The export checks everything before it writes anything, and leaves nothing behin
 |---|---|
 | `Invalid setting 'plugins' (client): unknown plugin 'game.Bos' (known: ...)` | `project.luau` names a plugin no library brings: a typo, or a native plugin you did not build |
 | `Plugin 'aylo.Sprite' requires 'aylo.graphics', which no library registers (known: ...)` | the runtime is missing a library: export with the whole `runtime/` of a release |
-| `Invalid setting 'platform' (client): no backend library registers 'glfx' (known: ...)` | a backend name with a typo (`platform`, `renderer`, `audio.backend`) |
+| `Invalid setting 'platform': no backend library provides 'glfx' (found in '...': 'glfw', 'raylib', ...)` | a backend name with a typo (`platform`, `renderer`, `audio.backend`) |
 | `Cannot export: scripts/player.luau does not compile: ...` | a script with a syntax error: the message gives its line |
 | `'exports/my_game' already exists and is not empty: remove it, or export elsewhere` | an export is never written over another one |
 | `Invalid name 'a/b': it names a folder and a program, so it must be a file name` | `--name` with a `/`, `\` or `:` in it |
