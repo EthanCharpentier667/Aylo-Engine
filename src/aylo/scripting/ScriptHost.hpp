@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <map>
 #include <memory>
@@ -88,6 +90,12 @@ class AYLO_SCRIPTING_API ScriptHost {
         /// `scripts.native`: the scripts are compiled to machine code where Luau can (x64, arm64), interpreted
         /// elsewhere or when false.
         bool nativeCode{true};
+        /// `scripts.memoryLimit`: the most bytes the scripts may hold together; 0: no limit
+        /// (luau::RuntimeConfig::memoryLimit).
+        std::size_t memoryLimit{0};
+        /// `scripts.timeout`: how long one call into a script (a system's `run`, a module's first load) may run; zero:
+        /// no limit (luau::RuntimeConfig::callBudget).
+        std::chrono::milliseconds callBudget{0};
     };
 
     /// @brief Creates the runtime and the `engine` global.
