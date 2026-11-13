@@ -1,7 +1,21 @@
--- The replicated components and the input actions both sides declare: the manifest checks that the server and the
--- clients declared the same ones. Required by shared/main.luau, which every process runs first.
+-- What both sides declare alike: the replicated components and the input actions (the manifest checks that the server
+-- and the clients declared the same ones), the round and the messages of the quick join. Required by
+-- shared/main.luau, which every process runs first.
 
 local Duel = require("@scripts/shared/arena")
+
+-- The round, the server's: Waiting until both seats are taken, Live until a laser hits, Over while the clients show who
+-- won, then Waiting again for the next round. The clients follow it (server/round.luau changes it).
+engine.ecs.state("game.Round", { "Waiting", "Live", "Over" }, { replicate = true })
+
+-- The quick join: a client in the main menu asks for a seat, and the server answers with the seat, or says that the
+-- arena is full. A player who goes back to the menu gives their seat up.
+engine.net.packet("game.Join", { direction = "toServer", fields = {} })
+engine.net.packet("game.Leave", { direction = "toServer", fields = {} })
+engine.net.packet("game.Seat", {
+	direction = "toClients",
+	fields = { { "granted", "bool" }, { "player", "u8" } }, -- player: 0 on the left, 1 on the right; 0 when refused
+})
 
 -- A player's ship, on every change.
 engine.ecs.component("game.Ship", {

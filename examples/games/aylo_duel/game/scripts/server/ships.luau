@@ -1,8 +1,7 @@
--- The ships: they move in their half of the arena, sliding along the obstacles, and fire on a click until someone has
--- won. One shot in Duel.misfireOdds misfires: a Misfire replaces the laser, for the clients to play its sound.
+-- The ships: they move in their half of the arena, sliding along the obstacles, and fire on a click while the round is
+-- Live. One shot in Duel.misfireOdds misfires: a Misfire replaces the laser, for the clients to play its sound.
 
 local Duel = require("@scripts/shared/arena")
-local Match = require("@scripts/server/match")
 local Weapons = require("@scripts/server/weapons")
 
 -- Only with the network: the ships are the players'.
@@ -10,18 +9,17 @@ if not Duel.networked then
 	return
 end
 
--- FixedUpdate, after the inputs of the tick are applied and before the Transforms drive the bodies.
+-- FixedUpdate, while the round is Live, after the inputs of the tick are applied and before the Transforms drive the
+-- bodies.
 engine.ecs.system("game.MoveShips", {
 	phase = "FixedUpdate",
 	side = "server",
+	inState = { "game.Round", "Live" },
 	query = { write = { "game.Ship", "aylo.Transform" }, with = { "aylo.Collider", "net.PlayerInput" } },
 	calls = { "aylo.replication.readInput", "aylo.physics.moveAndSlide", "aylo.capsule.spawn" },
 	after = { "net.applyInputs", "aylo.Physics.SyncBodies" },
 	before = { "aylo.Physics.SyncToPhysics" },
 	run = function(ctx)
-		if Match.isOver() then
-			return
-		end
 		for entity, ship, transform in ctx.query do
 			local move = ctx.call("aylo.replication.readInput", { entity = entity, action = "move" }).vector
 			-- Up is +1 in the input, and Y goes down on screen.
