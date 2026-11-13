@@ -74,7 +74,7 @@ flowchart BT
     core["plugins<br/>(lib)"]
     ecs["ecs<br/>(lib)"]
     luau["luau<br/>(lib)"]
-    net["network<br/>(lib, Asio only)"]
+    net["network<br/>(lib, Asio and libsodium only)"]
     repl["replication<br/>(lib)"]
     engine["engine<br/>(lib)"]
     glfw["platform-glfw"]
@@ -1018,12 +1018,12 @@ and, on every platform, re-arms the receive after any error except `operation_ab
 ### Security scope
 
 The challenge and the session token protect against forged source addresses and amplification, so they must
-be unpredictable: both come from `std::random_device` ([6.3](#63-connection-lifecycle)). **Encryption
-and authentication are out of scope:** the session token protects against spoofing only, not against an
-attacker who can read the traffic. The resume token has the same scope: it is a secret `u64` from
-`std::random_device`, so it cannot be guessed (attempts are also limited by the connect-request rate limit), but
-anyone who can read the traffic can steal it and take over the session. Cheating is limited by design (the server only accepts inputs), not by
-cryptography.
+be unpredictable: both come from `std::random_device` ([6.3](#63-connection-lifecycle)). **Since protocol version 2,
+everything after the handshake is encrypted and authenticated** ([protocol 4.8](protocol.md#48-cryptography)): an
+X25519 key exchange gives each connection its keys, ChaCha20-Poly1305 seals every datagram with a counter that cannot
+be replayed, and the server signs its exchange key with an Ed25519 identity a client may pin (`network.serverKey`), so
+an attacker who reads the traffic can neither read nor change it, nor steal the session and resume tokens, which now
+travel sealed. Cheating is still limited by design (the server only accepts inputs), not by cryptography.
 
 ### Admin channel
 
@@ -1170,7 +1170,7 @@ later:
 | `20-replication.md`, server systems | `net.snapshot` and `net.send` as two systems | One `net.snapshot` system builds and hands the snapshots to `NetServer`; `net.send` returns with the I/O thread ([NET-24](implementation.md#net-24--io-thread-and-room-queues)) |
 | `20-replication.md`, update layout | Field mask per update | Whole components in v1, field masks later |
 | `20-replication.md`, inputs | Inputs numbered by tick | Inputs numbered by a client input sequence; the message also carries the snapshot confirmation |
-| `20-replication.md`, open questions | Transport details, packet size, encryption | Settled: [6](#6-transport-aylo-network), 1200 bytes, no encryption |
+| `20-replication.md`, open questions | Transport details, packet size, encryption | Settled: [6](#6-transport-aylo-network), 1200 bytes, encrypted since protocol version 2 ([protocol 4.8](protocol.md#48-cryptography)) |
 | `20-replication.md` / [`14-app-and-plugins.md`](../ecs/features/14-app-and-plugins.md), rooms | Rooms as separate Apps or one App with several worlds? | One `App` per room, each on its own thread |
 | [`19-luau-bridge.md`](../ecs/features/19-luau-bridge.md), components from types | Luau components read from `export type` with `Luau.Ast` | AST parsing is dropped for now: packets use schema tables, and Luau components are expected to follow |
 | [`11-events.md`](../ecs/features/11-events.md), open question | Should some events be replicated? | Custom packets are network events, read with `ctx.events` ([8.3](#83-receiving)) |

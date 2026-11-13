@@ -197,6 +197,52 @@ send it`); nothing is sent.
 Set `network.port` and `network.host` in `project.luau` from `engine.args` (see [Project settings](project-settings.md)).
 Bytes from the network never crash the server: a malformed message is dropped.
 
+## Security
+
+Everything the server and a client send each other after they connect is **encrypted and authenticated**: no one
+between them can read your packets, the snapshots or the inputs, or change them on the way. You have nothing to do
+for that.
+
+What you can add is **the server's identity**, so that a client talks to your server only and not to a machine that
+poses as it. The server proves an identity, a key pair it keeps in a file; a client that knows its public key refuses
+any other server:
+
+```luau
+-- project.luau
+if engine.isServer then
+	-- Outside the game folder: this file is the server's secret. Never ship it with the game.
+	engine.settings.network.identityFile = engine.args.identity or "server-identity.key"
+else
+	-- Replace with the 64 hexadecimal digits the server printed (step 1 below).
+	engine.settings.network.serverKey = "<the server's public key>"
+end
+```
+
+1. Start the server once with `network.identityFile`. If the file does not exist, the server makes a new identity,
+   writes it there (readable by its owner only) and prints `[Network] A new server identity was written to '…': keep
+   it secret.`. Every start then prints `[Network] Server identity: <64 hexadecimal digits> (clients pin it with
+   network.serverKey)`.
+2. Copy those digits into `network.serverKey` on the client side.
+
+| | Without `serverKey` | With `serverKey` |
+|---|---|---|
+| Traffic encrypted | yes | yes |
+| Connects to | whoever answers the handshake | only the server that holds the identity |
+
+A server without `network.identityFile` makes a new identity each time it starts, so no client can pin it: keep the
+file for a server players connect to over the Internet.
+
+!!! warning "The identity file is a secret"
+    Whoever has it can pose as your server. Keep it out of the game folder (an exported game ships that folder to
+    players), out of version control, and on the server's machine only. A relative path is read from the directory
+    the server is started in.
+
+Errors, at start: `Invalid setting 'network.identityFile': '…' does not hold a seed (64 hexadecimal digits)` when the
+file exists but holds something else, and `Invalid setting 'network.serverKey': '…' is not a key (64 hexadecimal
+digits)`. A client whose `serverKey` does not match the server never connects: it gives up after the handshake timeout
+(5 s), as if the server did not answer. Clients and servers of engines from before encryption (protocol version 1) do
+not talk to these ones.
+
 ## Standalone and the editor
 
 The editor (`./aylo-editor my_game/game`) and a single-player run have no server and no network: one world runs both

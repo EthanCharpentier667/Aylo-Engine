@@ -16,6 +16,7 @@
 
 #include "FakeClock.hpp"
 #include "SimulatedLink.hpp"
+#include "TestKeys.hpp"
 #include "aylo/network/NetworkSettings.hpp"
 #include "aylo/network/Types.hpp"
 #include "aylo/network/connection/Connection.hpp"
@@ -52,12 +53,11 @@ network::Bytes payloadOf(const std::size_t size, const int fill = 1) {
 }
 
 std::optional<Header> headerOf(const network::Bytes& datagram) {
-    const auto decoded = protocol::PacketCodec::decode(datagram);
-    if (!decoded || !std::holds_alternative<protocol::Data>(*decoded)) {
+    const auto data = tests::openData(datagram);
+    if (!data) {
         return std::nullopt;
     }
-    const auto& data = std::get<protocol::Data>(*decoded);
-    return Header{data.sequence, data.ack, data.ackBits, data.messages.size()};
+    return Header{data->sequence, data->ack, data->ackBits, data->messages.size()};
 }
 
 /// @brief Hands a datagram built by a connection to another one, as the core would.
@@ -87,17 +87,21 @@ Header currentHeader(Connection& connection, tests::FakeClock& clock) {
     return header.value_or(Header{});
 }
 
-/// @brief Builds a `Data` with raw message bytes.
-bool receiveRaw(Connection& to, const std::vector<std::byte>& messages, const network::TimePoint now) {
-    const protocol::Data data{.sessionToken = kToken, .sequence = 0, .ack = 0, .ackBits = 0, .messages = messages};
-    return to.receive(data, now);
+/// @brief Builds a `Data` with raw message bytes, sealed by the server's end for a connection holding the client's.
+/// @param counter Its counter: a new one each time, as a sender's would be.
+bool receiveRaw(Connection& to, const std::vector<std::byte>& messages, const network::TimePoint now,
+                const std::uint64_t counter = 1) {
+    const network::Bytes datagram = tests::sealData(tests::serverKeys().transmit, kToken, counter, 0, 0, 0, messages);
+    const auto decoded = protocol::PacketCodec::decode(datagram);
+    return decoded && std::holds_alternative<protocol::Data>(*decoded) &&
+           to.receive(std::get<protocol::Data>(*decoded), now);
 }
 }  // namespace
 
 TEST(Connection, SendRefusesEmptyAndOversizedPayloads) {
     const network::NetworkSettings settings;
     tests::FakeClock clock;
-    Connection connection{kToken, settings, clock.now()};
+    Connection connection{kToken, settings, clock.now(), tests::clientKeys()};
 
     EXPECT_FALSE(connection.send(network::Channel::kUnreliable, {}));
     EXPECT_FALSE(connection.send(network::Channel::kUnreliable, payloadOf(protocol::kMaxMessageSize + 1)));
@@ -112,8 +116,8 @@ TEST(Connection, SendRefusesEmptyAndOversizedPayloads) {
 TEST(Connection, SmallMessagesShareOneDatagramAndArriveInOrder) {
     const network::NetworkSettings settings;
     tests::FakeClock clock;
-    Connection sender{kToken, settings, clock.now()};
-    Connection receiver{kToken, settings, clock.now()};
+    Connection sender{kToken, settings, clock.now(), tests::clientKeys()};
+    Connection receiver{kToken, settings, clock.now(), tests::serverKeys()};
 
     ASSERT_TRUE(sender.send(network::Channel::kUnreliable, payloadOf(10, 1)));
     ASSERT_TRUE(sender.send(network::Channel::kUnreliable, payloadOf(20, 2)));
@@ -135,8 +139,8 @@ TEST(Connection, SmallMessagesShareOneDatagramAndArriveInOrder) {
 TEST(Connection, MessagesAreNeverSplitBetweenDatagrams) {
     const network::NetworkSettings settings;
     tests::FakeClock clock;
-    Connection sender{kToken, settings, clock.now()};
-    Connection receiver{kToken, settings, clock.now()};
+    Connection sender{kToken, settings, clock.now(), tests::clientKeys()};
+    Connection receiver{kToken, settings, clock.now(), tests::serverKeys()};
 
     for (int i = 1; i <= 3; ++i) {
         ASSERT_TRUE(sender.send(network::Channel::kUnreliable, payloadOf(500, i)));
@@ -158,7 +162,7 @@ TEST(Connection, MessagesAreNeverSplitBetweenDatagrams) {
 TEST(Connection, OverflowingUnreliableMessagesAreDroppedAndCounted) {
     const network::NetworkSettings settings;
     tests::FakeClock clock;
-    Connection connection{kToken, settings, clock.now()};
+    Connection connection{kToken, settings, clock.now(), tests::clientKeys()};
 
     // Two payloads of 1000 bytes never share a datagram, so 20 messages need 20 datagrams.
     for (int i = 0; i < 20; ++i) {
@@ -175,7 +179,7 @@ TEST(Connection, OverflowingUnreliableMessagesAreDroppedAndCounted) {
 TEST(Connection, KeepaliveIsSentAfterTheIdleDelayAndNotBefore) {
     const network::NetworkSettings settings;
     tests::FakeClock clock;
-    Connection connection{kToken, settings, clock.now()};
+    Connection connection{kToken, settings, clock.now(), tests::clientKeys()};
 
     clock.advance(std::chrono::milliseconds{99});
     EXPECT_TRUE(connection.buildPackets(clock.now()).empty());
@@ -195,7 +199,7 @@ TEST(Connection, KeepaliveIsSentAfterTheIdleDelayAndNotBefore) {
 TEST(Connection, SendingDataResetsTheKeepaliveDelay) {
     const network::NetworkSettings settings;
     tests::FakeClock clock;
-    Connection connection{kToken, settings, clock.now()};
+    Connection connection{kToken, settings, clock.now(), tests::clientKeys()};
 
     clock.advance(std::chrono::milliseconds{80});
     static_cast<void>(sendOne(connection, clock.now()));
@@ -207,7 +211,7 @@ TEST(Connection, SendingDataResetsTheKeepaliveDelay) {
 TEST(Connection, NothingIsAckedBeforeTheFirstDatagram) {
     const network::NetworkSettings settings;
     tests::FakeClock clock;
-    Connection connection{kToken, settings, clock.now()};
+    Connection connection{kToken, settings, clock.now(), tests::clientKeys()};
 
     const Header header = currentHeader(connection, clock);
 
@@ -218,8 +222,8 @@ TEST(Connection, NothingIsAckedBeforeTheFirstDatagram) {
 TEST(Connection, InOrderDatagramsSetOneBitEach) {
     const network::NetworkSettings settings;
     tests::FakeClock clock;
-    Connection sender{kToken, settings, clock.now()};
-    Connection receiver{kToken, settings, clock.now()};
+    Connection sender{kToken, settings, clock.now(), tests::clientKeys()};
+    Connection receiver{kToken, settings, clock.now(), tests::serverKeys()};
 
     for (int i = 0; i < 3; ++i) {
         ASSERT_TRUE(deliver(receiver, sendOne(sender, clock.now()), clock.now()));
@@ -233,8 +237,8 @@ TEST(Connection, InOrderDatagramsSetOneBitEach) {
 TEST(Connection, OutOfOrderDatagramsSetTheirBitWhenTheyArrive) {
     const network::NetworkSettings settings;
     tests::FakeClock clock;
-    Connection sender{kToken, settings, clock.now()};
-    Connection receiver{kToken, settings, clock.now()};
+    Connection sender{kToken, settings, clock.now(), tests::clientKeys()};
+    Connection receiver{kToken, settings, clock.now(), tests::serverKeys()};
     const network::Bytes first = sendOne(sender, clock.now());
     const network::Bytes second = sendOne(sender, clock.now());
     const network::Bytes third = sendOne(sender, clock.now());
@@ -249,30 +253,31 @@ TEST(Connection, OutOfOrderDatagramsSetTheirBitWhenTheyArrive) {
     EXPECT_EQ(header.ackBits, 0b11U);
 }
 
-TEST(Connection, DuplicatedDatagramsChangeNoBitButAreDeliveredAgain) {
+TEST(Connection, ARepeatedDatagramIsDroppedAsAReplay) {
     const network::NetworkSettings settings;
     tests::FakeClock clock;
-    Connection sender{kToken, settings, clock.now()};
-    Connection receiver{kToken, settings, clock.now()};
+    Connection sender{kToken, settings, clock.now(), tests::clientKeys()};
+    Connection receiver{kToken, settings, clock.now(), tests::serverKeys()};
     const network::Bytes first = sendOne(sender, clock.now());
     const network::Bytes second = sendOne(sender, clock.now());
 
     ASSERT_TRUE(deliver(receiver, first, clock.now()));
     ASSERT_TRUE(deliver(receiver, second, clock.now()));
-    ASSERT_TRUE(deliver(receiver, second, clock.now()));
-    ASSERT_TRUE(deliver(receiver, first, clock.now()));
+    // A network that duplicates, or an attacker who records and sends again: the counter was seen, so it is dropped.
+    EXPECT_FALSE(deliver(receiver, second, clock.now()));
+    EXPECT_FALSE(deliver(receiver, first, clock.now()));
     const Header header = currentHeader(receiver, clock);
 
     EXPECT_EQ(header.ack, 1);
     EXPECT_EQ(header.ackBits, 0b1U);
-    EXPECT_EQ(receiver.takeMessages().size(), 4U);
+    EXPECT_EQ(receiver.takeMessages().size(), 2U);
 }
 
 TEST(Connection, LostDatagramsLeaveTheirBitClear) {
     const network::NetworkSettings settings;
     tests::FakeClock clock;
-    Connection sender{kToken, settings, clock.now()};
-    Connection receiver{kToken, settings, clock.now()};
+    Connection sender{kToken, settings, clock.now(), tests::clientKeys()};
+    Connection receiver{kToken, settings, clock.now(), tests::serverKeys()};
     std::vector<network::Bytes> sent;
     for (int i = 0; i < 6; ++i) {
         sent.push_back(sendOne(sender, clock.now()));
@@ -291,8 +296,8 @@ TEST(Connection, LostDatagramsLeaveTheirBitClear) {
 TEST(Connection, AJumpOfMoreThan32ClearsTheBits) {
     const network::NetworkSettings settings;
     tests::FakeClock clock;
-    Connection sender{kToken, settings, clock.now()};
-    Connection receiver{kToken, settings, clock.now()};
+    Connection sender{kToken, settings, clock.now(), tests::clientKeys()};
+    Connection receiver{kToken, settings, clock.now(), tests::serverKeys()};
     std::vector<network::Bytes> sent;
     for (int i = 0; i < 80; ++i) {
         sent.push_back(sendOne(sender, clock.now()));
@@ -319,8 +324,8 @@ TEST(Connection, AJumpOfMoreThan32ClearsTheBits) {
 TEST(Connection, AnOldDatagramBeyond32DoesNotChangeTheBitsButIsDelivered) {
     const network::NetworkSettings settings;
     tests::FakeClock clock;
-    Connection sender{kToken, settings, clock.now()};
-    Connection receiver{kToken, settings, clock.now()};
+    Connection sender{kToken, settings, clock.now(), tests::clientKeys()};
+    Connection receiver{kToken, settings, clock.now(), tests::serverKeys()};
     std::vector<network::Bytes> sent;
     for (int i = 0; i < 40; ++i) {
         sent.push_back(sendOne(sender, clock.now()));
@@ -338,8 +343,8 @@ TEST(Connection, AnOldDatagramBeyond32DoesNotChangeTheBitsButIsDelivered) {
 TEST(Connection, AcksWorkAcrossTheSequenceWrap) {
     const network::NetworkSettings settings;
     tests::FakeClock clock;
-    Connection first{kToken, settings, clock.now()};
-    Connection second{kToken, settings, clock.now()};
+    Connection first{kToken, settings, clock.now(), tests::clientKeys()};
+    Connection second{kToken, settings, clock.now(), tests::serverKeys()};
 
     constexpr std::uint32_t kRounds = 70000;
     std::uint32_t acked = 0;
@@ -367,8 +372,8 @@ TEST(Connection, RttStartsAtTheInitialValueAndConvergesToTwiceTheDelay) {
     settings.initialRtt = std::chrono::milliseconds{500};
     tests::FakeClock clock;
     tests::SimulatedLink link{tests::LinkConditions{.delay = std::chrono::milliseconds{25}}, 1};
-    Connection first{kToken, settings, clock.now()};
-    Connection second{kToken, settings, clock.now()};
+    Connection first{kToken, settings, clock.now(), tests::clientKeys()};
+    Connection second{kToken, settings, clock.now(), tests::serverKeys()};
     EXPECT_FLOAT_EQ(first.rtt().count(), 500.0F);
 
     for (int step = 0; step < 400; ++step) {
@@ -396,8 +401,8 @@ TEST(Connection, RttStartsAtTheInitialValueAndConvergesToTwiceTheDelay) {
 TEST(Connection, OnlyTheFirstAckOfADatagramTakesAnRttSample) {
     const network::NetworkSettings settings;
     tests::FakeClock clock;
-    Connection first{kToken, settings, clock.now()};
-    Connection second{kToken, settings, clock.now()};
+    Connection first{kToken, settings, clock.now(), tests::clientKeys()};
+    Connection second{kToken, settings, clock.now(), tests::serverKeys()};
     ASSERT_TRUE(deliver(second, sendOne(first, clock.now()), clock.now()));
     clock.advance(std::chrono::milliseconds{20});
     const network::Bytes reply = sendOne(second, clock.now());
@@ -406,7 +411,8 @@ TEST(Connection, OnlyTheFirstAckOfADatagramTakesAnRttSample) {
     // One sample of 20 ms from 100 ms: 100 + (20 - 100) * 0.1.
     EXPECT_NEAR(first.rtt().count(), 92.0F, 0.01F);
     clock.advance(std::chrono::milliseconds{500});
-    ASSERT_TRUE(deliver(first, reply, clock.now()));
+    // A later datagram acknowledges the same one again.
+    ASSERT_TRUE(deliver(first, sendOne(second, clock.now()), clock.now()));
 
     EXPECT_NEAR(first.rtt().count(), 92.0F, 0.01F);
 }
@@ -414,8 +420,8 @@ TEST(Connection, OnlyTheFirstAckOfADatagramTakesAnRttSample) {
 TEST(Connection, ReceivingUpdatesTheLastReceiveTime) {
     const network::NetworkSettings settings;
     tests::FakeClock clock;
-    Connection sender{kToken, settings, clock.now()};
-    Connection receiver{kToken, settings, clock.now()};
+    Connection sender{kToken, settings, clock.now(), tests::clientKeys()};
+    Connection receiver{kToken, settings, clock.now(), tests::serverKeys()};
     const network::TimePoint created = clock.now();
     EXPECT_EQ(receiver.lastReceiveTime(), created);
 
@@ -428,8 +434,8 @@ TEST(Connection, ReceivingUpdatesTheLastReceiveTime) {
 TEST(Connection, AKeepaliveCarriesAcksAndNoMessage) {
     const network::NetworkSettings settings;
     tests::FakeClock clock;
-    Connection sender{kToken, settings, clock.now()};
-    Connection receiver{kToken, settings, clock.now()};
+    Connection sender{kToken, settings, clock.now(), tests::clientKeys()};
+    Connection receiver{kToken, settings, clock.now(), tests::serverKeys()};
     ASSERT_TRUE(deliver(receiver, sendOne(sender, clock.now()), clock.now()));
     ASSERT_EQ(receiver.takeMessages().size(), 1U);
 
@@ -445,7 +451,7 @@ TEST(Connection, AKeepaliveCarriesAcksAndNoMessage) {
 TEST(Connection, AMalformedMessageRejectsTheWholeDatagramAndChangesNothing) {
     const network::NetworkSettings settings;
     tests::FakeClock clock;
-    Connection connection{kToken, settings, clock.now()};
+    Connection connection{kToken, settings, clock.now(), tests::clientKeys()};
     const std::vector<std::byte> valid = toBytes({0, 2, 0, 0xAA, 0xBB});
     const std::vector<std::vector<int>> malformed = {
         {2, 1, 0, 0xCC},     // Unknown channel.
@@ -473,7 +479,7 @@ TEST(Connection, AMalformedMessageRejectsTheWholeDatagramAndChangesNothing) {
 TEST(Connection, AValidRawDatagramIsAccepted) {
     const network::NetworkSettings settings;
     tests::FakeClock clock;
-    Connection connection{kToken, settings, clock.now()};
+    Connection connection{kToken, settings, clock.now(), tests::clientKeys()};
 
     ASSERT_TRUE(receiveRaw(connection, toBytes({1, 0, 0, 2, 0, 0xAA, 0xBB, 0, 1, 0, 0xCC}), clock.now()));
 

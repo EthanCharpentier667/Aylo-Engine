@@ -1,10 +1,10 @@
-# AYLO Network Protocol, version 1
+# AYLO Network Protocol, version 2
 
 | | |
 |---|---|
-| **Status** | Implemented (`kProtocolVersion = 1`) |
+| **Status** | Implemented (`kProtocolVersion = 2`): version 1 had no encryption, and the two do not talk |
 | **Transport** | UDP, one port (default `4242`) |
-| **Source of truth** | `src/aylo/network/protocol/`, `src/aylo/network/connection/Connection.cpp`, `src/aylo/replication/` |
+| **Source of truth** | `src/aylo/network/protocol/`, `src/aylo/network/crypto/`, `src/aylo/network/connection/Connection.cpp`, `src/aylo/replication/` |
 | **Background** | [overview.md](overview.md) (the short story), [design.md](design.md) (the reasons) |
 
 This document specifies the bytes a client and a server exchange, precisely enough to write a new client for an AYLO
@@ -26,12 +26,16 @@ The protocol has two layers:
 
 The server is authoritative: a client never sends world state, only inputs and the custom packets the game allows.
 
+Everything after the handshake is encrypted and authenticated (section 4.8): a machine on the path can neither read
+the traffic nor change it, and a client that pins the server's key (`network.serverKey`) cannot be fooled by one that
+poses as the server.
+
 ```
-Client                                          Server
-  │ ConnectRequest(version, resume?)  ──────────► │
-  │ ◄──────────────────────────  Challenge(nonce) │
-  │ ChallengeResponse(nonce)  ──────────────────► │
-  │ ◄───────  Accepted(session, client, resume)   │
+Client                                                        Server
+  │ ConnectRequest(version)  ─────────────────────────────────► │
+  │ ◄──────── Challenge(nonce, identity, exchange key, signature) │
+  │ ChallengeResponse(nonce, exchange key, sealed resume)  ────► │
+  │ ◄────────────────  Accepted(sealed session, client, resume)   │
   │ ◄═══════  Data: manifest (reliable)           │
   │ Data: Ready (reliable)  ════════════════════► │
   │ ◄───────  Data: snapshots (unreliable, ~60/s) │
@@ -69,56 +73,74 @@ The first byte of every datagram is its **kind**:
 
 ## 4. Handshake and sessions
 
-### 4.1 ConnectRequest (C → S), 64 bytes
+### 4.1 ConnectRequest (C → S), 160 bytes
 
 | Offset | Size | Field | Value |
 |---|---|---|---|
 | 0 | 1 | kind | `0x01` |
 | 1 | 4 | protocolId | `0x41594C4F` ("AYLO", written little-endian: `4F 4C 59 41`) |
-| 5 | 2 | version | `1` |
-| 7 | 4 | resumeClient | `0` for a new session, or the client id to resume (4.7) |
-| 11 | 8 | resumeToken | `0`, or the resume token of that client |
-| 19 | 45 | padding | zeros, up to 64 bytes in all |
+| 5 | 2 | version | `2` |
+| 7 | 153 | padding | zeros, up to 160 bytes in all |
 
 The padding makes the request at least as large as any answer, so the server cannot be used to amplify traffic towards
-a spoofed address. A server MUST drop a request shorter or longer than 64 bytes, or with another `protocolId`.
+a spoofed address. A server MUST drop a request shorter or longer than 160 bytes, or with another `protocolId`. The
+request carries no key: the server does no cryptography for an address that has not proven it receives (4.3).
 
 Builds from before the engine was renamed wrote `0x52545950` ("RTYP") here. The two do not talk to each other: the
 request of such a client is dropped without an answer, so it times out instead of getting `Rejected(kVersionMismatch)`.
+A version 1 request is 64 bytes, so a version 2 server drops it the same way.
 
 A server answers with `Rejected(kVersionMismatch)` when `version` is not its own, `Rejected(kServerFull)` when it has no
 free slot, and otherwise with a `Challenge`. A client SHOULD resend its request every 100 ms (`handshakeRetry`) until it
 gets an answer, and give up after 5 s (`handshakeTimeout`).
 
-### 4.2 Challenge (S → C), 9 bytes
+### 4.2 Challenge (S → C), 137 bytes
 
 | Offset | Size | Field |
 |---|---|---|
 | 0 | 1 | kind `0x02` |
 | 1 | 8 | challenge: a random `u64` |
+| 9 | 32 | identity: the server's Ed25519 public key |
+| 41 | 32 | exchange: the server's X25519 public key for this run |
+| 73 | 64 | signature: `identity`'s Ed25519 signature of the 20 bytes `AYLO key exchange v2`, then `exchange` |
 
 Only the real owner of the source address receives it. The server keeps a pending challenge for 5 s
 (`challengeExpiry`) and at most 256 of them (`maxPendingChallenges`). A repeated `ConnectRequest` from the same address
 gets the same challenge again.
 
-### 4.3 ChallengeResponse (C → S), 64 bytes
+The **identity** is long-lived: made from a seed the server keeps (`network.identityFile`), or new on each run without
+one. The **exchange** key is made when the server starts and signed once, so a challenge costs the server no
+cryptography. A client MUST drop a challenge whose signature does not verify, and, when it pins a server key, one whose
+`identity` is not that key.
+
+### 4.3 ChallengeResponse (C → S), 160 bytes
 
 | Offset | Size | Field |
 |---|---|---|
 | 0 | 1 | kind `0x03` |
 | 1 | 8 | challenge: the value received, unchanged |
-| 9 | 55 | padding: zeros |
+| 9 | 32 | exchange: the client's X25519 public key, new for each connection |
+| 41 | 28 | resume: the session to resume, sealed (below) |
+| 69 | 91 | padding: zeros |
 
-### 4.4 Accepted (S → C), 17 bytes
+Both sides now hold the **session keys** (4.8). `resume` is `u32 client` then `u64 resumeToken` (`0` and `0` for a new
+session), sealed by the client with counter `0` and the 8 bytes of `challenge` (little-endian) as additional data. The
+server drops a response whose `resume` does not open: the sender does not hold the key it sent. The challenge then stays
+pending, so a forged response cannot cancel the real client's handshake.
+
+### 4.4 Accepted (S → C), 33 bytes
 
 | Offset | Size | Field |
 |---|---|---|
 | 0 | 1 | kind `0x04` |
-| 1 | 4 | sessionToken: a random non-zero `u32`, carried by every later `Data` and `Disconnect` |
-| 5 | 4 | client: the client id, from 1 upwards, never reused while the server runs |
-| 9 | 8 | resumeToken: a random `u64`, secret, to resume this session after a loss (4.7) |
+| 1 | 32 | sealed, with counter `0` and the kind byte as additional data: `u32 sessionToken`, `u32 client`, `u64 resumeToken` |
+
+- `sessionToken`: a random non-zero `u32`, carried in clear by every later `Data` and `Disconnect`;
+- `client`: the client id, from 1 upwards, never reused while the server runs;
+- `resumeToken`: a random `u64`, secret, to resume this session after a loss (4.7).
 
 From now on the client is **connected**. The server immediately queues the manifest (section 8) on the reliable channel.
+A repeated `ChallengeResponse` gets the same `Accepted` again, byte for byte.
 
 ### 4.5 Rejected (S → C), 2 bytes
 
@@ -133,13 +155,14 @@ From now on the client is **connected**. The server immediately queues the manif
 | `kServerFull` | 2 | No free slot (`maxClients`, 64 by default) |
 | `kSessionExpired` | 3 | The session to resume no longer exists, or the resume token is wrong |
 
-### 4.6 Disconnect (both ways), 6 bytes
+### 4.6 Disconnect (both ways), 30 bytes
 
 | Offset | Size | Field |
 |---|---|---|
 | 0 | 1 | kind `0x07` |
 | 1 | 4 | sessionToken |
-| 5 | 1 | reason |
+| 5 | 8 | counter: the next counter of the sender, as for `Data` |
+| 13 | 17 | sealed, with bytes 0 to 12 as additional data: `u8 reason` |
 
 | Reason | Value | Meaning |
 |---|---|---|
@@ -151,18 +174,35 @@ From now on the client is **connected**. The server immediately queues the manif
 | `kOverflow` | 6 | Too many reliable messages waiting to be sent |
 | `kServerShutdown` | 7 | The server stops |
 
-Nothing acknowledges a `Disconnect`, so a sender SHOULD send it 3 times. A `Disconnect` whose token is not the session's
-MUST be ignored.
+Nothing acknowledges a `Disconnect`, so a sender SHOULD send it 3 times, each with its own counter. A `Disconnect` whose
+token is not the session's, which does not open, or whose counter was received already MUST be ignored: no one but the
+peer can close a session.
 
 ### 4.7 Timeouts and resuming
 
 - Each side sends at least one datagram every 100 ms (`keepalive`): an empty `Data` (no messages) when it has nothing
   to say.
 - A side that receives nothing valid for 2 s (`timeout`) considers the connection lost.
-- A client that lost its connection MAY resume its session: it sends a `ConnectRequest` with `resumeClient` and
-  `resumeToken` set, completes the challenge as usual, and gets a new `Accepted` with **new** session and resume
-  tokens; the old ones are dead. The server sends the manifest again, then the whole world as spawns. If the session no
+- A client that lost its connection MAY resume its session: it completes a new handshake with `resume` set to its
+  client id and resume token (4.3), and gets a new `Accepted` with **new** session and resume tokens; the old ones are
+  dead. The token travels sealed. (Not implemented by the engine yet: its server ignores `resume`.) The server sends the manifest again, then the whole world as spawns. If the session no
   longer exists the answer is `Rejected(kSessionExpired)`, and the client MAY start over with a new session.
+
+### 4.8 Cryptography
+
+The handshake gives both sides two **session keys** with libsodium's key exchange (`crypto_kx`, X25519 and BLAKE2b):
+the client calls `crypto_kx_client_session_keys` with its exchange key pair and the server's `exchange`, the server
+`crypto_kx_server_session_keys` with its own and the client's. Each side seals with its transmit key and opens with
+its receive key, which is the other side's transmit key.
+
+A **seal** is ChaCha20-Poly1305 (IETF, `crypto_aead_chacha20poly1305_ietf`): the ciphertext followed by a 16-byte tag.
+Its 12-byte nonce is four zero bytes then the **counter**, a `u64`, little-endian. Each direction counts on its own:
+`0` for its handshake seal (`resume` or `Accepted`), then `1`, `2`... for each `Data` and `Disconnect`, never twice. A
+receiver keeps the most recent counter it opened and which of the 63 before it it opened too, and MUST drop a datagram
+whose counter is one of those or older: a datagram recorded and sent again is a **replay**.
+
+A receiver MUST drop, without answering, a datagram that does not open: anything changed on the way, or sealed with
+another key.
 
 ## 5. Data datagrams
 
@@ -171,14 +211,22 @@ Once connected, everything travels in `Data` datagrams.
 | Offset | Size | Field |
 |---|---|---|
 | 0 | 1 | kind `0x06` |
-| 1 | 4 | sessionToken |
-| 5 | 2 | sequence: this datagram's number, +1 per datagram, wrapping from 65535 to 0 |
-| 7 | 2 | ack: the most recent sequence received from the peer |
-| 9 | 4 | ackBits: bit `n` set means sequence `ack - 1 - n` was received too (n = 0 to 31) |
-| 13 | … | messages, up to the end of the datagram |
+| 1 | 4 | sessionToken, in clear |
+| 5 | 8 | counter, in clear (4.8) |
+| 13 | … | sealed, with bytes 0 to 12 as additional data, up to the end of the datagram (the last 16 bytes are the tag) |
 
-The header is 13 bytes. A receiver MUST drop a `Data` whose `sessionToken` does not match the session of its source
-address. Before anything was received, `ack` and `ackBits` are 0.
+What the seal holds:
+
+| Offset | Size | Field |
+|---|---|---|
+| 0 | 2 | sequence: this datagram's number, +1 per datagram, wrapping from 65535 to 0 |
+| 2 | 2 | ack: the most recent sequence received from the peer |
+| 4 | 4 | ackBits: bit `n` set means sequence `ack - 1 - n` was received too (n = 0 to 31) |
+| 8 | … | messages, up to the end |
+
+The headers and the tag take 37 bytes, so 1163 are left for messages. A receiver MUST drop a `Data` whose
+`sessionToken` does not match the session of its source address, before trying to open it. Before anything was
+received, `ack` is 65535 and `ackBits` 0.
 
 **Sequence order.** Sequence `a` is newer than `b` when `(a - b) mod 65536` is between 1 and 32767.
 
@@ -225,7 +273,7 @@ A sender puts reliable messages first in a datagram, then unreliable ones, and s
 | `CustomPacket` | `0x32` | both | as declared | 11 |
 
 Values below `0x20` belong to the transport. `0x21` and `0x22` are reserved (packets and capsules in the manifest, not
-sent in version 1). A server ignores a game message from a client that is not `Ready` yet.
+sent yet). A server ignores a game message from a client that is not `Ready` yet.
 
 ## 7. Joining
 
@@ -392,20 +440,32 @@ in the wrong direction or on the wrong channel, or whose values break the schema
 
 - **Spoofing.** The challenge proves the client receives at its address; the session token, carried by every later
   datagram, makes a datagram from another address useless. Tokens are random, and new on every resume.
-- **Amplification.** Handshake requests are padded to 64 bytes, larger than any handshake answer.
+- **Eavesdropping and tampering.** Everything after the handshake is sealed (4.8): the messages, the tokens of
+  `Accepted` and the resume request cannot be read, and a datagram changed, forged or replayed is dropped. Only the
+  session token and the counter are in clear.
+- **A server in the middle.** The server signs its exchange key with its identity. A client that pins the identity
+  (`network.serverKey`) talks to that server only. A client that pins nothing still gets an encrypted session, but a
+  machine on the path could answer in the server's place.
+- **Forward secrecy.** The client's exchange key is new for each connection, the server's for each run: once the
+  server stops, a recording of its traffic cannot be opened even with its identity.
+- **Amplification.** Handshake requests are padded to 160 bytes, larger than any handshake answer.
+- **Cost.** A `ConnectRequest` costs the server no cryptography. The key exchange is done only for a
+  `ChallengeResponse` that echoes a pending challenge, so only an address that receives can make the server do it.
 - **Resource exhaustion.** Pending challenges, clients, reliable windows, queued messages, strings, lists and counts
   are all bounded; every count is checked against the bytes that remain before anything is allocated.
 - **Malformed data.** Every read is bounds-checked; a malformed datagram or message is dropped and counted, it never
   crashes, throws or asserts.
 - **Authority.** A client sends only inputs and the custom packets declared `toServer`, which the server validates.
-- **Not covered.** There is no encryption: anyone on the path can read the traffic, and the tokens with it. The
-  protocol prevents impersonation from elsewhere, not eavesdropping.
+- **Not covered.** `Rejected` is not authenticated (no key exists yet): a machine on the path can make a handshake
+  fail, as it could by dropping the datagrams. Traffic analysis (sizes and timing) is possible.
 
 ## 13. Writing a client: checklist
 
-1. Send `ConnectRequest` (64 bytes) every 100 ms until `Challenge`; echo it in `ChallengeResponse` (64 bytes).
-2. On `Accepted`, keep the session token, client id and resume token.
-3. Implement `Data`: your sequence, the peer's `ack` and `ackBits`, and a keepalive every 100 ms.
+1. Send `ConnectRequest` (160 bytes) every 100 ms until `Challenge`. Verify its signature (and its identity, if you
+   pin one), make an X25519 key pair, derive the session keys, and answer with `ChallengeResponse` (160 bytes).
+2. On `Accepted`, open it and keep the session token, client id and resume token.
+3. Implement `Data`: seal and open with your counters (4.8), drop replays; your sequence, the peer's `ack` and
+   `ackBits`, and a keepalive every 100 ms.
 4. Implement the reliable receiver (in order, no duplicates) and sender (resend until acknowledged).
 5. Read the manifest; check it against your copy of the game; send `Ready` (`0x09`, reliable).
 6. Apply snapshots by tick; send an `Input` every frame with your last applied tick and your last 3 samples.

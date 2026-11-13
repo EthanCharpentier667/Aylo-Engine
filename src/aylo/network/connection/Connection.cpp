@@ -13,6 +13,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <iterator>
+#include <optional>
 #include <ratio>
 #include <span>
 #include <utility>
@@ -23,14 +24,19 @@
 #include "aylo/network/bytes/ByteReader.hpp"
 #include "aylo/network/bytes/ByteWriter.hpp"
 #include "aylo/network/connection/ReliableSender.hpp"
+#include "aylo/network/crypto/Crypto.hpp"
 #include "aylo/network/protocol/Constants.hpp"
 #include "aylo/network/protocol/Packets.hpp"
 #include "aylo/network/protocol/Sequence.hpp"
 
 namespace aylo::network::connection {
 namespace {
-/// @brief Bytes taken by the kind byte and the fields of `Data` before its messages.
-constexpr std::size_t kDataHeaderSize = 13;
+/// @brief Bytes in clear at the start of `Data` and `Disconnect`: the kind, the session token and the counter. They are
+/// authenticated as the additional data of the seal.
+constexpr std::size_t kClearHeaderSize = 1 + 4 + 8;
+
+/// @brief Bytes of the sealed body of `Data` before its messages: the sequence, the ack and the ack bits.
+constexpr std::size_t kBodyHeaderSize = 2 + 2 + 4;
 
 /// @brief Bytes taken by the channel and the length in front of an unreliable message.
 constexpr std::size_t kUnreliableHeaderSize = 3;
@@ -41,8 +47,20 @@ constexpr std::size_t kReliableHeaderSize = 5;
 /// @brief Weight of the RTT in the delay before a reliable message is sent again.
 constexpr float kResendRttFactor = 1.25F;
 
-/// @brief Room left for messages in a datagram.
-constexpr std::size_t kMessagesCapacity = protocol::kMaxPacketSize - kDataHeaderSize;
+/// @brief Room left for messages in a datagram, once the headers and the tag of the seal are counted.
+constexpr std::size_t kMessagesCapacity =
+    protocol::kMaxPacketSize - kClearHeaderSize - kBodyHeaderSize - crypto::kTagSize;
+
+/// @return The clear header of a `Data` or `Disconnect`, exactly as it is on the wire: what the seal authenticates.
+std::array<std::byte, kClearHeaderSize> clearHeader(const protocol::PacketKind kind, const std::uint32_t sessionToken,
+                                                    const std::uint64_t counter) noexcept {
+    std::array<std::byte, kClearHeaderSize> header{};
+    bytes::ByteWriter writer{header};
+    writer.writeU8(static_cast<std::uint8_t>(kind));
+    writer.writeU32(sessionToken);
+    writer.writeU64(counter);
+    return header;
+}
 
 /// @brief Number of sequences before `ack` that `ackBits` describes.
 constexpr std::uint16_t kAckBitCount = 32;
@@ -54,8 +72,10 @@ constexpr float kRttSmoothing = 0.1F;
 constexpr std::uint16_t kNoAck = 0xFFFF;
 }  // namespace
 
-Connection::Connection(const std::uint32_t sessionToken, const NetworkSettings& settings, const TimePoint now)
+Connection::Connection(const std::uint32_t sessionToken, const NetworkSettings& settings, const TimePoint now,
+                       const crypto::SessionKeys keys)
     : _sessionToken{sessionToken},
+      _keys{keys},
       _keepalive{settings.keepalive},
       _minResendInterval{settings.minResendInterval},
       _rtt{std::chrono::duration<float, std::milli>{settings.initialRtt}.count()},
@@ -78,9 +98,23 @@ bool Connection::send(const Channel channel, const std::span<const std::byte> pa
 }
 
 bool Connection::receive(const protocol::Data& data, const TimePoint now) {
+    if (!_replay.isFresh(data.counter)) {
+        return false;
+    }
+    const auto header = clearHeader(protocol::PacketKind::kData, data.sessionToken, data.counter);
+    const std::optional<Bytes> body = crypto::open(_keys.receive, data.counter, header, data.sealed);
+    if (!body) {
+        return false;
+    }
+    bytes::ByteReader reader{*body};
+    const std::uint16_t sequence = reader.readU16();
+    const std::uint16_t ack = reader.readU16();
+    const std::uint32_t ackBits = reader.readU32();
+    if (!reader.isValid()) {
+        return false;
+    }
     std::vector<ReceivedMessage> messages;
     std::vector<std::pair<std::uint16_t, Bytes>> reliable;
-    bytes::ByteReader reader{data.messages};
     while (reader.remainingSize() > 0) {
         const auto channel = static_cast<Channel>(reader.readU8());
         const std::uint16_t id = channel == Channel::kReliable ? reader.readU16() : 0;
@@ -99,8 +133,9 @@ bool Connection::receive(const protocol::Data& data, const TimePoint now) {
         }
     }
 
-    registerReceived(data.sequence);
-    processAcks(data.ack, data.ackBits, now);
+    _replay.mark(data.counter);
+    registerReceived(sequence);
+    processAcks(ack, ackBits, now);
     _lastReceiveTime = now;
     std::ranges::move(messages, std::back_inserter(_received));
     for (const auto& [id, payload] : reliable) {
@@ -222,18 +257,48 @@ Bytes Connection::makeDatagram(const std::span<const std::byte> body, std::vecto
     for (const std::uint16_t id : reliableIds) {
         _reliableSender.markSent(id, now);
     }
-    const protocol::Data data{
-        .sessionToken = _sessionToken,
-        .sequence = _nextSequence,
-        .ack = _receivedAny ? _ack : kNoAck,
-        .ackBits = _receivedAny ? _ackBits : 0U,
-        .messages = body,
-    };
+    std::array<std::byte, kBodyHeaderSize + kMessagesCapacity> plaintext{};
+    bytes::ByteWriter writer{plaintext};
+    writer.writeU16(_nextSequence);
+    writer.writeU16(_receivedAny ? _ack : kNoAck);
+    writer.writeU32(_receivedAny ? _ackBits : 0U);
+    writer.writeBytes(body);
+    const std::uint64_t counter = _nextCounter++;
+    const auto header = clearHeader(protocol::PacketKind::kData, _sessionToken, counter);
+    const Bytes sealed = crypto::seal(_keys.transmit, counter, header, writer.writtenBytes());
     SentPacket& record = _sent.insert(_nextSequence);
     record.sendTime = now;
     record.reliableIds = std::move(reliableIds);
     ++_nextSequence;
     _lastSendTime = now;
-    return protocol::PacketCodec::encode(data);
+    return protocol::PacketCodec::encode(
+        protocol::Data{.sessionToken = _sessionToken, .counter = counter, .sealed = sealed});
+}
+
+Bytes Connection::makeDisconnect(const DisconnectReason reason) {
+    const std::uint64_t counter = _nextCounter++;
+    const auto header = clearHeader(protocol::PacketKind::kDisconnect, _sessionToken, counter);
+    const std::array plaintext{static_cast<std::byte>(reason)};
+    const Bytes sealed = crypto::seal(_keys.transmit, counter, header, plaintext);
+    protocol::Disconnect disconnect{.sessionToken = _sessionToken, .counter = counter};
+    std::ranges::copy(sealed, disconnect.sealed.begin());
+    return protocol::PacketCodec::encode(disconnect);
+}
+
+std::optional<DisconnectReason> Connection::openDisconnect(const protocol::Disconnect& disconnect) {
+    if (!_replay.isFresh(disconnect.counter)) {
+        return std::nullopt;
+    }
+    const auto header = clearHeader(protocol::PacketKind::kDisconnect, disconnect.sessionToken, disconnect.counter);
+    const std::optional<Bytes> plaintext = crypto::open(_keys.receive, disconnect.counter, header, disconnect.sealed);
+    if (!plaintext || plaintext->size() != 1) {
+        return std::nullopt;
+    }
+    const auto reason = static_cast<DisconnectReason>(plaintext->front());
+    if (!isValidWireValue(reason)) {
+        return std::nullopt;
+    }
+    _replay.mark(disconnect.counter);
+    return reason;
 }
 }  // namespace aylo::network::connection

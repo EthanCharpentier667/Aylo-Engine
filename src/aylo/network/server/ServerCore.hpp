@@ -18,6 +18,7 @@
 #include "aylo/network/NetworkSettings.hpp"
 #include "aylo/network/RandomSource.hpp"
 #include "aylo/network/Types.hpp"
+#include "aylo/network/crypto/Crypto.hpp"
 #include "aylo/network/io/Address.hpp"
 #include "aylo/network/protocol/Packets.hpp"
 #include "aylo/network/server/ClientInfo.hpp"
@@ -32,9 +33,11 @@ namespace aylo::network::server {
 /// same `RandomSource`, datagrams and times, the output is identical.
 class AYLO_NETWORK_API ServerCore {
   public:
-    /// @brief Builds a server core with no session.
+    /// @brief Builds a server core with no session, and its keys: the identity of `settings.identitySeed` (a new one
+    /// without it) and a key exchange key for this run, signed by the identity.
     /// @param settings The limits and delays.
-    /// @param random Where challenges and tokens come from.
+    /// @param random Where challenges, tokens and keys come from: cryptographically secure outside tests.
+    /// @throws exceptions::CryptoException If the cryptography cannot start.
     ServerCore(const NetworkSettings& settings, RandomSource random);
 
     /// @brief Destroys the core and its sessions, without telling the clients.
@@ -104,15 +107,17 @@ class AYLO_NETWORK_API ServerCore {
 
     /// @brief Gives how many messages were dropped because their type is not allowed in the state of the session.
     [[nodiscard]] std::uint64_t unexpectedMessageCount() const noexcept;
+    /// @brief Gives the public key of the server's identity: what clients pin (`NetworkSettings::trustedServerKey`).
+    [[nodiscard]] const crypto::Key& identityKey() const noexcept;
+    /// @brief Gives the key exchange key of this run, which every `Challenge` carries.
+    [[nodiscard]] const crypto::Key& exchangeKey() const noexcept;
 
   private:
     /// @brief A challenge sent to an address and not echoed yet.
     struct PendingChallenge {
-        std::uint64_t value{0};            ///< The random value to echo.
-        TimePoint created;                 ///< When it was sent.
-        std::uint64_t order{0};            ///< Rank of creation, to find the oldest.
-        ClientId resumeClient{kNoClient};  ///< The client the request wanted to resume (M4).
-        std::uint64_t resumeToken{0};      ///< The proof of the right to resume (M4).
+        std::uint64_t value{0};  ///< The random value to echo.
+        TimePoint created;       ///< When it was sent.
+        std::uint64_t order{0};  ///< Rank of creation, to find the oldest.
     };
 
     /// @brief Answers a `kConnectRequest`.
@@ -131,7 +136,7 @@ class AYLO_NETWORK_API ServerCore {
     void processMessages(Session& session);
 
     /// @brief Creates the session of an accepted challenge and queues `Accepted` and the welcome messages.
-    void accept(const io::Address& from, std::uint64_t challenge, TimePoint now);
+    void accept(const io::Address& from, std::uint64_t challenge, const crypto::SessionKeys& keys, TimePoint now);
 
     /// @brief Finds the session of `from` whose token is `token`.
     [[nodiscard]] Session* findSession(const io::Address& from, std::uint32_t token);
@@ -150,9 +155,16 @@ class AYLO_NETWORK_API ServerCore {
 
     /// @brief Encodes `packet` and queues it for `to`.
     void reply(const io::Address& to, const protocol::Packet& packet);
+    /// @brief Builds the `Challenge` of @p value, with the server's keys.
+    [[nodiscard]] protocol::Challenge makeChallenge(std::uint64_t value) const;
+    /// @brief Queues a datagram already encoded for `to`.
+    void replyBytes(const io::Address& to, Bytes bytes);
 
     NetworkSettings _settings;                                    ///< Limits and delays.
-    RandomSource _random;                                         ///< Source of challenges and tokens.
+    RandomSource _random;                                         ///< Source of challenges, tokens and keys.
+    crypto::Identity _identity;                                   ///< Proves the server's keys.
+    crypto::KeyExchange _exchange;                                ///< This run's key exchange key.
+    crypto::Signature _exchangeSignature;                         ///< `_identity`'s signature of `_exchange`.
     std::vector<Bytes> _welcomeMessages;                          ///< Sent to every new session.
     std::unordered_map<io::Address, PendingChallenge> _pending;   ///< Challenges awaiting their echo.
     std::unordered_map<io::Address, ClientId> _clientsByAddress;  ///< Session of each address.

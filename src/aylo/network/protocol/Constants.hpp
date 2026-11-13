@@ -9,6 +9,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <string_view>
 
 namespace aylo::network::protocol {
 
@@ -16,7 +17,7 @@ namespace aylo::network::protocol {
 inline constexpr std::uint32_t kProtocolId = 0x41594C4F;
 
 /// @brief Bumped by every change of a wire layout or of a constant below.
-inline constexpr std::uint16_t kProtocolVersion = 1;
+inline constexpr std::uint16_t kProtocolVersion = 2;
 
 /// @brief Largest datagram, in bytes, that fits a typical path MTU.
 inline constexpr std::size_t kMaxPacketSize = 1200;
@@ -24,8 +25,11 @@ inline constexpr std::size_t kMaxPacketSize = 1200;
 /// @brief Largest message payload, in bytes, that fits a datagram with its headers.
 inline constexpr std::size_t kMaxMessageSize = 1000;
 
-/// @brief Padding added to handshake datagrams so a reply is never larger than the request.
-inline constexpr std::size_t kHandshakePadding = 64;
+/// @brief Size of the handshake requests, padded so that no answer is larger: the server cannot amplify a flood.
+inline constexpr std::size_t kHandshakePadding = 160;
+
+/// @brief What the server signs to prove its key exchange key is its own, before the key itself.
+inline constexpr std::string_view kExchangeSignatureContext = "AYLO key exchange v2";
 
 /// @brief Number of reliable messages that may be in flight at once.
 inline constexpr std::size_t kReliableWindow = 256;

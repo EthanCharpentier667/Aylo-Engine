@@ -15,6 +15,7 @@
 
 #include "FakeClock.hpp"
 #include "SimulatedLink.hpp"
+#include "TestKeys.hpp"
 #include "aylo/network/NetworkSettings.hpp"
 #include "aylo/network/Types.hpp"
 #include "aylo/network/connection/Connection.hpp"
@@ -49,9 +50,8 @@ std::uint32_t decode(const network::Bytes& bytes) {
 std::size_t messageBytesIn(const std::vector<network::Bytes>& datagrams) {
     std::size_t total = 0;
     for (const auto& datagram : datagrams) {
-        const auto decoded = protocol::PacketCodec::decode(datagram);
-        if (decoded && std::holds_alternative<protocol::Data>(*decoded)) {
-            total += std::get<protocol::Data>(*decoded).messages.size();
+        if (const auto data = tests::openData(datagram)) {
+            total += data->messages.size();
         }
     }
     return total;
@@ -71,8 +71,8 @@ void runTransfer(const std::uint32_t count, const std::uint32_t perTick, const t
     const network::NetworkSettings settings;
     tests::FakeClock clock;
     tests::SimulatedLink link{conditions, seed};
-    Connection sender{kToken, settings, clock.now()};
-    Connection receiver{kToken, settings, clock.now()};
+    Connection sender{kToken, settings, clock.now(), tests::clientKeys()};
+    Connection receiver{kToken, settings, clock.now(), tests::serverKeys()};
 
     std::uint32_t next = 0;
     std::uint32_t expected = 0;
@@ -108,8 +108,8 @@ void runTransfer(const std::uint32_t count, const std::uint32_t perTick, const t
 TEST(ConnectionReliable, ReliableMessagesGoBeforeUnreliableOnes) {
     const network::NetworkSettings settings;
     tests::FakeClock clock;
-    Connection sender{kToken, settings, clock.now()};
-    Connection receiver{kToken, settings, clock.now()};
+    Connection sender{kToken, settings, clock.now(), tests::clientKeys()};
+    Connection receiver{kToken, settings, clock.now(), tests::serverKeys()};
 
     ASSERT_TRUE(sender.send(network::Channel::kUnreliable, encode(1)));
     ASSERT_TRUE(sender.send(network::Channel::kReliable, encode(2)));
@@ -119,18 +119,17 @@ TEST(ConnectionReliable, ReliableMessagesGoBeforeUnreliableOnes) {
     deliver(receiver, packets.front(), clock.now());
     EXPECT_EQ(receiver.takeMessages().size(), 2U);
     // The reliable message is written first: 5 header bytes, then the unreliable one with 3.
-    const auto decoded = protocol::PacketCodec::decode(packets.front());
-    ASSERT_TRUE(decoded);
-    const auto& data = std::get<protocol::Data>(*decoded);
-    ASSERT_EQ(data.messages.size(), 5U + 4U + 3U + 4U);
-    EXPECT_EQ(data.messages[0], std::byte{1});
+    const auto data = tests::openData(packets.front());
+    ASSERT_TRUE(data);
+    ASSERT_EQ(data->messages.size(), 5U + 4U + 3U + 4U);
+    EXPECT_EQ(data->messages[0], std::byte{1});
 }
 
 TEST(ConnectionReliable, AMessageIsResentOnlyAfterTheIntervalAndNeverOnceAcked) {
     const network::NetworkSettings settings;
     tests::FakeClock clock;
-    Connection sender{kToken, settings, clock.now()};
-    Connection receiver{kToken, settings, clock.now()};
+    Connection sender{kToken, settings, clock.now(), tests::clientKeys()};
+    Connection receiver{kToken, settings, clock.now(), tests::serverKeys()};
 
     ASSERT_TRUE(sender.send(network::Channel::kReliable, encode(1)));
     ASSERT_EQ(sender.buildPackets(clock.now()).size(), 1U);  // Lost.
@@ -159,8 +158,8 @@ TEST(ConnectionReliable, AMessageIsResentOnlyAfterTheIntervalAndNeverOnceAcked) 
 TEST(ConnectionReliable, ADuplicatedDatagramDeliversTheMessageOnce) {
     const network::NetworkSettings settings;
     tests::FakeClock clock;
-    Connection sender{kToken, settings, clock.now()};
-    Connection receiver{kToken, settings, clock.now()};
+    Connection sender{kToken, settings, clock.now(), tests::clientKeys()};
+    Connection receiver{kToken, settings, clock.now(), tests::serverKeys()};
 
     ASSERT_TRUE(sender.send(network::Channel::kReliable, encode(1)));
     const auto packets = sender.buildPackets(clock.now());
@@ -174,8 +173,8 @@ TEST(ConnectionReliable, ADuplicatedDatagramDeliversTheMessageOnce) {
 TEST(ConnectionReliable, TheWindowHoldsBackMessage257UntilTheFirstIsAcked) {
     const network::NetworkSettings settings;
     tests::FakeClock clock;
-    Connection sender{kToken, settings, clock.now()};
-    Connection receiver{kToken, settings, clock.now()};
+    Connection sender{kToken, settings, clock.now(), tests::clientKeys()};
+    Connection receiver{kToken, settings, clock.now(), tests::serverKeys()};
     for (std::uint32_t i = 0; i < 257; ++i) {
         ASSERT_TRUE(sender.send(network::Channel::kReliable, encode(i)));
     }
@@ -202,8 +201,8 @@ TEST(ConnectionReliable, TheWindowHoldsBackMessage257UntilTheFirstIsAcked) {
 TEST(ConnectionReliable, ABurstOf64MessagesSpreadsOverSeveralDatagramsInOrder) {
     const network::NetworkSettings settings;
     tests::FakeClock clock;
-    Connection sender{kToken, settings, clock.now()};
-    Connection receiver{kToken, settings, clock.now()};
+    Connection sender{kToken, settings, clock.now(), tests::clientKeys()};
+    Connection receiver{kToken, settings, clock.now(), tests::serverKeys()};
     for (std::uint32_t i = 0; i < 64; ++i) {
         network::Bytes payload;
         const network::Bytes index = encode(i);
@@ -229,7 +228,7 @@ TEST(ConnectionReliable, ABurstOf64MessagesSpreadsOverSeveralDatagramsInOrder) {
 TEST(ConnectionReliable, OverflowsAtThe1025thPendingMessageAndStaysSo) {
     const network::NetworkSettings settings;
     tests::FakeClock clock;
-    Connection connection{kToken, settings, clock.now()};
+    Connection connection{kToken, settings, clock.now(), tests::clientKeys()};
 
     for (std::size_t i = 0; i < protocol::kMaxPendingReliable; ++i) {
         ASSERT_TRUE(connection.send(network::Channel::kReliable, encode(0)));
@@ -244,14 +243,16 @@ TEST(ConnectionReliable, OverflowsAtThe1025thPendingMessageAndStaysSo) {
 TEST(ConnectionReliable, AnIdFarBeyondTheWindowIsCountedAndTheRestOfTheDatagramKept) {
     const network::NetworkSettings settings;
     tests::FakeClock clock;
-    Connection connection{kToken, settings, clock.now()};
+    Connection connection{kToken, settings, clock.now(), tests::clientKeys()};
     // Reliable id 1000 (0x03E8), then an unreliable message.
     const std::vector<std::byte> messages = {std::byte{1}, std::byte{0xE8}, std::byte{0x03}, std::byte{1},
                                              std::byte{0}, std::byte{0xAA}, std::byte{0},    std::byte{1},
                                              std::byte{0}, std::byte{0xBB}};
-    const protocol::Data data{.sessionToken = kToken, .sequence = 0, .ack = 0, .ackBits = 0, .messages = messages};
+    const network::Bytes datagram = tests::sealData(tests::serverKeys().transmit, kToken, 1, 0, 0, 0, messages);
+    const auto decoded = protocol::PacketCodec::decode(datagram);
+    ASSERT_TRUE(decoded);
 
-    EXPECT_TRUE(connection.receive(data, clock.now()));
+    EXPECT_TRUE(connection.receive(std::get<protocol::Data>(*decoded), clock.now()));
 
     EXPECT_EQ(connection.protocolErrorCount(), 1U);
     const auto received = connection.takeMessages();

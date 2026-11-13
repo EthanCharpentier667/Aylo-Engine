@@ -15,9 +15,11 @@
 
 #include "aylo/network/Export.hpp"
 #include "aylo/network/NetworkSettings.hpp"
+#include "aylo/network/RandomSource.hpp"
 #include "aylo/network/Types.hpp"
 #include "aylo/network/client/ClientEvent.hpp"
 #include "aylo/network/connection/Connection.hpp"
+#include "aylo/network/crypto/Crypto.hpp"
 #include "aylo/network/protocol/Packets.hpp"
 
 namespace aylo::network::client {
@@ -38,8 +40,11 @@ enum class ClientState : std::uint8_t {
 class AYLO_NETWORK_API ClientCore {
   public:
     /// @brief Builds an idle client core.
-    /// @param settings The delays: handshake retry and timeout, connection timeout and keepalive.
-    explicit ClientCore(const NetworkSettings& settings);
+    /// @param settings The delays: handshake retry and timeout, connection timeout and keepalive; the server key to
+    /// trust, if any.
+    /// @param random Where the key of each connection comes from: cryptographically secure outside tests.
+    /// @throws exceptions::CryptoException If the cryptography cannot start.
+    explicit ClientCore(const NetworkSettings& settings, RandomSource random = makeSystemRandom());
 
     /// @brief Destroys the core and its connection, without telling the server.
     ~ClientCore() = default;
@@ -111,6 +116,14 @@ class AYLO_NETWORK_API ClientCore {
     /// @return The number since creation.
     [[nodiscard]] std::uint64_t malformedPacketCount() const noexcept;
 
+    /// @brief Gives how many challenges were dropped because their signature was wrong, or their identity was not the
+    /// trusted server key.
+    /// @return The number since creation.
+    [[nodiscard]] std::uint64_t untrustedChallengeCount() const noexcept;
+
+    /// @brief Gives the public key of the server's identity, once a challenge was accepted.
+    [[nodiscard]] const std::optional<crypto::Key>& serverIdentity() const noexcept;
+
   private:
     /// @brief Queues the handshake packet of the current state and restarts the retry delay.
     void sendHandshakePacket(TimePoint now);
@@ -128,6 +141,11 @@ class AYLO_NETWORK_API ClientCore {
     void processMessages();
 
     NetworkSettings _settings;                          ///< The delays.
+    RandomSource _random;                               ///< Source of the key of each connection.
+    crypto::KeyExchange _exchange;                      ///< This connection's key exchange key.
+    std::optional<crypto::SessionKeys> _keys;           ///< Known once a challenge was accepted.
+    std::optional<crypto::Key> _serverIdentity;         ///< The identity of that challenge.
+    std::uint64_t _untrustedChallenges{0};              ///< Challenges dropped for their keys.
     ClientState _state{ClientState::kIdle};             ///< Where the connection is.
     TimePoint _connectTime;                             ///< When `connect` was called.
     TimePoint _lastHandshakeSend;                       ///< When the handshake packet was last queued.

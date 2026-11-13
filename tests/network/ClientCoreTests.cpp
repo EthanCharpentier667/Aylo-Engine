@@ -16,12 +16,15 @@
 
 #include "FakeClock.hpp"
 #include "SimulatedLink.hpp"
+#include "TestKeys.hpp"
 #include "aylo/network/NetworkSettings.hpp"
 #include "aylo/network/Types.hpp"
 #include "aylo/network/client/ClientCore.hpp"
 #include "aylo/network/client/ClientEvent.hpp"
+#include "aylo/network/crypto/Crypto.hpp"
 #include "aylo/network/io/Address.hpp"
 #include "aylo/network/protocol/Constants.hpp"
+#include "aylo/network/protocol/Handshake.hpp"
 #include "aylo/network/protocol/Packets.hpp"
 #include "aylo/network/server/RoomMessages.hpp"
 #include "aylo/network/server/ServerCore.hpp"
@@ -31,9 +34,30 @@ namespace protocol = aylo::network::protocol;
 namespace client = aylo::network::client;
 namespace server = aylo::network::server;
 namespace tests = aylo::network::tests;
+namespace crypto = aylo::network::crypto;
 
 namespace {
 constexpr std::uint8_t kGameType = 0x20;
+constexpr std::uint64_t kClientRandom = 0x0707070707070707ULL;
+
+/// @return A key whose bytes are all @p value.
+crypto::Key keyOf(const int value) {
+    crypto::Key key{};
+    key.fill(static_cast<std::byte>(value));
+    return key;
+}
+
+/// @return A challenge as a server whose identity is made from @p identitySeed would send it: signed.
+network::Bytes signedChallenge(const std::uint64_t value, const int identitySeed = 7) {
+    const auto identity = crypto::Identity::fromSeed(keyOf(identitySeed));
+    const auto exchange = crypto::KeyExchange::fromSeed(keyOf(8));
+    return protocol::PacketCodec::encode(protocol::Challenge{
+        .challenge = value,
+        .identity = identity.publicKey(),
+        .exchange = exchange.publicKey,
+        .signature = identity.sign(protocol::exchangeSignedMessage(exchange.publicKey)),
+    });
+}
 constexpr auto kStep = std::chrono::milliseconds{10};
 
 network::io::Address makeClientAddress() {
@@ -82,7 +106,8 @@ class ClientCoreTest : public ::testing::Test {
     void rebuild() {
         std::uint64_t counter = 1000;
         _server.emplace(_settings, [counter]() mutable { return counter++; });
-        _client.emplace(_settings);
+        // A constant source: every key the client makes is the same, so the test can derive its session keys.
+        _client.emplace(_settings, [] { return kClientRandom; });
         _link.emplace(tests::LinkConditions{}, 42);
     }
 
@@ -136,6 +161,20 @@ class ClientCoreTest : public ::testing::Test {
 
     void receiveFromServer(const network::Bytes& datagram) { _client->receive(datagram, _clock.now()); }
 
+    /// @return The reason of a `Disconnect` the client sealed for the server.
+    std::optional<network::DisconnectReason> reasonOf(const protocol::Disconnect& disconnect) const {
+        const auto exchange = crypto::KeyExchange::fromSeed(crypto::makeSeed([] { return kClientRandom; }));
+        const auto keys = crypto::clientSessionKeys(exchange, _server->exchangeKey());
+        const auto plaintext = crypto::open(
+            keys->transmit, disconnect.counter,
+            tests::clearHeader(protocol::PacketKind::kDisconnect, disconnect.sessionToken, disconnect.counter),
+            disconnect.sealed);
+        if (!plaintext || plaintext->size() != 1) {
+            return std::nullopt;
+        }
+        return static_cast<network::DisconnectReason>(plaintext->front());
+    }
+
     network::NetworkSettings _settings;
     tests::FakeClock _clock;
     network::io::Address _address{makeClientAddress()};
@@ -160,8 +199,6 @@ TEST_F(ClientCoreTest, ConnectSendsRequestAtOnce) {
     const auto requests = packetsOf<protocol::ConnectRequest>(_client->takeDatagrams(_clock.now()));
     ASSERT_EQ(requests.size(), 1U);
     EXPECT_EQ(requests.front().version, protocol::kProtocolVersion);
-    EXPECT_EQ(requests.front().resumeClient, network::kNoClient);
-    EXPECT_EQ(requests.front().resumeToken, 0U);
 }
 
 TEST_F(ClientCoreTest, RequestIsRepeatedEveryHandshakeRetry) {
@@ -185,7 +222,7 @@ TEST_F(ClientCoreTest, ConnectIsIgnoredWhileHandshaking) {
 TEST_F(ClientCoreTest, ChallengeIsAnsweredAtOnceThenRepeated) {
     _client->connect(_clock.now());
     (void)_client->takeDatagrams(_clock.now());
-    receiveFromServer(protocol::PacketCodec::encode(protocol::Challenge{.challenge = 77}));
+    receiveFromServer(signedChallenge(77));
     EXPECT_EQ(_client->state(), client::ClientState::kResponding);
     auto responses = packetsOf<protocol::ChallengeResponse>(_client->takeDatagrams(_clock.now()));
     ASSERT_EQ(responses.size(), 1U);
@@ -202,8 +239,8 @@ TEST_F(ClientCoreTest, ChallengeIsAnsweredAtOnceThenRepeated) {
 TEST_F(ClientCoreTest, NewChallengeReplacesTheOldOne) {
     _client->connect(_clock.now());
     (void)_client->takeDatagrams(_clock.now());
-    receiveFromServer(protocol::PacketCodec::encode(protocol::Challenge{.challenge = 5}));
-    receiveFromServer(protocol::PacketCodec::encode(protocol::Challenge{.challenge = 9}));
+    receiveFromServer(signedChallenge(5));
+    receiveFromServer(signedChallenge(9));
     const auto responses = packetsOf<protocol::ChallengeResponse>(_client->takeDatagrams(_clock.now()));
     ASSERT_EQ(responses.size(), 2U);
     EXPECT_EQ(responses.front().challenge, 5U);
@@ -268,7 +305,7 @@ TEST_F(ClientCoreTest, ServerFullFailsTheConnection) {
 
 TEST_F(ClientCoreTest, RejectedWhileRespondingFailsTheConnection) {
     _client->connect(_clock.now());
-    receiveFromServer(protocol::PacketCodec::encode(protocol::Challenge{.challenge = 1}));
+    receiveFromServer(signedChallenge(1));
     receiveFromServer(protocol::PacketCodec::encode(protocol::Rejected{.reason = network::RejectReason::kServerFull}));
     EXPECT_EQ(_client->state(), client::ClientState::kClosed);
     EXPECT_EQ(eventsOf<client::ConnectFailed>(_client->takeEvents()).size(), 1U);
@@ -306,7 +343,7 @@ TEST_F(ClientCoreTest, SendFailsBeforeAcceptance) {
     EXPECT_FALSE(_client->send(network::Channel::kReliable, payload));
     _client->connect(_clock.now());
     EXPECT_FALSE(_client->send(network::Channel::kReliable, payload));
-    receiveFromServer(protocol::PacketCodec::encode(protocol::Challenge{.challenge = 1}));
+    receiveFromServer(signedChallenge(1));
     EXPECT_FALSE(_client->send(network::Channel::kUnreliable, payload));
 }
 
@@ -390,7 +427,7 @@ TEST_F(ClientCoreTest, DisconnectSendsThreeGracefulPacketsAndNoEvent) {
     const auto disconnects = packetsOf<protocol::Disconnect>(_client->takeDatagrams(_clock.now()));
     ASSERT_EQ(disconnects.size(), 3U);
     for (const auto& disconnect : disconnects) {
-        EXPECT_EQ(disconnect.reason, network::DisconnectReason::kGraceful);
+        EXPECT_EQ(reasonOf(disconnect), network::DisconnectReason::kGraceful);
     }
     EXPECT_TRUE(_client->takeEvents().empty());
     EXPECT_FALSE(_client->send(network::Channel::kReliable, message(kGameType)));
@@ -402,7 +439,7 @@ TEST_F(ClientCoreTest, DisconnectTellsTheReasonItWasGiven) {
     const auto disconnects = packetsOf<protocol::Disconnect>(_client->takeDatagrams(_clock.now()));
     ASSERT_EQ(disconnects.size(), 3U);
     for (const auto& disconnect : disconnects) {
-        EXPECT_EQ(disconnect.reason, network::DisconnectReason::kManifestMismatch);
+        EXPECT_EQ(reasonOf(disconnect), network::DisconnectReason::kManifestMismatch);
     }
 }
 
@@ -417,13 +454,13 @@ TEST_F(ClientCoreTest, DisconnectIsIgnoredUnlessConnected) {
 }
 
 TEST_F(ClientCoreTest, PacketsThatDoNotFitTheStateAreDropped) {
-    receiveFromServer(protocol::PacketCodec::encode(protocol::Challenge{.challenge = 1}));
-    receiveFromServer(protocol::PacketCodec::encode(protocol::Accepted{.sessionToken = 1, .client = 2}));
+    receiveFromServer(signedChallenge(1));
+    receiveFromServer(protocol::PacketCodec::encode(protocol::Accepted{}));
     receiveFromServer(protocol::PacketCodec::encode(protocol::Rejected{.reason = network::RejectReason::kServerFull}));
     EXPECT_EQ(_client->state(), client::ClientState::kIdle);
 
     _client->connect(_clock.now());
-    receiveFromServer(protocol::PacketCodec::encode(protocol::Accepted{.sessionToken = 1, .client = 2}));
+    receiveFromServer(protocol::PacketCodec::encode(protocol::Accepted{}));
     EXPECT_EQ(_client->state(), client::ClientState::kRequesting);
     EXPECT_TRUE(_client->takeEvents().empty());
 }
@@ -431,8 +468,7 @@ TEST_F(ClientCoreTest, PacketsThatDoNotFitTheStateAreDropped) {
 TEST_F(ClientCoreTest, PacketsWithAnotherTokenAreDropped) {
     connect();
     _clientEvents.clear();
-    receiveFromServer(protocol::PacketCodec::encode(
-        protocol::Disconnect{.sessionToken = 0xDEAD, .reason = network::DisconnectReason::kKicked}));
+    receiveFromServer(protocol::PacketCodec::encode(protocol::Disconnect{.sessionToken = 0xDEAD}));
     EXPECT_EQ(_client->state(), client::ClientState::kConnected);
     EXPECT_TRUE(_client->takeEvents().empty());
 }
@@ -458,4 +494,62 @@ TEST_F(ClientCoreTest, GarbageNeverCrashesNorChangesTheState) {
     }
     _client->receive({}, _clock.now());
     EXPECT_EQ(_client->state(), client::ClientState::kConnected);
+}
+
+TEST_F(ClientCoreTest, AChallengeWithABadSignatureIsDroppedAndCounted) {
+    _client->connect(_clock.now());
+    (void)_client->takeDatagrams(_clock.now());
+    network::Bytes challenge = signedChallenge(77);
+    challenge.back() ^= std::byte{0x01};  // the last byte of the signature
+
+    receiveFromServer(challenge);
+
+    EXPECT_EQ(_client->state(), client::ClientState::kRequesting);
+    EXPECT_EQ(_client->untrustedChallengeCount(), 1U);
+    EXPECT_TRUE(packetsOf<protocol::ChallengeResponse>(_client->takeDatagrams(_clock.now())).empty());
+}
+
+TEST_F(ClientCoreTest, APinnedKeyRefusesAnyOtherServer) {
+    _settings.trustedServerKey = crypto::Identity::fromSeed(keyOf(7)).publicKey();
+    rebuild();
+    _client->connect(_clock.now());
+    (void)_client->takeDatagrams(_clock.now());
+
+    receiveFromServer(signedChallenge(5, 6));  // signed, but by another identity
+    EXPECT_EQ(_client->state(), client::ClientState::kRequesting);
+    EXPECT_EQ(_client->untrustedChallengeCount(), 1U);
+
+    receiveFromServer(signedChallenge(5, 7));
+    EXPECT_EQ(_client->state(), client::ClientState::kResponding);
+    EXPECT_EQ(_client->serverIdentity(), _settings.trustedServerKey);
+}
+
+TEST_F(ClientCoreTest, APinnedKeyConnectsToTheServerThatHoldsIt) {
+    crypto::Key seed{};
+    seed.fill(std::byte{4});
+    _settings.identitySeed = seed;
+    _settings.trustedServerKey = crypto::Identity::fromSeed(seed).publicKey();
+    rebuild();
+
+    connect();
+
+    EXPECT_EQ(_client->serverIdentity(), _settings.trustedServerKey);
+    EXPECT_EQ(_client->untrustedChallengeCount(), 0U);
+}
+
+TEST_F(ClientCoreTest, AServerDatagramChangedOnTheWayIsDropped) {
+    connect();
+    _client->sendReady();
+    run(kStep * 10);  // the server learns the client is ready
+    _clientEvents.clear();
+    _server->execute(server::SendMessage{
+        .client = _client->clientId(), .channel = network::Channel::kUnreliable, .payload = message(kGameType)});
+    auto datagrams = _server->takeDatagrams(_clock.now());
+    ASSERT_FALSE(datagrams.empty());
+    datagrams.back().bytes.back() ^= std::byte{0x01};
+
+    receiveFromServer(datagrams.back().bytes);
+
+    EXPECT_EQ(_client->malformedPacketCount(), 1U);
+    EXPECT_TRUE(eventsOf<client::ServerMessage>(_client->takeEvents()).empty());
 }

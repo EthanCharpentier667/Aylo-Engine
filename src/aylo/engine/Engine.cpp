@@ -15,7 +15,9 @@
 #include <exception>
 #include <filesystem>
 #include <format>
+#include <fstream>
 #include <iostream>
+#include <iterator>
 #include <limits>
 #include <map>
 #include <memory>
@@ -48,7 +50,9 @@
 #include "aylo/engine/reload/ScriptsReloadable.hpp"
 #include "aylo/engine/scripting/SettingsLoader.hpp"
 #include "aylo/network/NetworkSettings.hpp"
+#include "aylo/network/RandomSource.hpp"
 #include "aylo/network/admin/AdminSettings.hpp"
+#include "aylo/network/crypto/Crypto.hpp"
 #include "aylo/network/io/Address.hpp"
 #include "aylo/plugins/AssetDirectory.hpp"
 #include "aylo/plugins/HotReload.hpp"
@@ -221,6 +225,62 @@ std::optional<aylo::network::admin::AdminSettings> readAdmin(const aylo::engine:
     return aylo::network::admin::AdminSettings{.port = static_cast<std::uint16_t>(value), .token = *token};
 }
 
+/// @return The seed of the server's identity kept in the file `network.identityFile` names, made and written there
+/// (readable by its owner only) when the file does not exist yet; nothing without the setting.
+/// @throws aylo::engine::exceptions::RuntimeError If the file holds no seed, or cannot be written.
+std::optional<aylo::network::crypto::Key> readIdentitySeed(const aylo::core::config::Settings& network) {
+    namespace crypto = aylo::network::crypto;
+    if (!network.has("identityFile")) {
+        return std::nullopt;
+    }
+    const std::filesystem::path file = network.getString("identityFile", "");
+    std::error_code error;
+    if (!std::filesystem::exists(file, error)) {
+        crypto::initialize();
+        const crypto::Key seed = crypto::makeSeed(aylo::network::makeSystemRandom());
+        if (file.has_parent_path()) {
+            std::filesystem::create_directories(file.parent_path(), error);
+        }
+        std::ofstream{file} << crypto::toHex(seed) << '\n';
+        std::filesystem::permissions(file, std::filesystem::perms::owner_read | std::filesystem::perms::owner_write,
+                                     error);
+        if (!std::filesystem::exists(file)) {
+            throw aylo::engine::exceptions::RuntimeError{
+                std::format("Invalid setting 'network.identityFile': cannot write '{}'", file.string())};
+        }
+        std::cerr << std::format("[Network] A new server identity was written to '{}': keep it secret.\n",
+                                 file.string());
+        return seed;
+    }
+    std::ifstream stream{file};
+    std::string text{std::istreambuf_iterator<char>{stream}, std::istreambuf_iterator<char>{}};
+    while (!text.empty() && (text.back() == '\n' || text.back() == '\r' || text.back() == ' ')) {
+        text.pop_back();
+    }
+    const std::optional<crypto::Key> seed = crypto::keyFromHex(text);
+    if (!seed) {
+        throw aylo::engine::exceptions::RuntimeError{
+            std::format("Invalid setting 'network.identityFile': '{}' does not hold a seed (64 hexadecimal digits)",
+                        file.string())};
+    }
+    return seed;
+}
+
+/// @return The server key `network.serverKey` pins, nothing without the setting.
+/// @throws aylo::engine::exceptions::RuntimeError If it is not a key.
+std::optional<aylo::network::crypto::Key> readServerKey(const aylo::core::config::Settings& network) {
+    if (!network.has("serverKey")) {
+        return std::nullopt;
+    }
+    const std::string text = network.getString("serverKey", "");
+    const std::optional<aylo::network::crypto::Key> key = aylo::network::crypto::keyFromHex(text);
+    if (!key) {
+        throw aylo::engine::exceptions::RuntimeError{
+            std::format("Invalid setting 'network.serverKey': '{}' is not a key (64 hexadecimal digits)", text)};
+    }
+    return key;
+}
+
 /// @return The server or the client plugin the mode needs, from the `network` settings; null when standalone.
 /// @throws aylo::engine::exceptions::RuntimeError If the settings are invalid, or the server's host does not resolve.
 std::unique_ptr<aylo::ecs::Plugin> makeNetworkPlugin(const aylo::ecs::RunMode mode,
@@ -228,11 +288,18 @@ std::unique_ptr<aylo::ecs::Plugin> makeNetworkPlugin(const aylo::ecs::RunMode mo
                                                      const aylo::engine::CommandLine& commandLine, const bool isDebug) {
     const aylo::core::config::Settings network = settings.section("network");
 
-    network.checkKeys({"host", "port"}, "network");
+    network.checkKeys({"host", "port", "identityFile", "serverKey"}, "network");
     if (mode == aylo::ecs::RunMode::kServer) {
         aylo::network::NetworkSettings server;
 
         server.port = readPort(network, 0);
+        server.identitySeed = readIdentitySeed(network);
+        if (server.identitySeed) {
+            aylo::network::crypto::initialize();
+            std::cerr << std::format("[Network] Server identity: {} (clients pin it with network.serverKey)\n",
+                                     aylo::network::crypto::toHex(
+                                         aylo::network::crypto::Identity::fromSeed(*server.identitySeed).publicKey()));
+        }
         auto plugin =
             std::make_unique<aylo::replication::server::ServerPlugin>(server, aylo::replication::ReplicationSettings{});
         if (auto admin = readAdmin(commandLine, isDebug)) {
@@ -249,7 +316,9 @@ std::unique_ptr<aylo::ecs::Plugin> makeNetworkPlugin(const aylo::ecs::RunMode mo
             throw aylo::engine::exceptions::RuntimeError{
                 std::format("Invalid setting 'network.host': '{}' does not resolve to an address", host)};
         }
-        return std::make_unique<aylo::replication::client::ClientPlugin>(*address, aylo::network::NetworkSettings{});
+        aylo::network::NetworkSettings client;
+        client.trustedServerKey = readServerKey(network);
+        return std::make_unique<aylo::replication::client::ClientPlugin>(*address, client);
     }
     return nullptr;
 }

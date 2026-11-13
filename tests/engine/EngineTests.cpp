@@ -16,6 +16,7 @@
 #include <format>
 #include <fstream>
 #include <future>
+#include <iterator>
 #include <limits>
 #include <span>
 #include <string>
@@ -1005,6 +1006,57 @@ TEST(Engine, RefusesANameThatCannotNameAFolder) {
         engine.settings.name = "a/b"
     )");
     EXPECT_TRUE(error.contains("Invalid setting 'name'")) << error;
+}
+
+TEST(Engine, MakesTheServerIdentityFileOnceThenKeepsIt) {
+    const GameDirectory game{"aylo-engine-identity", R"(
+        engine.settings.network.port = 0
+        engine.settings.network.identityFile = engine.args.identity
+    )"};
+    const std::filesystem::path file = game.path() / "secret" / "identity.key";
+    const auto readFile = [&file] {
+        std::ifstream stream{file};
+        return std::string{std::istreambuf_iterator<char>{stream}, std::istreambuf_iterator<char>{}};
+    };
+
+    {
+        const Engine engine{serverConfig(game, {"--identity", file.string()})};
+    }
+    const std::string first = readFile();
+    {
+        const Engine engine{serverConfig(game, {"--identity", file.string()})};
+    }
+
+    EXPECT_EQ(first.size(), 65U);  // 64 hexadecimal digits and a new line
+    EXPECT_EQ(readFile(), first);
+#ifndef _WIN32
+    EXPECT_EQ(std::filesystem::status(file).permissions() & std::filesystem::perms::all,
+              std::filesystem::perms::owner_read | std::filesystem::perms::owner_write);
+#endif
+}
+
+TEST(Engine, RefusesAnIdentityFileThatHoldsNoSeed) {
+    const GameDirectory game{"aylo-engine-bad-identity", R"(
+        engine.settings.network.port = 0
+        engine.settings.network.identityFile = engine.args.identity
+    )"};
+    game.write("identity.key", "not a seed");
+
+    try {
+        const Engine engine{serverConfig(game, {"--identity", (game.path() / "identity.key").string()})};
+        FAIL() << "the build should have failed";
+    } catch (const RuntimeError& error) {
+        EXPECT_TRUE(std::string{error.what()}.contains("network.identityFile")) << error.what();
+    }
+}
+
+TEST(Engine, RefusesAServerKeyThatIsNotAKey) {
+    const std::string error = buildError("aylo-engine-bad-server-key", R"(
+        engine.settings.network.port = 4242
+        engine.settings.network.serverKey = "abc"
+    )",
+                                         aylo::ecs::RunMode::kClient);
+    EXPECT_TRUE(error.contains("network.serverKey")) << error;
 }
 
 TEST(Engine, RunsTheScriptsInterpretedOrAsMachineCode) {
