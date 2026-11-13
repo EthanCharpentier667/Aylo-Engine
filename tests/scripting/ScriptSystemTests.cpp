@@ -113,7 +113,6 @@ TEST(ScriptSystem, BadDeclarationsRaiseAnErrorNamingTheSystem) {
     Fixture fixture;
     const std::vector<std::pair<std::string, std::string>> cases{
         {R"({ query = {}, run = function() end })", "needs a 'phase'"},
-        {R"({ phase = "Update", run = function() end })", "needs a 'query'"},
         {R"({ phase = "Update", query = {} })", "needs a 'run'"},
         {R"({ phase = "Sometimes", query = {}, run = function() end })", "unknown phase 'Sometimes'"},
         {R"({ phase = "Update", query = {}, run = 3 })", "'run' must be a function"},

@@ -345,3 +345,32 @@ TEST(ScriptSystemRun, AScriptStopsTheAppWithACodeThroughAppExit) {
 
     EXPECT_EQ(fixture.app.takeExit(), 3);
 }
+
+TEST(ScriptSystemRun, ASystemWithoutAQueryRunsOnItsScheduleWithNoEntity) {
+    Fixture fixture;
+    // No entity at all: each run leaves a trace by spawning one, which C++ counts.
+    ASSERT_EQ(fixture.run(R"(
+        engine.ecs.system("game.Once", {
+            phase = "Startup",
+            run = function(ctx)
+                for _ in ctx.query do error("a system without a query visits no entity") end
+                ctx.commands:spawn({ ["game.Dead"] = {} })
+            end,
+        })
+        engine.ecs.system("game.EveryTick", {
+            phase = "FixedUpdate",
+            run = function(ctx) ctx.commands:spawn({ ["game.Position"] = {} }) end,
+        })
+    )"),
+              "");
+    for (int frame = 0; frame < 3; ++frame) {
+        fixture.app.runFrame();  // one fixed tick per frame
+    }
+
+    const auto count = [&fixture](const std::string_view component) {
+        const auto* pool = fixture.app.getWorld().getComponents().findPool(fixture.host->findComponent(component)->id);
+        return pool != nullptr ? pool->getSize() : std::size_t{0};
+    };
+    EXPECT_EQ(count("game.Dead"), 1U) << "Startup runs once";
+    EXPECT_EQ(count("game.Position"), 3U) << "FixedUpdate runs on every tick";
+}
