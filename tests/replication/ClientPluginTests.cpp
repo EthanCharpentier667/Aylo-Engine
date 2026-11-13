@@ -25,10 +25,13 @@
 #include "aylo/ecs/call/Calls.hpp"
 #include "aylo/ecs/command/Commands.hpp"
 #include "aylo/ecs/component/Components.hpp"
+#include "aylo/ecs/exceptions/StateException.hpp"
 #include "aylo/ecs/query/Query.hpp"
 #include "aylo/ecs/resource/ResourceTraits.hpp"
+#include "aylo/ecs/resource/Resources.hpp"
 #include "aylo/ecs/schedule/Phase.hpp"
 #include "aylo/ecs/schedule/RunMode.hpp"
+#include "aylo/ecs/state/States.hpp"
 #include "aylo/ecs/system/EventReader.hpp"
 #include "aylo/ecs/system/ResourceParam.hpp"
 #include "aylo/ecs/time/FixedTimestep.hpp"
@@ -281,4 +284,55 @@ TEST(ClientPlugin, SendsOneInputPerFrame) {
     ASSERT_TRUE(ship);
     const std::uint32_t buttons = server.app().getWorld().getComponents().get<PlayerInput>(*ship)->buttons;
     EXPECT_EQ(buttons, 1U);
+}
+
+namespace {
+/// @brief Declares the round machine of the server in @p app, as a shared script does on both sides.
+aylo::ecs::States& declareRound(App& app) {
+    aylo::ecs::States& states = *app.getWorld().getResources().getMut<aylo::ecs::States>();
+    states.add("game.Round", {"Warmup", "Live", "Over"}, aylo::ecs::States::Replication::kFromServer);
+    return states;
+}
+
+/// @return The value of the round machine in @p app, empty before it has one.
+std::string roundOf(App& app) {
+    const auto value = app.getWorld().getResources().require<aylo::ecs::States>().get("game.Round");
+    return value ? std::string{*value} : std::string{};
+}
+}  // namespace
+
+TEST(ClientPlugin, FollowsTheStatesTheServerOwns) {
+    Server server;
+    aylo::ecs::States& serverStates = declareRound(server.app());
+    Client client{server.address()};
+    declareRound(client.app());
+    client.app().runFrame();
+    EXPECT_EQ(roundOf(client.app()), "");  // no value of its own: it waits for the server's
+
+    ASSERT_TRUE(runUntil(server, client, [&] { return roundOf(client.app()) == "Warmup"; }));
+    serverStates.request("game.Round", "Live");
+    ASSERT_TRUE(runUntil(server, client, [&] { return roundOf(client.app()) == "Live"; }));
+    EXPECT_THROW(client.app().getWorld().getResources().getMut<aylo::ecs::States>()->request("game.Round", "Over"),
+                 aylo::ecs::exceptions::StateException);
+}
+
+TEST(ClientPlugin, AClientThatJoinsLateGetsTheCurrentState) {
+    Server server;
+    aylo::ecs::States& serverStates = declareRound(server.app());
+    serverStates.request("game.Round", "Over");
+    server.app().runFrame();
+    server.app().runFrame();
+    ASSERT_EQ(roundOf(server.app()), "Over");
+
+    Client client{server.address()};
+    declareRound(client.app());
+    ASSERT_TRUE(runUntil(server, client, [&] { return roundOf(client.app()) == "Over"; }));
+}
+
+TEST(ClientPlugin, DropsAStateItDoesNotKnow) {
+    Server server;
+    declareRound(server.app());
+    Client client{server.address()};  // declares no round machine
+    ASSERT_TRUE(runUntil(server, client, [&] { return client.state().droppedCount() > 0; }));
+    EXPECT_FALSE(client.app().getWorld().getResources().require<aylo::ecs::States>().has("game.Round"));
 }
