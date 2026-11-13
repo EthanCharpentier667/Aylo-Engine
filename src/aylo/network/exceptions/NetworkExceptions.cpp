@@ -19,4 +19,7 @@ SocketException::SocketException(const std::uint16_t port, const std::string& re
 
 std::uint16_t SocketException::getPort() const noexcept { return _port; }
 
+CryptoException::CryptoException(const std::string& reason)
+    : std::runtime_error{std::format("Cannot start the network's cryptography: {}", reason)} {}
+
 }  // namespace aylo::network::exceptions

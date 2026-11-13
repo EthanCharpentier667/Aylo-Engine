@@ -42,4 +42,13 @@ class AYLO_NETWORK_API SocketException : public std::runtime_error {
   private:
     std::uint16_t _port;  ///< The port that was asked for.
 };
+
+/// @brief Thrown when the cryptography of the transport cannot start (libsodium failed to initialize): a local setup
+/// error, never caused by the network.
+class AYLO_NETWORK_API CryptoException : public std::runtime_error {
+  public:
+    /// @param reason What failed.
+    explicit CryptoException(const std::string& reason);
+};
+
 }  // namespace aylo::network::exceptions

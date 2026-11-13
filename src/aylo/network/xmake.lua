@@ -10,8 +10,9 @@ target("network")
     add_defines("AYLO_NETWORK_STATIC", {public = true})
     -- Headers are included as "aylo/network/...".
     add_includedirs("$(projectdir)/src", {public = true})
-    -- Private: no public header includes Asio, so its users never see it.
-    add_packages("asio", {public = false})
+    -- Private: no public header includes Asio or libsodium, so their users never see them. libsodium encrypts the
+    -- transport (crypto/, docs/network/protocol.md).
+    add_packages("asio", "libsodium", {public = false})
     if is_plat("windows") then
         add_defines("_WIN32_WINNT=0x0A00", {public = false})
         add_syslinks("ws2_32", "mswsock", {public = false})
