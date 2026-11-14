@@ -46,6 +46,12 @@ AYLO_EDITOR_API void drawHierarchyPanel(EditorState& state);
 /// playing, with their fields editable in place, and components to add and remove.
 AYLO_EDITOR_API void drawInspectorPanel(EditorState& state);
 
+/// @brief The Inspector's view of a material file (EditorState::inspectedMaterial): its shader (drop a `.glsl` to
+/// change it), the shader's uniforms by type, starting from its defaults, and its textures (drop an image), applied at
+/// once to every drawing using it; Save writes the file.
+AYLO_EDITOR_API void drawMaterialInspector(EditorState& state);
+/// @brief Writes the material the Inspector shows to its file.
+AYLO_EDITOR_API void saveMaterial(EditorState& state);
 /// @brief The Assets panel: the files of the game's assets, to open a scene, make new scenes, actors and folders,
 /// rename and delete, and drag a file onto a node or a field.
 AYLO_EDITOR_API void drawAssetsPanel(EditorState& state);

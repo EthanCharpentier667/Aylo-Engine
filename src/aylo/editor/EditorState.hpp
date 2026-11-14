@@ -43,12 +43,13 @@ namespace aylo::editor {
 
 /// @brief What the Assets panel is asking for, through its popup.
 enum class AssetAction : std::uint8_t {
-    kNone,       ///< Nothing.
-    kNewScene,   ///< A new `.scene` in the target folder.
-    kNewActor,   ///< A new `.actor` in the target folder.
-    kNewFolder,  ///< A new folder in the target folder.
-    kRename,     ///< A new name for the target file or folder.
-    kDelete,     ///< Removing the target file or folder.
+    kNone,         ///< Nothing.
+    kNewScene,     ///< A new `.scene` in the target folder.
+    kNewActor,     ///< A new `.actor` in the target folder.
+    kNewFolder,    ///< A new folder in the target folder.
+    kNewMaterial,  ///< A new `.material` in the target folder.
+    kRename,       ///< A new name for the target file or folder.
+    kDelete,       ///< Removing the target file or folder.
 };
 
 /// @brief A gizmo handle being dragged in the Scene panel.
@@ -111,12 +112,16 @@ struct AYLO_EDITOR_API EditorState {
     std::vector<plugins::capsule::CapsuleId> unsaved;       ///< The capsules changed since they were saved or opened.
     ecs::Entity selected;                                   ///< The entity the Inspector shows while playing.
 
-    AssetAction assetAction{AssetAction::kNone};   ///< What the Assets panel's popup asks for.
-    std::string assetTarget;                       ///< The folder or file of assetAction, in the assets.
-    bool openAssetPopup{false};                    ///< Whether the popup opens at the end of the panel.
-    std::string assetFolder;                       ///< The folder the Assets panel shows, in the assets; "": the root.
-    std::string assetSelected;                     ///< The file or folder selected in the Assets panel; "": none.
-    float assetIconSize{64.0F};                    ///< How big the Assets panel draws an icon, in pixels.
+    AssetAction assetAction{AssetAction::kNone};  ///< What the Assets panel's popup asks for.
+    std::string assetTarget;                      ///< The folder or file of assetAction, in the assets.
+    bool openAssetPopup{false};                   ///< Whether the popup opens at the end of the panel.
+    std::string assetFolder;                      ///< The folder the Assets panel shows, in the assets; "": the root.
+    std::string assetSelected;                    ///< The file or folder selected in the Assets panel; "": none.
+    std::string
+        inspectedMaterial;        ///< The `.material` the Inspector shows, in the assets; "": none (a node or entity).
+    bool materialUnsaved{false};  ///< Whether it changed since it was read or saved.
+    std::string materialError;    ///< Why it could not be read; "": it could.
+    float assetIconSize{64.0F};   ///< How big the Assets panel draws an icon, in pixels.
     std::array<char, 256> textField{};             ///< The text the popups and the rename fields edit.
     std::array<char, 64> filter{};                 ///< What the Hierarchy keeps while playing: a component name.
     std::array<char, 64> componentFilter{};        ///< What the Inspector's "Add component" list keeps.

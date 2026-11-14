@@ -14,7 +14,7 @@ target("editor")
     set_basename("aylo-editor-lib")
     add_defines("AYLO_EDITOR_BUILD", {public = false})
     add_defines("AYLO_EDITOR_STATIC", {public = true})
-    add_deps("core", "ecs", "contract-platform", "contract-renderer", "plugin-graphics", "plugin-capsule", "plugin-particle", {public = true})
+    add_deps("core", "ecs", "contract-platform", "contract-renderer", "plugin-graphics", "plugin-capsule", "plugin-particle", "plugin-shader", {public = true})
     -- The admin channel of the server the editor runs as a child process (a static module: the editor is linked into
     -- an executable, as the engine is).
     add_deps("network", {public = true})

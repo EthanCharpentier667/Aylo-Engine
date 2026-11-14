@@ -105,6 +105,7 @@ std::optional<Selection> selectionOf(EditorState& state) {
 
 /// @brief Selects @p entity: itself while playing, its node while editing.
 void select(EditorState& state, std::optional<ecs::Entity> entity) {
+    state.inspectedMaterial.clear();
     if (state.play.isPlaying()) {
         state.selected = entity.value_or(ecs::Entity{});
         return;

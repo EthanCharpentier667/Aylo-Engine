@@ -55,6 +55,15 @@ void saveScene(EditorState& state) {
     state.status = saved != nullptr ? std::format("Saved {}", saved->getPath()) : std::string{"Saved"};
 }
 
+/// @brief Save: the material the Inspector shows if it changed, else the scene.
+void saveShown(EditorState& state) {
+    if (!state.inspectedMaterial.empty() && state.materialUnsaved) {
+        saveMaterial(state);
+        return;
+    }
+    saveScene(state);
+}
+
 /// @brief The choice between playing standalone (both sides in the editor's world) and online (a client of the server).
 void drawModeSelector(const EditorState& state) {
     play::OnlinePlay& online = state.session->online;
@@ -160,8 +169,8 @@ void drawViewMenuItems(EditorState& state) {
 
 /// @brief The items of the File menu.
 void drawFileMenuItems(EditorState& state, contract::platform::IPlatform& platform) {
-    if (ImGui::MenuItem("Save", "Ctrl+S", false, state.getEdited().has_value())) {
-        saveScene(state);
+    if (ImGui::MenuItem("Save", "Ctrl+S", false, state.getEdited().has_value() || state.materialUnsaved)) {
+        saveShown(state);
     }
     if (ImGui::MenuItem("Export...", nullptr, false, state.session && state.session->exporter)) {
         state.showExport = true;
@@ -248,7 +257,7 @@ void drawToolbarItems(EditorState& state, contract::platform::IPlatform& platfor
 
 void drawToolbar(EditorState& state, contract::platform::IPlatform& platform) {
     if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_S, ImGuiInputFlags_RouteGlobal)) {
-        saveScene(state);
+        saveShown(state);
     }
     if (gui::beginToolbar("##toolbar")) {
         drawToolbarItems(state, platform);
