@@ -77,8 +77,10 @@ Jolt is already the engine (2D bodies are Jolt bodies held in the XY plane). 3D 
 3D shapes (box, sphere, capsule). A body is 2D or 3D by its collider (`aylo.Collider` or `aylo.Collider3D`) and reads
 its family's transform and velocity. `physics.gravity3D` (default `{ 0, -9.81, 0 }`) is the 3D gravity;
 `physics.gravity` stays the 2D one. 2D and 3D bodies are on separate broad phase layers, so they never collide.
-Events (`aylo.CollisionStarted`...) and layers stay the same; `aylo.physics.raycast3D` casts a ray in 3D. The debug
-view draws 3D shapes with `Lines3D`.
+Events (`aylo.CollisionStarted`, which gains `point3D` and `normal3D`) and layers stay the same;
+`aylo.physics.raycast3D` casts a ray in 3D. The debug view draws 3D shapes with `Lines3D`. Jolt's gravity stays the 2D
+one: the world pushes the 3D bodies with theirs. A 3D body is placed by its own `Transform3D` (no hierarchy of 3D bodies
+yet), and `shapeCast`, `overlap` and `moveAndSlide` stay 2D. Details in `docs/physics/design.md` (3D bodies).
 
 ## Editor: the Scene tab
 

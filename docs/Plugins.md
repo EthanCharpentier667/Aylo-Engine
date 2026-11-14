@@ -40,7 +40,7 @@ and the materials are in `plugin-shader`.
 | `particle` | Emitters and effects | `graphics`, `shader`, `transform` |
 | `mesh` | glTF models (cgltf, private): `MeshAssets`, `MeshRenderer`, `engine.assets.mesh`, drawn unlit (`docs/3d/design.md`) | `graphics`, `transform` |
 | `audio` | `AudioSource`, `PlaySound`, `AudioVolumes` | `transform` |
-| `physics` | Jolt, `Collider`, `RigidBody` | `transform` |
+| `physics` | Jolt, `Collider`, `Collider3D`, `RigidBody` | `transform` |
 | `physics-debug` | Draws the colliders | `graphics`, `input`, `transform` |
 | `ui` | The user interface, laid out by Yoga: nodes, widgets, focus | `graphics`, `input`, `text` |
 | `http` | HTTPS requests for scripts: `HttpClient`, `HttpResponse`, `aylo.http.request` (libcurl) | |
