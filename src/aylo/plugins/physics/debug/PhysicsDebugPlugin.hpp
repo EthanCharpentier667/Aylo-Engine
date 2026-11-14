@@ -25,7 +25,7 @@ namespace aylo::plugins::physics::debug {
 ///
 /// @details The PhysicsDebug component chooses the entities (as gizmos in Unity); PhysicsDebugSettings holds the global
 /// switches: enabled (flipped by a key, F3 by default) and drawAll (every collider, PhysicsDebug or not). The plugin
-/// does all the drawing, from the components (Collider, GlobalTransform, Velocity), so it shows exactly where sprites
+/// does all the drawing, from the components (Collider, GlobalTransform2D, Velocity), so it shows exactly where sprites
 /// are drawn and needs no physics body. Its systems run on the client side (so also in standalone):
 /// - "aylo.PhysicsDebug.Toggle", in Update: flips PhysicsDebugSettings::enabled on the toggle key;
 /// - "aylo.PhysicsDebug.Draw", in Render after the sprites and the ShapeRenderers: draws the outlines and arrows as

@@ -40,7 +40,7 @@ using aylo::plugins::physics::PhysicsWorld;
 using aylo::plugins::physics::RigidBody;
 using aylo::plugins::physics::ShapeType;
 using aylo::plugins::physics::exceptions::PhysicsException;
-using aylo::plugins::transform::Transform;
+using aylo::plugins::transform::Transform2D;
 
 namespace {
 constexpr float kFixedDelta = 1.0F / 60.0F;
@@ -70,10 +70,10 @@ struct PhysicsApp {
     [[nodiscard]] const PhysicsWorld& world() const { return app.getWorld().getResources().require<PhysicsWorld>(); }
     [[nodiscard]] aylo::ecs::Components& components() { return app.getWorld().getComponents(); }
 
-    /// @return A new entity with a Transform and a Collider, and a RigidBody when given.
+    /// @return A new entity with a Transform2D and a Collider, and a RigidBody when given.
     Entity spawn(glm::vec2 position = {0.0F, 0.0F}, std::optional<RigidBody> body = std::nullopt) {
         const Entity entity = app.getWorld().spawn();
-        components().add(entity, Transform{.position = position});
+        components().add(entity, Transform2D{.position = position});
         components().add(entity, Collider{});
         if (body) {
             components().add(entity, *body);
@@ -258,12 +258,12 @@ TEST(PhysicsWorldBodies, RejectsInvalidComponents) {
     PhysicsWorld world{smallSettings()};
     const Entity entity{1, 1};
     EXPECT_THROW(static_cast<void>(world.createBody(entity, Collider{.shape = ShapeType::kCircle, .radius = 0.0F},
-                                                    nullptr, Transform{})),
+                                                    nullptr, Transform2D{})),
                  PhysicsException);
-    EXPECT_THROW(static_cast<void>(world.createBody(entity, Collider{.size = {0.0F, 8.0F}}, nullptr, Transform{})),
+    EXPECT_THROW(static_cast<void>(world.createBody(entity, Collider{.size = {0.0F, 8.0F}}, nullptr, Transform2D{})),
                  PhysicsException);
     const RigidBody massless{.mass = 0.0F};
-    EXPECT_THROW(static_cast<void>(world.createBody(entity, Collider{}, &massless, Transform{})), PhysicsException);
+    EXPECT_THROW(static_cast<void>(world.createBody(entity, Collider{}, &massless, Transform2D{})), PhysicsException);
     EXPECT_EQ(world.getBodyCount(), 0U);
 }
 
@@ -271,16 +271,17 @@ TEST(PhysicsWorldBodies, ThrowsWhenFull) {
     PhysicsSettings settings = smallSettings();
     settings.maxBodies = 2;
     PhysicsWorld world{settings};
-    static_cast<void>(world.createBody(Entity{1, 1}, Collider{}, nullptr, Transform{}));
-    static_cast<void>(world.createBody(Entity{2, 1}, Collider{}, nullptr, Transform{}));
-    EXPECT_THROW(static_cast<void>(world.createBody(Entity{3, 1}, Collider{}, nullptr, Transform{})), PhysicsException);
+    static_cast<void>(world.createBody(Entity{1, 1}, Collider{}, nullptr, Transform2D{}));
+    static_cast<void>(world.createBody(Entity{2, 1}, Collider{}, nullptr, Transform2D{}));
+    EXPECT_THROW(static_cast<void>(world.createBody(Entity{3, 1}, Collider{}, nullptr, Transform2D{})),
+                 PhysicsException);
 }
 
 TEST(PhysicsWorldBodies, ANeverSteppedWorldSurvivesEndlessChurnOnceItReleasesTheBroadPhase) {
     PhysicsWorld world{smallSettings()};
     for (std::uint32_t round = 0; round < 20000; ++round) {
         const Entity entity{round % 8U, 1};
-        static_cast<void>(world.createBody(entity, Collider{}, nullptr, Transform{}));
+        static_cast<void>(world.createBody(entity, Collider{}, nullptr, Transform2D{}));
         static_cast<void>(world.destroyBody(entity));
         world.releaseBroadPhase();
     }
@@ -297,7 +298,7 @@ TEST(PhysicsWorldBodies, EveryShapeBuilds) {
     };
     std::uint32_t index = 1;
     for (const Collider& collider : colliders) {
-        static_cast<void>(world.createBody(Entity{index++, 1}, collider, nullptr, Transform{}));
+        static_cast<void>(world.createBody(Entity{index++, 1}, collider, nullptr, Transform2D{}));
     }
     EXPECT_EQ(world.getBodyCount(), colliders.size());
 }

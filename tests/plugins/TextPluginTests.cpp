@@ -42,7 +42,7 @@ using aylo::plugins::text::Font;
 using aylo::plugins::text::FontAssets;
 using aylo::plugins::text::Glyph;
 using aylo::plugins::text::TextRenderer;
-using aylo::plugins::transform::Transform;
+using aylo::plugins::transform::Transform2D;
 
 namespace {
 /// @brief An App with the GraphicsPlugin over the fake backend, and the font "ui": an 'A' one em high and half an em
@@ -75,7 +75,7 @@ class TextApp {
     /// @brief Spawns an entity at @p position drawing @p text.
     aylo::ecs::Entity spawnText(glm::vec2 position, TextRenderer text) {
         const aylo::ecs::Entity entity = world().spawn();
-        world().getComponents().add(entity, Transform{.position = position});
+        world().getComponents().add(entity, Transform2D{.position = position});
         world().getComponents().add(entity, std::move(text));
         return entity;
     }
@@ -168,7 +168,7 @@ TEST(TextPlugin, SortsTheTextsWithTheSpritesByLayer) {
     TextApp app;
     static_cast<void>(app.spawnText({0.0F, 0.0F}, TextRenderer{.text = "A", .font = app.font(), .layer = 10}));
     const aylo::ecs::Entity ship = app.world().spawn();
-    app.world().getComponents().add(ship, Transform{});
+    app.world().getComponents().add(ship, Transform2D{});
     app.world().getComponents().add(
         ship, aylo::plugins::sprite::SpriteRenderer{.texture = AssetId::fromPath("font.png"), .layer = 5});
     static_cast<void>(app.drawFrame());

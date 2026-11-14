@@ -42,6 +42,7 @@ plugin("capsule", {})
 
 plugin("transform", {})
     add_files("transform/**.cpp")
+    add_files("transform/TransformForms.luau")
     add_headerfiles("transform/**.hpp", "transform/**.tpp")
 
 plugin("input", {"contract-platform"})

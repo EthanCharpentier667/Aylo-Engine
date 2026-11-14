@@ -10,7 +10,7 @@ local lasers: { [number]: number } = {}
 engine.ecs.system("game.FollowLaserBodies", {
 	phase = "FixedUpdate",
 	side = "server",
-	query = { read = { "aylo.Transform" }, write = { "game.Laser" } },
+	query = { read = { "aylo.Transform2D" }, write = { "game.Laser" } },
 	after = { "aylo.Physics.SyncFromPhysics" },
 	run = function(ctx)
 		lasers = {}

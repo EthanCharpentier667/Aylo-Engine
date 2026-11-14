@@ -50,9 +50,10 @@ namespace aylo::plugins::tilemap {
 
 namespace {
 /// @brief Render, client: moves each Parallax entity by the camera and its scroll.
-void applyParallax(ecs::Res<ecs::Time> time,
-                   ecs::Query<const transform::GlobalTransform, const graphics::Camera, ecs::Without<Parallax>> cameras,
-                   ecs::Query<Parallax, transform::GlobalTransform> moved) {
+void applyParallax(
+    ecs::Res<ecs::Time> time,
+    ecs::Query<const transform::GlobalTransform2D, const graphics::Camera, ecs::Without<Parallax>> cameras,
+    ecs::Query<Parallax, transform::GlobalTransform2D> moved) {
     std::optional<glm::vec2> camera;
     std::int32_t priority = 0;
     for (auto [entity, global, shown] : cameras) {
@@ -137,7 +138,7 @@ void drawImage(const MapLayer& layer, std::int32_t drawLayer, const detail::Laye
 /// @brief Render, client: pushes the visible layers to the SpriteQueue.
 void drawTilemaps(ecs::Res<TilemapAssets> maps, ecs::Res<graphics::TextureAssets> textures,
                   ecs::Res<graphics::VisibleArea> visible, ecs::ResAppend<graphics::SpriteQueue> queue,
-                  ecs::Query<const transform::GlobalTransform, const TilemapLayer> layers) {
+                  ecs::Query<const transform::GlobalTransform2D, const TilemapLayer> layers) {
     if (visible->isEmpty()) {
         return;
     }

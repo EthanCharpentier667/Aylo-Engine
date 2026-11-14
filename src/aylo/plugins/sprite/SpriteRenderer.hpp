@@ -23,13 +23,13 @@ namespace aylo::plugins::sprite {
 /// @brief Draws an entity as a part of a texture: the component a render system will turn into a
 /// contract::renderer::Sprite.
 ///
-/// @details Only what to draw: where (position, scale, rotation) comes from the entity's GlobalTransform. The texture
+/// @details Only what to draw: where (position, scale, rotation) comes from the entity's GlobalTransform2D. The texture
 /// is referred to by its AssetId, the same in every process, which TextureAssets::load() returns at once; the
 /// GraphicsPlugin's Render system draws the entity once the texture is loaded, sorted by layer. Its fields are
 /// reflected (Luau, network): `source` as a vec4, its position in x and y, its width and height in z and w.
 /// @code
 /// commands.spawn()
-///     .add(aylo::plugins::transform::Transform{.position = {100.0F, 300.0F}})
+///     .add(aylo::plugins::transform::Transform2D{.position = {100.0F, 300.0F}})
 ///     .add(aylo::plugins::sprite::SpriteRenderer{
 ///         .texture = textures->load("assets/ship.png"), .source = {{0.0F, 0.0F}, {32.0F, 16.0F}}, .layer = 10});
 /// @endcode

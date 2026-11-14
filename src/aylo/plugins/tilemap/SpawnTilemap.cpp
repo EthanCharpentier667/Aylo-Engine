@@ -33,8 +33,8 @@ std::vector<ecs::Entity> spawnTilemap(ecs::Commands& commands, const TilemapAsse
     for (const MapLayer& layer : tilemap->getLayers()) {
         entities.push_back(
             commands.spawn()
-                .add(transform::Transform{.position = placement.position + (layer.offset * placement.scale),
-                                          .scale = placement.scale})
+                .add(transform::Transform2D{.position = placement.position + (layer.offset * placement.scale),
+                                            .scale = placement.scale})
                 .add(TilemapLayer{.map = map,
                                   .layer = index,
                                   .drawLayer = placement.firstDrawLayer + static_cast<std::int32_t>(index)})

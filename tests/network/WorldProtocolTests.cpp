@@ -48,9 +48,9 @@ TEST(WorldProtocol, RequestsKeepTheirContent) {
     EXPECT_EQ(inspect.entity, 0x0000000500000007ULL);
     EXPECT_EQ(inspect.firstComponent, 3U);
     const auto set = requestRoundTrip<admin::SetFieldRequest>(admin::SetFieldRequest{
-        .entity = 9, .component = "aylo.Transform", .field = "position", .index = 2, .value = "1 2 3"});
+        .entity = 9, .component = "aylo.Transform2D", .field = "position", .index = 2, .value = "1 2 3"});
     EXPECT_EQ(set.entity, 9U);
-    EXPECT_EQ(set.component, "aylo.Transform");
+    EXPECT_EQ(set.component, "aylo.Transform2D");
     EXPECT_EQ(set.field, "position");
     EXPECT_EQ(set.index, 2U);
     EXPECT_EQ(set.value, "1 2 3");
@@ -92,7 +92,7 @@ TEST(WorldProtocol, RepliesKeepTheirContent) {
 
     admin::InspectReply inspect{.entity = 77, .name = "Ship", .total = 3, .next = 2};
     inspect.components.push_back(
-        {.name = "aylo.Transform",
+        {.name = "aylo.Transform2D",
          .fields = {{.name = "x", .type = "f32", .count = 1, .value = "1.5", .editable = true},
                     {.name = "id", .type = "entity", .count = 1, .value = "0", .editable = false}}});
     const auto view = replyRoundTrip<admin::InspectReply>(inspect);

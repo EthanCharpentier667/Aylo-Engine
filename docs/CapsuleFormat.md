@@ -12,13 +12,13 @@ The text format of capsule files: what `format::readCapsule()` reads and `format
 # The boss, with a turret on each side.
 [node path="."]
 game.Health = { value = 50, max = 50 }
-aylo.Transform = {}
+aylo.Transform2D = {}
 
 [node path="LeftTurret" instance="actors/turret.actor"]
-aylo.Transform = { position = (-40, 0) }
+aylo.Transform2D = { position = (-40, 0) }
 
 [node path="LeftTurret/Muzzle"]
-aylo.Transform = { position = (0, -12), rotation = 1.5708 }
+aylo.Transform2D = { position = (0, -12), rotation = 1.5708 }
 
 [node path="Shadow" side=client]
 aylo.SpriteRenderer = { texture = "sprites/boss_shadow.png", layer = -1 }
@@ -44,7 +44,7 @@ end has no meaning: a component may span several lines, and several may share on
 |---|---|
 | Comment | `#` to the end of the line, anywhere a blank may be (not inside a string) |
 | Punctuation | `[` `]` `{` `}` `(` `)` `=` `,` |
-| Name | a letter or `_`, then letters, digits, `_` and `.`: `aylo.Transform`, `side`, `true` |
+| Name | a letter or `_`, then letters, digits, `_` and `.`: `aylo.Transform2D`, `side`, `true` |
 | String | `"` ... `"` on one line. Escapes: `\n` (line end), `\t` (tab); any other `\c` stands for `c`, so `\"` and `\\` |
 | Number | starts with a digit, `-` or `+`, then letters, digits, `.`, `-`, `+`: `40`, `-0.25`, `1e-5`, `0x1F`. What it means is checked against the field it fills |
 
@@ -128,7 +128,7 @@ What a value must look like depends on the type of the field it fills (`ecs::Fie
 | entity | `ecs::Entity` | | not yet: `cannot be set in a capsule file yet` |
 
 A vector holds numbers only. A value of the wrong kind names what the field takes: `field 'position' of
-'aylo.Transform' takes a vector of 2, not 3`.
+'aylo.Transform2D' takes a vector of 2, not 3`.
 
 ## Errors
 

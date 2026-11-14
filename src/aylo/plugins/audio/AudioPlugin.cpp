@@ -51,14 +51,15 @@
 namespace aylo::plugins::audio {
 namespace {
 /// @brief The entities that hear: the first one placed is the listener.
-using Listeners = ecs::Query<ecs::Optional<const transform::GlobalTransform>, ecs::Optional<const transform::Transform>,
-                             ecs::Optional<const ecs::Parent>, ecs::With<AudioListener>>;
+using Listeners =
+    ecs::Query<ecs::Optional<const transform::GlobalTransform2D>, ecs::Optional<const transform::Transform2D>,
+               ecs::Optional<const ecs::Parent>, ecs::With<AudioListener>>;
 
-/// @return Where an entity is: its GlobalTransform, or its Transform while it has no GlobalTransform yet (spawned this
-/// frame: the TransformPlugin's commands give it one at the end of PostUpdate); nothing if it has neither, or for such
-/// a new entity with a parent, whose Transform is not a place in the world.
-[[nodiscard]] std::optional<glm::vec2> positionOf(const transform::GlobalTransform* global,
-                                                  const transform::Transform* local, const ecs::Parent* parent) {
+/// @return Where an entity is: its GlobalTransform2D, or its Transform2D while it has no GlobalTransform2D yet (spawned
+/// this frame: the TransformPlugin's commands give it one at the end of PostUpdate); nothing if it has neither, or for
+/// such a new entity with a parent, whose Transform2D is not a place in the world.
+[[nodiscard]] std::optional<glm::vec2> positionOf(const transform::GlobalTransform2D* global,
+                                                  const transform::Transform2D* local, const ecs::Parent* parent) {
     if (global != nullptr) {
         return global->position;
     }
@@ -179,8 +180,8 @@ void playEvents(ecs::NonSendMut<Audio> audio, ecs::Res<AudioAssets> sounds, ecs:
 
 /// @brief PostUpdate: keeps one voice per AudioSource, and stops the voices of the sources that went.
 void followSources(ecs::NonSendMut<Audio> audio, ecs::Res<AudioAssets> sounds,
-                   ecs::Query<const AudioSource, ecs::Optional<const transform::GlobalTransform>,
-                              ecs::Optional<const transform::Transform>, ecs::Optional<const ecs::Parent>>
+                   ecs::Query<const AudioSource, ecs::Optional<const transform::GlobalTransform2D>,
+                              ecs::Optional<const transform::Transform2D>, ecs::Optional<const ecs::Parent>>
                        sources,
                    Listeners listeners) {
     if (!audio->device) {

@@ -28,7 +28,7 @@ namespace aylo::plugins::text {
 ///   It runs after the TilemapPlugin's "aylo.Tilemap.Textures", which also writes TextureAssets.
 /// - Render "aylo.Text.Draw", on the client, after the GraphicsPlugin's camera and before its sprites: lays out each
 ///   TextRenderer whose font and atlas are loaded (layoutText()) and pushes it to the SpriteQueue as a
-///   contract::renderer::Text, at its entity's GlobalTransform, so it is sorted with the sprites by
+///   contract::renderer::Text, at its entity's GlobalTransform2D, so it is sorted with the sprites by
 ///   TextRenderer::layer. It runs after the TilemapPlugin's "aylo.Tilemap.Draw", which pushes to the same queue (the
 ///   schedule needs them ordered; the order only breaks the ties of the sort).
 /// It requires the GraphicsPlugin and the ShaderPlugin. Its Render systems are ordered against the GraphicsPlugin's, so

@@ -10,7 +10,7 @@ engine.ecs.state("game.Phase", { "Menu", "Playing", "GameOver" })
 engine.ecs.system("game.MoveShips", {
 	phase = "FixedUpdate",
 	inState = { "game.Phase", "Playing" }, -- skipped in the menu and on the game over screen
-	query = { write = { "aylo.Transform" }, with = { "game.Ship" } },
+	query = { write = { "aylo.Transform2D" }, with = { "game.Ship" } },
 	run = function(ctx)
 		-- ...
 	end,
@@ -51,7 +51,7 @@ engine.ecs.system("game.ShowTitle", {
 	side = "client",
 	run = function(ctx)
 		ctx.commands:spawn({
-			["aylo.Transform"] = { position = { x = 400, y = 200 } },
+			["aylo.Transform2D"] = { position = { x = 400, y = 200 } },
 			["aylo.TextRenderer"] = { text = "Press Space", font = font, size = 32 },
 			["game.Title"] = {},
 		})

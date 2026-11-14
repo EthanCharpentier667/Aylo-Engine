@@ -15,12 +15,12 @@
 namespace aylo::plugins::graphics {
 
 /// @brief The component ("aylo.Camera") that makes an entity a point of view: the graphics plugin shows the world from
-/// the GlobalTransform of the camera entity with the highest priority.
-/// @details Where the camera is comes from the entity's Transform, as for any other entity: an entity with a Camera but
-/// no Transform is never shown.
+/// the GlobalTransform2D of the camera entity with the highest priority.
+/// @details Where the camera is comes from the entity's Transform2D, as for any other entity: an entity with a Camera
+/// but no Transform2D is never shown.
 /// @code
 /// commands.spawn()
-///     .add(aylo::plugins::transform::Transform{.position = {960.0F, 540.0F}})
+///     .add(aylo::plugins::transform::Transform2D{.position = {960.0F, 540.0F}})
 ///     .add(aylo::plugins::graphics::Camera{});
 /// @endcode
 /// @note It holds an Orthographic, not the Projection variant: a std::variant is not standard-layout on every standard

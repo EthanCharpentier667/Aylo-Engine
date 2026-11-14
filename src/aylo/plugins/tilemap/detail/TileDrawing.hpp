@@ -22,7 +22,7 @@
 
 namespace aylo::plugins::tilemap::detail {
 
-/// @brief Where a layer is drawn: its entity's GlobalTransform (a layer is not rotated).
+/// @brief Where a layer is drawn: its entity's GlobalTransform2D (a layer is not rotated).
 struct LayerPlacement {
     glm::vec2 position{0.0F};  ///< The world point of the map's origin for this layer.
     glm::vec2 scale{1.0F};     ///< World units per map pixel.

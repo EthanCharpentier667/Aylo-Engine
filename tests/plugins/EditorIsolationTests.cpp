@@ -27,8 +27,8 @@
 namespace {
 namespace capsule = aylo::plugins::capsule;
 namespace scene = aylo::editor::scene;
-using aylo::plugins::transform::GlobalTransform;
-using aylo::plugins::transform::Transform;
+using aylo::plugins::transform::GlobalTransform2D;
+using aylo::plugins::transform::Transform2D;
 
 /// @brief An App with the transform and capsule plugins, and a turret at (50, 20) with a muzzle.
 class IsolationTest : public ::testing::Test {
@@ -39,7 +39,7 @@ class IsolationTest : public ::testing::Test {
         app.finishPlugins();
         static_cast<void>(app.getWorld().getComponents().registerType<aylo::plugins::graphics::Camera>());
         capsule::Capsule turret{"actors/turret.actor"};
-        turret.editNode(0).values.set(app.getWorld().getComponents(), Transform{.position = {50.0F, 20.0F}});
+        turret.editNode(0).values.set(app.getWorld().getComponents(), Transform2D{.position = {50.0F, 20.0F}});
         static_cast<void>(turret.addNode("Muzzle", 0));
         app.getWorld().getResources().getMut<capsule::Capsules>()->define(std::move(turret));
     }
@@ -56,9 +56,9 @@ TEST_F(IsolationTest, SpawnsTheCapsuleUnderAnAnchorFarFromTheGame) {
     const std::optional<scene::Isolation> isolation = scene::isolate(world(), turretId, error);
     ASSERT_TRUE(isolation.has_value()) << error;
     EXPECT_EQ(isolation->capsule, turretId);
-    EXPECT_EQ(world().getComponents().get<Transform>(isolation->anchor)->position, scene::kIsolatedOrigin);
+    EXPECT_EQ(world().getComponents().get<Transform2D>(isolation->anchor)->position, scene::kIsolatedOrigin);
     EXPECT_EQ(world().getComponents().get<aylo::ecs::Parent>(isolation->root)->entity, isolation->anchor);
-    EXPECT_EQ(world().getComponents().get<Transform>(isolation->root)->position, glm::vec2(50.0F, 20.0F));
+    EXPECT_EQ(world().getComponents().get<Transform2D>(isolation->root)->position, glm::vec2(50.0F, 20.0F));
 }
 
 TEST_F(IsolationTest, LooksAtTheCapsulesRoot) {

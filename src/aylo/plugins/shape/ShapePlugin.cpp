@@ -36,7 +36,7 @@ namespace aylo::plugins::shape {
 
 namespace {
 /// @return The shape @p shape draws for an entity at @p global.
-contract::renderer::Shape shapeOf(const transform::GlobalTransform& global, const ShapeRenderer& shape) {
+contract::renderer::Shape shapeOf(const transform::GlobalTransform2D& global, const ShapeRenderer& shape) {
     const float cosine = std::cos(global.rotation);
     const float sine = std::sin(global.rotation);
     const glm::vec2 end = shape.end * global.scale;
@@ -55,9 +55,9 @@ contract::renderer::Shape shapeOf(const transform::GlobalTransform& global, cons
         .blend = shape.blend};
 }
 
-/// @brief Render, client: draws the entities with a GlobalTransform and a ShapeRenderer, by layer, over the sprites.
+/// @brief Render, client: draws the entities with a GlobalTransform2D and a ShapeRenderer, by layer, over the sprites.
 void drawShapes(ecs::NonSendMut<plugins::graphics::Backend> backend,
-                ecs::Query<const transform::GlobalTransform, const ShapeRenderer> shapes) {
+                ecs::Query<const transform::GlobalTransform2D, const ShapeRenderer> shapes) {
     if (backend->renderer == nullptr) {
         return;
     }

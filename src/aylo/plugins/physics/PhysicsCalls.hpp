@@ -95,7 +95,7 @@ AYLO_ECS_CALL_DATA(OverlapResult, "aylo.physics.OverlapResult", count, first);
 /// @brief The arguments of `aylo.physics.moveAndSlide`: moves an entity's Collider, as moveAndSlide() with an entity.
 struct MoveAndSlideArguments {
     ecs::Entity entity;           ///< The entity that moves: its Collider is the shape and its mask the filter.
-    glm::vec2 from{0.0F, 0.0F};   ///< Where it starts (its Transform's position), in world units, Y down.
+    glm::vec2 from{0.0F, 0.0F};   ///< Where it starts (its Transform2D's position), in world units, Y down.
     glm::vec2 delta{0.0F, 0.0F};  ///< How far it would move without obstacles, in world units, Y down.
     float skin{0.5F};             ///< SlideSettings::skin.
     std::uint32_t maxSlides{4U};  ///< SlideSettings::maxSlides.
@@ -130,7 +130,7 @@ AYLO_ECS_CALL_DATA(GravityArguments, "aylo.physics.GravityArguments", gravity);
 
 /// @brief Registers the physics engine calls on @p app, for scripts, on the `aylo.PhysicsWorld` resource: the scene
 /// queries (`raycast`, `shapeCast`, `overlap`), `moveAndSlide`, the body pushes (`applyForce`, `applyImpulse`,
-/// `applyTorque`) and `setGravity`. A body's velocity and position are set by writing its Velocity and Transform.
+/// `applyTorque`) and `setGravity`. A body's velocity and position are set by writing its Velocity and Transform2D.
 /// Called by the PhysicsPlugin.
 void addPhysicsCalls(ecs::App& app);
 

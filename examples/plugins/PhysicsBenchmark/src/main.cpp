@@ -11,7 +11,7 @@
 // enemies (kinematic boxes patrolling up and down), one enemy for four bullets. Each scenario runs 100, 1 000 and
 // 5 000 bodies per room, in 1, 4 and 8 rooms at once, one thread per room as on the server.
 //
-// For each scenario, it prints the cost of a fixed tick per room (the plugin's systems: body sync, Transform and
+// For each scenario, it prints the cost of a fixed tick per room (the plugin's systems: body sync, Transform2D and
 // Velocity sync, step, write-back, events), the part spent in Jolt's step, the cost per body, the 99th percentile
 // tick, the spread between runs and how many such rooms fit on one core at 60 Hz. Ticks are summed up by their
 // median, which a tick the OS preempted does not move: that keeps runs within a few percent of each other; the 99th
@@ -64,7 +64,7 @@
 
 using namespace aylo::ecs;
 using namespace aylo::plugins::physics;
-using aylo::plugins::transform::Transform;
+using aylo::plugins::transform::Transform2D;
 using Clock = std::chrono::steady_clock;
 
 namespace {
@@ -124,7 +124,7 @@ double percentileOf(std::vector<double> values, double fraction) {
 }
 
 // FixedUpdate, before the Velocities drive the bodies: the enemies turn back at the top and bottom of the arena.
-void patrolEnemies(Query<const Transform, Velocity, const Collider> bodies) {
+void patrolEnemies(Query<const Transform2D, Velocity, const Collider> bodies) {
     for (auto [entity, transform, velocity, collider] : bodies) {
         const float y = transform.position.y;
         const float speed = velocity.get().linear.y;
@@ -144,12 +144,12 @@ PhysicsSettings settingsFor(std::uint32_t bodies) {
                            .tempAllocatorBytes = static_cast<std::size_t>(16 + (bodies / 256)) * 1024 * 1024};
 }
 
-// Spawns an entity with a Transform, a Collider and, when moving, a RigidBody and a Velocity.
+// Spawns an entity with a Transform2D, a Collider and, when moving, a RigidBody and a Velocity.
 void spawn(App& app, glm::vec2 position, const Collider& collider, const RigidBody* body = nullptr,
            glm::vec2 velocity = {0.0F, 0.0F}) {
     const Entity entity = app.getWorld().spawn();
     Components& components = app.getWorld().getComponents();
-    components.add(entity, Transform{.position = position});
+    components.add(entity, Transform2D{.position = position});
     components.add(entity, collider);
     if (body != nullptr) {
         components.add(entity, *body);

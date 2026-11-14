@@ -48,7 +48,7 @@ local effects = require("@scripts/client/effects_assets")
 engine.ecs.system("game.MuzzleSparks", {
 	phase = "Update",
 	side = "client",
-	query = { read = { "aylo.Transform" }, added = { "game.Laser" } },
+	query = { read = { "aylo.Transform2D" }, added = { "game.Laser" } },
 	events = { send = { "aylo.SpawnParticles" } },
 	run = function(ctx)
 		for _, transform in ctx.query do
@@ -145,7 +145,7 @@ Use an effect with `loop = false` here. A looping one never ends, so it would st
 
 ### On an entity
 
-Give the entity an `aylo.ParticleEmitter` and an `aylo.Transform`. It plays while the component is there and moves
+Give the entity an `aylo.ParticleEmitter` and an `aylo.Transform2D`. It plays while the component is there and moves
 with the entity.
 
 | Field | Type | Default | Meaning |

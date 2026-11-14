@@ -19,7 +19,7 @@ They are ordinary components you spawn with `ctx.commands` and query by name.
 | `aylo.Collider` | A shape, its material and its collision categories (fields below) |
 | `aylo.RigidBody` | How it moves: static, kinematic or dynamic, its mass and damping (fields below) |
 | `aylo.Velocity` | `linear` and `angular` velocity, in world units per second |
-| `aylo.Transform` | The pose; write it to move a body |
+| `aylo.Transform2D` | The pose; write it to move a body |
 
 An entity with a `Collider` and a `Transform` gets a body; without a `RigidBody`, it is a static body (a wall).
 
@@ -52,12 +52,12 @@ An entity with a `Collider` and a `Transform` gets a body; without a `RigidBody`
 | `continuousCollision` | bool | `false` | never tunnels through thin colliders when fast (bullets), at a cost |
 
 Distances are in world units, Y down. `Collider` and `RigidBody` are replicated by the engine, so a client sees the server's bodies. A body's velocity and
-position are set by writing its `aylo.Velocity` and `aylo.Transform`.
+position are set by writing its `aylo.Velocity` and `aylo.Transform2D`.
 
 ```luau
 ctx.commands:spawn({
 	["game.Laser"] = { position = muzzle, shooter = player },
-	["aylo.Transform"] = { position = muzzle },
+	["aylo.Transform2D"] = { position = muzzle },
 	["aylo.Collider"] = { size = { x = 60, y = 12 }, layer = 2, mask = 1 },
 	["aylo.RigidBody"] = { gravityScale = 0, fixedRotation = true, continuousCollision = true },
 	["aylo.Velocity"] = { linear = { x = 600, y = 0 } },
@@ -98,7 +98,7 @@ A null `ignore` (the default) skips no entity.
 
 The physics runs in `FixedUpdate`. Order the systems that touch bodies around its steps:
 
-- moving things by `aylo.Transform` or `aylo.Velocity`: `after = { "aylo.Physics.SyncBodies" }`,
+- moving things by `aylo.Transform2D` or `aylo.Velocity`: `after = { "aylo.Physics.SyncBodies" }`,
   `before = { "aylo.Physics.SyncToPhysics" }`;
 - reading positions the physics wrote: `after = { "aylo.Physics.SyncFromPhysics" }`;
 - reacting to contacts: `after = { "aylo.Physics.Events" }`.
@@ -106,7 +106,7 @@ The physics runs in `FixedUpdate`. Order the systems that touch bodies around it
 ```luau
 engine.ecs.system("game.Ships", {
 	phase = "FixedUpdate",
-	query = { write = { "aylo.Transform" }, with = { "game.Ship" } },
+	query = { write = { "aylo.Transform2D" }, with = { "game.Ship" } },
 	calls = { "aylo.physics.moveAndSlide" },
 	after = { "aylo.Physics.SyncBodies" },
 	before = { "aylo.Physics.SyncToPhysics" },

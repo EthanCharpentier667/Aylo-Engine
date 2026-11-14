@@ -15,13 +15,13 @@
 
 namespace aylo::plugins::transform {
 
-void detachInPlace(ecs::Commands& commands, ecs::Entity child, const GlobalTransform& global) {
+void detachInPlace(ecs::Commands& commands, ecs::Entity child, const GlobalTransform2D& global) {
     commands.entity(child).remove<ecs::Parent>().add(
-        Transform{.position = global.position, .rotation = global.rotation, .scale = global.scale});
+        Transform2D{.position = global.position, .rotation = global.rotation, .scale = global.scale});
 }
 
-void attachInPlace(ecs::Commands& commands, ecs::Entity child, const GlobalTransform& global, ecs::Entity parent,
-                   const GlobalTransform& parentGlobal) {
+void attachInPlace(ecs::Commands& commands, ecs::Entity child, const GlobalTransform2D& global, ecs::Entity parent,
+                   const GlobalTransform2D& parentGlobal) {
     commands.entity(child).add(ecs::Parent{.entity = parent}).add(toLocal(parentGlobal, global));
 }
 }  // namespace aylo::plugins::transform

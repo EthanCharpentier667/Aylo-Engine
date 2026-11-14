@@ -15,7 +15,7 @@ engine.ecs.system("game.MoveShips", {
 	phase = "FixedUpdate",
 	side = "server",
 	inState = { "game.Round", "Live" },
-	query = { write = { "game.Ship", "aylo.Transform" }, with = { "aylo.Collider", "net.PlayerInput" } },
+	query = { write = { "game.Ship", "aylo.Transform2D" }, with = { "aylo.Collider", "net.PlayerInput" } },
 	calls = { "aylo.replication.readInput", "aylo.physics.moveAndSlide", "aylo.capsule.spawn" },
 	after = { "net.applyInputs", "aylo.Physics.SyncBodies" },
 	before = { "aylo.Physics.SyncToPhysics" },

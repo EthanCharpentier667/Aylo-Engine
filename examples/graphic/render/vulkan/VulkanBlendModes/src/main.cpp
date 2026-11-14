@@ -73,7 +73,7 @@ using namespace aylo::plugins::graphics;
 using namespace aylo::plugins::sprite;
 using aylo::core::asset::AssetId;
 using namespace aylo::contract::renderer;
-using aylo::plugins::transform::Transform;
+using aylo::plugins::transform::Transform2D;
 
 namespace {
 constexpr double kWidth = 800.0;
@@ -135,8 +135,8 @@ void spawnScene(ecs::ResMut<TextureAssets> textures, ecs::Commands& commands) {
         for (int index = 0; index < count; ++index) {
             const auto frame = static_cast<float>(index % kBandFrames);
             commands.spawn()
-                .add(Transform{.position = {step * (static_cast<float>(index) + 0.5F), y},
-                               .scale = glm::vec2{kBandScale}})
+                .add(Transform2D{.position = {step * (static_cast<float>(index) + 0.5F), y},
+                                 .scale = glm::vec2{kBandScale}})
                 .add(SpriteRenderer{
                     .texture = band,
                     .source = {{kBandPosition.x + (frame * kBandFrameWidth), kBandPosition.y}, kBandSize},
@@ -146,14 +146,14 @@ void spawnScene(ecs::ResMut<TextureAssets> textures, ecs::Commands& commands) {
     }
     for (std::size_t column = 0; column < kColumnX.size(); ++column) {
         commands.spawn()
-            .add(Transform{.position = {kColumnX.at(column), kShipY}, .scale = glm::vec2{2.0F}})
+            .add(Transform2D{.position = {kColumnX.at(column), kShipY}, .scale = glm::vec2{2.0F}})
             .add(SpriteRenderer{.texture = ships,
                                 .source = {kShipPosition, kShipSize},
                                 .color = kSeeThrough,
                                 .origin = kShipSize * 0.5F,
                                 .blend = kModes.at(column)});
         commands.spawn()
-            .add(Transform{.position = {kColumnX.at(column), kBandY}, .scale = glm::vec2{3.0F}})
+            .add(Transform2D{.position = {kColumnX.at(column), kBandY}, .scale = glm::vec2{3.0F}})
             .add(SpriteRenderer{.texture = shots,
                                 .source = {kShotPosition, kShotSize},
                                 .origin = kShotSize * 0.5F,
@@ -164,7 +164,7 @@ void spawnScene(ecs::ResMut<TextureAssets> textures, ecs::Commands& commands) {
 }
 
 // Update: slides the shots back and forth over the band.
-void slideShots(ecs::ResMut<Lifetime> lifetime, ecs::Res<ecs::Time> time, ecs::Query<Transform, const Shot> shots,
+void slideShots(ecs::ResMut<Lifetime> lifetime, ecs::Res<ecs::Time> time, ecs::Query<Transform2D, const Shot> shots,
                 ecs::EventWriter<ecs::AppExit> exit) {
     lifetime->elapsed += time->delta;
     const std::optional<float> limit = lifetime.get().seconds;

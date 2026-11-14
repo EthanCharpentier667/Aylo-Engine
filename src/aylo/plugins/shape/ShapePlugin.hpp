@@ -23,7 +23,7 @@ namespace aylo::plugins::shape {
 ///
 /// @details Registers the ShapeRenderer component, on every side so that a server can hold and replicate it, and adds
 /// the client Render system "aylo.Shape.Draw", after the GraphicsPlugin's sprites and before the end of the frame: it
-/// draws every entity with a GlobalTransform and a ShapeRenderer, sorted by layer, through the renderer. The renderer
+/// draws every entity with a GlobalTransform2D and a ShapeRenderer, sorted by layer, through the renderer. The renderer
 /// draws shapes as overlays, so they come over the sprites. It requires the GraphicsPlugin and the TransformPlugin.
 /// @code
 /// app.addPlugin(aylo::plugins::transform::TransformPlugin{})

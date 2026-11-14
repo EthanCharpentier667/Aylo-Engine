@@ -71,9 +71,9 @@ static_assert(offsetof(ParticleInstance, life) == 44, "ParticleInstance::life mu
 /// @brief One frame of an emitter, computed by the CPU: what a GPU system needs to emit and move its particles, given
 /// to IRenderer::simulate().
 struct ParticleEmission {
-    glm::vec2 position{0.0F, 0.0F};  ///< The emitter's GlobalTransform, in world units: where particles spawn.
-    glm::vec2 scale{1.0F, 1.0F};     ///< The emitter's GlobalTransform: scales the emission shape.
-    float rotation{0.0F};            ///< The emitter's GlobalTransform, in radians: turns the shape.
+    glm::vec2 position{0.0F, 0.0F};  ///< The emitter's GlobalTransform2D, in world units: where particles spawn.
+    glm::vec2 scale{1.0F, 1.0F};     ///< The emitter's GlobalTransform2D: scales the emission shape.
+    float rotation{0.0F};            ///< The emitter's GlobalTransform2D, in radians: turns the shape.
     float deltaTime{0.0F};           ///< Seconds since the previous frame.
     std::uint32_t seed{0};           ///< The emitter's seed; the random numbers of its particles depend on it.
     /// Particles the emitter emitted before this frame: particle i of the frame draws the random numbers of particle

@@ -26,7 +26,7 @@ struct LoadedCapsule;
 /// @code
 /// void spawnWave(aylo::ecs::Commands& commands, aylo::ecs::Res<aylo::plugins::capsule::Capsules> capsules) {
 ///     aylo::plugins::capsule::spawnCapsule(commands, *capsules, bydoId)
-///         .patch<Transform>([](Transform& transform) { transform.position = {820.F, 140.F}; });
+///         .patch<Transform2D>([](Transform2D& transform) { transform.position = {820.F, 140.F}; });
 /// }
 /// @endcode
 /// @return The root's commands, to add more components to it or patch the capsule's.

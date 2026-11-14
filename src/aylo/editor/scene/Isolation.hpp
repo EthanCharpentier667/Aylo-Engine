@@ -39,7 +39,7 @@ struct Isolation {
 [[nodiscard]] AYLO_EDITOR_API std::optional<Isolation> isolate(ecs::World& world, plugins::capsule::CapsuleId id,
                                                                std::string& error);
 
-/// @return Where the capsule's root is in the world (its GlobalTransform): what the preview looks at.
+/// @return Where the capsule's root is in the world (its GlobalTransform2D): what the preview looks at.
 [[nodiscard]] AYLO_EDITOR_API glm::vec2 centerOf(const ecs::World& world, const Isolation& isolation);
 
 /// @brief Despawns what isolate() spawned: the capsule goes with its anchor.

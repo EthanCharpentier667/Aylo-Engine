@@ -23,7 +23,7 @@ enum class Phase : std::uint8_t {
     kStateTransition,  ///< When a state machine changes: its onExit systems, then its onEnter systems (States).
     kFixedUpdate,      ///< Gameplay at a fixed rate: Luau systems, physics, network send (server).
     kUpdate,           ///< Once per frame: animation, camera, UI.
-    kPostUpdate,       ///< Transform propagation, input send (client).
+    kPostUpdate,       ///< Transform2D propagation, input send (client).
     kRender,           ///< Extract what to draw, then draw.
 };
 

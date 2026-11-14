@@ -17,7 +17,7 @@ engine.ecs.system("game.DressShips", {
 	query = { read = { "game.Ship" }, without = { "aylo.SpriteRenderer" } },
 	run = function(ctx)
 		for entity, ship in ctx.query do
-			ctx.commands:add(entity, "aylo.Transform", { position = ship.position })
+			ctx.commands:add(entity, "aylo.Transform2D", { position = ship.position })
 			ctx.commands:add(entity, "aylo.SpriteRenderer", { layer = 1 })
 			ctx.commands:add(entity, "aylo.SpriteAnimator", {
 				atlas = if ship.player == 0 then assets.leftShip else assets.rightShip,
@@ -34,7 +34,7 @@ engine.ecs.system("game.DressLasers", {
 	query = { read = { "game.Laser" }, without = { "aylo.SpriteRenderer" } },
 	run = function(ctx)
 		for entity, laser in ctx.query do
-			ctx.commands:add(entity, "aylo.Transform", { position = laser.position })
+			ctx.commands:add(entity, "aylo.Transform2D", { position = laser.position })
 			ctx.commands:add(entity, "aylo.SpriteRenderer", { layer = 2 })
 			ctx.commands:add(entity, "aylo.SpriteAnimator", {
 				atlas = assets.laser,
@@ -48,7 +48,7 @@ engine.ecs.system("game.DressLasers", {
 engine.ecs.system("game.FollowShips", {
 	phase = "Update",
 	side = "client",
-	query = { read = { "game.Ship" }, write = { "aylo.Transform" } },
+	query = { read = { "game.Ship" }, write = { "aylo.Transform2D" } },
 	run = function(ctx)
 		for _, ship, transform in ctx.query do
 			transform.position = ship.position
@@ -60,7 +60,7 @@ engine.ecs.system("game.FollowShips", {
 engine.ecs.system("game.FollowLasers", {
 	phase = "Update",
 	side = "client",
-	query = { read = { "game.Laser" }, write = { "aylo.Transform" } },
+	query = { read = { "game.Laser" }, write = { "aylo.Transform2D" } },
 	after = { "game.FollowShips" },
 	run = function(ctx)
 		for _, laser, transform in ctx.query do
@@ -99,7 +99,7 @@ engine.ecs.system("game.ExplodeLoser", {
 				local color = sprite.color
 				sprite.color = { x = color.x, y = color.y, z = color.z, w = 0 } -- its alpha: the ship is gone
 				ctx.commands:spawn({
-					["aylo.Transform"] = {
+					["aylo.Transform2D"] = {
 						position = ship.position,
 						scale = { x = explosionScale, y = explosionScale },
 					},

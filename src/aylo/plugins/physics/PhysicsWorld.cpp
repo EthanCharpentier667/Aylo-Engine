@@ -119,9 +119,9 @@ struct PhysicsWorld::Impl {
         std::optional<Velocity>
             lastVelocity;                     ///< The last velocity given to the body or read from it; none if unknown.
         std::uint64_t kinematicMoveStep = 0;  ///< The step (as getStepCount() counts it after it) of the last
-                                              ///< moveKinematic(): its pose is the Transform's, not written back.
+                                              ///< moveKinematic(): its pose is the Transform2D's, not written back.
 
-        /// @return Whether this is the last pose given or read. Exact float equality on purpose: the Transform holds
+        /// @return Whether this is the last pose given or read. Exact float equality on purpose: the Transform2D holds
         /// exactly the floats read from the body.
         [[nodiscard]] bool isAt(glm::vec2 position, float rotation) const noexcept {
             return lastPosition == position && lastRotation == rotation;
@@ -282,12 +282,12 @@ std::optional<ecs::Entity> PhysicsWorld::findEntity(PhysicsHandle handle) const 
     return entityFromBits(lock.GetBody().GetUserData());
 }
 
-bool PhysicsWorld::isOutOfSync(ecs::Entity entity, const transform::Transform& transform) const {
+bool PhysicsWorld::isOutOfSync(ecs::Entity entity, const transform::Transform2D& transform) const {
     const auto found = _impl->bodies.find(entity.getBits());
     return found != _impl->bodies.end() && !found->second.isAt(transform.position, transform.rotation);
 }
 
-bool PhysicsWorld::isLocalOutOfSync(ecs::Entity entity, const transform::Transform& local) const {
+bool PhysicsWorld::isLocalOutOfSync(ecs::Entity entity, const transform::Transform2D& local) const {
     const auto found = _impl->bodies.find(entity.getBits());
     return found != _impl->bodies.end() && found->second.lastLocalPosition &&
            (*found->second.lastLocalPosition != local.position || found->second.lastLocalRotation != local.rotation);
@@ -353,7 +353,7 @@ void PhysicsWorld::releaseBroadPhase() {
 }
 
 PhysicsHandle PhysicsWorld::createBody(ecs::Entity entity, const Collider& collider, const RigidBody* body,
-                                       const transform::Transform& at) {
+                                       const transform::Transform2D& at) {
     const JPH::BodyCreationSettings settings =
         detail::makeBodySettings(collider, body, at, _impl->unitsPerMeter, entity.getBits());
     JPH::BodyInterface& bodyInterface = _impl->system.GetBodyInterface();
@@ -425,7 +425,7 @@ std::vector<ecs::Entity> PhysicsWorld::endBodyPass() {
     return destroyed;
 }
 
-void PhysicsWorld::moveKinematic(ecs::Entity entity, const transform::Transform& transform, float deltaSeconds) {
+void PhysicsWorld::moveKinematic(ecs::Entity entity, const transform::Transform2D& transform, float deltaSeconds) {
     const auto found = _impl->bodies.find(entity.getBits());
     if (found == _impl->bodies.end()) {
         return;
@@ -441,7 +441,7 @@ void PhysicsWorld::moveKinematic(ecs::Entity entity, const transform::Transform&
     found->second.kinematicMoveStep = _impl->steps + 1;
 }
 
-void PhysicsWorld::teleport(ecs::Entity entity, const transform::Transform& transform) {
+void PhysicsWorld::teleport(ecs::Entity entity, const transform::Transform2D& transform) {
     const auto found = _impl->bodies.find(entity.getBits());
     if (found == _impl->bodies.end()) {
         return;
@@ -452,14 +452,14 @@ void PhysicsWorld::teleport(ecs::Entity entity, const transform::Transform& tran
     found->second.remember(transform.position, transform.rotation);
 }
 
-void PhysicsWorld::rememberPose(ecs::Entity entity, const transform::Transform& pose) {
+void PhysicsWorld::rememberPose(ecs::Entity entity, const transform::Transform2D& pose) {
     const auto found = _impl->bodies.find(entity.getBits());
     if (found != _impl->bodies.end()) {
         found->second.remember(pose.position, pose.rotation);
     }
 }
 
-void PhysicsWorld::rememberLocal(ecs::Entity entity, const transform::Transform& local) {
+void PhysicsWorld::rememberLocal(ecs::Entity entity, const transform::Transform2D& local) {
     const auto found = _impl->bodies.find(entity.getBits());
     if (found != _impl->bodies.end()) {
         found->second.lastLocalPosition = local.position;

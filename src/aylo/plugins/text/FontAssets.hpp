@@ -33,7 +33,7 @@ namespace aylo::plugins::text {
 /// @code
 /// void spawnTitle(aylo::ecs::Commands& commands, aylo::ecs::ResMut<aylo::plugins::text::FontAssets> fonts) {
 ///     commands.spawn()
-///         .add(aylo::plugins::transform::Transform{.position = {400.0F, 100.0F}})
+///         .add(aylo::plugins::transform::Transform2D{.position = {400.0F, 100.0F}})
 ///         .add(aylo::plugins::text::TextRenderer{.text = "AYLO", .font = fonts->load("assets/fonts/orbitron.json"),
 ///                                                 .size = 64.0F, .anchor = {0.5F, 0.5F}});
 /// }

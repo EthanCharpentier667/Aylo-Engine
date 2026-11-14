@@ -62,7 +62,7 @@ using namespace aylo;
 using namespace aylo::contract::audiodevice;
 using namespace aylo::plugins::audio;
 using aylo::core::asset::AssetId;
-using aylo::plugins::transform::Transform;
+using aylo::plugins::transform::Transform2D;
 
 namespace {
 /// @return The name of a bus, for the log.
@@ -180,17 +180,17 @@ void setup(ecs::ResMut<AudioAssets> sounds, ecs::ResMut<GameSounds> game, ecs::C
     game->music = sounds->load("examples/assets/maint.ogg", SoundDesc{.stream = true});
     game->misfire = sounds->load("examples/assets/laser-no.mp3");
     game->laser = sounds->load("examples/assets/laser.mp3");
-    commands.spawn().add(Transform{.position = {400.0F, 300.0F}}).add(AudioListener{});
+    commands.spawn().add(Transform2D{.position = {400.0F, 300.0F}}).add(AudioListener{});
     commands.spawn()
         .add(Ship{})
-        .add(Transform{.position = {200.0F, 300.0F}})
+        .add(Transform2D{.position = {200.0F, 300.0F}})
         .add(AudioSource{.sound = game->laser, .volume = 0.5F, .loop = true});
 }
 
 /// @brief Update: what gameplay does, one step per frame.
 void script(ecs::ResMut<Script> script, ecs::Res<GameSounds> game, ecs::ResMut<AudioVolumes> volumes,
             ecs::EventWriter<PlaySound> playSounds, ecs::EventWriter<PlayMusic> playMusics,
-            ecs::EventWriter<StopMusic> stopMusics, ecs::Query<Transform, ecs::With<Ship>> ships,
+            ecs::EventWriter<StopMusic> stopMusics, ecs::Query<Transform2D, ecs::With<Ship>> ships,
             ecs::Commands& commands) {
     switch (++script->frame) {
         case 1:

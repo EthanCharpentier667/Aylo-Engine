@@ -131,7 +131,7 @@ class AYLO_ECS_API Commands {
     /// writes the value the entity has at that moment, after the commands recorded before (a value added by the same
     /// buffer, a capsule just spawned), and the value is marked changed.
     /// @details Unlike add(), which replaces the whole value, a patch keeps what it does not write:
-    /// `commands.entity(bydo).patch<Transform>([](Transform& transform) { transform.position = {820.F, 140.F}; });`
+    /// `commands.entity(bydo).patch<Transform2D>([](Transform2D& transform) { transform.position = {820.F, 140.F}; });`
     /// Skipped if the entity is dead or does not have the component by then, and for a tag. `edit` runs inside flush()
     /// and must not throw. Parent and Children are the World's to change (World::setParent()): they cannot be patched.
     template <Component T, typename F>

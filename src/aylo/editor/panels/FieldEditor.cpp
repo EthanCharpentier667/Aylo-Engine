@@ -259,7 +259,7 @@ bool isHiddenComponent(std::string_view name, bool inScene) noexcept {
     if (name == "aylo.Parent" || name == "aylo.Children" || name == "aylo.CapsuleInstance") {
         return true;
     }
-    return inScene && (name == "aylo.Name" || name == "aylo.GlobalTransform");
+    return inScene && (name == "aylo.Name" || name == "aylo.GlobalTransform2D");
 }
 
 bool editFields(ecs::World& world, const ecs::TypeInfo& type, std::span<std::byte> value) {

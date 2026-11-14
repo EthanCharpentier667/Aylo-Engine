@@ -7,7 +7,7 @@ A system is a function that runs on a schedule, on the entities that match a que
 engine.ecs.system("game.MoveShips", {
 	phase = "FixedUpdate",
 	side = "server",
-	query = { write = { "game.Ship", "aylo.Transform" }, with = { "net.PlayerInput" } },
+	query = { write = { "game.Ship", "aylo.Transform2D" }, with = { "net.PlayerInput" } },
 	calls = { "aylo.replication.readInput" },
 	after = { "net.applyInputs" },
 	run = function(ctx)
@@ -57,7 +57,7 @@ systems of the same phase, including the engine's (the physics names are in [Phy
 
 `FixedUpdate` runs 60 times a second, whatever the screen does. On a 144 Hz screen, some frames see no tick and others
 see one, so an entity moved in `FixedUpdate` stops and jumps: it judders. Add `aylo.TransformInterpolation` next to
-its `aylo.Transform`, and the engine draws it between its last two ticks instead:
+its `aylo.Transform2D`, and the engine draws it between its last two ticks instead:
 
 ```luau
 engine.ecs.system("game.SpawnBall", {
@@ -65,7 +65,7 @@ engine.ecs.system("game.SpawnBall", {
 	side = "server",
 	run = function(ctx)
 		ctx.commands:spawn({
-			["aylo.Transform"] = { position = { x = 400, y = 300 } },
+			["aylo.Transform2D"] = { position = { x = 400, y = 300 } },
 			["aylo.TransformInterpolation"] = {},
 		})
 	end,
@@ -73,16 +73,16 @@ engine.ecs.system("game.SpawnBall", {
 ```
 
 The component has no fields. On the client (and in single player and the editor), after the ticks of each frame, the
-engine records the entity's `aylo.Transform` and computes the position you see, `aylo.GlobalTransform`, from the last
+engine records the entity's `aylo.Transform2D` and computes the position you see, `aylo.GlobalTransform2D`, from the last
 two records, blended by how far the frame is into the next tick. Its children follow the blended position.
 
-- **What is drawn is up to one tick behind** the simulation (about 17 ms at 60 ticks a second). `aylo.Transform`, the
-  physics and the server keep the simulated position: read `aylo.Transform` for gameplay.
+- **What is drawn is up to one tick behind** the simulation (about 17 ms at 60 ticks a second). `aylo.Transform2D`, the
+  physics and the server keep the simulated position: read `aylo.Transform2D` for gameplay.
 - **A move made out of the ticks is drawn at once**: a teleport written in `Update`, or an entity moved in the editor,
   does not slide there.
 - **Add it only to what moves in `FixedUpdate`** (your gameplay, or a body of the [physics](physics.md)). An entity a
   client moves in `Update`, such as one following replicated data, gains nothing from it.
-- The server never blends: a dedicated server draws nothing, so its `aylo.GlobalTransform` is the `aylo.Transform`.
+- The server never blends: a dedicated server draws nothing, so its `aylo.GlobalTransform2D` is the `aylo.Transform2D`.
 
 ## Queries
 
@@ -103,7 +103,7 @@ A system that visits entities lists what it asks of them:
 
 ```luau
 query = {
-	read = { "aylo.Transform" },
+	read = { "aylo.Transform2D" },
 	write = { "game.Ship" },
 	optionalRead = {}, optionalWrite = {},
 	with = { "net.Owner" }, without = { "game.Dead" },
@@ -142,7 +142,7 @@ Changes to the world are recorded and applied after the system, not during the l
 ```luau
 local ship = ctx.commands:spawn({
 	["game.Ship"] = { position = position, player = 0 },
-	["aylo.Transform"] = { position = position },
+	["aylo.Transform2D"] = { position = position },
 })
 ctx.commands:add(ship, "aylo.RigidBody", { type = "kinematic" })
 ctx.commands:patch(ship, "game.Ship", { player = 1 })
@@ -167,7 +167,7 @@ Use `patch` to change one field of something you did not build yourself, such as
 
 ```luau
 local bydo = ctx.call("aylo.capsule.spawn", { capsule = "actors/bydo.actor" })
-ctx.commands:patch(bydo, "aylo.Transform", { position = { x = 820, y = 140 } })   -- its rotation and scale stay
+ctx.commands:patch(bydo, "aylo.Transform2D", { position = { x = 820, y = 140 } })   -- its rotation and scale stay
 ```
 
 A patch sees the commands recorded before it in the same system, like that spawn. A field is written whole: a

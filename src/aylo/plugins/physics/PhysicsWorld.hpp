@@ -34,7 +34,7 @@ class JoltRuntime;
 /// @brief One physics world: a resource the PhysicsPlugin inserts, stepped once per fixed tick.
 ///
 /// @details Each App (each room on a server) has its own world, stepped on the App's thread with no thread of its
-/// own. Its API is in world units, Y down, like Transform; it converts to Jolt's meters
+/// own. Its API is in world units, Y down, like Transform2D; it converts to Jolt's meters
 /// (PhysicsSettings::unitsPerMeter) and axes inside. The Jolt objects live behind a pointer, so moving the resource
 /// never moves what Jolt points to, and this header includes no Jolt. A moved-from world can only be destroyed or
 /// assigned to.
@@ -43,7 +43,7 @@ class JoltRuntime;
 /// @endcode
 class AYLO_PLUGIN_PHYSICS_API PhysicsWorld {
   public:
-    /// @brief Where a body is, as a Transform sees it.
+    /// @brief Where a body is, as a Transform2D sees it.
     struct BodyPose {
         ecs::Entity entity;  ///< The entity the body belongs to.
         glm::vec2 position;  ///< In world units, Y down.
@@ -110,14 +110,14 @@ class AYLO_PLUGIN_PHYSICS_API PhysicsWorld {
     [[nodiscard]] std::optional<BodyPose> getBodyPose(ecs::Entity entity) const;
     /// @return How fast the entity's body moves; nothing if it has no body.
     [[nodiscard]] std::optional<Velocity> getBodyVelocity(ecs::Entity entity) const;
-    /// @return Whether the Transform differs from the last pose the world gave the body or read from it: gameplay moved
-    /// the entity. False for an entity without a body.
-    [[nodiscard]] bool isOutOfSync(ecs::Entity entity, const transform::Transform& transform) const;
-    /// @return Whether a child's Transform, relative to its parent, differs from the last one rememberLocal() recorded:
-    /// gameplay moved the entity. False when none was recorded, or for an entity without a body.
-    [[nodiscard]] bool isLocalOutOfSync(ecs::Entity entity, const transform::Transform& local) const;
+    /// @return Whether the Transform2D differs from the last pose the world gave the body or read from it: gameplay
+    /// moved the entity. False for an entity without a body.
+    [[nodiscard]] bool isOutOfSync(ecs::Entity entity, const transform::Transform2D& transform) const;
+    /// @return Whether a child's Transform2D, relative to its parent, differs from the last one rememberLocal()
+    /// recorded: gameplay moved the entity. False when none was recorded, or for an entity without a body.
+    [[nodiscard]] bool isLocalOutOfSync(ecs::Entity entity, const transform::Transform2D& local) const;
     /// @return Whether the Velocity differs from the last velocity the world gave the body or read from it: gameplay
-    /// changed it, or the body was rebuilt or moved to a Transform since. False for an entity without a moving body.
+    /// changed it, or the body was rebuilt or moved to a Transform2D since. False for an entity without a moving body.
     [[nodiscard]] bool isVelocityOutOfSync(ecs::Entity entity, const Velocity& velocity) const;
 
     /// @param gravity In world units per second squared, Y down.
@@ -142,17 +142,17 @@ class AYLO_PLUGIN_PHYSICS_API PhysicsWorld {
     /// @return The new body.
     /// @throws exceptions::PhysicsException When the components are invalid or the world holds maxBodies bodies.
     PhysicsHandle createBody(ecs::Entity entity, const Collider& collider, const RigidBody* body,
-                             const transform::Transform& at);
+                             const transform::Transform2D& at);
     /// @brief Destroys the entity's body.
     /// @return Whether it had one.
     bool destroyBody(ecs::Entity entity);
 
     /// @brief Starts a body pass: the bodies that are not touched or created before endBodyPass() are destroyed.
     /// @details This is how bodies follow despawned entities and removed Colliders, which the ECS does not report: the
-    /// physics plugin touches every entity that still has a Collider and a Transform, once per tick.
+    /// physics plugin touches every entity that still has a Collider and a Transform2D, once per tick.
     void beginBodyPass() noexcept;
     /// @brief Marks the entity's body as seen by the current body pass.
-    /// @param entity The entity, which still has a Collider and a Transform.
+    /// @param entity The entity, which still has a Collider and a Transform2D.
     /// @param hasRigidBody Whether it has a RigidBody now.
     /// @return False when its body must be created: it has none, or it gained or lost its RigidBody since.
     [[nodiscard]] bool touchBody(ecs::Entity entity, bool hasRigidBody) noexcept;
@@ -160,21 +160,21 @@ class AYLO_PLUGIN_PHYSICS_API PhysicsWorld {
     /// @return The entities whose body was destroyed.
     std::vector<ecs::Entity> endBodyPass();
 
-    /// @brief Moves a kinematic body to the entity's Transform during the next step.
-    /// @details Gives the body the velocity that reaches the Transform in deltaSeconds, so it pushes the dynamic bodies
-    /// on its way instead of passing through them; called every tick, it stops when the Transform stops. Its Velocity
-    /// counts as out of sync afterwards, so setVelocity() gives it back. Does nothing for an entity without a kinematic
-    /// body.
-    void moveKinematic(ecs::Entity entity, const transform::Transform& transform, float deltaSeconds);
-    /// @brief Puts the entity's body at its Transform at once, waking it up: a respawn, a moved wall.
+    /// @brief Moves a kinematic body to the entity's Transform2D during the next step.
+    /// @details Gives the body the velocity that reaches the Transform2D in deltaSeconds, so it pushes the dynamic
+    /// bodies on its way instead of passing through them; called every tick, it stops when the Transform2D stops. Its
+    /// Velocity counts as out of sync afterwards, so setVelocity() gives it back. Does nothing for an entity without a
+    /// kinematic body.
+    void moveKinematic(ecs::Entity entity, const transform::Transform2D& transform, float deltaSeconds);
+    /// @brief Puts the entity's body at its Transform2D at once, waking it up: a respawn, a moved wall.
     /// @details Keeps the body's velocity. Does nothing for an entity without a body.
-    void teleport(ecs::Entity entity, const transform::Transform& transform);
-    /// @brief Records the pose isOutOfSync() compares to, without moving the body: the pose a child's Transform gives
+    void teleport(ecs::Entity entity, const transform::Transform2D& transform);
+    /// @brief Records the pose isOutOfSync() compares to, without moving the body: the pose a child's Transform2D gives
     /// back, which can differ from the body's by a rounding. Does nothing for an entity without a body.
-    void rememberPose(ecs::Entity entity, const transform::Transform& pose);
-    /// @brief Records a child's Transform, relative to its parent, for isLocalOutOfSync(). Does nothing for an entity
+    void rememberPose(ecs::Entity entity, const transform::Transform2D& pose);
+    /// @brief Records a child's Transform2D, relative to its parent, for isLocalOutOfSync(). Does nothing for an entity
     /// without a body.
-    void rememberLocal(ecs::Entity entity, const transform::Transform& local);
+    void rememberLocal(ecs::Entity entity, const transform::Transform2D& local);
     /// @brief Sets how fast the entity's body moves, waking it up when the velocity is not zero.
     /// @details An axis the body cannot move along (RigidBody::fixedRotation) stays at zero. Does nothing for an entity
     /// without a dynamic or kinematic body.
@@ -198,9 +198,9 @@ class AYLO_PLUGIN_PHYSICS_API PhysicsWorld {
 
     /// @brief Reads the bodies the last step moved, for their Transforms.
     /// @details The dynamic bodies and the kinematic ones moving at their velocity, not those moveKinematic() moved to
-    /// their Transform. Only the bodies Jolt keeps active, and only those whose pose changed: sleeping bodies never
-    /// mark their Transform as changed, so replication does not send them. Each pose is remembered, so isOutOfSync()
-    /// does not take the Transform written from it for a move by gameplay.
+    /// their Transform2D. Only the bodies Jolt keeps active, and only those whose pose changed: sleeping bodies never
+    /// mark their Transform2D as changed, so replication does not send them. Each pose is remembered, so isOutOfSync()
+    /// does not take the Transform2D written from it for a move by gameplay.
     [[nodiscard]] std::vector<BodyPose> collectMovedBodies();
     /// @brief Reads the dynamic bodies whose velocity the last step changed, for their Velocity.
     /// @details Only the bodies Jolt keeps active. Each velocity is remembered, so isVelocityOutOfSync() does not take

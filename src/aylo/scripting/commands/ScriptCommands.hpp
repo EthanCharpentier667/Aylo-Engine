@@ -40,7 +40,7 @@ struct AYLO_SCRIPTING_API ScriptCommands {
 /// names over the value the entity has then (a capsule just spawned keeps its other fields; skipped if it does not have
 /// the component), `commands:setParent(child, parent)`, `commands:removeParent(child)` and `commands:despawn(entity)`,
 /// which also despawns its children. A component is one a script declared or a C++ component of the world
-/// (`aylo.Collider`, `aylo.Transform`, `aylo.TextRenderer`...), whose defaults are those of its C++ type: one that
+/// (`aylo.Collider`, `aylo.Transform2D`, `aylo.TextRenderer`...), whose defaults are those of its C++ type: one that
 /// owns memory (a `std::string` or `std::vector` field) is constructed, filled, copied into the command buffer and
 /// destroyed. A component's value is its defaults with the fields of the table written over them. An unknown component,
 /// a C++ component that owns memory but has no default constructor, a field the component does not have, a value that

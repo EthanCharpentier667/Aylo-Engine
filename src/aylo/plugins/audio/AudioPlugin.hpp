@@ -38,7 +38,7 @@ namespace aylo::plugins::audio {
 /// - PostUpdate "aylo.audio.update", last: applies the AudioVolumes if they changed, then IAudioDevice::update().
 ///
 /// Panning: pan = (x - listener x) / panDistance, clamped to [-1, 1], from the GlobalTransforms of the source and of
-/// the AudioListener (their Transform in the frame they spawn, before they get a GlobalTransform); no listener, no
+/// the AudioListener (their Transform2D in the frame they spawn, before they get a GlobalTransform2D); no listener, no
 /// panning. It also inserts the AudioAssets and AudioVolumes resources (unless the game did), registers
 /// AudioSource, AudioListener and the events, and adds the TransformPlugin (nothing happens if it was added first).
 /// @code

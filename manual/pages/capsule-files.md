@@ -65,13 +65,13 @@ The written file reads back as the same capsule, but it is not the text you type
 # The boss, with a turret on each side.
 [node path="."]
 game.Health = { value = 50, max = 100 }   # max is the default
-aylo.Transform = {
+aylo.Transform2D = {
     position = (0.0, 2.50),
     scale = (1, 1),
 }
 
 [node path="LeftTurret" instance="./actors/turret.actor"]
-aylo.Transform = { position = (-40, 0), rotation = 1.5 }
+aylo.Transform2D = { position = (-40, 0), rotation = 1.5 }
 
 [node path="Shadow" side=client]
 game.Sprite = { texture = "sprites/boss_shadow.png", layer = -1 }
@@ -84,10 +84,10 @@ is written back as:
 
 [node path="."]
 game.Health = { value = 50 }
-aylo.Transform = { position = (0, 2.5) }
+aylo.Transform2D = { position = (0, 2.5) }
 
 [node path="LeftTurret" instance="actors/turret.actor"]
-aylo.Transform = { position = (-40, 0) }
+aylo.Transform2D = { position = (-40, 0) }
 
 [node path="Shadow" side=client]
 game.Sprite = { texture = "sprites/boss_shadow.png", layer = -1 }

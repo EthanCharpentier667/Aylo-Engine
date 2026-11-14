@@ -25,7 +25,7 @@ engine.ecs.system("game.SpawnCamera", {
 	query = {},
 	run = function(ctx)
 		ctx.commands:spawn({
-			["aylo.Transform"] = { position = { x = Duel.viewWidth / 2, y = Duel.viewHeight / 2 } },
+			["aylo.Transform2D"] = { position = { x = Duel.viewWidth / 2, y = Duel.viewHeight / 2 } },
 			["aylo.Camera"] = {},
 			["aylo.AudioListener"] = {},
 		})
@@ -39,13 +39,13 @@ engine.ecs.system("game.PlaceObstacles", {
 	side = "client",
 	query = {
 		read = { "game.Obstacle", "aylo.Collider" },
-		optionalRead = { "aylo.Transform" },
+		optionalRead = { "aylo.Transform2D" },
 		without = { "aylo.ShapeRenderer" },
 	},
 	run = function(ctx)
 		for entity, obstacle, collider, transform in ctx.query do
 			if transform == nil then -- replicated: the server sends where it is, not its Transform
-				ctx.commands:add(entity, "aylo.Transform", { position = obstacle.position })
+				ctx.commands:add(entity, "aylo.Transform2D", { position = obstacle.position })
 			end
 			ctx.commands:add(entity, "aylo.ShapeRenderer", {
 				kind = if collider.shape == "circle" then "circle" else "rect",
@@ -98,7 +98,7 @@ engine.ecs.system("game.SpawnPlanets", {
 		local speed = backgroundScale * math.lerp(planetSpeedMin, planetSpeedMax, closeness)
 		local width, height = planet.size.x * scale, planet.size.y * scale
 		ctx.commands:spawn({
-			["aylo.Transform"] = {
+			["aylo.Transform2D"] = {
 				position = { x = Duel.viewWidth, y = math.random() * (Duel.viewHeight - height) },
 				scale = { x = scale, y = scale },
 			},
@@ -117,7 +117,7 @@ engine.ecs.system("game.SpawnPlanets", {
 engine.ecs.system("game.RemovePlanets", {
 	phase = "Update",
 	side = "client",
-	query = { read = { "aylo.Transform", "aylo.Parallax", "game.BackgroundPlanet" } },
+	query = { read = { "aylo.Transform2D", "aylo.Parallax", "game.BackgroundPlanet" } },
 	after = { "game.FollowLasers" },
 	run = function(ctx)
 		for entity, transform, parallax, planet in ctx.query do
