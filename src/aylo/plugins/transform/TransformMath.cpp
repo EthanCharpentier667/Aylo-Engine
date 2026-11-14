@@ -8,6 +8,8 @@
 #include "TransformMath.hpp"
 
 #include <cmath>
+#include <glm/ext/matrix_float4x4.hpp>
+#include <glm/ext/matrix_transform.hpp>
 #include <glm/ext/quaternion_common.hpp>
 #include <glm/ext/quaternion_float.hpp>
 #include <glm/ext/quaternion_geometric.hpp>
@@ -15,6 +17,7 @@
 #include <glm/ext/vector_float2.hpp>
 #include <glm/ext/vector_float3.hpp>
 #include <glm/ext/vector_float4.hpp>
+#include <glm/gtc/quaternion.hpp>
 
 #include "Transform.hpp"
 
@@ -93,5 +96,9 @@ Transform3D interpolate(const Transform3D& from, const Transform3D& to, float al
     return Transform3D{.position = from.position + ((to.position - from.position) * alpha),
                        .rotation = fromQuat(glm::slerp(toQuat(from.rotation), toQuat(to.rotation), alpha)),
                        .scale = from.scale + ((to.scale - from.scale) * alpha)};
+}
+glm::mat4 toMatrix(const GlobalTransform3D& global) noexcept {
+    return glm::translate(glm::mat4{1.0F}, global.position) * glm::mat4_cast(glm::normalize(toQuat(global.rotation))) *
+           glm::scale(glm::mat4{1.0F}, global.scale);
 }
 }  // namespace aylo::plugins::transform
