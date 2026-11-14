@@ -24,7 +24,7 @@
 namespace aylo::plugins::mesh {
 
 namespace detail {
-struct GltfModel;
+struct Model;
 }  // namespace detail
 
 /// @brief Where a mesh is in its loading.
@@ -36,7 +36,7 @@ enum class MeshState : std::uint8_t {
 };
 
 /// @brief The 3D models, as the ECS resource "aylo.MeshAssets" the MeshPlugin inserts: a script or a system asks for a
-/// glTF file by path and gets its AssetId at once; the plugin reads it, loads its textures (through TextureAssets) and
+/// model file by path and gets its AssetId at once; the plugin reads it, loads its textures (through TextureAssets) and
 /// has the renderer create it, over the next frames.
 /// @details load() only records the request, so a server without a renderer gets the same ids. A mesh is loaded once
 /// per path.
@@ -44,9 +44,9 @@ class AYLO_PLUGIN_MESH_API MeshAssets {
   public:
     /// @brief One model.
     struct Entry {
-        std::string path;                          ///< Its file, from the assets folder.
-        MeshState state{MeshState::kQueued};       ///< Where it is in its loading.
-        std::shared_ptr<detail::GltfModel> model;  ///< The file read, until the renderer created the mesh.
+        std::string path;                      ///< Its file, from the assets folder.
+        MeshState state{MeshState::kQueued};   ///< Where it is in its loading.
+        std::shared_ptr<detail::Model> model;  ///< The file read, until the renderer created the mesh.
         std::vector<std::optional<core::asset::AssetId>> partTextures;  ///< Per part: its texture asset, or none.
         contract::renderer::StaticMeshId mesh;                          ///< The renderer's id, once loaded.
         std::string error;                                              ///< Why it failed to load.
@@ -64,7 +64,8 @@ class AYLO_PLUGIN_MESH_API MeshAssets {
     /// @return Where the files are read; null before setSource().
     [[nodiscard]] const core::vfs::FileSource* getSource() const noexcept;
 
-    /// @brief Asks for the glTF 2.0 file at @p path (`.gltf` or `.glb`), read by the plugin from the next frame.
+    /// @brief Asks for the model file at @p path (glTF 2.0 `.gltf` or `.glb`, FBX `.fbx`, Wavefront `.obj`), read by
+    /// the plugin from the next frame.
     /// @return Its id: the same for the same path, in every process.
     core::asset::AssetId load(const std::filesystem::path& path);
 

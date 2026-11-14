@@ -20,7 +20,7 @@
 #include "core/asset/AssetId.hpp"
 #include "core/asset/exceptions/AssetExceptions.hpp"
 #include "core/vfs/FileSource.hpp"
-#include "plugins/mesh/detail/GltfLoader.hpp"  // IWYU pragma: keep
+#include "plugins/mesh/detail/Model.hpp"  // IWYU pragma: keep
 
 namespace aylo::plugins::mesh {
 

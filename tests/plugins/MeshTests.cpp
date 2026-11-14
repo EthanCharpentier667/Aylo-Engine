@@ -78,7 +78,7 @@ TEST(GltfLoader, ReadsTheTrianglesTheirMaterialAndTheirImage) {
     assets.writeTriangle();
     const aylo::core::vfs::DirectorySource source{assets.root()};
 
-    const aylo::plugins::mesh::detail::GltfModel model =
+    const aylo::plugins::mesh::detail::Model model =
         aylo::plugins::mesh::detail::loadGltf("models/tri.gltf", source);
 
     ASSERT_EQ(model.mesh.vertices.size(), 3U);

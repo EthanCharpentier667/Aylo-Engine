@@ -36,6 +36,7 @@
 #include <utility>
 #include <vector>
 
+#include "Model.hpp"
 #include "aylo/contract/renderer/drawing/StaticMesh.hpp"
 #include "core/asset/exceptions/AssetExceptions.hpp"
 #include "core/vfs/FileSource.hpp"
@@ -104,7 +105,7 @@ std::string_view describe(cgltf_result result) {
     }
 }
 
-/// @brief Builds a GltfModel from a parsed file.
+/// @brief Builds a Model from a parsed file.
 class ModelBuilder {
   public:
     ModelBuilder(std::string_view path, const cgltf_options& options) : _path{path}, _options{&options} {}
@@ -134,7 +135,7 @@ class ModelBuilder {
 
     /// @return The model built.
     /// @throws core::asset::exceptions::AssetLoadException If it has no triangle.
-    GltfModel take() {
+    Model take() {
         if (_model.mesh.indices.empty()) {
             throw core::asset::exceptions::AssetLoadException{
                 std::format("Mesh '{}': it has no triangles to draw", _path)};
@@ -242,7 +243,7 @@ class ModelBuilder {
         if (const auto known = _images.find(&image); known != _images.end()) {
             return known->second;
         }
-        GltfImage made;
+        ModelImage made;
         if (image.buffer_view != nullptr && image.buffer_view->buffer != nullptr &&
             image.buffer_view->buffer->data != nullptr) {
             const auto* bytes = static_cast<const std::byte*>(image.buffer_view->buffer->data);
@@ -287,13 +288,13 @@ class ModelBuilder {
 
     std::string _path;                                            ///< For the messages, and to find the images.
     const cgltf_options* _options;                                ///< To decode data URIs.
-    GltfModel _model;                                             ///< What is built.
+    Model _model;                                                 ///< What is built.
     std::unordered_map<const cgltf_image*, std::size_t> _images;  ///< Images already added, by their index.
 };
 
 }  // namespace
 
-GltfModel loadGltf(std::string_view path, const core::vfs::FileSource& source) {
+Model loadGltf(std::string_view path, const core::vfs::FileSource& source) {
     // The bytes stay alive while cgltf reads them: a .glb's binary chunk points into them.
     std::string bytes;
     try {

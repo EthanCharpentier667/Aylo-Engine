@@ -77,12 +77,12 @@ void readMeshes(ecs::ResMut<MeshAssets> meshes, ecs::ResAppend<graphics::Texture
             continue;
         }
         try {
-            auto model = std::make_shared<detail::GltfModel>(detail::loadGltf(entry.path, *meshes->getSource()));
+            auto model = std::make_shared<detail::Model>(detail::loadGltf(entry.path, *meshes->getSource()));
             const contract::renderer::TextureDesc desc{.filter = contract::renderer::TextureFilter::kLinear,
                                                        .repeat = true};
             std::vector<std::optional<core::asset::AssetId>> images(model->images.size());
             for (std::size_t index = 0; index < model->images.size(); ++index) {
-                const detail::GltfImage& image = model->images.at(index);
+                const detail::ModelImage& image = model->images.at(index);
                 images.at(index) = image.path.empty() ? textures->load(std::format("{}#image{}", entry.path, index),
                                                                        image.encoded, desc)
                                                       : textures->load(std::filesystem::path{image.path}, desc);
