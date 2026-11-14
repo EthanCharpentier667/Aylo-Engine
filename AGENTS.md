@@ -181,6 +181,7 @@ doing it by hand from memory skips rules (labels, project fields, template, comm
 | add an engine call or a setup form | `add-engine-call` (then `write-manual`) |
 | add a component, resource or event to a plugin | `add-component` (then `write-manual`) |
 | add a plugin | `add-plugin` (then `write-manual`) |
+| add, bump or use a third-party package (`add_requires`, `add_packages` in an `xmake.lua`) | `check-libraries` |
 | write or change a game in Luau | `luau-gameplay` |
 | file issues, an epic, sub-issues, dependencies | `plan-issues` |
 
