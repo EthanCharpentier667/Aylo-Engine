@@ -159,6 +159,18 @@ local hit = engine.assets.material({
 })
 ```
 
+### Material files
+
+A material can be a `.material` file of the assets (`MaterialFile.hpp`, plan in `docs/materials/plan.md`): JSON with
+`shader` (a path), `values` (a number or 2 to 4 numbers by name) and `textures` (an image path by name).
+`loadMaterialFile(path, shaders, materials, textures)` reads it through the shaders' `FileSource`, loads its shader and
+textures, gives a whole number an `int` when the shader declares one, and makes it the material known by its path
+(`MaterialAssets::define()`, which replaces it when read again). `describeMaterial()` gives it back as a `MaterialFile`
+and `MaterialFile::write()` as JSON, which is how the editor saves one. Scripts load it with
+`engine.assets.material("materials/hit.material")` (the call `aylo.shader.loadMaterial`). nlohmann::json stays private
+to the plugin. `MaterialReloadable` reads again, with hot reload on, the `.material` files the game loaded, anywhere in
+its assets; a file that cannot be read keeps the last version.
+
 ### Where the files are
 
 In a game, a shader's path starts in the game's assets, as every asset's does (`engine/design.md`, *Assets*):
