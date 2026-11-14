@@ -103,7 +103,7 @@ engine.ecs.system("game.ExplodeLoser", {
 						position = ship.position,
 						scale = { x = explosionScale, y = explosionScale },
 					},
-					["aylo.SpriteRenderer"] = { layer = 3, blend = Duel.additive },
+					["aylo.SpriteRenderer"] = { layer = 3, blend = "additive" },
 					["aylo.SpriteAnimator"] = { atlas = assets.explosion, animation = "explode" },
 					["game.Explosion"] = {},
 				})

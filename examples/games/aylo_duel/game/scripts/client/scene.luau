@@ -12,7 +12,6 @@ local firstPlanetDelay = 8 -- seconds before the first planet passes
 local planetDelayMin, planetDelayMax = 25, 50 -- seconds between two planets
 local planetScaleMin = 0.6 -- the size of the farthest planet, from 1 for the closest...
 local planetSpeedMin, planetSpeedMax = 22, 34 -- ... and its speed, in background pixels per second
-local rectShape, circleShape = 0, 1 -- aylo.ShapeRenderer kind
 
 engine.ecs.component("game.BackgroundPlanet", {
 	fields = { width = "f32" }, -- on screen, in world units
@@ -49,7 +48,7 @@ engine.ecs.system("game.PlaceObstacles", {
 				ctx.commands:add(entity, "aylo.Transform", { position = obstacle.position })
 			end
 			ctx.commands:add(entity, "aylo.ShapeRenderer", {
-				kind = if collider.shape == Duel.circle then circleShape else rectShape,
+				kind = if collider.shape == "circle" then "circle" else "rect",
 				size = collider.size,
 				radius = collider.radius,
 				cornerRadius = 6,
