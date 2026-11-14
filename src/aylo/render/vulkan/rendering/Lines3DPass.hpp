@@ -60,10 +60,11 @@ class AYLO_RENDER_VULKAN_API Lines3DPass {
     /// @throws vk::SystemError If a bigger buffer cannot be created.
     void upload(std::size_t frameIndex, std::span<const LineVertex3D> vertices);
 
-    /// @brief Records the lines uploaded for this frame inside dynamic rendering. Nothing without lines.
+    /// @brief Records the first @p vertices vertices uploaded for this frame inside dynamic rendering (at most all of
+    /// them). Nothing without lines.
     /// @param viewport Where the 3D world goes in the image (the letterboxed viewport).
     void record(const vk::raii::CommandBuffer& commandBuffer, std::size_t frameIndex, const vk::Viewport& viewport,
-                const vk::Rect2D& scissor) const;
+                const vk::Rect2D& scissor, std::size_t vertices) const;
 
   private:
     const memory::Allocator* _allocator;                   ///< Allocates the buffers.

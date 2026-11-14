@@ -7,6 +7,7 @@
 
 #include "Lines3DPass.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -86,9 +87,9 @@ void Lines3DPass::upload(std::size_t frameIndex, std::span<const LineVertex3D> v
 }
 
 void Lines3DPass::record(const vk::raii::CommandBuffer& commandBuffer, std::size_t frameIndex,
-                         const vk::Viewport& viewport, const vk::Rect2D& scissor) const {
+                         const vk::Viewport& viewport, const vk::Rect2D& scissor, std::size_t vertices) const {
     const std::optional<memory::Buffer>& buffer = _vertices.at(frameIndex);
-    const std::size_t count = _counts.at(frameIndex);
+    const std::size_t count = std::min(vertices, _counts.at(frameIndex));
     if (count < 2 || !buffer) {
         return;
     }

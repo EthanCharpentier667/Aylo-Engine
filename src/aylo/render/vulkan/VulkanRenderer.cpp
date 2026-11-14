@@ -271,6 +271,7 @@ void VulkanRenderer::init(contract::platform::IPlatform& platform) {
     _meshGlobals = std::make_unique<frame::FrameGlobals>(*_device, *_allocator, kFramesInFlight);
     _previewGlobals = std::make_unique<frame::FrameGlobals>(*_device, *_allocator, kFramesInFlight);
     _globals3D = std::make_unique<frame::FrameGlobals>(*_device, *_allocator, kFramesInFlight);
+    _previewGlobals3D = std::make_unique<frame::FrameGlobals>(*_device, *_allocator, kFramesInFlight);
     _device->setName(*_pipelineCache->getCache(), "Pipeline cache");
     _samplers = std::make_unique<texture::SamplerCache>(*_device, *_physicalDevice);
     _textureSetLayout = std::make_unique<descriptor::DescriptorSetLayout>(
@@ -518,6 +519,8 @@ void VulkanRenderer::beginFrame(const contract::renderer::Color& clearColor) {
     adoptTarget(_previewSize, _previewTexture, _previewRequest ? std::optional{_previewRequest->size} : std::nullopt,
                 "Preview");
     _previewView = _previewRequest ? std::optional{_previewRequest->view} : std::nullopt;
+    _preview3D = _previewRequest ? _previewRequest->view3D : std::nullopt;
+    _previewWorld2D = !_previewRequest || _previewRequest->world2D;
     const frame::FrameData& frame = _frames->getCurrentFrame();
 
     std::uint32_t imageIndex = 0;
@@ -656,7 +659,18 @@ vk::DescriptorSet VulkanRenderer::recordScene(const vk::raii::CommandBuffer& com
         const command::CommandLabel label{*_device, commandBuffer, "Scene"};
         rendering::transitionImage(commandBuffer, *sceneImage.getImage(), rendering::kSceneToColorAttachment);
         // The 3D world first, in a scope of its own (its pipelines have a depth attachment), then the 2D world over it.
-        recordWorld3D(commandBuffer, frameIndex, *sceneImage.getImageView(), extent, viewSize, framebufferSize);
+        if (_view3D) {
+            recordWorld3D(commandBuffer, frameIndex,
+                          World3DTarget{.view = &*_view3D,
+                                        .color = *sceneImage.getImageView(),
+                                        .extent = extent,
+                                        .viewSize = viewSize,
+                                        .framebufferSize = framebufferSize,
+                                        .globals = _globals3D.get(),
+                                        .depth = &_sceneDepth,
+                                        .depthName = "Scene depth",
+                                        .lineVertices = _sceneLineVertices});
+        }
         const vk::RenderingAttachmentInfo sceneColor =
             _view3D ? rendering::loadedColorAttachment(*sceneImage.getImageView())
                     : rendering::colorAttachment(*sceneImage.getImageView(), toClearColor(_clearColor));
@@ -727,39 +741,38 @@ void VulkanRenderer::drawStaticMesh(const contract::renderer::StaticMeshDraw& dr
     }
 }
 
-const memory::Image& VulkanRenderer::acquireDepth(std::size_t frameIndex, vk::Extent2D extent) {
-    if (_sceneDepth) {
-        const vk::Extent2D current = _sceneDepth->getExtent();
+const memory::Image& VulkanRenderer::acquireDepth(std::unique_ptr<memory::Image>& slot, std::size_t frameIndex,
+                                                  vk::Extent2D extent, const char* name) {
+    if (slot) {
+        const vk::Extent2D current = slot->getExtent();
         if (current.width == extent.width && current.height == extent.height) {
-            return *_sceneDepth;
+            return *slot;
         }
         // The previous frames may still test against it: it goes when they are done.
-        _deletionQueue.defer(frameIndex, std::move(_sceneDepth));
+        _deletionQueue.defer(frameIndex, std::move(slot));
     }
-    _sceneDepth = std::make_unique<memory::Image>(*_device, *_allocator, extent, kDepthFormat,
-                                                  vk::ImageUsageFlagBits::eDepthStencilAttachment);
-    _device->setName(*_sceneDepth->getImage(), "Scene depth");
-    return *_sceneDepth;
+    slot = std::make_unique<memory::Image>(*_device, *_allocator, extent, kDepthFormat,
+                                           vk::ImageUsageFlagBits::eDepthStencilAttachment);
+    _device->setName(*slot->getImage(), name);
+    return *slot;
 }
 
 void VulkanRenderer::recordWorld3D(const vk::raii::CommandBuffer& commandBuffer, std::size_t frameIndex,
-                                   vk::ImageView color, vk::Extent2D extent, glm::vec2 viewSize,
-                                   glm::uvec2 framebufferSize) {
-    if (!_view3D) {
-        return;
-    }
+                                   const World3DTarget& target) {
     const command::CommandLabel label{*_device, commandBuffer, "World 3D"};
-    const contract::renderer::CameraView3D view{*_view3D, viewSize, framebufferSize};
+    const contract::renderer::CameraView3D view{*target.view, target.viewSize, target.framebufferSize};
     rendering::FrameUniforms uniforms = makeFrameUniforms(
-        contract::renderer::CameraView{contract::renderer::View{}, viewSize, framebufferSize}, extent);
+        contract::renderer::CameraView{contract::renderer::View{}, target.viewSize, target.framebufferSize},
+        target.extent);
     uniforms.viewProjection = view.getViewProjection();
-    _globals3D->update(frameIndex, uniforms);
-    const memory::Image& depth = acquireDepth(frameIndex, extent);
+    target.globals->update(frameIndex, uniforms);
+    const memory::Image& depth = acquireDepth(*target.depth, frameIndex, target.extent, target.depthName);
     rendering::transitionImage(commandBuffer, *depth.getImage(), rendering::kToDepthAttachment);
-    const vk::RenderingAttachmentInfo colorAttachment = rendering::colorAttachment(color, toClearColor(_clearColor));
+    const vk::RenderingAttachmentInfo colorAttachment =
+        rendering::colorAttachment(target.color, toClearColor(_clearColor));
     const vk::RenderingAttachmentInfo depthAttachment = rendering::depthAttachment(*depth.getImageView(), 1.0F);
-    commandBuffer.beginRendering(rendering::renderingInfo(extent, {&colorAttachment, 1}, &depthAttachment));
-    _globals3D->bind(commandBuffer, *_layout, frameIndex);
+    commandBuffer.beginRendering(rendering::renderingInfo(target.extent, {&colorAttachment, 1}, &depthAttachment));
+    target.globals->bind(commandBuffer, *_layout, frameIndex);
     const contract::renderer::Viewport& area = view.getViewport();
     const vk::Viewport viewport{area.position.x, area.position.y, area.size.x, area.size.y, 0.0F, 1.0F};
     const vk::Rect2D scissor{
@@ -776,7 +789,7 @@ void VulkanRenderer::recordWorld3D(const vk::raii::CommandBuffer& commandBuffer,
         commandBuffer, meshes, viewport, scissor,
         [this](contract::renderer::TextureId texture) { return findTextureSet(texture); },
         findTextureSet(_fallbackTexture));
-    _lines3DPass->record(commandBuffer, frameIndex, viewport, scissor);
+    _lines3DPass->record(commandBuffer, frameIndex, viewport, scissor, target.lineVertices);
     commandBuffer.endRendering();
 }
 
@@ -869,6 +882,13 @@ void VulkanRenderer::uploadWorld(std::size_t frameIndex) {
     _spritePass->upload(frameIndex, _sprites);
     _particlePass->upload(frameIndex, _particleInstances);
     _shapePass->upload(frameIndex, _shapes);
+    // The preview's own lines go after the frame's: the scene draws the first ones, the preview all of them.
+    _sceneLineVertices = _lines3D.size();
+    if (_preview3D && _previewRequest) {
+        for (const contract::renderer::Lines3D& lines : _previewRequest->lines) {
+            drawLines3D(lines);
+        }
+    }
     _lines3DPass->upload(frameIndex, _lines3D);
 }
 
@@ -905,11 +925,26 @@ void VulkanRenderer::recordPreview(const vk::raii::CommandBuffer& commandBuffer,
     const contract::renderer::CameraView view{*_previewView, glm::vec2{0.0F}, size};
     _previewGlobals->update(frameIndex, makeFrameUniforms(view, extent));
     rendering::transitionImage(commandBuffer, *preview->image.getImage(), rendering::kSceneToColorAttachment);
-    const vk::RenderingAttachmentInfo color =
-        rendering::colorAttachment(*preview->image.getImageView(), toClearColor(_clearColor));
-    commandBuffer.beginRendering(rendering::renderingInfo(extent, {&color, 1}));
-    recordWorld(commandBuffer, frameIndex, view, *_previewGlobals);
-    commandBuffer.endRendering();
+    if (_preview3D) {
+        recordWorld3D(commandBuffer, frameIndex,
+                      World3DTarget{.view = &*_preview3D,
+                                    .color = *preview->image.getImageView(),
+                                    .extent = extent,
+                                    .viewSize = glm::vec2{0.0F},
+                                    .framebufferSize = size,
+                                    .globals = _previewGlobals3D.get(),
+                                    .depth = &_previewDepth,
+                                    .depthName = "Preview depth",
+                                    .lineVertices = _lines3D.size()});
+    }
+    if (_previewWorld2D || !_preview3D) {
+        const vk::RenderingAttachmentInfo color =
+            _preview3D ? rendering::loadedColorAttachment(*preview->image.getImageView())
+                       : rendering::colorAttachment(*preview->image.getImageView(), toClearColor(_clearColor));
+        commandBuffer.beginRendering(rendering::renderingInfo(extent, {&color, 1}));
+        recordWorld(commandBuffer, frameIndex, view, *_previewGlobals);
+        commandBuffer.endRendering();
+    }
     rendering::transitionImage(commandBuffer, *preview->image.getImage(), rendering::kSceneToShaderRead);
 }
 
