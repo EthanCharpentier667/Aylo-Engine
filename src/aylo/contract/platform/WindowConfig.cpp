@@ -16,7 +16,7 @@
 namespace aylo::contract::platform {
 
 WindowConfig WindowConfig::fromSettings(const core::config::Settings& settings) {
-    settings.checkKeys({"size", "title", "resizable", "fullscreen", "system"}, "window");
+    settings.checkKeys({"size", "title", "resizable", "fullscreen", "system", "captureCursor"}, "window");
     WindowConfig config;
     const std::vector<double> size =
         settings.getNumberList("size", {static_cast<double>(config.size.x), static_cast<double>(config.size.y)});
@@ -29,6 +29,7 @@ WindowConfig WindowConfig::fromSettings(const core::config::Settings& settings) 
     config.resizable = settings.getBool("resizable", config.resizable);
     config.fullscreen = settings.getBool("fullscreen", config.fullscreen);
     config.system = settings.getString("system", config.system);
+    config.captureCursor = settings.getBool("captureCursor", config.captureCursor);
     if (config.system != "auto" && config.system != "x11" && config.system != "wayland") {
         throw core::config::exceptions::SettingsException(
             R"(Setting 'window.system' must be "auto", "x11" or "wayland", not ")" + config.system + "\"");
