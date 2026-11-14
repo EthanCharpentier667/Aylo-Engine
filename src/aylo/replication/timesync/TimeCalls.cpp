@@ -11,6 +11,8 @@
 #include <string>
 
 #include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/call/CallInfo.hpp"
+#include "aylo/ecs/call/Calls.hpp"
 #include "aylo/ecs/system/ResourceParam.hpp"
 #include "aylo/ecs/time/Time.hpp"
 #include "aylo/replication/client/ClientState.hpp"
@@ -29,6 +31,11 @@ Rtt serverRtt(ecs::Res<server::ServerState> state, const RttArguments& arguments
     return Rtt{.connected = rtt.has_value(), .rtt = rtt.value_or(0.0)};
 }
 
+/// @brief `aylo.net.serverTime` on the server: its own clock, the one the clients estimate and `clientTime` is in.
+ServerTime serverServerTime(ecs::ResMut<server::ServerState> state) {
+    return ServerTime{.synced = true, .time = state->serverTime()};
+}
+
 ServerTime standaloneServerTime(ecs::Res<ecs::Time> time) { return ServerTime{.synced = true, .time = time->elapsed}; }
 
 Rtt standaloneRtt(const RttArguments& arguments) {
@@ -38,7 +45,13 @@ Rtt standaloneRtt(const RttArguments& arguments) {
 
 void addClientTimeCalls(ecs::App& app) { app.addCall(std::string{kServerTimeCall}, &clientServerTime); }
 
-void addServerTimeCalls(ecs::App& app) { app.addCall(std::string{kRttCall}, &serverRtt); }
+void addServerTimeCalls(ecs::App& app) {
+    app.addCall(std::string{kRttCall}, &serverRtt);
+    // A world that runs the client side too registered the client's estimate first: it keeps it.
+    if (app.getWorld().getCalls().findByName(kServerTimeCall) == nullptr) {
+        app.addCall(std::string{kServerTimeCall}, &serverServerTime);
+    }
+}
 
 void addStandaloneTimeCalls(ecs::App& app) {
     app.addCall(std::string{kServerTimeCall}, &standaloneServerTime);

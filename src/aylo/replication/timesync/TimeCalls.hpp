@@ -16,13 +16,14 @@
 
 namespace aylo::replication::timesync {
 inline constexpr std::string_view kServerTimeCall =
-    "aylo.net.serverTime";                                    ///< The client's estimate of the server clock.
+    "aylo.net.serverTime";                                    ///< The server clock, or a client's estimate of it.
 inline constexpr std::string_view kRttCall = "aylo.net.rtt";  ///< The server's RTT to a client.
 
 /// @brief The result of `aylo.net.serverTime`.
 struct ServerTime {
-    bool synced{false};  ///< Whether the server answered a ping since the connection: false while connecting.
-    double time{0.0};    ///< The estimated server clock now, in seconds; 0 when not synced.
+    bool synced{
+        false};        ///< Whether `time` holds the clock: always on the server, on a client once a ping was answered.
+    double time{0.0};  ///< The server clock now, in seconds (estimated on a client); 0 when not synced.
 };
 AYLO_ECS_CALL_DATA(ServerTime, "aylo.net.ServerTime", synced, time);
 
@@ -43,8 +44,9 @@ AYLO_ECS_CALL_DATA(Rtt, "aylo.net.Rtt", connected, rtt);
 /// ReplicationPlugin on the client side.
 AYLO_REPLICATION_API void addClientTimeCalls(ecs::App& app);
 
-/// @brief Registers `aylo.net.rtt` on @p app, on the `net.ServerState` resource. Called by the ReplicationPlugin on
-/// the server side.
+/// @brief Registers `aylo.net.rtt` and `aylo.net.serverTime` on @p app, on the `net.ServerState` resource: the
+/// server's own clock, the one `readInput().clientTime` is in, unless the client side registered its estimate already.
+/// Called by the ReplicationPlugin on the server side, after the client side.
 AYLO_REPLICATION_API void addServerTimeCalls(ecs::App& app);
 
 /// @brief Registers both calls for a standalone session, where server and client are one: the clock is the one of the
