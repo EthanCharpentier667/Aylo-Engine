@@ -21,6 +21,10 @@ function names()
         noticesFile = "THIRD_PARTY_NOTICES.md",
         noticesByLibraryFolder = "by-library",
 
+        -- The editor: next to `runtime/` in the release zip, never shipped with a game.
+        editorFolder = "editor",
+        editorProgram = "aylo-editor",
+
         -- Next to a plugin library.
         linksExtension = ".links",
         signatureExtension = ".sig",
