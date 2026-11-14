@@ -33,6 +33,14 @@ end
 
 engine.assets.material = function(...)
 	forms.arguments(form, 1, ...)
+	if type((...)) == "string" then
+		-- A material file: engine.assets.material("materials/hit.material").
+		local path = (...)
+		if not engine.hasCall("aylo.shader.loadMaterial") then
+			return engine.assetId(path)
+		end
+		return forms.call(form, "aylo.shader.loadMaterial", { path = path })
+	end
 	local spec = forms.table(form, (...), { "name", "shader", "values", "textures" })
 	local name = forms.string(form, spec, "name")
 	if name == nil or name == "" or spec.shader == nil then

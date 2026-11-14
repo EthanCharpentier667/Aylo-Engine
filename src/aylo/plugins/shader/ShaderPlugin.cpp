@@ -31,6 +31,7 @@
 #include "plugins/graphics/TextureAssets.hpp"
 #include "plugins/shader/MaterialAssets.hpp"
 #include "plugins/shader/MaterialInstance.hpp"
+#include "plugins/shader/MaterialReloadable.hpp"
 #include "plugins/shader/ScreenMaterials.hpp"
 #include "plugins/shader/ShaderAssets.hpp"
 #include "plugins/shader/ShaderCalls.hpp"
@@ -99,6 +100,9 @@ void ShaderPlugin::build(ecs::App& app) {
         const std::filesystem::path assets = directory.lexically_relative(reloader->root());
         if (!assets.empty() && *assets.begin() != "..") {
             reloader->add(std::make_unique<ShaderReloadable>(&*resources.getMut<ShaderAssets>(), assets));
+            reloader->add(std::make_unique<MaterialReloadable>(&*resources.getMut<ShaderAssets>(),
+                                                               &*resources.getMut<MaterialAssets>(),
+                                                               &*resources.getMut<graphics::TextureAssets>(), assets));
         }
     }
 }
