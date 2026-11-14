@@ -25,7 +25,8 @@ namespace aylo::plugins::tilemap {
 /// @details Three systems:
 /// - Render "aylo.Tilemap.Parallax", on the client, before the GraphicsPlugin's camera: moves every entity with a
 ///   Parallax by the camera and its scroll (see Parallax). It is a visual effect, applied once gameplay and the
-///   PostUpdate systems are done with GlobalTransform; the Render systems that draw run after the camera, so after it.
+///   PostUpdate systems are done with GlobalTransform2D; the Render systems that draw run after the camera, so after
+///   it.
 /// - Render "aylo.Tilemap.Textures", on the client, before the GraphicsPlugin loads the textures: hands the images of
 ///   the maps loaded since the last frame to TextureAssets, so a map loaded during Update is drawn in that frame.
 /// - Render "aylo.Tilemap.Draw", on the client, after the GraphicsPlugin's camera and before its sprites: pushes to

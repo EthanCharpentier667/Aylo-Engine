@@ -2,7 +2,7 @@
 -- form makes in its `calls`.
 --
 --   local bydo = engine.capsule.spawn(ctx, "actors/bydo.actor", {
---       ["aylo.Transform"] = { position = { x = 820, y = 140 } },
+--       ["aylo.Transform2D"] = { position = { x = 820, y = 140 } },
 --   })
 --
 -- The overrides change only the fields they name, over the capsule's values: each is a ctx.commands:patch of the root,

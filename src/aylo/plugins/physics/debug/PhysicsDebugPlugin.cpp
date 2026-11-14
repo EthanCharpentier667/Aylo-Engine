@@ -66,8 +66,8 @@ const contract::renderer::Color* colorOf(const PhysicsDebug* debug, bool wanted,
 /// @brief Render, after the sprites: draws the chosen entities' collider outlines and velocity arrows.
 void drawDebug(
     ecs::NonSendMut<plugins::graphics::Backend> backend, ecs::Res<PhysicsDebugSettings> settings,
-    ecs::Query<const Collider, const transform::GlobalTransform, ecs::Optional<const PhysicsDebug>> colliders,
-    ecs::Query<const Velocity, const transform::GlobalTransform, ecs::Optional<const PhysicsDebug>> moving) {
+    ecs::Query<const Collider, const transform::GlobalTransform2D, ecs::Optional<const PhysicsDebug>> colliders,
+    ecs::Query<const Velocity, const transform::GlobalTransform2D, ecs::Optional<const PhysicsDebug>> moving) {
     if (!settings->enabled || backend->renderer == nullptr) {
         return;
     }

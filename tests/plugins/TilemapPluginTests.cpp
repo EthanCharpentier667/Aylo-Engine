@@ -52,8 +52,8 @@ using aylo::plugins::tilemap::Tilemap;
 using aylo::plugins::tilemap::TilemapAssets;
 using aylo::plugins::tilemap::TilemapLayer;
 using aylo::plugins::tilemap::Tileset;
-using aylo::plugins::transform::GlobalTransform;
-using aylo::plugins::transform::Transform;
+using aylo::plugins::transform::GlobalTransform2D;
+using aylo::plugins::transform::Transform2D;
 
 namespace {
 /// @brief The name the test map is added under.
@@ -155,7 +155,7 @@ TEST(TilemapPlugin, SpawnsOneEntityPerLayer) {
         EXPECT_EQ(layer.map, AssetId::fromPath(kLevel));
         EXPECT_EQ(layer.drawLayer, 5 + static_cast<std::int32_t>(layer.layer));
         if (layer.layer == 0) {
-            EXPECT_EQ(app.world().getComponents().get<Transform>(entity)->position, (glm::vec2{4.0F, 0.0F}));
+            EXPECT_EQ(app.world().getComponents().get<Transform2D>(entity)->position, (glm::vec2{4.0F, 0.0F}));
             EXPECT_EQ(app.world().getComponents().get<Parallax>(entity)->factor, (glm::vec2{0.5F, 1.0F}));
         }
     }
@@ -194,7 +194,7 @@ TEST(TilemapPlugin, SortsTheTilesWithTheSpritesByLayer) {
     TilemapApp app;
     app.spawnMap({tilesAt({{0, 0}})});  // Draw layer 5.
     const aylo::ecs::Entity ship = app.world().spawn();
-    app.world().getComponents().add(ship, Transform{.position = {300.0F, 300.0F}});
+    app.world().getComponents().add(ship, Transform2D{.position = {300.0F, 300.0F}});
     app.world().getComponents().add(
         ship, aylo::plugins::sprite::SpriteRenderer{.texture = AssetId::fromPath("tiles.png"), .layer = 10});
     const auto sprites = app.drawFrame();
@@ -205,43 +205,43 @@ TEST(TilemapPlugin, SortsTheTilesWithTheSpritesByLayer) {
 TEST(TilemapPlugin, MovesAParallaxEntityByTheCamera) {
     TilemapApp app;
     const aylo::ecs::Entity camera = app.world().spawn();
-    app.world().getComponents().add(camera, Transform{.position = {400.0F, 300.0F}});
+    app.world().getComponents().add(camera, Transform2D{.position = {400.0F, 300.0F}});
     app.world().getComponents().add(camera, aylo::plugins::graphics::Camera{});
     const aylo::ecs::Entity far = app.world().spawn();
-    app.world().getComponents().add(far, Transform{.position = {10.0F, 0.0F}});
+    app.world().getComponents().add(far, Transform2D{.position = {10.0F, 0.0F}});
     app.world().getComponents().add(far, Parallax{.factor = {0.5F, 0.0F}, .origin = {0.0F, 100.0F}});
     app.app().runFrame();
     // (camera - origin) * (1 - factor): (400, 200) * (0.5, 1).
-    EXPECT_EQ(app.world().getComponents().get<GlobalTransform>(far)->position, (glm::vec2{210.0F, 200.0F}));
+    EXPECT_EQ(app.world().getComponents().get<GlobalTransform2D>(far)->position, (glm::vec2{210.0F, 200.0F}));
 }
 
 TEST(TilemapPlugin, MovesAParallaxChildFromWhereItsParentPutsIt) {
     TilemapApp app;
     const aylo::ecs::Entity camera = app.world().spawn();
-    app.world().getComponents().add(camera, Transform{.position = {400.0F, 300.0F}});
+    app.world().getComponents().add(camera, Transform2D{.position = {400.0F, 300.0F}});
     app.world().getComponents().add(camera, aylo::plugins::graphics::Camera{});
     const aylo::ecs::Entity parent = app.world().spawn();
-    app.world().getComponents().add(parent, Transform{.position = {100.0F, 0.0F}});
+    app.world().getComponents().add(parent, Transform2D{.position = {100.0F, 0.0F}});
     const aylo::ecs::Entity far = app.world().spawn();
-    app.world().getComponents().add(far, Transform{.position = {10.0F, 0.0F}});
+    app.world().getComponents().add(far, Transform2D{.position = {10.0F, 0.0F}});
     app.world().getComponents().add(far, Parallax{.factor = {0.5F, 0.0F}, .origin = {0.0F, 100.0F}});
     EXPECT_TRUE(app.world().setParent(far, parent));
     app.app().runFrame();
-    EXPECT_EQ(app.world().getComponents().get<GlobalTransform>(far)->position, (glm::vec2{310.0F, 200.0F}));
+    EXPECT_EQ(app.world().getComponents().get<GlobalTransform2D>(far)->position, (glm::vec2{310.0F, 200.0F}));
     app.app().runFrame();  // the shift goes on top of this frame's position: it does not add up
-    EXPECT_EQ(app.world().getComponents().get<GlobalTransform>(far)->position, (glm::vec2{310.0F, 200.0F}));
-    app.world().getComponents().getMut<Transform>(parent)->position.x = 200.0F;
+    EXPECT_EQ(app.world().getComponents().get<GlobalTransform2D>(far)->position, (glm::vec2{310.0F, 200.0F}));
+    app.world().getComponents().getMut<Transform2D>(parent)->position.x = 200.0F;
     app.app().runFrame();
-    EXPECT_EQ(app.world().getComponents().get<GlobalTransform>(far)->position, (glm::vec2{410.0F, 200.0F}));
+    EXPECT_EQ(app.world().getComponents().get<GlobalTransform2D>(far)->position, (glm::vec2{410.0F, 200.0F}));
 }
 
 TEST(TilemapPlugin, ScrollsAParallaxEntityOnItsOwn) {
     TilemapApp app;
     const aylo::ecs::Entity cloud = app.world().spawn();
-    app.world().getComponents().add(cloud, Transform{});
+    app.world().getComponents().add(cloud, Transform2D{});
     app.world().getComponents().add(cloud, Parallax{.scroll = {-3.0F, 0.0F}});
     app.app().runFrame();
     app.app().runFrame();
     EXPECT_EQ(app.world().getComponents().get<Parallax>(cloud)->scrolled, (glm::vec2{-6.0F, 0.0F}));
-    EXPECT_EQ(app.world().getComponents().get<GlobalTransform>(cloud)->position, (glm::vec2{-6.0F, 0.0F}));
+    EXPECT_EQ(app.world().getComponents().get<GlobalTransform2D>(cloud)->position, (glm::vec2{-6.0F, 0.0F}));
 }

@@ -35,7 +35,7 @@ std::optional<Isolation> isolate(ecs::World& world, plugins::capsule::CapsuleId 
     try {
         ecs::Commands commands{world};
         isolation.anchor = commands.spawn()
-                               .add(plugins::transform::Transform{.position = kIsolatedOrigin})
+                               .add(plugins::transform::Transform2D{.position = kIsolatedOrigin})
                                .add(ecs::Name{.value = ecs::String{"Prefab mode"}})
                                .getEntity();
         isolation.root = plugins::capsule::spawnCapsule(commands, *capsules, id)
@@ -50,7 +50,7 @@ std::optional<Isolation> isolate(ecs::World& world, plugins::capsule::CapsuleId 
 }
 
 glm::vec2 centerOf(const ecs::World& world, const Isolation& isolation) {
-    const auto* root = world.getComponents().get<plugins::transform::GlobalTransform>(isolation.root);
+    const auto* root = world.getComponents().get<plugins::transform::GlobalTransform2D>(isolation.root);
     return root != nullptr ? root->position : kIsolatedOrigin;
 }
 

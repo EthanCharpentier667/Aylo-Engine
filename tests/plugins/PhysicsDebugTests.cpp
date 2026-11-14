@@ -50,8 +50,8 @@ using aylo::plugins::physics::Velocity;
 using aylo::plugins::physics::debug::PhysicsDebug;
 using aylo::plugins::physics::debug::PhysicsDebugPlugin;
 using aylo::plugins::physics::debug::PhysicsDebugSettings;
-using aylo::plugins::transform::GlobalTransform;
-using aylo::plugins::transform::Transform;
+using aylo::plugins::transform::GlobalTransform2D;
+using aylo::plugins::transform::Transform2D;
 
 namespace {
 constexpr float kTolerance = 1e-4F;
@@ -77,7 +77,7 @@ struct DebugApp {
     /// @return A new entity at the position with a box collider, and the debug component when given.
     Entity spawn(glm::vec2 position, std::optional<PhysicsDebug> debug) {
         const Entity entity = app.getWorld().spawn();
-        components().add(entity, Transform{.position = position});
+        components().add(entity, Transform2D{.position = position});
         components().add(entity, Collider{.shape = ShapeType::kBox, .size = {40.0F, 20.0F}});
         if (debug) {
             components().add(entity, *debug);
@@ -98,7 +98,7 @@ TEST(PhysicsDebugShapes, ABoxOutlineTurnsAndMovesWithItsEntity) {
     const float quarterTurn = std::acos(-1.0F) / 2.0F;
     const Shape shape = aylo::plugins::physics::debug::debugColliderShape(
         Collider{.shape = ShapeType::kBox, .size = {40.0F, 20.0F}, .offset = {10.0F, 0.0F}},
-        GlobalTransform{.position = {100.0F, 50.0F}, .rotation = quarterTurn}, kRed, 2.0F);
+        GlobalTransform2D{.position = {100.0F, 50.0F}, .rotation = quarterTurn}, kRed, 2.0F);
     EXPECT_EQ(shape.kind, ShapeKind::kRect);
     EXPECT_EQ(shape.size, (glm::vec2{40.0F, 20.0F}));
     EXPECT_FLOAT_EQ(shape.rotation, quarterTurn);
@@ -112,12 +112,12 @@ TEST(PhysicsDebugShapes, ABoxOutlineTurnsAndMovesWithItsEntity) {
 
 TEST(PhysicsDebugShapes, CirclesAndCapsulesKeepTheirSizes) {
     const Shape circle = aylo::plugins::physics::debug::debugColliderShape(
-        Collider{.shape = ShapeType::kCircle, .radius = 8.0F}, GlobalTransform{}, kRed, 1.0F);
+        Collider{.shape = ShapeType::kCircle, .radius = 8.0F}, GlobalTransform2D{}, kRed, 1.0F);
     EXPECT_EQ(circle.kind, ShapeKind::kCircle);
     EXPECT_FLOAT_EQ(circle.radius, 8.0F);
 
     const Shape capsule = aylo::plugins::physics::debug::debugColliderShape(
-        Collider{.shape = ShapeType::kCapsule, .radius = 6.0F, .halfHeight = 12.0F}, GlobalTransform{}, kRed, 1.0F);
+        Collider{.shape = ShapeType::kCapsule, .radius = 6.0F, .halfHeight = 12.0F}, GlobalTransform2D{}, kRed, 1.0F);
     EXPECT_EQ(capsule.kind, ShapeKind::kCapsule);
     EXPECT_FLOAT_EQ(capsule.radius, 6.0F);
     EXPECT_FLOAT_EQ(capsule.halfHeight, 12.0F);
@@ -125,7 +125,7 @@ TEST(PhysicsDebugShapes, CirclesAndCapsulesKeepTheirSizes) {
 
 TEST(PhysicsDebugShapes, ASensorIsDrawnFainter) {
     const Shape shape =
-        aylo::plugins::physics::debug::debugColliderShape(Collider{.sensor = true}, GlobalTransform{}, kRed, 1.0F);
+        aylo::plugins::physics::debug::debugColliderShape(Collider{.sensor = true}, GlobalTransform2D{}, kRed, 1.0F);
     EXPECT_FLOAT_EQ(shape.outlineColor.w, 0.5F);
 }
 
@@ -224,7 +224,7 @@ TEST(PhysicsDebugPlugin, AddingPhysicsDebugNeverRebuildsTheBody) {
     app.addPlugin(PhysicsDebugPlugin{});
     app.getWorld().getResources().insert(aylo::ecs::Time{.fixedDelta = 1.0F / 60.0F});
     const Entity ship = app.getWorld().spawn();
-    app.getWorld().getComponents().add(ship, Transform{});
+    app.getWorld().getComponents().add(ship, Transform2D{});
     app.getWorld().getComponents().add(ship, Collider{});
     app.getWorld().getComponents().add(ship, aylo::plugins::physics::RigidBody{});
     app.getSchedules().run(aylo::ecs::Phase::kFixedUpdate);

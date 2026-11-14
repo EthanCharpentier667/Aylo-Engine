@@ -31,20 +31,20 @@ namespace {
 }
 }  // namespace
 
-GlobalTransform combine(const GlobalTransform& parent, const Transform& local) noexcept {
-    return GlobalTransform{.position = parent.position + rotate(local.position * parent.scale, parent.rotation),
+GlobalTransform2D combine(const GlobalTransform2D& parent, const Transform2D& local) noexcept {
+    return GlobalTransform2D{.position = parent.position + rotate(local.position * parent.scale, parent.rotation),
                            .rotation = parent.rotation + (rotationDirection(parent.scale) * local.rotation),
                            .scale = parent.scale * local.scale};
 }
 
-Transform toLocal(const GlobalTransform& parent, const GlobalTransform& world) noexcept {
-    return Transform{.position = divide(rotate(world.position - parent.position, -parent.rotation), parent.scale),
+Transform2D toLocal(const GlobalTransform2D& parent, const GlobalTransform2D& world) noexcept {
+    return Transform2D{.position = divide(rotate(world.position - parent.position, -parent.rotation), parent.scale),
                      .rotation = rotationDirection(parent.scale) * (world.rotation - parent.rotation),
                      .scale = divide(world.scale, parent.scale)};
 }
-Transform interpolate(const Transform& from, const Transform& to, float alpha) noexcept {
+Transform2D interpolate(const Transform2D& from, const Transform2D& to, float alpha) noexcept {
     const float turn = std::remainder(to.rotation - from.rotation, 2.0F * glm::pi<float>());
-    return Transform{.position = from.position + ((to.position - from.position) * alpha),
+    return Transform2D{.position = from.position + ((to.position - from.position) * alpha),
                      .rotation = from.rotation + (turn * alpha),
                      .scale = from.scale + ((to.scale - from.scale) * alpha)};
 }

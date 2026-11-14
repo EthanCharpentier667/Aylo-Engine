@@ -35,7 +35,7 @@ glm::vec2 rotate(glm::vec2 local, float rotation) noexcept {
 }
 }  // namespace
 
-contract::renderer::Shape debugColliderShape(const Collider& collider, const transform::GlobalTransform& transform,
+contract::renderer::Shape debugColliderShape(const Collider& collider, const transform::GlobalTransform2D& transform,
                                              contract::renderer::Color color, float thickness) noexcept {
     using contract::renderer::ShapeKind;
     if (collider.sensor) {

@@ -102,7 +102,7 @@ JPH::RefConst<JPH::Shape> makeShape(const Collider& collider, float unitsPerMete
 }
 
 JPH::BodyCreationSettings makeBodySettings(const Collider& collider, const RigidBody* body,
-                                           const transform::Transform& transform, float unitsPerMeter,
+                                           const transform::Transform2D& transform, float unitsPerMeter,
                                            std::uint64_t userData) {
     const JPH::EMotionType motion = body != nullptr ? toMotionType(body->type) : JPH::EMotionType::Static;
     if (!layers::isValid(collider.layer, collider.mask)) {

@@ -161,11 +161,11 @@ graphics::VisibleArea visibleAreaOf(const contract::renderer::View& view, glm::v
     return area;
 }
 
-/// @brief Render: shows the world from the camera entity with the highest priority, at its GlobalTransform; the first
+/// @brief Render: shows the world from the camera entity with the highest priority, at its GlobalTransform2D; the first
 /// one found wins a tie. Records what the frame shows in the VisibleArea resource.
 void applyCamera(ecs::NonSendMut<plugins::graphics::Backend> backend, ecs::ResMut<graphics::VisibleArea> visible,
                  ecs::ResMut<graphics::ViewInfo> info,
-                 ecs::Query<const transform::GlobalTransform, const graphics::Camera> cameras) {
+                 ecs::Query<const transform::GlobalTransform2D, const graphics::Camera> cameras) {
     plugins::graphics::Backend& started = *backend;
     if (isStarted(started)) {
         // A scene drawn into a texture is seen as a window of its size: that is the framebuffer the game places things

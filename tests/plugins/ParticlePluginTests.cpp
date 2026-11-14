@@ -52,7 +52,7 @@ using aylo::plugins::particle::ParticleOneShot;
 using aylo::plugins::particle::ParticlesFinished;
 using aylo::plugins::particle::ParticleSystems;
 using aylo::plugins::particle::SpawnParticles;
-using aylo::plugins::transform::Transform;
+using aylo::plugins::transform::Transform2D;
 
 namespace {
 /// @brief An App with the GraphicsPlugin over the fake backend, 0.1 second per frame, the texture spark.png loaded and
@@ -99,7 +99,7 @@ class ParticleApp {
     /// @brief Spawns an entity at @p position playing @p emitter.
     aylo::ecs::Entity spawnEmitter(ParticleEmitter emitter, glm::vec2 position = {0.0F, 0.0F}) {
         const aylo::ecs::Entity entity = world().spawn();
-        world().getComponents().add(entity, Transform{.position = position});
+        world().getComponents().add(entity, Transform2D{.position = position});
         world().getComponents().add(entity, emitter);
         return entity;
     }
@@ -185,7 +185,7 @@ TEST(ParticlePlugin, ComesWithTheGraphicsPlugin) {
 TEST(ParticlePlugin, DrawsACpuEmitterAtItsLayer) {
     ParticleApp app;
     static_cast<void>(app.spawnEmitter(ParticleEmitter{.effect = app.stream(), .layer = 3}));
-    static_cast<void>(app.drawFrame());  // GlobalTransform is added at the end of this frame
+    static_cast<void>(app.drawFrame());  // GlobalTransform2D is added at the end of this frame
     const auto draws = app.drawFrame();
     ASSERT_EQ(draws.size(), 1U);
     EXPECT_EQ(countInstances(draws.at(0)), 1U);

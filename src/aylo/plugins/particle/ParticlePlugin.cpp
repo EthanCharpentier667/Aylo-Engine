@@ -142,8 +142,8 @@ EmitterState& startEmitter(ParticleSystems& systems, contract::renderer::IRender
 void spawnParticles(ecs::EventReader<SpawnParticles> requests, ecs::Commands& commands) {
     for (const SpawnParticles& request : requests) {
         static_cast<void>(commands.spawn()
-                              .add(transform::Transform{.position = request.position})
-                              .add(transform::GlobalTransform{.position = request.position})
+                              .add(transform::Transform2D{.position = request.position})
+                              .add(transform::GlobalTransform2D{.position = request.position})
                               .add(ParticleEmitter{.effect = request.effect, .layer = request.layer})
                               .add(ParticleOneShot{}));
     }
@@ -162,7 +162,7 @@ struct UpdateContext {
 };
 
 /// @brief Starts, restarts or advances @p entity's emitter, despawning it once done if it is @p oneShot.
-void updateEmitter(UpdateContext& context, ecs::Entity entity, const transform::GlobalTransform& global,
+void updateEmitter(UpdateContext& context, ecs::Entity entity, const transform::GlobalTransform2D& global,
                    const ParticleEmitter& emitter, bool oneShot) {
     const ParticleEffect* effect = context.effects->get(emitter.effect);
     if (effect == nullptr) {
@@ -211,8 +211,8 @@ void updateEmitter(UpdateContext& context, ecs::Entity entity, const transform::
 void updateEmitters(
     ecs::NonSendMut<plugins::graphics::Backend> backend, ecs::Res<ParticleEffectAssets> effects,
     ecs::ResMut<ParticleSystems> systems, ecs::Res<ecs::Time> time,
-    ecs::Query<const transform::GlobalTransform, const ParticleEmitter, ecs::Without<ParticleOneShot>> emitters,
-    ecs::Query<const transform::GlobalTransform, const ParticleEmitter, ecs::With<ParticleOneShot>> oneShots,
+    ecs::Query<const transform::GlobalTransform2D, const ParticleEmitter, ecs::Without<ParticleOneShot>> emitters,
+    ecs::Query<const transform::GlobalTransform2D, const ParticleEmitter, ecs::With<ParticleOneShot>> oneShots,
     ecs::EventWriter<ParticlesFinished> finished, ecs::Commands& commands) {
     UpdateContext context{.renderer = getRenderer(*backend),
                           .effects = &*effects,

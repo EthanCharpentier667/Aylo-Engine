@@ -48,7 +48,7 @@ class AYLO_EDITOR_API DefaultValue {
 
 /// @return Whether @p name is a component the editor never shows, adds or removes: the hierarchy (Parent, Children,
 /// set by the tree), what a capsule's spawn sets (CapsuleInstance) and, in a scene, what the node itself gives
-/// (Name, its name) or the engine computes (GlobalTransform).
+/// (Name, its name) or the engine computes (GlobalTransform2D).
 [[nodiscard]] AYLO_EDITOR_API bool isHiddenComponent(std::string_view name, bool inScene) noexcept;
 
 /// @brief Shows the fields of a value with the widget of their type, and lets the user change them in place.

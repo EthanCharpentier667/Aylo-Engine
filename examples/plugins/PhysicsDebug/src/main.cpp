@@ -57,7 +57,7 @@
 using namespace aylo;
 using namespace aylo::plugins::physics;
 using aylo::contract::renderer::Color;
-using aylo::plugins::transform::Transform;
+using aylo::plugins::transform::Transform2D;
 
 namespace {
 constexpr double kWidth = 800.0;
@@ -77,15 +77,15 @@ AYLO_ECS_RESOURCE(Lifetime, "example.Lifetime");
 void spawnScene(ecs::Commands& commands) {
     // A static floor and two walls: colliders without RigidBody, drawn in the default green.
     commands.spawn()
-        .add(Transform{.position = {400.0F, 560.0F}})
+        .add(Transform2D{.position = {400.0F, 560.0F}})
         .add(Collider{.shape = ShapeType::kBox, .size = {760.0F, 20.0F}})
         .add(debug::PhysicsDebug{});
     commands.spawn()
-        .add(Transform{.position = {30.0F, 400.0F}, .rotation = 0.3F})
+        .add(Transform2D{.position = {30.0F, 400.0F}, .rotation = 0.3F})
         .add(Collider{.shape = ShapeType::kBox, .size = {20.0F, 300.0F}})
         .add(debug::PhysicsDebug{});
     commands.spawn()
-        .add(Transform{.position = {770.0F, 400.0F}, .rotation = -0.3F})
+        .add(Transform2D{.position = {770.0F, 400.0F}, .rotation = -0.3F})
         .add(Collider{.shape = ShapeType::kBox, .size = {20.0F, 300.0F}})
         .add(debug::PhysicsDebug{});
 
@@ -97,7 +97,7 @@ void spawnScene(ecs::Commands& commands) {
     };
     for (std::size_t index = 0; index < 6; ++index) {
         commands.spawn()
-            .add(Transform{.position = {180.0F + (90.0F * static_cast<float>(index)),
+            .add(Transform2D{.position = {180.0F + (90.0F * static_cast<float>(index)),
                                         80.0F + (40.0F * static_cast<float>(index % 3))},
                            .rotation = 0.2F * static_cast<float>(index)})
             .add(shapes.at(index % shapes.size()))
@@ -108,7 +108,7 @@ void spawnScene(ecs::Commands& commands) {
 
     // A kinematic ship flying across at its Velocity, pushing the balls in its way.
     commands.spawn()
-        .add(Transform{.position = {-60.0F, 470.0F}})
+        .add(Transform2D{.position = {-60.0F, 470.0F}})
         .add(Collider{.shape = ShapeType::kCapsule, .radius = 14.0F, .halfHeight = 20.0F})
         .add(RigidBody{.type = BodyType::kKinematic})
         .add(Velocity{.linear = {90.0F, 0.0F}})
@@ -116,7 +116,7 @@ void spawnScene(ecs::Commands& commands) {
 
     // A sensor zone in the middle: drawn fainter, it detects without colliding.
     commands.spawn()
-        .add(Transform{.position = {400.0F, 300.0F}})
+        .add(Transform2D{.position = {400.0F, 300.0F}})
         .add(Collider{.shape = ShapeType::kCircle, .radius = 70.0F, .sensor = true})
         .add(debug::PhysicsDebug{.color = kYellow});
 }

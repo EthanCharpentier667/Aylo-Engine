@@ -89,13 +89,13 @@ TEST(ScriptPhysics, AScriptSpawnsBodiesAndReadsTheirCollision) {
                 if spawned then return end
                 spawned = true
                 ctx.commands:spawn({
-                    ["aylo.Transform"] = { position = { x = 0, y = 0 } },
+                    ["aylo.Transform2D"] = { position = { x = 0, y = 0 } },
                     ["aylo.Collider"] = { size = { x = 20, y = 20 } },
                     ["aylo.RigidBody"] = { gravityScale = 0, fixedRotation = true },
                     ["aylo.Velocity"] = { linear = { x = 600, y = 0 } },
                 })
                 ctx.commands:spawn({
-                    ["aylo.Transform"] = { position = { x = 40, y = 0 } },
+                    ["aylo.Transform2D"] = { position = { x = 40, y = 0 } },
                     ["aylo.Collider"] = { size = { x = 20, y = 20 } },
                 })
             end,
@@ -131,19 +131,19 @@ TEST(ScriptPhysics, AScriptMovesAShipAndCastsARayThroughTheCalls) {
                 if spawned then return end
                 spawned = true
                 ctx.commands:spawn({
-                    ["aylo.Transform"] = { position = { x = 100, y = 0 } },
+                    ["aylo.Transform2D"] = { position = { x = 100, y = 0 } },
                     ["aylo.Collider"] = { size = { x = 20, y = 200 } },
                 })
                 ctx.commands:spawn({
                     ["game.Ship"] = {},
-                    ["aylo.Transform"] = { position = { x = 0, y = 0 } },
+                    ["aylo.Transform2D"] = { position = { x = 0, y = 0 } },
                     ["aylo.Collider"] = { shape = 1, radius = 10 },
                 })
             end,
         })
         engine.ecs.system("game.Move", {
             phase = "FixedUpdate",
-            query = { write = { "aylo.Transform" }, with = { "game.Ship" } },
+            query = { write = { "aylo.Transform2D" }, with = { "game.Ship" } },
             calls = { "aylo.physics.moveAndSlide", "aylo.physics.raycast" },
             after = { "aylo.Physics.SyncBodies" },
             before = { "aylo.Physics.SyncToPhysics" },
@@ -221,7 +221,7 @@ TEST(ScriptPhysics, AScriptNamesTheShapeAndTheBodyType) {
                 if spawned then return end
                 spawned = true
                 ctx.commands:spawn({
-                    ["aylo.Transform"] = { position = { x = 0, y = 0 } },
+                    ["aylo.Transform2D"] = { position = { x = 0, y = 0 } },
                     ["aylo.Collider"] = { shape = "circle", radius = 8 },
                     ["aylo.RigidBody"] = { type = "kinematic" },
                 })

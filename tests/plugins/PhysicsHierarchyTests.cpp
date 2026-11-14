@@ -37,7 +37,7 @@ using aylo::plugins::physics::PhysicsWorld;
 using aylo::plugins::physics::RigidBody;
 using aylo::plugins::physics::ShapeType;
 using aylo::plugins::physics::Velocity;
-using aylo::plugins::transform::Transform;
+using aylo::plugins::transform::Transform2D;
 
 namespace {
 constexpr float kFixedDelta = 1.0F / 60.0F;
@@ -71,7 +71,7 @@ struct HierarchyApp {
     /// @return A new entity at @p position, with neither Collider nor RigidBody.
     Entity spawn(glm::vec2 position) {
         const Entity entity = app.getWorld().spawn();
-        components().add(entity, Transform{.position = position});
+        components().add(entity, Transform2D{.position = position});
         return entity;
     }
 
@@ -85,7 +85,7 @@ struct HierarchyApp {
     }
 
     /// @brief Moves @p entity, as gameplay does.
-    void move(Entity entity, glm::vec2 position) { components().getMut<Transform>(entity)->position = position; }
+    void move(Entity entity, glm::vec2 position) { components().getMut<Transform2D>(entity)->position = position; }
 
     /// @brief Expects the body of @p entity at @p position.
     void expectBodyAt(Entity entity, glm::vec2 position) const {
@@ -142,7 +142,7 @@ TEST(PhysicsHierarchy, LeavesTheTransformOfAKinematicChildRelative) {
     fixture.tick();
     fixture.move(parent, {130.0F, 0.0F});
     fixture.tick(3);
-    EXPECT_EQ(fixture.components().get<Transform>(child)->position, (glm::vec2{10.0F, 0.0F}));
+    EXPECT_EQ(fixture.components().get<Transform2D>(child)->position, (glm::vec2{10.0F, 0.0F}));
 }
 
 TEST(PhysicsHierarchy, AChildMovedByGameplayStaysRelativeToItsParent) {
@@ -193,7 +193,7 @@ TEST(PhysicsHierarchy, ADynamicChildKeepsItsPlaceInTheWorldThroughItsTransform) 
     fixture.tick();
     fixture.move(parent, {300.0F, 0.0F});
     fixture.tick();
-    const Transform* local = fixture.components().get<Transform>(child);
+    const Transform2D* local = fixture.components().get<Transform2D>(child);
     EXPECT_NEAR(local->position.x, -190.0F, kTolerance);
 }
 
@@ -205,7 +205,7 @@ TEST(PhysicsHierarchy, ADynamicChildMovesWithItsVelocityAndWritesItRelative) {
     fixture.tick(60);
     const float body = fixture.physics().getBodyPosition(child)->x;
     EXPECT_GT(body, 160.0F);  // a little under 170: bodies have a default damping
-    EXPECT_NEAR(fixture.components().get<Transform>(child)->position.x, body - 100.0F, kTolerance);
+    EXPECT_NEAR(fixture.components().get<Transform2D>(child)->position.x, body - 100.0F, kTolerance);
 }
 
 TEST(PhysicsHierarchy, GameplayTeleportsADynamicChild) {
@@ -221,7 +221,7 @@ TEST(PhysicsHierarchy, GameplayTeleportsADynamicChild) {
 TEST(PhysicsHierarchy, ARestingDynamicChildIsNotTeleportedUnderATurnedParent) {
     HierarchyApp fixture;
     const Entity parent = fixture.app.getWorld().spawn();
-    fixture.components().add(parent, Transform{.position = {33.3F, 71.7F}, .rotation = 0.7F, .scale = {1.3F, 1.3F}});
+    fixture.components().add(parent, Transform2D{.position = {33.3F, 71.7F}, .rotation = 0.7F, .scale = {1.3F, 1.3F}});
     const Entity child = fixture.spawnBody(parent, {12.1F, -7.3F}, BodyType::kDynamic);
     fixture.tick();
     const glm::vec2 first = *fixture.physics().getBodyPosition(child);
@@ -239,7 +239,7 @@ TEST(PhysicsHierarchy, ADynamicChildOfADynamicParentIsWrittenRelativeToItsNewPos
     const float parentBody = fixture.physics().getBodyPosition(parent)->x;
     EXPECT_GT(parentBody, 150.0F);
     fixture.expectBodyAt(child, {300.0F, 0.0F});
-    EXPECT_NEAR(fixture.components().get<Transform>(child)->position.x, 300.0F - parentBody, kTolerance);
+    EXPECT_NEAR(fixture.components().get<Transform2D>(child)->position.x, 300.0F - parentBody, kTolerance);
 }
 
 TEST(PhysicsHierarchy, AKinematicChildWithAVelocityMovesAndFollowsItsParent) {
@@ -250,7 +250,7 @@ TEST(PhysicsHierarchy, AKinematicChildWithAVelocityMovesAndFollowsItsParent) {
     fixture.tick(60);
     const float before = fixture.physics().getBodyPosition(child)->x;
     EXPECT_GT(before, 160.0F);
-    EXPECT_NEAR(fixture.components().get<Transform>(child)->position.x, before - 100.0F, kTolerance);
+    EXPECT_NEAR(fixture.components().get<Transform2D>(child)->position.x, before - 100.0F, kTolerance);
     fixture.move(parent, {200.0F, 0.0F});
     fixture.tick(2);
     EXPECT_NEAR(fixture.physics().getBodyPosition(child)->x, before + 100.0F, 5.0F);
@@ -263,7 +263,7 @@ TEST(PhysicsHierarchy, ADynamicChildDetachedInPlaceStaysWhereItIs) {
     fixture.tick(2);
     aylo::ecs::Commands commands{fixture.app.getWorld()};
     aylo::plugins::transform::detachInPlace(commands, child,
-                                            aylo::plugins::transform::GlobalTransform{.position = {110.0F, 0.0F}});
+                                            aylo::plugins::transform::GlobalTransform2D{.position = {110.0F, 0.0F}});
     commands.flush();
     fixture.tick(2);
     fixture.expectBodyAt(child, {110.0F, 0.0F});

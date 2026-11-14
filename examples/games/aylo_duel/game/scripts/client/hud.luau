@@ -28,7 +28,7 @@ engine.ecs.component("game.Announcement", { fields = {}, presence = "clientOnly"
 --- A text in the arena, centred on @p position.
 local function text(content: string, position, size: number, color)
 	return {
-		["aylo.Transform"] = { position = position },
+		["aylo.Transform2D"] = { position = position },
 		["aylo.TextRenderer"] = {
 			text = content,
 			font = assets.font,

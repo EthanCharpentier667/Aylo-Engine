@@ -41,7 +41,7 @@ namespace {
 void drawEntities(
     ecs::Res<graphics::TextureAssets> textures, ecs::Res<shader::ShaderHandles> handles,
     ecs::ResAppend<graphics::SpriteQueue> queue,
-    ecs::Query<const transform::GlobalTransform, const SpriteRenderer, ecs::Optional<const shader::MaterialInstance>>
+    ecs::Query<const transform::GlobalTransform2D, const SpriteRenderer, ecs::Optional<const shader::MaterialInstance>>
         sprites) {
     for (auto [entity, global, sprite, instance] : sprites) {
         const std::optional<contract::renderer::TextureId> texture = textures->getTexture(sprite.texture);

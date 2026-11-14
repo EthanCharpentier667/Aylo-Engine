@@ -4,7 +4,7 @@
 # ship that fires it gives its position, its shooter, its direction and the ship it can hit (scripts/server/ships.luau).
 [node path="."]
 game.Laser = {}
-aylo.Transform = {}
+aylo.Transform2D = {}
 aylo.Collider = { size = (60, 12), layer = 2 }
 aylo.RigidBody = { gravityScale = 0, fixedRotation = true, continuousCollision = true }
 aylo.Velocity = {}

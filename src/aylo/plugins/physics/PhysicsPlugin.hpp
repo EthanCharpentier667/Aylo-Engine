@@ -28,15 +28,16 @@ namespace aylo::plugins::physics {
 /// ECS options only: the physics knows nothing of the network. The server simulates; clients receive the Transforms
 /// and keep bodies that never step, only for scene queries (moveAndSlide() for prediction) and the debug view. In
 /// standalone, everything runs as on the server. Each fixed tick, in this order:
-/// - "aylo.Physics.SyncBodies", on every side, keeps one body per entity with a Collider and a Transform (a RigidBody
+/// - "aylo.Physics.SyncBodies", on every side, keeps one body per entity with a Collider and a Transform2D (a RigidBody
 ///   makes it move; without one it is static), rebuilt when its Collider or RigidBody changes, destroyed when the
 ///   entity is despawned or loses either, and linked to the entity by a PhysicsHandle;
-/// - "aylo.Physics.SyncToPhysics", on every side, moves kinematic bodies to their Transform, teleports the others
+/// - "aylo.Physics.SyncToPhysics", on every side, moves kinematic bodies to their Transform2D, teleports the others
 ///   gameplay moved and gives the bodies the Velocities gameplay changed (a kinematic body with a Velocity moves at
-///   it); in client mode, it teleports every body to its Transform instead;
+///   it); in client mode, it teleports every body to its Transform2D instead;
 /// - "aylo.Physics.Step", on the server like those below, applies the forces and impulses queued on the PhysicsWorld
 ///   and steps it by Time::fixedDelta;
-/// - "aylo.Physics.SyncFromPhysics" writes the pose of the bodies that moved back to their Transform, and the velocity
+/// - "aylo.Physics.SyncFromPhysics" writes the pose of the bodies that moved back to their Transform2D, and the
+/// velocity
 ///   of the dynamic ones to their Velocity;
 /// - "aylo.Physics.Events" sends the contacts of the step: CollisionStarted / CollisionEnded between solid colliders,
 ///   TriggerEntered / TriggerExited for sensors (CollisionEvents.hpp), registered by the plugin.
@@ -50,9 +51,10 @@ class AYLO_PLUGIN_PHYSICS_API PhysicsPlugin : public ecs::Plugin {
   public:
     static constexpr std::string_view kName = "aylo.Physics";                         ///< The plugin's name.
     static constexpr std::string_view kSyncBodiesSystem = "aylo.Physics.SyncBodies";  ///< Creates and destroys bodies.
-    static constexpr std::string_view kSyncToPhysicsSystem = "aylo.Physics.SyncToPhysics";  ///< Transform to body.
+    static constexpr std::string_view kSyncToPhysicsSystem = "aylo.Physics.SyncToPhysics";  ///< Transform2D to body.
     static constexpr std::string_view kStepSystem = "aylo.Physics.Step";                    ///< Steps the PhysicsWorld.
-    static constexpr std::string_view kSyncFromPhysicsSystem = "aylo.Physics.SyncFromPhysics";  ///< Body to Transform.
+    static constexpr std::string_view kSyncFromPhysicsSystem =
+        "aylo.Physics.SyncFromPhysics";                                       ///< Body to Transform2D.
     static constexpr std::string_view kEventsSystem = "aylo.Physics.Events";  ///< Sends the contact events.
 
     /// @param settings How the PhysicsWorld is built; checked when the plugin is built.

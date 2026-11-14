@@ -35,10 +35,8 @@ namespace aylo::plugins::physics::detail {
 /// @param userData Stored on the body to find the entity back (Entity::getBits()).
 /// @throws exceptions::PhysicsException When the shape is invalid, a dynamic body's mass is not positive, or the
 /// collider's layer or mask does not fit (layers::isValid()).
-[[nodiscard]] AYLO_PLUGIN_PHYSICS_API JPH::BodyCreationSettings makeBodySettings(const Collider& collider,
-                                                                                 const RigidBody* body,
-                                                                                 const transform::Transform& transform,
-                                                                                 float unitsPerMeter,
-                                                                                 std::uint64_t userData);
+[[nodiscard]] AYLO_PLUGIN_PHYSICS_API JPH::BodyCreationSettings makeBodySettings(
+    const Collider& collider, const RigidBody* body, const transform::Transform2D& transform, float unitsPerMeter,
+    std::uint64_t userData);
 
 }  // namespace aylo::plugins::physics::detail

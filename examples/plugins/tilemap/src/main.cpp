@@ -48,7 +48,7 @@ using namespace aylo::contract::renderer;
 using namespace aylo::plugins::graphics;
 using namespace aylo::plugins::tilemap;
 using aylo::core::asset::AssetId;
-using aylo::plugins::transform::Transform;
+using aylo::plugins::transform::Transform2D;
 
 namespace {
 // The view: the size of the background images, shown four times bigger in the window.
@@ -64,11 +64,11 @@ void spawnLevel(ecs::ResMut<TilemapAssets> maps, ecs::Commands& commands) {
     const AssetId level = maps->load("examples/assets/levels/space.tmj");
     const std::vector<ecs::Entity> layers = spawnTilemap(commands, *maps, level);
     std::cout << "examples/assets/levels/space.tmj: " << layers.size() << " layers\n";
-    commands.spawn().add(Transform{.position = kView / 2.0F}).add(aylo::plugins::graphics::Camera{});
+    commands.spawn().add(Transform2D{.position = kView / 2.0F}).add(aylo::plugins::graphics::Camera{});
 }
 
 // Update: flies the camera right, back to the start at the end of the level.
-void flyCamera(ecs::Res<ecs::Time> time, ecs::Query<Transform, ecs::With<aylo::plugins::graphics::Camera>> cameras) {
+void flyCamera(ecs::Res<ecs::Time> time, ecs::Query<Transform2D, ecs::With<aylo::plugins::graphics::Camera>> cameras) {
     for (auto [entity, transform] : cameras) {
         transform->position.x += kCameraSpeed * time->delta;
         if (transform.get().position.x > kLevelLength - (kView.x / 2.0F)) {

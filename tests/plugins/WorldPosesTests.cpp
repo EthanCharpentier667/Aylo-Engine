@@ -20,17 +20,17 @@
 
 using aylo::ecs::Entity;
 using aylo::ecs::Parent;
-using aylo::plugins::transform::GlobalTransform;
-using aylo::plugins::transform::Transform;
+using aylo::plugins::transform::GlobalTransform2D;
+using aylo::plugins::transform::Transform2D;
 using aylo::plugins::transform::WorldPoses;
 
 TEST(WorldPoses, GivesARootItsTransform) {
     aylo::ecs::World world;
     const Entity root = world.spawn();
-    const Transform local{.position = {3.0F, 4.0F}, .rotation = 0.5F, .scale = {2.0F, 2.0F}};
+    const Transform2D local{.position = {3.0F, 4.0F}, .rotation = 0.5F, .scale = {2.0F, 2.0F}};
     WorldPoses poses;
     poses.add(root, local, nullptr);
-    const GlobalTransform pose = poses.of(root);
+    const GlobalTransform2D pose = poses.of(root);
     EXPECT_EQ(pose.position, local.position);
     EXPECT_FLOAT_EQ(pose.rotation, local.rotation);
     EXPECT_EQ(pose.scale, local.scale);
@@ -41,9 +41,9 @@ TEST(WorldPoses, CombinesAWholeChainWhateverTheOrderOfAdd) {
     const Entity root = world.spawn();
     const Entity middle = world.spawn();
     const Entity leaf = world.spawn();
-    const Transform rootLocal{.position = {100.0F, 0.0F}};
-    const Transform middleLocal{.position = {10.0F, 0.0F}};
-    const Transform leafLocal{.position = {1.0F, 0.0F}};
+    const Transform2D rootLocal{.position = {100.0F, 0.0F}};
+    const Transform2D middleLocal{.position = {10.0F, 0.0F}};
+    const Transform2D leafLocal{.position = {1.0F, 0.0F}};
     const Parent toRoot{.entity = root};
     const Parent toMiddle{.entity = middle};
     WorldPoses poses;
@@ -59,7 +59,7 @@ TEST(WorldPoses, CountsTheParentsOfAnEntity) {
     const Entity root = world.spawn();
     const Entity child = world.spawn();
     const Entity orphan = world.spawn();
-    const Transform local;
+    const Transform2D local;
     const Parent toRoot{.entity = root};
     const Parent toUnknown{.entity = world.spawn()};
     WorldPoses poses;
@@ -83,7 +83,7 @@ TEST(WorldPoses, TreatsAChildOfAParentNotAddedAsARoot) {
     aylo::ecs::World world;
     const Entity unknown = world.spawn();
     const Entity child = world.spawn();
-    const Transform local{.position = {10.0F, 0.0F}};
+    const Transform2D local{.position = {10.0F, 0.0F}};
     const Parent parent{.entity = unknown};
     WorldPoses poses;
     poses.add(child, local, &parent);
@@ -97,9 +97,9 @@ TEST(WorldPoses, AgreesWithTheTransformPlugin) {
     const Entity root = world.spawn();
     const Entity middle = world.spawn();
     const Entity leaf = world.spawn();
-    const Transform rootLocal{.position = {40.0F, -20.0F}, .rotation = 0.7F, .scale = {2.0F, 2.0F}};
-    const Transform middleLocal{.position = {5.0F, 8.0F}, .rotation = -0.3F, .scale = {-1.0F, 1.0F}};
-    const Transform leafLocal{.position = {-3.0F, 2.0F}, .rotation = 1.1F, .scale = {0.5F, 0.5F}};
+    const Transform2D rootLocal{.position = {40.0F, -20.0F}, .rotation = 0.7F, .scale = {2.0F, 2.0F}};
+    const Transform2D middleLocal{.position = {5.0F, 8.0F}, .rotation = -0.3F, .scale = {-1.0F, 1.0F}};
+    const Transform2D leafLocal{.position = {-3.0F, 2.0F}, .rotation = 1.1F, .scale = {0.5F, 0.5F}};
     world.getComponents().add(root, rootLocal);
     world.getComponents().add(middle, middleLocal);
     world.getComponents().add(leaf, leafLocal);
@@ -112,8 +112,8 @@ TEST(WorldPoses, AgreesWithTheTransformPlugin) {
     poses.add(root, rootLocal, nullptr);
     poses.add(middle, middleLocal, &toRoot);
     poses.add(leaf, leafLocal, &toMiddle);
-    const GlobalTransform expected = *world.getComponents().get<GlobalTransform>(leaf);
-    const GlobalTransform pose = poses.of(leaf);
+    const GlobalTransform2D expected = *world.getComponents().get<GlobalTransform2D>(leaf);
+    const GlobalTransform2D pose = poses.of(leaf);
     EXPECT_FLOAT_EQ(pose.position.x, expected.position.x);
     EXPECT_FLOAT_EQ(pose.position.y, expected.position.y);
     EXPECT_FLOAT_EQ(pose.rotation, expected.rotation);

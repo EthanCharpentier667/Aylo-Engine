@@ -55,7 +55,7 @@ struct InspectRequest {
 /// @brief The request that sets one value.
 struct SetFieldRequest {
     std::uint64_t entity{0};  ///< The handle of the entity.
-    std::string component;    ///< The full name of the component ("aylo.Transform").
+    std::string component;    ///< The full name of the component ("aylo.Transform2D").
     std::string field;        ///< The name of the field.
     std::uint16_t index{0};   ///< Which value of an array field; 0 for any other.
     std::string value;        ///< The new value as text: "1.5", "true", "1 2 3" for a vector.
@@ -106,7 +106,7 @@ struct FieldView {
 };
 /// @brief One component of an entity.
 struct ComponentView {
-    std::string name;               ///< The full name ("aylo.Transform").
+    std::string name;               ///< The full name ("aylo.Transform2D").
     std::vector<FieldView> fields;  ///< Its fields, as many as fit.
 };
 /// @brief The components of an entity, as many as fit: ask again with `firstComponent` = `next` while `next` < `total`.

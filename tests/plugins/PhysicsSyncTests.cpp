@@ -37,7 +37,7 @@ using aylo::plugins::physics::PhysicsSettings;
 using aylo::plugins::physics::PhysicsWorld;
 using aylo::plugins::physics::RigidBody;
 using aylo::plugins::physics::ShapeType;
-using aylo::plugins::transform::Transform;
+using aylo::plugins::transform::Transform2D;
 
 namespace {
 constexpr float kFixedDelta = 1.0F / 60.0F;
@@ -51,7 +51,7 @@ AYLO_ECS_RESOURCE(ChangedTransforms, "test.ChangedTransforms", count);
 
 /// @brief FixedUpdate, after the physics: counts the Transforms changed since it last ran.
 void countChanged(aylo::ecs::ResMut<ChangedTransforms> counter,
-                  aylo::ecs::Query<const Transform, aylo::ecs::Changed<Transform>> changed) {
+                  aylo::ecs::Query<const Transform2D, aylo::ecs::Changed<Transform2D>> changed) {
     for ([[maybe_unused]] auto [entity, transform] : changed) {
         ++counter->count;
     }
@@ -89,15 +89,15 @@ struct PhysicsApp {
 
     [[nodiscard]] aylo::ecs::Components& components() { return app.getWorld().getComponents(); }
     [[nodiscard]] const PhysicsWorld& world() const { return app.getWorld().getResources().require<PhysicsWorld>(); }
-    [[nodiscard]] Transform transformOf(Entity entity) { return *components().get<Transform>(entity); }
+    [[nodiscard]] Transform2D transformOf(Entity entity) { return *components().get<Transform2D>(entity); }
     [[nodiscard]] std::uint32_t changedCount() const {
         return app.getWorld().getResources().require<ChangedTransforms>().count;
     }
 
-    /// @return A new entity with a Transform, a circle Collider and, when given, a RigidBody.
+    /// @return A new entity with a Transform2D, a circle Collider and, when given, a RigidBody.
     Entity spawn(glm::vec2 position, std::optional<RigidBody> body, float radius = 8.0F) {
         const Entity entity = app.getWorld().spawn();
-        components().add(entity, Transform{.position = position});
+        components().add(entity, Transform2D{.position = position});
         components().add(entity, Collider{.shape = ShapeType::kCircle, .radius = radius});
         if (body) {
             components().add(entity, *body);
@@ -105,9 +105,9 @@ struct PhysicsApp {
         return entity;
     }
 
-    /// @brief Moves the entity's Transform, as gameplay does.
+    /// @brief Moves the entity's Transform2D, as gameplay does.
     void moveTo(Entity entity, glm::vec2 position) {
-        Transform transform = transformOf(entity);
+        Transform2D transform = transformOf(entity);
         transform.position = position;
         components().add(entity, transform);
     }
@@ -119,7 +119,7 @@ TEST(PhysicsSync, TheTransformOfAFallingBodyFollowsIt) {
     const Entity ball = fixture.spawn({0.0F, 0.0F}, RigidBody{.linearDamping = 0.0F});
     fixture.tick(60);
 
-    const Transform transform = fixture.transformOf(ball);
+    const Transform2D transform = fixture.transformOf(ball);
     EXPECT_NEAR(transform.position.x, 0.0F, 1e-3F);
     EXPECT_NEAR(transform.position.y, 490.0F, 20.0F);  // g t^2 / 2 over one second, Y down.
     EXPECT_EQ(fixture.world().getBodyPosition(ball), transform.position);
@@ -171,7 +171,7 @@ TEST(PhysicsSync, AKinematicBodyFollowsItsTransformThenStops) {
     ASSERT_TRUE(position);
     EXPECT_NEAR(position->x, 50.0F, 1e-2F);
 
-    fixture.tick(10);  // The Transform no longer moves: neither does the body.
+    fixture.tick(10);  // The Transform2D no longer moves: neither does the body.
     position = fixture.world().getBodyPosition(platform);
     ASSERT_TRUE(position);
     EXPECT_NEAR(position->x, 50.0F, 1e-2F);

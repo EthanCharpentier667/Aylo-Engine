@@ -37,7 +37,7 @@ namespace aylo::plugins::sprite {
 /// {
 ///     const aylo::core::asset::AssetId ship = atlases->load("assets/ship.json");
 ///     commands.spawn()
-///         .add(aylo::plugins::transform::Transform{.position = {100.0F, 300.0F}})
+///         .add(aylo::plugins::transform::Transform2D{.position = {100.0F, 300.0F}})
 ///         .add(aylo::plugins::sprite::SpriteRenderer{})
 ///         .add(aylo::plugins::sprite::SpriteAnimator{.atlas = ship,
 ///                                                     .animation = aylo::plugins::sprite::animationId("idle")});

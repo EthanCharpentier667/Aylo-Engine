@@ -30,18 +30,18 @@
 
 namespace aylo::plugins::transform {
 namespace {
-/// @return The GlobalTransform of an entity without a parent: its Transform.
-GlobalTransform toGlobal(const Transform& transform) {
-    return GlobalTransform{.position = transform.position, .rotation = transform.rotation, .scale = transform.scale};
+/// @return The GlobalTransform2D of an entity without a parent: its Transform2D.
+GlobalTransform2D toGlobal(const Transform2D& transform) {
+    return GlobalTransform2D{.position = transform.position, .rotation = transform.rotation, .scale = transform.scale};
 }
 
-/// @brief PostUpdate: gives a GlobalTransform to the entities that have a Transform but none yet.
+/// @brief PostUpdate: gives a GlobalTransform2D to the entities that have a Transform2D but none yet.
 void insertGlobalTransforms(
     ecs::Commands& commands,
-    ecs::Query<const Transform, ecs::Optional<const ecs::Parent>, ecs::Without<GlobalTransform>> fresh,
-    ecs::Query<const GlobalTransform> placed) {
-    std::unordered_map<ecs::Entity, GlobalTransform> known;
-    std::vector<std::tuple<ecs::Entity, const Transform*, ecs::Entity>> waiting;
+    ecs::Query<const Transform2D, ecs::Optional<const ecs::Parent>, ecs::Without<GlobalTransform2D>> fresh,
+    ecs::Query<const GlobalTransform2D> placed) {
+    std::unordered_map<ecs::Entity, GlobalTransform2D> known;
+    std::vector<std::tuple<ecs::Entity, const Transform2D*, ecs::Entity>> waiting;
     for (auto [entity, transform, parent] : fresh) {
         if (parent == nullptr) {
             known.emplace(entity, toGlobal(transform));
@@ -65,7 +65,7 @@ void insertGlobalTransforms(
             if (found == known.end()) {
                 return false;
             }
-            const GlobalTransform global = combine(found->second, *transform);
+            const GlobalTransform2D global = combine(found->second, *transform);
             known.emplace(entity, global);
             commands.entity(entity).add(global);
             progressed = true;
@@ -78,15 +78,15 @@ void insertGlobalTransforms(
 }
 
 /// @return Whether @p first and @p second are the same pose.
-bool samePose(const Transform& first, const Transform& second) {
+bool samePose(const Transform2D& first, const Transform2D& second) {
     return first.position == second.position && first.rotation == second.rotation && first.scale == second.scale;
 }
 
 /// @brief PostUpdate, on the client: records the pose of each TransformInterpolation after the fixed ticks of the frame
 /// and blends the last two by Time::alpha.
-/// @details A tick ran since the last record: the pose then becomes `previous` and the Transform now `current`. No tick
-/// ran but the Transform changed: it was moved out of the ticks (a teleport, the editor), and is drawn there at once.
-void interpolateTransforms(ecs::Query<TransformInterpolation, const Transform> entities, ecs::Res<ecs::Time> time) {
+/// @details A tick ran since the last record: the pose then becomes `previous` and the Transform2D now `current`. No tick
+/// ran but the Transform2D changed: it was moved out of the ticks (a teleport, the editor), and is drawn there at once.
+void interpolateTransforms(ecs::Query<TransformInterpolation, const Transform2D> entities, ecs::Res<ecs::Time> time) {
     for (auto [entity, state, transform] : entities) {
         if (!state->recorded) {
             *state = TransformInterpolation{
@@ -105,16 +105,16 @@ void interpolateTransforms(ecs::Query<TransformInterpolation, const Transform> e
     }
 }
 
-/// @return What GlobalTransform is computed from: the blended pose of an entity interpolated on this side, its
-/// Transform otherwise.
-const Transform* drawnLocal(const Transform* transform, const TransformInterpolation* interpolation) {
+/// @return What GlobalTransform2D is computed from: the blended pose of an entity interpolated on this side, its
+/// Transform2D otherwise.
+const Transform2D* drawnLocal(const Transform2D* transform, const TransformInterpolation* interpolation) {
     return interpolation != nullptr && interpolation->recorded ? &interpolation->drawn : transform;
 }
 
 /// @brief What the walk down a hierarchy needs of one entity.
 struct Node {
-    ecs::Mut<GlobalTransform> global;  ///< Written by the walk.
-    const Transform* local;            ///< Relative to its parent.
+    ecs::Mut<GlobalTransform2D> global;  ///< Written by the walk.
+    const Transform2D* local;            ///< Relative to its parent.
     const ecs::Parent* parent;         ///< Null for a root.
     const ecs::Children* children;     ///< Null without children.
 };
@@ -122,19 +122,19 @@ struct Node {
 /// @brief A child to compute: the entity, and where its parent is in the world.
 struct Step {
     ecs::Entity entity;
-    GlobalTransform parent;
+    GlobalTransform2D parent;
 };
 
 /// @brief Writes `value` only if it differs, so an entity that did not move is not marked as changed.
-void update(ecs::Mut<GlobalTransform>& global, const GlobalTransform& value) {
-    const GlobalTransform& current = global.get();
+void update(ecs::Mut<GlobalTransform2D>& global, const GlobalTransform2D& value) {
+    const GlobalTransform2D& current = global.get();
     if (current.position != value.position || current.rotation != value.rotation || current.scale != value.scale) {
         *global = value;
     }
 }
 
 /// @brief Queues the children of `node`, which sits at `global` in the world.
-void pushChildren(const Node& node, const GlobalTransform& global, std::vector<Step>& steps) {
+void pushChildren(const Node& node, const GlobalTransform2D& global, std::vector<Step>& steps) {
     if (node.children != nullptr) {
         for (const ecs::Entity child : node.children->entities) {
             steps.push_back(Step{.entity = child, .parent = global});
@@ -142,13 +142,13 @@ void pushChildren(const Node& node, const GlobalTransform& global, std::vector<S
     }
 }
 
-/// @brief Computes every GlobalTransform, from the roots down.
-void propagateTransforms(ecs::Query<GlobalTransform, const Transform, ecs::Optional<const ecs::Parent>,
+/// @brief Computes every GlobalTransform2D, from the roots down.
+void propagateTransforms(ecs::Query<GlobalTransform2D, const Transform2D, ecs::Optional<const ecs::Parent>,
                                     ecs::Optional<const ecs::Children>, ecs::Optional<const TransformInterpolation>>
                              transforms) {
     std::unordered_map<ecs::Entity, Node> nodes;
     for (auto [entity, global, transform, parent, children, interpolation] : transforms) {
-        const Transform* local = drawnLocal(&transform, interpolation);
+        const Transform2D* local = drawnLocal(&transform, interpolation);
         if (parent == nullptr && children == nullptr) {
             update(global, toGlobal(*local));
             continue;
@@ -158,7 +158,7 @@ void propagateTransforms(ecs::Query<GlobalTransform, const Transform, ecs::Optio
     std::vector<Step> steps;
     for (auto& [entity, node] : nodes) {
         if (node.parent == nullptr || !nodes.contains(node.parent->entity)) {
-            const GlobalTransform global = toGlobal(*node.local);
+            const GlobalTransform2D global = toGlobal(*node.local);
             update(node.global, global);
             pushChildren(node, global, steps);
         }
@@ -168,7 +168,7 @@ void propagateTransforms(ecs::Query<GlobalTransform, const Transform, ecs::Optio
         steps.pop_back();
         const auto found = nodes.find(step.entity);
         if (found != nodes.end()) {
-            const GlobalTransform global = combine(step.parent, *found->second.local);
+            const GlobalTransform2D global = combine(step.parent, *found->second.local);
             update(found->second.global, global);
             pushChildren(found->second, global, steps);
         }
@@ -180,8 +180,8 @@ void propagateTransforms(ecs::Query<GlobalTransform, const Transform, ecs::Optio
 std::string_view TransformPlugin::getName() const noexcept { return kName; }
 
 void TransformPlugin::build(ecs::App& app) {
-    static_cast<void>(app.getWorld().getComponents().registerType<Transform>());
-    static_cast<void>(app.getWorld().getComponents().registerType<GlobalTransform>());
+    static_cast<void>(app.getWorld().getComponents().registerType<Transform2D>());
+    static_cast<void>(app.getWorld().getComponents().registerType<GlobalTransform2D>());
     static_cast<void>(app.getWorld().getComponents().registerType<TransformInterpolation>());
     static_cast<void>(app.getWorld().getComponents().registerType<ecs::Parent>(ecs::kParentOptions));
     static_cast<void>(app.getWorld().getComponents().registerType<ecs::Children>());

@@ -4,5 +4,5 @@
 # obstacles). Its look is given on the clients (scripts/client/scene.luau).
 [node path="."]
 game.Obstacle = {}
-aylo.Transform = {}
+aylo.Transform2D = {}
 aylo.Collider = { size = (40, 140), layer = 1 }

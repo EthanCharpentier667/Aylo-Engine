@@ -143,7 +143,7 @@ void preview(EditorState& state, core::asset::AssetId id) {
         center = (visible->min + visible->max) * 0.5F;
     }
     state.preview =
-        world.spawn(plugins::transform::Transform{.position = center}, particle::ParticleEmitter{.effect = id},
+        world.spawn(plugins::transform::Transform2D{.position = center}, particle::ParticleEmitter{.effect = id},
                     ecs::Name{.value = ecs::String{"Particle preview"}});
 }
 

@@ -23,8 +23,8 @@
 #include "plugins/transform/TransformPlugin.hpp"
 
 namespace {
-using aylo::plugins::transform::GlobalTransform;
-using aylo::plugins::transform::Transform;
+using aylo::plugins::transform::GlobalTransform2D;
+using aylo::plugins::transform::Transform2D;
 using aylo::plugins::transform::TransformInterpolation;
 
 /// @brief A single-player App whose frames last half a fixed tick (10 ticks per second, 50 ms frames), with the
@@ -56,12 +56,12 @@ TEST(ScriptTransform, AScriptInterpolatesWhatItMovesInFixedUpdate) {
             phase = "Startup",
             query = {},
             run = function(ctx)
-                ctx.commands:spawn({ ["aylo.Transform"] = {}, ["aylo.TransformInterpolation"] = {} })
+                ctx.commands:spawn({ ["aylo.Transform2D"] = {}, ["aylo.TransformInterpolation"] = {} })
             end,
         })
         engine.ecs.system("test.Move", {
             phase = "FixedUpdate",
-            query = { write = { "aylo.Transform" } },
+            query = { write = { "aylo.Transform2D" } },
             run = function(ctx)
                 for entity, transform in ctx.query do
                     transform.position = { x = transform.position.x + 10, y = 0 }
@@ -75,9 +75,9 @@ TEST(ScriptTransform, AScriptInterpolatesWhatItMovesInFixedUpdate) {
     }
 
     int seen = 0;
-    const aylo::ecs::QueryState<const Transform, const GlobalTransform, const TransformInterpolation> state{
+    const aylo::ecs::QueryState<const Transform2D, const GlobalTransform2D, const TransformInterpolation> state{
         scripts.app.getWorld().getComponents()};
-    aylo::ecs::Query<const Transform, const GlobalTransform, const TransformInterpolation> ships{state, 0};
+    aylo::ecs::Query<const Transform2D, const GlobalTransform2D, const TransformInterpolation> ships{state, 0};
     for (auto [entity, transform, global, interpolation] : ships) {
         EXPECT_EQ(transform.position.x, 10.0F);  // the simulation is untouched...
         EXPECT_EQ(global.position.x, 5.0F);      // ...and drawn halfway between the last two ticks

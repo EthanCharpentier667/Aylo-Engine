@@ -17,8 +17,8 @@
 namespace aylo::plugins::physics {
 
 /// @brief How a physics world is built: given to the PhysicsPlugin, which builds the PhysicsWorld from it.
-/// @details Distances are in world units (pixels today), like Transform: the world converts them to Jolt's meters with
-/// unitsPerMeter, since Jolt's thresholds and margins are tuned for objects about a meter big.
+/// @details Distances are in world units (pixels today), like Transform2D: the world converts them to Jolt's meters
+/// with unitsPerMeter, since Jolt's thresholds and margins are tuned for objects about a meter big.
 /// @code
 /// app.addPlugin(aylo::plugins::physics::PhysicsPlugin{{.gravity = {0.0F, 0.0F}, .unitsPerMeter = 32.0F}});
 /// @endcode

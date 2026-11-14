@@ -30,7 +30,7 @@ struct aylo::ecs::FieldEnumNames<aylo::contract::renderer::ParticleSimulation> {
 };
 
 namespace aylo::plugins::particle {
-/// @brief Plays an effect at its entity's GlobalTransform, as the component "aylo.ParticleEmitter". Client-side.
+/// @brief Plays an effect at its entity's GlobalTransform2D, as the component "aylo.ParticleEmitter". Client-side.
 struct ParticleEmitter {
     core::asset::AssetId effect;     ///< From ParticleEffectAssets::load() or add().
     bool playing{true};              ///< false stops emitting; living particles finish their life.

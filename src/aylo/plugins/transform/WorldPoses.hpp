@@ -17,13 +17,13 @@
 
 namespace aylo::plugins::transform {
 /// @brief Computes where entities are in the world from their Transforms and Parents, for systems that cannot wait for
-/// GlobalTransform: the physics, in FixedUpdate. A Query cannot read one given entity, so it is filled from one.
+/// GlobalTransform2D: the physics, in FixedUpdate. A Query cannot read one given entity, so it is filled from one.
 /// @code
 /// aylo::plugins::transform::WorldPoses poses;
 /// for (auto [entity, local, parent] : transforms) {
 ///     poses.add(entity, local, parent);
 /// }
-/// const aylo::plugins::transform::GlobalTransform turret = poses.of(entity);
+/// const aylo::plugins::transform::GlobalTransform2D turret = poses.of(entity);
 /// @endcode
 class AYLO_PLUGIN_TRANSFORM_API WorldPoses {
   public:
@@ -36,11 +36,11 @@ class AYLO_PLUGIN_TRANSFORM_API WorldPoses {
 
     /// @brief Adds an entity. `local` and `parent` must outlive this object.
     /// @param parent Its Parent, or null for a root.
-    void add(ecs::Entity entity, const Transform& local, const ecs::Parent* parent);
+    void add(ecs::Entity entity, const Transform2D& local, const ecs::Parent* parent);
 
     /// @return Where the entity is in the world, as the TransformPlugin would compute it: a parent that was not added
-    /// ends the chain, as a parent without a Transform does. The default GlobalTransform for an entity not added.
-    [[nodiscard]] GlobalTransform of(ecs::Entity entity) const;
+    /// ends the chain, as a parent without a Transform2D does. The default GlobalTransform2D for an entity not added.
+    [[nodiscard]] GlobalTransform2D of(ecs::Entity entity) const;
 
     /// @return How many parents the entity has, up to the first one not added: 0 for a root.
     [[nodiscard]] std::size_t depthOf(ecs::Entity entity) const;
@@ -48,7 +48,7 @@ class AYLO_PLUGIN_TRANSFORM_API WorldPoses {
   private:
     /// @brief What one entity gave to add().
     struct Entry {
-        const Transform* local;     ///< Not owned.
+        const Transform2D* local;     ///< Not owned.
         const ecs::Parent* parent;  ///< Not owned; null for a root.
     };
 

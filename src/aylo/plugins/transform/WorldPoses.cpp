@@ -18,19 +18,19 @@
 
 namespace aylo::plugins::transform {
 
-void WorldPoses::add(ecs::Entity entity, const Transform& local, const ecs::Parent* parent) {
+void WorldPoses::add(ecs::Entity entity, const Transform2D& local, const ecs::Parent* parent) {
     _entries.insert_or_assign(entity, Entry{.local = &local, .parent = parent});
 }
 
-GlobalTransform WorldPoses::of(ecs::Entity entity) const {
-    std::vector<const Transform*> chain;
+GlobalTransform2D WorldPoses::of(ecs::Entity entity) const {
+    std::vector<const Transform2D*> chain;
     auto found = _entries.find(entity);
     while (found != _entries.end()) {
         chain.push_back(found->second.local);
         found = found->second.parent != nullptr ? _entries.find(found->second.parent->entity) : _entries.end();
     }
-    GlobalTransform pose;
-    for (const Transform* local : std::views::reverse(chain)) {
+    GlobalTransform2D pose;
+    for (const Transform2D* local : std::views::reverse(chain)) {
         pose = combine(pose, *local);
     }
     return pose;
