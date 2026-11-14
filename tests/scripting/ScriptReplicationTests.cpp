@@ -38,6 +38,8 @@
 #include "aylo/replication/ReplicationPlugin.hpp"
 #include "aylo/replication/client/ClientPlugin.hpp"
 #include "aylo/replication/client/ClientState.hpp"
+#include "aylo/replication/component/Owner.hpp"
+#include "aylo/replication/component/PlayerInput.hpp"
 #include "aylo/replication/input/InputLayout.hpp"
 #include "aylo/replication/server/ServerPlugin.hpp"
 #include "aylo/replication/server/ServerState.hpp"
@@ -341,4 +343,63 @@ TEST(ScriptReplication, RefusesAClientWhoseLuauDeclaresADifferentLayout) {
     EXPECT_EQ(pair.clientState().manifestStatus(), ManifestStatus::kMismatch);
     EXPECT_NE(pair.clientState().mismatch().find("game.Shield"), std::string_view::npos);
     EXPECT_EQ(pair.serverState().clientCount(), 0U);
+}
+
+TEST(ScriptReplication, AServerScriptComparesTheClientTimeOfAnInputWithItsOwnClock) {
+    // Both sides declare the component; only the server runs the system, which judges the `fire` of each player.
+    constexpr std::string_view kJudge = R"(
+engine.ecs.component("game.Judge", { fields = { now = "f64", sent = "f64", synced = "bool" }, replication = "everyChange" })
+engine.ecs.system("game.JudgeFire", {
+    phase = "Update", side = "server",
+    query = { read = { "net.Owner" }, write = { "game.Judge" } },
+    calls = { "aylo.net.serverTime", "aylo.replication.readInput" },
+    run = function(ctx)
+        local clock = ctx.call("aylo.net.serverTime", {})
+        for entity, owner, judge in ctx.query do
+            local fire = ctx.call("aylo.replication.readInput", { entity = entity, action = "fire" })
+            judge.now = clock.time
+            judge.synced = clock.synced
+            judge.sent = fire.clientTime
+        end
+    end,
+})
+)";
+    const ScriptsDirectory serverScripts{"aylo-script-judge-server", kJudge};
+    const ScriptsDirectory clientScripts{"aylo-script-judge-client", kJudge};
+    Pair pair{Game{RunMode::kServer, serverScripts.path()}, Game{RunMode::kClient, clientScripts.path()}};
+    auto& serverWorld = pair.server.app->getWorld();
+    const auto judgeId = serverWorld.getComponents().find("game.Judge");
+    ASSERT_TRUE(judgeId);
+    const auto* judgeInfo = serverWorld.getComponents().getRegistry().findById(*judgeId);
+    ASSERT_NE(judgeInfo, nullptr);
+
+    ASSERT_TRUE(runUntil(pair.server, pair.client, [&] { return pair.clientState().clientId().has_value(); }));
+    const Entity ship = serverWorld.spawn(aylo::replication::component::Owner{.client = *pair.clientState().clientId()},
+                                          aylo::replication::component::PlayerInput{});
+    ASSERT_TRUE(serverWorld.getComponents().add(ship, *judgeId, std::vector<std::byte>(judgeInfo->type.size)));
+    const auto field = [&](const std::string_view name) {
+        for (const auto& candidate : judgeInfo->type.fields) {
+            if (candidate.name == name) {
+                return candidate.offset;
+            }
+        }
+        ADD_FAILURE() << "no field " << name;
+        return std::uint32_t{0};
+    };
+    const auto read = [&]<typename T>(const std::string_view name, T value) {
+        std::memcpy(&value, serverWorld.getComponents().get(ship, *judgeId).data() + field(name), sizeof(T));
+        return value;
+    };
+
+    // The client holds fire every frame; once its clock is in sync, its inputs carry their time.
+    ASSERT_TRUE(runUntil(pair.server, pair.client, [&] {
+        pair.clientState().setInput(aylo::replication::component::PlayerInput{.buttons = 1});
+        return read("synced", false) && read("sent", 0.0) > 0.0;
+    }));
+
+    const double now = read("now", 0.0);
+    const double sent = read("sent", 0.0);
+    EXPECT_GT(now, 0.0);
+    EXPECT_LE(sent, now + 0.005);  // the client's estimate may run up to its error ahead
+    EXPECT_NEAR(sent, now, 0.2);   // read a frame or two before the server judged it
 }
