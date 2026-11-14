@@ -18,9 +18,11 @@ namespace aylo::plugins::transform {
 /// @code
 /// aylo::plugins::transform::detachInPlace(commands, turret, global);  // the turret falls off the boss, where it was
 /// @endcode
-AYLO_PLUGIN_TRANSFORM_API void detachInPlace(ecs::Commands& commands, ecs::Entity child, const GlobalTransform2D& global);
+AYLO_PLUGIN_TRANSFORM_API void detachInPlace(ecs::Commands& commands, ecs::Entity child,
+                                             const GlobalTransform2D& global);
 
 /// @brief Records making @p child a child of @p parent without moving it, its Transform2D becoming relative to it.
-AYLO_PLUGIN_TRANSFORM_API void attachInPlace(ecs::Commands& commands, ecs::Entity child, const GlobalTransform2D& global,
-                                             ecs::Entity parent, const GlobalTransform2D& parentGlobal);
+AYLO_PLUGIN_TRANSFORM_API void attachInPlace(ecs::Commands& commands, ecs::Entity child,
+                                             const GlobalTransform2D& global, ecs::Entity parent,
+                                             const GlobalTransform2D& parentGlobal);
 }  // namespace aylo::plugins::transform

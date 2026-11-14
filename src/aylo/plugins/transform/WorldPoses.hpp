@@ -48,7 +48,7 @@ class AYLO_PLUGIN_TRANSFORM_API WorldPoses {
   private:
     /// @brief What one entity gave to add().
     struct Entry {
-        const Transform2D* local;     ///< Not owned.
+        const Transform2D* local;   ///< Not owned.
         const ecs::Parent* parent;  ///< Not owned; null for a root.
     };
 
