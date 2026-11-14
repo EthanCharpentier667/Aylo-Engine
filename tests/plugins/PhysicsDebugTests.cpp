@@ -7,9 +7,13 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <cmath>
 #include <cstddef>
 #include <glm/ext/vector_float2.hpp>
+#include <glm/ext/vector_float3.hpp>
+#include <glm/ext/vector_float4.hpp>
+#include <glm/geometric.hpp>
 #include <memory>
 #include <optional>
 #include <vector>
@@ -18,6 +22,7 @@
 #include "aylo/contract/platform/event/Event.hpp"
 #include "aylo/contract/platform/input/Key.hpp"
 #include "aylo/contract/renderer/drawing/Color.hpp"
+#include "aylo/contract/renderer/drawing/Lines3D.hpp"
 #include "aylo/contract/renderer/drawing/Shape.hpp"
 #include "aylo/ecs/app/App.hpp"
 #include "aylo/ecs/change/Mut.hpp"
@@ -28,11 +33,13 @@
 #include "aylo/ecs/time/Time.hpp"
 #include "plugins/graphics/GraphicsPlugin.hpp"
 #include "plugins/physics/Collider.hpp"
+#include "plugins/physics/Collider3D.hpp"
 #include "plugins/physics/PhysicsHandle.hpp"
 #include "plugins/physics/PhysicsPlugin.hpp"
 #include "plugins/physics/PhysicsSettings.hpp"
 #include "plugins/physics/RigidBody.hpp"
 #include "plugins/physics/Velocity.hpp"
+#include "plugins/physics/Velocity3D.hpp"
 #include "plugins/physics/debug/PhysicsDebug.hpp"
 #include "plugins/physics/debug/PhysicsDebugPlugin.hpp"
 #include "plugins/physics/debug/PhysicsDebugSettings.hpp"
@@ -149,6 +156,72 @@ TEST(PhysicsDebugShapes, AVelocityArrowIsAShaftAndTwoHeadStrokes) {
 TEST(PhysicsDebugShapes, AStillBodyHasNoArrow) {
     EXPECT_TRUE(
         aylo::plugins::physics::debug::debugVelocityArrow({5.0F, 5.0F}, {0.0F, 0.0F}, 0.1F, kRed, 1.0F).empty());
+}
+
+TEST(PhysicsDebugShapes, ABoxWireframeHasTwelveEdgesPlacedByItsEntity) {
+    using aylo::plugins::physics::Collider3D;
+    const aylo::contract::renderer::Lines3D lines = aylo::plugins::physics::debug::debugCollider3DLines(
+        Collider3D{.size = {2.0F, 4.0F, 6.0F}, .offset = {1.0F, 0.0F, 0.0F}},
+        aylo::plugins::transform::GlobalTransform3D{.position = {10.0F, 0.0F, 0.0F}, .scale = {3.0F, 3.0F, 3.0F}},
+        kRed);
+    ASSERT_EQ(lines.points.size(), 24U);
+    for (const glm::vec3& point : lines.points) {
+        EXPECT_NEAR(std::abs(point.x - 1.0F), 1.0F, kTolerance);  // around the offset, half the width
+        EXPECT_NEAR(std::abs(point.y), 2.0F, kTolerance);
+        EXPECT_NEAR(std::abs(point.z), 3.0F, kTolerance);
+    }
+    // Placed by the entity's pose, not its scale: colliders are not scaled.
+    EXPECT_FLOAT_EQ(lines.world[3][0], 10.0F);
+    EXPECT_FLOAT_EQ(lines.world[0][0], 1.0F);
+    EXPECT_EQ(lines.color, kRed);
+}
+
+TEST(PhysicsDebugShapes, SpheresAndCapsulesAreCirclesOfTheirRadius) {
+    using aylo::plugins::physics::Collider3D;
+    using aylo::plugins::physics::Shape3DType;
+    const aylo::contract::renderer::Lines3D sphere = aylo::plugins::physics::debug::debugCollider3DLines(
+        Collider3D{.shape = Shape3DType::kSphere, .radius = 2.0F}, aylo::plugins::transform::GlobalTransform3D{}, kRed);
+    ASSERT_FALSE(sphere.points.empty());
+    for (const glm::vec3& point : sphere.points) {
+        EXPECT_NEAR(glm::length(point), 2.0F, kTolerance);
+    }
+    const aylo::contract::renderer::Lines3D capsule = aylo::plugins::physics::debug::debugCollider3DLines(
+        Collider3D{.shape = Shape3DType::kCapsule, .radius = 0.5F, .halfHeight = 1.0F, .sensor = true},
+        aylo::plugins::transform::GlobalTransform3D{}, kRed);
+    float highest = 0.0F;
+    for (const glm::vec3& point : capsule.points) {
+        highest = std::max(highest, point.y);
+    }
+    EXPECT_NEAR(highest, 1.5F, kTolerance);  // the half height and the cap's radius
+    EXPECT_FLOAT_EQ(capsule.color.w, 0.5F);  // a sensor is fainter
+}
+
+TEST(PhysicsDebugShapes, A3DVelocityArrowIsAShaftAndTwoHeadStrokes) {
+    const aylo::contract::renderer::Lines3D arrow =
+        aylo::plugins::physics::debug::debugVelocityArrow3D({1.0F, 0.0F, 0.0F}, {0.0F, 0.0F, -5.0F}, 0.1F, kRed);
+    ASSERT_EQ(arrow.points.size(), 6U);
+    EXPECT_EQ(arrow.points.at(1), (glm::vec3{1.0F, 0.0F, -0.5F}));
+    EXPECT_GT(arrow.points.at(3).z, -0.5F);  // the strokes go back from the tip
+    EXPECT_TRUE(aylo::plugins::physics::debug::debugVelocityArrow3D({}, {}, 0.1F, kRed).points.empty());
+}
+
+TEST(PhysicsDebugPlugin, Draws3DCollidersAsLinesWhenTheRendererDrawsThem) {
+    DebugApp fixture;
+    fixture.settings()->drawAll = true;
+    const Entity entity = fixture.app.getWorld().spawn();
+    fixture.components().add(entity, aylo::plugins::transform::Transform3D{});
+    fixture.components().add(entity, aylo::plugins::physics::Collider3D{});
+    fixture.components().add(entity, aylo::plugins::physics::Velocity3D{.linear = {0.0F, 2.0F, 0.0F}});
+
+    fixture.frame();
+    fixture.state->lines3D.clear();
+    fixture.frame();
+    EXPECT_EQ(fixture.state->lines3D.size(), 2U);  // the box and the arrow
+
+    fixture.state->draws3D = false;
+    fixture.state->lines3D.clear();
+    fixture.frame();
+    EXPECT_TRUE(fixture.state->lines3D.empty());
 }
 
 TEST(PhysicsDebugPlugin, RegistersItsComponentAndSettings) {
