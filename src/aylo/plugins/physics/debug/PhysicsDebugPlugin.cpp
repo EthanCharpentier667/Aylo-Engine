@@ -32,8 +32,10 @@
 #include "plugins/input/InputEvents.hpp"           // IWYU pragma: keep
 #include "plugins/input/InputPlugin.hpp"
 #include "plugins/physics/Collider.hpp"
+#include "plugins/physics/Collider3D.hpp"
 #include "plugins/physics/ComponentOptions.hpp"
 #include "plugins/physics/Velocity.hpp"
+#include "plugins/physics/Velocity3D.hpp"
 #include "plugins/physics/debug/PhysicsDebug.hpp"
 #include "plugins/physics/debug/PhysicsDebugSettings.hpp"
 #include "plugins/physics/debug/PhysicsDebugShapes.hpp"
@@ -63,15 +65,46 @@ const contract::renderer::Color* colorOf(const PhysicsDebug* debug, bool wanted,
     return settings.drawAll ? &settings.color : nullptr;
 }
 
-/// @brief Render, after the sprites: draws the chosen entities' collider outlines and velocity arrows.
+/// @brief The 3D colliders the debug view may draw.
+using Colliders3D = ecs::Query<const Collider3D, const transform::GlobalTransform3D, ecs::Optional<const PhysicsDebug>>;
+/// @brief The 3D velocities the debug view may draw.
+using Moving3D = ecs::Query<const Velocity3D, const transform::GlobalTransform3D, ecs::Optional<const PhysicsDebug>>;
+
+/// @brief Draws the chosen 3D entities' collider wireframes and velocity arrows, as 3D lines (a renderer that draws no
+/// 3D gets none).
+void drawDebug3D(contract::renderer::IRenderer& renderer, const PhysicsDebugSettings& settings, Colliders3D& colliders,
+                 Moving3D& moving) {
+    if (!renderer.supports3D()) {
+        return;
+    }
+    for (auto [entity, collider, transform, debug] : colliders) {
+        if (const contract::renderer::Color* color = colorOf(debug, debug != nullptr && debug->shape, settings)) {
+            renderer.drawLines3D(debugCollider3DLines(collider, transform, *color));
+        }
+    }
+    for (auto [entity, velocity, transform, debug] : moving) {
+        if (const contract::renderer::Color* color = colorOf(debug, debug != nullptr && debug->velocity, settings)) {
+            const contract::renderer::Lines3D arrow =
+                debugVelocityArrow3D(transform.position, velocity.linear, settings.velocityScale, *color);
+            if (!arrow.points.empty()) {
+                renderer.drawLines3D(arrow);
+            }
+        }
+    }
+}
+
+/// @brief Render, after the sprites: draws the chosen entities' collider outlines and velocity arrows, 2D and 3D.
+/// @details The 3D lines are drawn in the 3D world, under the 2D one, whenever in the frame they are given.
 void drawDebug(
     ecs::NonSendMut<plugins::graphics::Backend> backend, ecs::Res<PhysicsDebugSettings> settings,
     ecs::Query<const Collider, const transform::GlobalTransform2D, ecs::Optional<const PhysicsDebug>> colliders,
-    ecs::Query<const Velocity, const transform::GlobalTransform2D, ecs::Optional<const PhysicsDebug>> moving) {
+    ecs::Query<const Velocity, const transform::GlobalTransform2D, ecs::Optional<const PhysicsDebug>> moving,
+    Colliders3D colliders3D, Moving3D moving3D) {
     if (!settings->enabled || backend->renderer == nullptr) {
         return;
     }
     contract::renderer::IRenderer& renderer = *backend->renderer;
+    drawDebug3D(renderer, *settings, colliders3D, moving3D);
     for (auto [entity, collider, transform, debug] : colliders) {
         if (const contract::renderer::Color* color = colorOf(debug, debug != nullptr && debug->shape, *settings)) {
             renderer.draw(debugColliderShape(collider, transform, *color, settings->outlineThickness));
@@ -103,6 +136,8 @@ PhysicsDebugPlugin::PhysicsDebugPlugin(PhysicsDebugSettings settings) : _setting
 void PhysicsDebugPlugin::build(ecs::App& app) {
     static_cast<void>(app.getWorld().getComponents().registerType<Collider>(kColliderOptions));
     static_cast<void>(app.getWorld().getComponents().registerType<Velocity>());
+    static_cast<void>(app.getWorld().getComponents().registerType<Collider3D>(kColliderOptions));
+    static_cast<void>(app.getWorld().getComponents().registerType<Velocity3D>());
     static_cast<void>(app.getWorld().getComponents().registerType<PhysicsDebug>());
     static_cast<void>(app.getWorld().getEvents().registerType<contract::platform::event::KeyPressed>());
     ecs::Resources& resources = app.getWorld().getResources();
