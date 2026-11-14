@@ -232,6 +232,7 @@ end
 |---|---|
 | `platform`, `renderer` | the backends by name; required on a client. Platforms: `"glfw"`, `"sdl"` (SDL3) or `"raylib"`. Renderers: `"vulkan"` or `"raylib"`. `"raylib"` goes with `"raylib"` only: its window and its drawing come together. `"sdl"` and `"glfw"` both work with `"vulkan"` |
 | `window.size`, `window.title`, `window.resizable`, `window.fullscreen` | the window |
+| `window.captureCursor` | `true` captures the cursor from the start, for mouse-look (default `false`), see [Capture the cursor](engine-calls.md#capture-the-cursor-mouse-look) |
 | `window.system` | Linux only: `"auto"` (default: Wayland in a Wayland session, X11 otherwise or if Wayland fails), `"x11"` or `"wayland"` |
 | `audio.backend` | `"miniaudio"` or `"null"` (silent) |
 | `audio.required` | if the device cannot open: `false` falls back to `"null"`, `true` is an error |

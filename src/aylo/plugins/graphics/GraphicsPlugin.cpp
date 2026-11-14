@@ -26,6 +26,7 @@
 #include <variant>
 #include <vector>
 
+#include "aylo/contract/platform/WindowConfig.hpp"
 #include "aylo/contract/platform/event/Event.hpp"
 #include "aylo/contract/renderer/drawing/BlendMode.hpp"
 #include "aylo/contract/renderer/drawing/Lines3D.hpp"
@@ -41,6 +42,7 @@
 #include "aylo/ecs/resource/Resources.hpp"
 #include "aylo/ecs/schedule/Phase.hpp"
 #include "aylo/ecs/schedule/Schedule.hpp"
+#include "aylo/ecs/system/EventReader.hpp"
 #include "aylo/ecs/system/EventWriter.hpp"
 #include "aylo/ecs/system/ResourceParam.hpp"
 #include "aylo/ecs/system/Side.hpp"
@@ -48,6 +50,7 @@
 #include "plugins/AssetDirectory.hpp"
 #include "plugins/graphics/BackendRegistry.hpp"
 #include "plugins/graphics/Camera.hpp"
+#include "plugins/graphics/CursorCapture.hpp"
 #include "plugins/graphics/GraphicsResources.hpp"
 #include "plugins/graphics/Lines3D.hpp"
 #include "plugins/graphics/OverlayQueue.hpp"
@@ -57,6 +60,7 @@
 #include "plugins/graphics/TextureCalls.hpp"
 #include "plugins/graphics/ToolFrame.hpp"
 #include "plugins/graphics/VisibleArea.hpp"
+#include "plugins/graphics/WindowCalls.hpp"
 #include "plugins/graphics/WindowEvents.hpp"  // IWYU pragma: keep
 #include "plugins/input/InputEvents.hpp"      // IWYU pragma: keep
 #include "plugins/input/InputPlugin.hpp"
@@ -79,8 +83,30 @@ namespace {
 }
 
 /// @brief Startup: creates the platform and the renderer the configuration names.
-void createBackend(ecs::NonSendMut<BackendSetup> setup, ecs::NonSendMut<plugins::graphics::Backend> backend) {
+void createBackend(ecs::NonSendMut<BackendSetup> setup, ecs::NonSendMut<plugins::graphics::Backend> backend,
+                   ecs::ResMut<CursorCapture> cursor) {
     *backend = setup->registry->createBackend(setup->settings);
+    cursor->wanted = contract::platform::WindowConfig::fromSettings(setup->settings.section("window")).captureCursor;
+}
+
+/// @brief PreUpdate, after the events: captures the cursor while the game wants it, the window has the focus and, if a
+/// tool draws over the game, the tool lends it (the editor, only to its focused Game panel); releases it otherwise.
+void applyCursorCapture(ecs::NonSendMut<plugins::graphics::Backend> backend, ecs::NonSend<ToolFrame> tool,
+                        ecs::ResMut<CursorCapture> cursor,
+                        ecs::EventReader<contract::platform::event::FocusChanged> focus) {
+    for (const contract::platform::event::FocusChanged& changed : focus) {
+        cursor->focused = changed.focused;
+    }
+    plugins::graphics::Backend& started = *backend;
+    if (!isStarted(started)) {
+        return;
+    }
+    const bool lent = !tool->draw || tool->lendsCursor;
+    const bool capture = cursor->wanted && cursor->focused && lent;
+    if (capture != cursor->captured) {
+        started.platform->setCursorLocked(capture);
+        cursor->captured = capture;
+    }
 }
 
 /// @brief PreUpdate: sends every event of the platform as an ECS event, resizes the renderer, and asks the App to
@@ -380,6 +406,7 @@ void GraphicsPlugin::build(ecs::App& app) {
     resources.insertNonSend(PlatformEventFilter{});
     resources.insertNonSend(ToolFrame{});
     resources.insertIfAbsent<ClearColor>();
+    resources.insertIfAbsent<CursorCapture>();
     resources.insertIfAbsent<TextureAssets>();
     resources.getMut<TextureAssets>()->setSource(assetSourceOf(resources));
     resources.insertIfAbsent<graphics::SpriteQueue>();
@@ -390,10 +417,14 @@ void GraphicsPlugin::build(ecs::App& app) {
     static_cast<void>(app.getWorld().getComponents().registerType<graphics::Camera3D>());
     static_cast<void>(app.getWorld().getComponents().registerType<graphics::Lines3D>());
     addTextureCalls(app);
+    addWindowCalls(app);
 
     app.addSystem(ecs::Phase::kStartup, std::string{kCreateSystem}, &createBackend).setSide(ecs::Side::kClient);
     app.addSystem(ecs::Phase::kPreUpdate, std::string{kEventsSystem}, &forwardEvents)
         .before(std::string{plugins::input::InputPlugin::kUpdateSystem})
+        .setSide(ecs::Side::kClient);
+    app.addSystem(ecs::Phase::kPreUpdate, std::string{kCursorSystem}, &applyCursorCapture)
+        .after(std::string{kEventsSystem})
         .setSide(ecs::Side::kClient);
     app.addSystem(ecs::Phase::kRender, std::string{kTexturesSystem}, &loadTextures).setSide(ecs::Side::kClient);
     app.addSystem(ecs::Phase::kRender, std::string{kBeginFrameSystem}, &beginFrame)

@@ -296,7 +296,7 @@ Each part of the engine reads **its own section** and turns it into **its own ty
 | Section | Read by | Keys |
 |---|---|---|
 | (root) | `BackendRegistry` | `platform`, `renderer` (names, required) |
-| `window` | `WindowConfig::fromSettings()` | `size` ({width, height}), `title`, `resizable`, `fullscreen`, `system` (`"auto"`, `"x11"`, `"wayland"`: on Linux, the `GLFW_PLATFORM` hint the GLFW platform gives before `glfwInit()`) |
+| `window` | `WindowConfig::fromSettings()` | `size` ({width, height}), `title`, `resizable`, `fullscreen`, `system` (`"auto"`, `"x11"`, `"wayland"`: on Linux, the `GLFW_PLATFORM` hint the GLFW platform gives before `glfwInit()`), `captureCursor` (not read by the platform: the graphics plugin locks the cursor with `setCursorLocked()`, see `docs/Input.md#cursor-lock`) |
 | `glfw` | the `glfw` factory | none |
 | `vulkan` | the `vulkan` factory → `VulkanRenderer::Config` | `engineName`, `layers`, `extraExtensions`, `debugging`, `minSeverity` (`"verbose"`, `"info"`, `"warning"`, `"error"`), `preferredDeviceType` (`"discrete_gpu"` by default, `"integrated_gpu"`, `"virtual_gpu"`, `"cpu"`, `"other"`), `synchronizationValidation` (`true` by default), `bestPractices` (`false` by default), `presentMode` (`"fifo"` by default, `"mailbox"`, `"immediate"`) |
 

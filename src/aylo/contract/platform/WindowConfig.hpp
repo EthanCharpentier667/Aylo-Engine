@@ -22,12 +22,16 @@ struct AYLO_CONTRACT_PLATFORM_API WindowConfig {
     std::string title = "AYLO";
     bool resizable = true;
     bool fullscreen = false;  ///< On the primary monitor, at its current resolution.
+    /// @brief Whether the game wants the cursor captured (hidden, locked to the window, mouse deltas unbounded) from
+    /// the start. The platform does not read it: the graphics plugin applies it (IPlatform::setCursorLocked()) while
+    /// the window has the focus.
+    bool captureCursor = false;
     /// @brief The window system, on Linux: "auto" (Wayland in a Wayland session, X11 otherwise or if Wayland fails),
     /// "x11" or "wayland". Elsewhere there is only one, and this is not read.
     std::string system = "auto";
 
-    /// @brief Reads the keys `size` ({width, height}), `title`, `resizable`, `fullscreen` and `system`; the missing
-    /// ones keep their default.
+    /// @brief Reads the keys `size` ({width, height}), `title`, `resizable`, `fullscreen`, `system` and
+    /// `captureCursor`; the missing ones keep their default.
     /// @throws core::config::exceptions::SettingsException If a key is unknown or has the wrong type, or `system` is
     /// not "auto", "x11" or "wayland".
     [[nodiscard]] static WindowConfig fromSettings(const core::config::Settings& settings);

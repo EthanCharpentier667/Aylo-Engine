@@ -166,6 +166,12 @@ the editor.
 | Mouse move, click, wheel | The mouse is over the Game panel, or a button pressed there is still down. Its position is in the game's pixels, from the panel's top-left corner |
 | Keys and typed text | The Game panel has the focus (click it) and no field of the editor is being typed in |
 | Window size | The game sees a window as big as the panel: that is the size it draws for, and the one its `Resized` events give |
+| Captured cursor | The game plays (not paused) and the Game panel has the focus. Then every move and click goes to the game, wherever the hidden cursor is |
+
+A game that captures the cursor for mouse-look ([Capture the cursor](engine-calls.md#capture-the-cursor-mouse-look))
+gets it only in the Game panel, so the editor never loses its cursor while you edit. While the game holds it, press
+**Escape** to get it back, even if the game never releases it; click on the game to give it back to the game. The menu
+bar says so when the game captures it.
 
 ## Console
 

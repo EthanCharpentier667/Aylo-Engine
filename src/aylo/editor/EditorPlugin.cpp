@@ -33,6 +33,7 @@
 #include "core/system/CacheDirectory.hpp"
 #include "editor/EditorSession.hpp"
 #include "editor/gui/GuiContext.hpp"
+#include "editor/gui/GuiInput.hpp"
 #include "editor/gui/GuiMesh.hpp"
 #include "editor/panels/Panels.hpp"
 #include "editor/play/OnlinePlay.hpp"
@@ -40,6 +41,7 @@
 #include "editor/scene/Isolation.hpp"
 #include "editor/shell/TextEditor.hpp"
 #include "plugins/capsule/CapsulePlugin.hpp"
+#include "plugins/graphics/CursorCapture.hpp"
 #include "plugins/graphics/GraphicsPlugin.hpp"
 #include "plugins/graphics/PlatformEventFilter.hpp"
 #include "plugins/graphics/ToolFrame.hpp"
@@ -129,6 +131,25 @@ void beginFrameIo(EditorState& state, contract::platform::IPlatform& platform) {
 }
 
 /// @brief The tool frame: builds the panels of the editor and hands their mesh to the renderer, over the window.
+/// @brief Lends the cursor to the game only in its Game panel: while it plays, the panel has the focus and Escape did
+/// not free it; tells the input bridge whether the game holds it captured, and the user how to get it back.
+void lendCursor(EditorState& state) {
+    ecs::Resources& resources = state.world->getResources();
+    const bool playing = state.play.isPlaying() && !state.app->getSchedules().isPaused();
+    if (!playing) {
+        state.input->resetCursorFreed();
+    }
+    resources.getMut<plugins::graphics::ToolFrame>()->lendsCursor =
+        gui::GuiInput::lendsCursor(playing, state.input->getViewport().focused, state.input->isCursorFreed());
+    const bool captured = resources.has<plugins::graphics::CursorCapture>() &&
+                          resources.get<plugins::graphics::CursorCapture>()->captured;
+    if (captured && !state.cursorCaptured) {
+        state.status = "The game captured the cursor: Escape frees it, a click on the game gives it back";
+    }
+    state.cursorCaptured = captured;
+    state.input->setCursorCaptured(captured);
+}
+
 void runFrame(EditorState& state, contract::platform::IPlatform& platform, contract::renderer::IRenderer& renderer) {
     state.context->makeCurrent();
     if (!state.startScene.empty()) {  // the capsule files are read once every plugin is built: open it now
@@ -148,6 +169,7 @@ void runFrame(EditorState& state, contract::platform::IPlatform& platform, contr
     drawDockspace(state);
     state.previewUsed = false;
     panels::drawGamePanel(state, renderer);
+    lendCursor(state);
     panels::drawActorPanel(state, renderer);
     panels::drawScenePanel(state, renderer);
     if (!state.previewUsed) {

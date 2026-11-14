@@ -25,6 +25,9 @@ namespace aylo::plugins::graphics {
 /// draw. It is not called while the window is minimized. Nothing to run, the default, costs nothing.
 struct ToolFrame {
     std::function<void(contract::platform::IPlatform&, contract::renderer::IRenderer&)> draw;  ///< The tool's frame.
+    /// While a tool draws, the game may capture the cursor (aylo.CursorCapture) only while the tool lends it: the
+    /// editor does while the game plays and its Game panel has the focus. Read at the next PreUpdate.
+    bool lendsCursor{false};
 };
 AYLO_ECS_RESOURCE(ToolFrame, "aylo.ToolFrame");
 

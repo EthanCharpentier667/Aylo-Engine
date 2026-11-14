@@ -126,6 +126,7 @@ struct AYLO_EDITOR_API EditorState {
     std::array<char, 64> filter{};                 ///< What the Hierarchy keeps while playing: a component name.
     std::array<char, 64> componentFilter{};        ///< What the Inspector's "Add component" list keeps.
     std::string status;                            ///< The last thing that happened, shown in the menu bar.
+    bool cursorCaptured{false};                    ///< Whether the game held the cursor captured last frame.
     std::string windowTitle;                       ///< The title the first frame gives the window; then empty.
     std::string startScene;                        ///< The scene the first frame opens (`editor.scene`); then empty.
     std::string textEditor;                        ///< The command that opens a file in a text editor.
