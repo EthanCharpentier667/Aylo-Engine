@@ -24,6 +24,7 @@
 #include "aylo/contract/renderer/drawing/Overlay.hpp"
 #include "aylo/contract/renderer/drawing/Shape.hpp"
 #include "aylo/contract/renderer/drawing/Sprite.hpp"
+#include "aylo/contract/renderer/drawing/StaticMesh.hpp"
 #include "aylo/contract/renderer/drawing/Text.hpp"
 #include "aylo/contract/renderer/drawing/Texture.hpp"
 #include "aylo/contract/renderer/particle/Particle.hpp"
@@ -124,6 +125,21 @@ class AYLO_HEADER_ONLY_API IRenderer {
     /// @brief Draws segments in the 3D world (grids, gizmos, debug shapes), with the depth test. Default: draws
     /// nothing.
     virtual void drawLines3D(const Lines3D& /*lines*/) {}
+
+    /// @brief Uploads a 3D model: its vertices, indices and parts, kept until destroyStaticMesh(). Any time after
+    /// init().
+    /// @throws platform::exceptions::UnsupportedFeatureException If supports3D() is false (the default).
+    /// @throws std::invalid_argument If an index or a part goes past the vertices or the indices.
+    [[nodiscard]] virtual StaticMeshId createStaticMesh(const StaticMeshDesc& /*desc*/) {
+        throw platform::exceptions::UnsupportedFeatureException("This renderer does not draw 3D meshes");
+    }
+
+    /// @brief Destroys a mesh of createStaticMesh(); a destroyed or unknown one is ignored. Default: does nothing.
+    virtual void destroyStaticMesh(StaticMeshId /*mesh*/) {}
+
+    /// @brief Draws a mesh in the 3D world, with the depth test, its parts unlit (base colour times texture, times the
+    /// draw's colour). A destroyed mesh is skipped. Default: draws nothing.
+    virtual void drawStaticMesh(const StaticMeshDraw& /*draw*/) {}
     /// @}
 
     /// @name Drawing (between beginFrame() and endFrame())
