@@ -42,6 +42,7 @@
 #include "aylo/contract/renderer/drawing/Overlay.hpp"
 #include "aylo/contract/renderer/drawing/Shape.hpp"
 #include "aylo/contract/renderer/drawing/Sprite.hpp"
+#include "aylo/contract/renderer/drawing/StaticMesh.hpp"
 #include "aylo/contract/renderer/drawing/Text.hpp"
 #include "aylo/contract/renderer/drawing/Texture.hpp"
 #include "aylo/contract/renderer/math/Rect.hpp"
@@ -373,6 +374,8 @@ void VulkanRenderer::createPasses() {
     auto lines3DPass =
         std::make_unique<rendering::Lines3DPass>(*_device, *_allocator, *_shaders, *_layout, kSceneFormat, kDepthFormat,
                                                  &_pipelineCache->getCache(), kFramesInFlight);
+    auto staticMeshPass = std::make_unique<rendering::StaticMeshPass>(*_device, *_shaders, *_layout, kSceneFormat,
+                                                                      kDepthFormat, &_pipelineCache->getCache());
     auto screenPass = std::make_unique<postprocess::ScreenPass>(
         *_device, *_shaders, *_textureSetLayout, *_samplers->get(contract::renderer::TextureFilter::kLinear, false),
         kSceneFormat, _swapchain->getFormat(), &_pipelineCache->getCache());
@@ -403,6 +406,11 @@ void VulkanRenderer::createPasses() {
         _deletionQueue.defer(frameIndex, std::exchange(_shapePass, std::move(shapePass)));
     } else {
         _shapePass = std::move(shapePass);
+    }
+    if (_staticMeshPass) {
+        _deletionQueue.defer(frameIndex, std::exchange(_staticMeshPass, std::move(staticMeshPass)));
+    } else {
+        _staticMeshPass = std::move(staticMeshPass);
     }
     if (_lines3DPass) {
         _deletionQueue.defer(frameIndex, std::exchange(_lines3DPass, std::move(lines3DPass)));
@@ -485,6 +493,7 @@ void VulkanRenderer::beginFrame(const contract::renderer::Color& clearColor) {
     _view.reset();
     _view3D.reset();
     _lines3D.clear();
+    _staticMeshDraws.clear();
     _sprites.clear();
     _particleInstances.clear();
     _particleRanges.clear();
@@ -698,6 +707,26 @@ void VulkanRenderer::drawLines3D(const contract::renderer::Lines3D& lines) {
     }
 }
 
+contract::renderer::StaticMeshId VulkanRenderer::createStaticMesh(const contract::renderer::StaticMeshDesc& desc) {
+    if (!_allocator) {
+        throw std::logic_error("VulkanRenderer::createStaticMesh() called before init()");
+    }
+    return _staticMeshes.insert(rendering::StaticMeshPass::upload(*_allocator, desc));
+}
+
+void VulkanRenderer::destroyStaticMesh(contract::renderer::StaticMeshId mesh) {
+    std::optional<rendering::GpuStaticMesh> removed = _staticMeshes.erase(mesh);
+    if (removed) {
+        _deletionQueue.defer(getLastRecordedFrame(), std::move(*removed));
+    }
+}
+
+void VulkanRenderer::drawStaticMesh(const contract::renderer::StaticMeshDraw& draw) {
+    if (_acquiredImage) {
+        _staticMeshDraws.push_back(draw);
+    }
+}
+
 const memory::Image& VulkanRenderer::acquireDepth(std::size_t frameIndex, vk::Extent2D extent) {
     if (_sceneDepth) {
         const vk::Extent2D current = _sceneDepth->getExtent();
@@ -736,6 +765,17 @@ void VulkanRenderer::recordWorld3D(const vk::raii::CommandBuffer& commandBuffer,
     const vk::Rect2D scissor{
         vk::Offset2D{static_cast<std::int32_t>(area.position.x), static_cast<std::int32_t>(area.position.y)},
         vk::Extent2D{static_cast<std::uint32_t>(area.size.x), static_cast<std::uint32_t>(area.size.y)}};
+    std::vector<rendering::StaticMeshPass::Draw> meshes;
+    meshes.reserve(_staticMeshDraws.size());
+    for (const contract::renderer::StaticMeshDraw& draw : _staticMeshDraws) {
+        if (const rendering::GpuStaticMesh* mesh = _staticMeshes.find(draw.mesh)) {
+            meshes.push_back(rendering::StaticMeshPass::Draw{.mesh = mesh, .world = draw.world, .color = draw.color});
+        }
+    }
+    _staticMeshPass->record(
+        commandBuffer, meshes, viewport, scissor,
+        [this](contract::renderer::TextureId texture) { return findTextureSet(texture); },
+        findTextureSet(_fallbackTexture));
     _lines3DPass->record(commandBuffer, frameIndex, viewport, scissor);
     commandBuffer.endRendering();
 }
