@@ -44,6 +44,8 @@ class AYLO_CONTRACT_RENDERER_API CameraView3D {
     [[nodiscard]] const glm::mat4& getViewMatrix() const noexcept { return _view; }
     /// @return Camera to clip space: X right, Y down, depth 0 to 1 (Vulkan's conventions, as CameraView's).
     [[nodiscard]] const glm::mat4& getProjection() const noexcept { return _projection; }
+    /// @return Camera to clip space in OpenGL's conventions: X right, Y up, depth -1 to 1, for a renderer on OpenGL.
+    [[nodiscard]] const glm::mat4& getOpenGLProjection() const noexcept { return _openGLProjection; }
     /// @return World to clip space: getProjection() * getViewMatrix().
     [[nodiscard]] const glm::mat4& getViewProjection() const noexcept { return _viewProjection; }
     /// @return Where the frame goes in the framebuffer.
@@ -56,11 +58,12 @@ class AYLO_CONTRACT_RENDERER_API CameraView3D {
     [[nodiscard]] std::optional<glm::vec2> worldToScreen(glm::vec3 world) const;
 
   private:
-    glm::mat4 _view{1.0F};            ///< World to camera space.
-    glm::mat4 _projection{1.0F};      ///< Camera to clip space.
-    glm::mat4 _viewProjection{1.0F};  ///< World to clip space.
-    glm::mat4 _inverse{1.0F};         ///< Clip space to world.
-    Viewport _viewport;               ///< Letterboxed rectangle of the framebuffer.
+    glm::mat4 _view{1.0F};              ///< World to camera space.
+    glm::mat4 _projection{1.0F};        ///< Camera to clip space.
+    glm::mat4 _openGLProjection{1.0F};  ///< Camera to OpenGL's clip space.
+    glm::mat4 _viewProjection{1.0F};    ///< World to clip space.
+    glm::mat4 _inverse{1.0F};           ///< Clip space to world.
+    Viewport _viewport;                 ///< Letterboxed rectangle of the framebuffer.
 };
 
 }  // namespace aylo::contract::renderer

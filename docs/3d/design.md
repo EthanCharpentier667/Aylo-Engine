@@ -14,7 +14,7 @@ changing what a 2D game is, and the tasks that bring it, in order. Decided with 
 | How both worlds are drawn | **One camera per world**: `aylo.Camera2D` for the 2D world, `aylo.Camera3D` for the 3D world. A frame draws the 3D world (with a depth buffer), then the 2D world over it, then the UI. |
 | Rotation in scripts | A 3D rotation is a quaternion; scripts get **Luau helpers** (`engine.math.quat`) to build and use one from angles, an axis or a target. |
 | 3D physics | Same plugin and Jolt world: `aylo.Collider3D`, `aylo.Velocity3D`, a shared `aylo.RigidBody`. 2D bodies stay on their plane, 3D bodies move freely, and the two families never touch each other. |
-| Renderers that cannot draw 3D | The renderer contract tells (`supports3D()`); the 3D world is not drawn by one that cannot. Vulkan first, raylib after (D3-05). |
+| Renderers that cannot draw 3D | The renderer contract tells (`supports3D()`); the 3D world is not drawn by one that cannot. Vulkan and raylib (D3-05) draw it. |
 | Editor | A **Scene** tab next to the Game tab, with a camera of its own to look at and edit the world, after Unity's Scene view (D3-06). |
 
 ## Conventions

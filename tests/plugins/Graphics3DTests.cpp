@@ -92,6 +92,22 @@ TEST(CameraView3D, AnOrthographicViewShowsItsHeight) {
     EXPECT_NEAR(top->y, 0.0F, 1e-2F);
 }
 
+TEST(CameraView3D, GivesTheProjectionInOpenGLsClipSpaceToo) {
+    const CameraView3D shown{View3D{.projection = Perspective{.nearPlane = 1.0F, .farPlane = 10.0F}}, glm::vec2{0.0F},
+                             glm::uvec2{800, 600}};
+
+    const auto clip = [&shown](const glm::vec3& point) {
+        const glm::vec4 projected = shown.getOpenGLProjection() * glm::vec4{point, 1.0F};
+        return glm::vec3{projected} / projected.w;
+    };
+
+    EXPECT_NEAR(clip({0.0F, 0.0F, -1.0F}).z, -1.0F, 1e-4F);  // the near plane at -1
+    EXPECT_NEAR(clip({0.0F, 0.0F, -10.0F}).z, 1.0F, 1e-4F);  // the far plane at 1
+    EXPECT_GT(clip({0.0F, 1.0F, -5.0F}).y, 0.0F);            // up is up: no flip
+    const glm::vec4 vulkan = shown.getProjection() * glm::vec4{0.0F, 1.0F, -5.0F, 1.0F};
+    EXPECT_LT(vulkan.y, 0.0F);  // where Vulkan's clip space is Y down
+}
+
 TEST(Camera3D, ReflectsItsFieldsWithTheProjectionByName) {
     using Traits = aylo::ecs::ComponentTraits<Camera3D>;
     EXPECT_EQ(Traits::kName, "aylo.Camera3D");

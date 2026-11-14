@@ -30,6 +30,19 @@
 
 namespace aylo::contract::renderer {
 namespace {
+/// @return The projection of @p projection for a viewport of @p aspect (width over height), in OpenGL's clip space
+/// (Y up, depth -1 to 1).
+glm::mat4 openGLProjectionOf(const Projection3D& projection, float aspect) {
+    if (const auto* perspective = std::get_if<Perspective>(&projection)) {
+        return glm::perspectiveRH_NO(perspective->fieldOfView, aspect, perspective->nearPlane, perspective->farPlane);
+    }
+    const auto& orthographic = std::get<Orthographic3D>(projection);
+    const float halfHeight = orthographic.height / 2.0F;
+    const float halfWidth = halfHeight * aspect;
+    return glm::orthoRH_NO(-halfWidth, halfWidth, -halfHeight, halfHeight, orthographic.nearPlane,
+                           orthographic.farPlane);
+}
+
 /// @return The projection of @p projection for a viewport of @p aspect (width over height), in Vulkan's clip space.
 glm::mat4 projectionOf(const Projection3D& projection, float aspect) {
     glm::mat4 matrix{1.0F};
@@ -53,6 +66,7 @@ CameraView3D::CameraView3D(const View3D& view, const glm::vec2 viewSize, const g
     _view = glm::mat4_cast(glm::conjugate(glm::normalize(rotation))) * glm::translate(glm::mat4{1.0F}, -view.position);
     const float aspect = _viewport.size.y > 0.0F ? _viewport.size.x / _viewport.size.y : 1.0F;
     _projection = projectionOf(view.projection, aspect);
+    _openGLProjection = openGLProjectionOf(view.projection, aspect);
     _viewProjection = _projection * _view;
     _inverse = glm::inverse(_viewProjection);
 }

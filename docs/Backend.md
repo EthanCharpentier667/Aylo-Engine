@@ -159,7 +159,7 @@ the backend.
 | `beginFrame(clearColor)`, `endFrame()` | One frame. |
 | `drawMesh(mesh)`, `setSceneSize(size)`, `getSceneSize()`, `getSceneTexture()`, `setScenePreview(preview)`, `getPreviewTexture()`, `getFrameStats()` | Optional, for a tool built on the renderer (the editor, `docs/Editor.md`): draw indexed triangles in framebuffer pixels over the frame, have the scene drawn into a texture of a given size instead of the window, have the world drawn a second time from another view into a texture of its own (the editor's Actor tabs), and read what the last frame drew. A renderer without them ignores the meshes, draws into the window and reports nothing. |
 | `createStaticMesh(desc)`, `destroyStaticMesh(id)`, `drawStaticMesh(draw)` | Optional, the 3D models: upload indexed triangles (`StaticMeshVertex`: position, normal, UV) in parts with a base colour and texture, then draw one with a world matrix and a tint, unlit, in the 3D world. The default creation throws `UnsupportedFeatureException`. |
-| `supports3D()`, `setView3D(view)`, `drawLines3D(lines)` | Optional, the 3D world (`docs/3d/design.md`): whether the renderer draws it, the frame's 3D view (`View3D`: position, quaternion, `Perspective` or `Orthographic3D`; `CameraView3D` computes its matrices, viewport and picking rays), and segments in the world. A renderer that draws it does so first in the frame, with a depth buffer, under the 2D world. Defaults: false, nothing. Vulkan and the null renderer say true; raylib false until D3-05. |
+| `supports3D()`, `setView3D(view)`, `drawLines3D(lines)` | Optional, the 3D world (`docs/3d/design.md`): whether the renderer draws it, the frame's 3D view (`View3D`: position, quaternion, `Perspective` or `Orthographic3D`; `CameraView3D` computes its matrices, viewport and picking rays), and segments in the world. A renderer that draws it does so first in the frame, with a depth buffer, under the 2D world. Defaults: false, nothing. Vulkan, raylib and the null renderer say true. `CameraView3D` gives the projection in Vulkan's clip space (`getProjection()`) and in OpenGL's (`getOpenGLProjection()`). |
 | `setView(view)`, `draw(Sprite)`, `draw(Shape)`, `draw(Text)` | Drawing, between `beginFrame()` and `endFrame()`. A `Shape` is a rectangle (rounded corners), circle, capsule or line, filled and/or outlined; shapes are overlays, drawn after the sprites. A `Text` is already laid out by the text plugin: its glyphs, cut from an MSDF font atlas, drawn in order with the sprites (see `docs/Text.md`). |
 
 Conventions, the ones of those libraries: world units with X to the right and Y down, angles in radians and
@@ -367,7 +367,7 @@ the null backend does, and the renderer refuses any other platform. Settings: th
 | `Library.cpp`, `Registration.*` | The library's entry point; the factories of the platform and the renderer, which read the section `raylib` |
 | `platform/` | `RaylibPlatform` (window, events) and `InputMapping` (raylib's key, mouse and gamepad names next to the engine's) |
 | `renderer/` | `RaylibRenderer`, which only dispatches; `Frame` (camera, letterboxed viewport, blend mode, overlay and screen spaces); `TextureTable` (textures by generation-checked id); `Convert` (contract types to raylib's) |
-| `renderer/draw/` | One file per kind of drawing: `Sprites`, `Shapes`, `MsdfText`, `Particles`, `Meshes` |
+| `renderer/draw/` | One file per kind of drawing: `Sprites`, `Shapes`, `MsdfText`, `Particles`, `Meshes`, and `World3D` (the static meshes, and the frame's 3D lines and mesh draws) |
 
 | Contract | raylib |
 |---|---|
@@ -378,6 +378,8 @@ the null backend does, and the renderer refuses any other platform. Settings: th
 | Particles | drawn from the instances the particle plugin simulates on the CPU: `supportsGpuParticles()` is false |
 | Overlay, tool meshes | a view-pixel camera with each item's clip; meshes through `rlgl` triangles |
 | User shaders | not supported (`supportsShaders()` is false): they are SPIR-V, raylib reads GLSL |
+| 3D world | kept during the frame and drawn with `rlgl` (the view and `CameraView3D::getOpenGLProjection()`, the depth test, no face culling, the letterboxed viewport) before the first 2D drawing, so it lies under the 2D world as in Vulkan. Draws that come after the 2D world started (the physics debug view's lines) are drawn at the end of the frame, over it |
+| Static meshes | one unindexed raylib `Mesh` per part (raylib's indices are 16 bits), drawn with the default material: base colour times draw colour, and the part's texture, unlit |
 
 Colours are linear in the engine; the renderer encodes them in sRGB, as Vulkan's sRGB framebuffer does, so both look
 the same.
