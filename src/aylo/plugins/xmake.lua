@@ -65,6 +65,8 @@ plugin("shader", {"plugin-graphics"})
     -- The shaders' compiler (glslang, required by the root xmake.lua). Private: only shader/detail/ShaderCompiler.cpp
     -- includes it.
     add_packages("glslang")
+    -- Reads and writes the material files. Private: only shader/MaterialFile.cpp includes it.
+    add_packages("nlohmann_json")
     -- The shaders ABI of the renderer contract (contract/renderer/shaders/*.glsl), the prelude of the game's shaders,
     -- embedded as byte arrays that shader/detail/ShaderAssembler.cpp includes as "<file>.glsl.h".
     add_files("../contract/renderer/shaders/*.glsl")
