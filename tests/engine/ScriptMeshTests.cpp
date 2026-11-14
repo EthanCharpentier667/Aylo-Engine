@@ -13,7 +13,7 @@
 #include <utility>
 
 #include "FakeBackend.hpp"
-#include "TestGltf.hpp"
+#include "TestModels.hpp"
 #include "aylo/ecs/app/App.hpp"
 #include "aylo/ecs/schedule/RunMode.hpp"
 #include "aylo/ecs/time/TimePlugin.hpp"
@@ -76,6 +76,33 @@ TEST(ScriptMesh, AScriptLoadsAModelAndDrawsIt) {
     ASSERT_FALSE(client.state->staticMeshDraws.empty());
     EXPECT_FLOAT_EQ(client.state->staticMeshDraws.back().world[3][2], -3.0F);
     EXPECT_FLOAT_EQ(client.state->staticMeshDraws.back().color.x, 1.0F);
+}
+
+TEST(ScriptMesh, AScriptLoadsAnObjModelAsAGltfOne) {
+    ClientScripts client;
+    client.assets.writeQuad();
+    ASSERT_EQ(client.run(R"(
+        local quad = engine.assets.mesh("models/quad.obj")
+        engine.ecs.system("game.Setup", {
+            phase = "Startup",
+            side = "client",
+            run = function(ctx)
+                ctx.commands:spawn({
+                    ["aylo.Transform3D"] = {},
+                    ["aylo.MeshRenderer"] = { mesh = quad },
+                })
+            end,
+        })
+    )"),
+              "");
+
+    for (int frame = 0; frame < 4; ++frame) {
+        client.app.runFrame();
+    }
+
+    ASSERT_EQ(client.state->createdStaticMeshes.size(), 1U);
+    EXPECT_EQ(client.state->createdStaticMeshes.at(0).indices.size(), 6U);
+    EXPECT_FALSE(client.state->staticMeshDraws.empty());
 }
 
 TEST(ScriptMesh, TheMeshFormNamesItsMistake) {

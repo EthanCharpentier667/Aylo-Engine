@@ -22,8 +22,8 @@
 #include <vector>
 
 #include "FakeBackend.hpp"
-#include "TestGltf.hpp"
 #include "TestImages.hpp"
+#include "TestModels.hpp"
 #include "aylo/ecs/app/App.hpp"
 #include "aylo/ecs/schedule/RunMode.hpp"
 #include "aylo/ecs/world/World.hpp"
@@ -78,8 +78,7 @@ TEST(GltfLoader, ReadsTheTrianglesTheirMaterialAndTheirImage) {
     assets.writeTriangle();
     const aylo::core::vfs::DirectorySource source{assets.root()};
 
-    const aylo::plugins::mesh::detail::Model model =
-        aylo::plugins::mesh::detail::loadGltf("models/tri.gltf", source);
+    const aylo::plugins::mesh::detail::Model model = aylo::plugins::mesh::detail::loadGltf("models/tri.gltf", source);
 
     ASSERT_EQ(model.mesh.vertices.size(), 3U);
     EXPECT_FLOAT_EQ(model.mesh.vertices.at(1).position.x, 1.0F);
@@ -128,6 +127,22 @@ TEST(MeshPlugin, CreatesTheMeshWithItsTextureAndDrawsItsRenderers) {
     ASSERT_FALSE(fixture.state().staticMeshDraws.empty());
     EXPECT_FLOAT_EQ(fixture.state().staticMeshDraws.back().world[3][0], 2.0F);
     EXPECT_FLOAT_EQ(fixture.state().staticMeshDraws.back().color.w, 0.5F);
+}
+
+TEST(MeshPlugin, CreatesAnObjModelWithTheTextureOfItsMtl) {
+    const AssetsFolder assets;
+    assets.writeQuad();
+    MeshApp fixture{assets};
+    const aylo::core::asset::AssetId id = fixture.meshes().load("models/quad.obj");
+    fixture.app().getWorld().spawn(aylo::plugins::transform::Transform3D{}, MeshRenderer{.mesh = id});
+
+    fixture.runFrames(4);
+
+    EXPECT_EQ(fixture.meshes().get(id)->state, MeshState::kLoaded) << fixture.meshes().get(id)->error;
+    ASSERT_EQ(fixture.state().createdStaticMeshes.size(), 1U);
+    EXPECT_EQ(fixture.state().createdStaticMeshes.at(0).indices.size(), 6U);
+    EXPECT_NE(fixture.state().createdStaticMeshes.at(0).parts.at(0).texture, aylo::contract::renderer::TextureId{});
+    EXPECT_FALSE(fixture.state().staticMeshDraws.empty());
 }
 
 TEST(MeshPlugin, AFileThatCannotBeReadFailsWithItsReason) {

@@ -2,7 +2,7 @@
 ** EPITECH PROJECT, 2026
 ** aylo
 ** File description:
-** TestGltf
+** TestModels
 */
 
 #pragma once
@@ -39,6 +39,76 @@ inline constexpr std::string_view kTriangle = R"({
                 {"bufferView": 2, "componentType": 5123, "count": 3, "type": "SCALAR"}]
 })";
 
+/// @brief A Wavefront OBJ square of side 1 in the XY plane, facing +Z, its one face a quad, with the material "Orange"
+/// of quad.mtl.
+inline constexpr std::string_view kQuadObj = R"(mtllib quad.mtl
+v 0 0 0
+v 1 0 0
+v 1 1 0
+v 0 1 0
+vt 0 0
+vt 1 0
+vt 1 1
+vt 0 1
+vn 0 0 1
+usemtl Orange
+f 1/1/1 2/2/1 3/3/1 4/4/1
+)";
+
+/// @brief The material of kQuadObj: an orange colour and the texture tex.png next to it.
+inline constexpr std::string_view kQuadMtl = R"(newmtl Orange
+Kd 1 0.5 0.25
+map_Kd tex.png
+)";
+
+/// @brief An ASCII FBX 7.4 triangle in centimetres (UnitScaleFactor 1), its node 5 cm up, with a red Lambert material.
+inline constexpr std::string_view kCentimetreFbx = R"(; FBX 7.4.0 project file
+FBXHeaderExtension:  {
+	FBXHeaderVersion: 1003
+	FBXVersion: 7400
+}
+GlobalSettings:  {
+	Version: 1000
+	Properties70:  {
+		P: "UpAxis", "int", "Integer", "",1
+		P: "UpAxisSign", "int", "Integer", "",1
+		P: "FrontAxis", "int", "Integer", "",2
+		P: "FrontAxisSign", "int", "Integer", "",1
+		P: "CoordAxis", "int", "Integer", "",0
+		P: "CoordAxisSign", "int", "Integer", "",1
+		P: "UnitScaleFactor", "double", "Number", "",1
+	}
+}
+Objects:  {
+	Geometry: 1000, "Geometry::Tri", "Mesh" {
+		Vertices: *9 {
+			a: 0,0,0,100,0,0,0,100,0
+		}
+		PolygonVertexIndex: *3 {
+			a: 0,1,-3
+		}
+	}
+	Model: 2000, "Model::Tri", "Mesh" {
+		Version: 232
+		Properties70:  {
+			P: "Lcl Translation", "Lcl Translation", "", "A",0,5,0
+		}
+	}
+	Material: 3000, "Material::Red", "" {
+		Version: 102
+		ShadingModel: "lambert"
+		Properties70:  {
+			P: "DiffuseColor", "Color", "", "A",1,0,0
+		}
+	}
+}
+Connections:  {
+	C: "OO",2000,0
+	C: "OO",1000,2000
+	C: "OO",3000,2000
+}
+)";
+
 /// @return The 68 bytes of tri.bin: three positions, three UVs, three 16-bit indices and two bytes of padding.
 inline std::vector<std::byte> triangleBuffer() {
     const std::array<float, 15> floats{0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1};
@@ -73,6 +143,13 @@ class AssetsFolder {
     void writeTriangle() const {
         write("models/tri.gltf", kTriangle);
         write("models/tri.bin", triangleBuffer());
+        write("models/tex.png", aylo::test::plugins::twoPixelPng());
+    }
+
+    /// @brief Writes the OBJ square and its files under models/: quad.obj, quad.mtl and tex.png.
+    void writeQuad() const {
+        write("models/quad.obj", kQuadObj);
+        write("models/quad.mtl", kQuadMtl);
         write("models/tex.png", aylo::test::plugins::twoPixelPng());
     }
 

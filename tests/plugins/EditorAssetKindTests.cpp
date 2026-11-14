@@ -26,6 +26,8 @@ TEST(EditorAssetKind, TellsFilesApartByExtension) {
     EXPECT_EQ(kindOf("materials/hit.material", false), AssetKind::kMaterial);
     EXPECT_EQ(kindOf("models/crate.glb", false), AssetKind::kModel);
     EXPECT_EQ(kindOf("models/crate.gltf", false), AssetKind::kModel);
+    EXPECT_EQ(kindOf("models/crate.fbx", false), AssetKind::kModel);
+    EXPECT_EQ(kindOf("models/crate.obj", false), AssetKind::kModel);
 }
 
 TEST(EditorAssetKind, ShadersMaterialsAndModelsHaveIconsOfTheirOwn) {
