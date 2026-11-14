@@ -27,6 +27,7 @@
 #include "aylo/replication/packet/PacketCalls.hpp"
 #include "aylo/replication/packet/PacketSchema.hpp"
 #include "aylo/replication/standalone/LocalSession.hpp"
+#include "aylo/replication/timesync/TimeCalls.hpp"
 
 namespace aylo::replication {
 ReplicationPlugin::~ReplicationPlugin() = default;  // defined here: the class's vtable lives in the library
@@ -55,8 +56,16 @@ void ReplicationPlugin::build(ecs::App& app) {
     input::addInputCalls(app);
     // A standalone session has no ClientState: the StandalonePlugin answers localClient.
     const ecs::RunMode mode = app.getSchedules().getRunMode();
-    if (!app.getWorld().getResources().has<standalone::LocalSession>() && ecs::runsIn(ecs::Side::kClient, mode)) {
-        client::addClientCalls(app);
+    if (app.getWorld().getResources().has<standalone::LocalSession>()) {
+        timesync::addStandaloneTimeCalls(app);
+    } else {
+        if (ecs::runsIn(ecs::Side::kClient, mode)) {
+            client::addClientCalls(app);
+            timesync::addClientTimeCalls(app);
+        }
+        if (ecs::runsIn(ecs::Side::kServer, mode)) {
+            timesync::addServerTimeCalls(app);
+        }
     }
 }
 }  // namespace aylo::replication

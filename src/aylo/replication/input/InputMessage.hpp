@@ -28,6 +28,8 @@ struct InputSample {
     std::uint32_t sequence{0};                           ///< The client's own input counter.
     std::uint32_t buttons{0};                            ///< Bit `i` set: button action `i` is held.
     std::array<float, component::kMaxInputAxes> axes{};  ///< The axis slots, each in [-1, 1].
+    double clientTime{0.0};  ///< The client's estimate of the server clock when it sampled this input, in seconds; 0 if
+                             ///< it had none yet. Untrusted: it is whatever the client says.
 };
 
 /// @brief The kInput message: the last inputs of a client.

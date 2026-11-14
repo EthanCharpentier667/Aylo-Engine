@@ -115,9 +115,10 @@ TEST(Budget, AScriptCannotCatchItsTimeoutForever) {
 }
 
 TEST(Budget, EachCallGetsAWholeBudget) {
-    const auto runtime = makeRuntime(100ms);
-    // Each run takes 60 ms: two in a row pass the budget together, never alone.
-    const std::string busy = "local start = os.clock() while os.clock() - start < 0.06 do end";
+    const auto runtime = makeRuntime(500ms);
+    // Each run takes 300 ms: two in a row pass the budget together, never alone. os.clock() counts the CPU time, the
+    // budget the wall time, which runs ahead on a busy machine (a CI runner): the margin of 200 ms leaves room for it.
+    const std::string busy = "local start = os.clock() while os.clock() - start < 0.3 do end";
 
     EXPECT_EQ(runKind(runtime, busy), std::nullopt);
     EXPECT_EQ(runKind(runtime, busy), std::nullopt);

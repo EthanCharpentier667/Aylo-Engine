@@ -42,6 +42,7 @@
 #include "aylo/network/admin/AdminSettings.hpp"
 #include "aylo/network/bytes/ByteWriter.hpp"
 #include "aylo/network/protocol/Constants.hpp"
+#include "aylo/network/server/ClientInfo.hpp"
 #include "aylo/network/server/NetServer.hpp"
 #include "aylo/network/server/RoomMessages.hpp"
 #include "aylo/replication/MessageType.hpp"
@@ -59,6 +60,7 @@
 #include "aylo/replication/serialization/FieldSerializer.hpp"
 #include "aylo/replication/snapshot/Snapshot.hpp"
 #include "aylo/replication/state/StateMessage.hpp"
+#include "aylo/replication/timesync/TimeSyncMessage.hpp"
 
 namespace aylo::replication::server {
 namespace {
@@ -324,6 +326,21 @@ std::optional<ServerNotification> ServerState::handle(const network::server::Ser
         }
         return std::nullopt;
     }
+    if (client != _clients.end() && !message.payload.empty() &&
+        message.payload.front() == static_cast<std::byte>(MessageType::kTimePing)) {
+        // Answered at once, with the clock of the moment: the client measures the round trip with it.
+        if (const auto ping = timesync::decodePing(message.payload)) {
+            static_cast<void>(_server->execute(network::server::SendMessage{
+                .client = message.client,
+                .channel = network::Channel::kUnreliable,
+                .payload = timesync::encodePong({.clientTime = ping->clientTime, .serverTime = serverTime()}),
+            }));
+            _server->flush(_time());
+        } else {
+            ++_droppedInputs;
+        }
+        return std::nullopt;
+    }
     if (client == _clients.end() || message.payload.empty() ||
         message.payload.front() != static_cast<std::byte>(MessageType::kInput)) {
         ++_ignoredMessages;
@@ -338,6 +355,26 @@ std::optional<ServerNotification> ServerState::handle(const network::server::Ser
         client->second.inputs.push(sample);
     }
     client->second.lastAppliedSnapshot = std::max(client->second.lastAppliedSnapshot, decoded->lastAppliedSnapshot);
+    return std::nullopt;
+}
+
+double ServerState::serverTime() {
+    const network::TimePoint now = _time();
+    if (!_epoch) {
+        _epoch = now;
+    }
+    return std::chrono::duration<double>{now - *_epoch}.count();
+}
+
+std::optional<double> ServerState::rtt(const network::ClientId client) const {
+    if (_server == nullptr || !_clients.contains(client)) {
+        return std::nullopt;
+    }
+    for (const network::server::ClientInfo& info : _server->clients()) {
+        if (info.client == client) {
+            return static_cast<double>(info.rttMs) / 1000.0;
+        }
+    }
     return std::nullopt;
 }
 
@@ -403,12 +440,14 @@ void ServerState::applyInput(const network::ClientId client, component::PlayerIn
         input.buttons = 0;
         input.axes = {};
         input.sequence = 0;
+        input.clientTime = 0.0;
         return;
     }
     const input::InputSample& sample = found->second.inputs.next();
     input.buttons = sample.buttons;
     input.axes = sample.axes;
     input.sequence = sample.sequence;
+    input.clientTime = sample.clientTime;
 }
 
 std::optional<std::uint32_t> ServerState::track(const ecs::Entity entity) {

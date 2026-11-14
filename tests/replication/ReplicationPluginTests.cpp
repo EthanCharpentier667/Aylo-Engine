@@ -210,7 +210,7 @@ TEST(ReplicationTypes, DefaultToZero) {
 
 TEST(ReplicationTypes, ReflectThePlayerInputAxesAsOneArrayField) {
     constexpr auto kFields = TypeTraits<PlayerInput>::kFields;
-    ASSERT_EQ(kFields.size(), 4U);
+    ASSERT_EQ(kFields.size(), 5U);
     EXPECT_EQ(kFields[0].name, "buttons");
     EXPECT_EQ(kFields[0].type, FieldType::kU32);
     EXPECT_EQ(kFields[1].name, "previousButtons");
@@ -220,6 +220,8 @@ TEST(ReplicationTypes, ReflectThePlayerInputAxesAsOneArrayField) {
     EXPECT_EQ(kFields[2].count, kMaxInputAxes);
     EXPECT_EQ(kFields[3].name, "sequence");
     EXPECT_EQ(kFields[3].type, FieldType::kU32);
+    EXPECT_EQ(kFields[4].name, "clientTime");
+    EXPECT_EQ(kFields[4].type, FieldType::kF64);
     EXPECT_EQ(kMaxInputAxes, 16U);
 }
 
@@ -228,7 +230,7 @@ TEST(ReplicationTypes, ReflectThePlayerInputAxesAsOneArrayField) {
 TEST(ReplicationTypes, KeepTheirLayoutHashes) {
     EXPECT_EQ(TypeTraits<NetworkId>::kLayoutHash, 0x93825624FD42D660ULL);
     EXPECT_EQ(TypeTraits<Owner>::kLayoutHash, 0x0ACC4BF763CCD19FULL);
-    EXPECT_EQ(TypeTraits<PlayerInput>::kLayoutHash, 0x3E5174BAA7A84CC5ULL);
+    EXPECT_EQ(TypeTraits<PlayerInput>::kLayoutHash, 0xAE1E1C1F3A78B933ULL);
     EXPECT_EQ(TypeTraits<ClientConnected>::kLayoutHash, 0x4599F89D69E61A4AULL);
     EXPECT_EQ(TypeTraits<ClientDisconnected>::kLayoutHash, 0x06C545FC9F117DA1ULL);
 }

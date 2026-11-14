@@ -13,6 +13,7 @@
 #include <cstdint>
 #include <exception>
 #include <memory>
+#include <optional>
 #include <thread>
 #include <vector>
 
@@ -131,17 +132,30 @@ TEST_F(MiniaudioDeviceTest, TwoVoicesScheduledOnTheSameTimeStartTogether) {
     EXPECT_TRUE(_device->isPlaying(first));  // scheduled, not ended
     EXPECT_TRUE(_device->isPlaying(second));
 
+    // Both are watched in the same loop, which yields so the audio thread runs even on a machine with few cores (a
+    // loop that only spins starved it on a CI runner, and the voices never ended).
     using Clock = std::chrono::steady_clock;
-    const auto deadline = Clock::now() + std::chrono::seconds{3};
-    while (_device->isPlaying(first) && Clock::now() < deadline) {
+    const auto deadline = Clock::now() + std::chrono::seconds{5};
+    std::optional<Clock::time_point> firstEnded;
+    std::optional<Clock::time_point> secondEnded;
+    while ((!firstEnded || !secondEnded) && Clock::now() < deadline) {
+        const bool firstPlays = _device->isPlaying(first);
+        const bool secondPlays = _device->isPlaying(second);
+        const auto now = Clock::now();
+        if (!firstPlays && !firstEnded) {
+            firstEnded = now;
+        }
+        if (!secondPlays && !secondEnded) {
+            secondEnded = now;
+        }
+        std::this_thread::yield();
     }
-    ASSERT_FALSE(_device->isPlaying(first)) << "the first voice never ended";
-    const auto firstEnded = Clock::now();
-    while (_device->isPlaying(second) && Clock::now() < deadline) {
-    }
-    const auto gap = Clock::now() - firstEnded;
-    ASSERT_FALSE(_device->isPlaying(second)) << "the second voice never ended";
-    EXPECT_LT(gap, std::chrono::milliseconds{1});
+    ASSERT_TRUE(firstEnded) << "the first voice never ended";
+    ASSERT_TRUE(secondEnded) << "the second voice never ended";
+    // Started in the same audio frame, they end in the same callback: seen at once, far less than a period apart
+    // (10 ms), where a voice started a period late would end.
+    const auto gap = *firstEnded > *secondEnded ? *firstEnded - *secondEnded : *secondEnded - *firstEnded;
+    EXPECT_LT(gap, std::chrono::milliseconds{5});
     EXPECT_GE(_device->getTime(), startAt);
     _device->destroySound(sound);
 }

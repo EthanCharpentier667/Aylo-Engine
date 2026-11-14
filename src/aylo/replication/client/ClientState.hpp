@@ -37,6 +37,7 @@
 #include "aylo/replication/manifest/ManifestReceiver.hpp"
 #include "aylo/replication/snapshot/Snapshot.hpp"
 #include "aylo/replication/state/StateMessage.hpp"
+#include "aylo/replication/timesync/ClockEstimator.hpp"
 
 namespace aylo::ecs {
 class Commands;
@@ -71,6 +72,8 @@ enum class ConnectionStatus : std::uint8_t {
 class AYLO_REPLICATION_API ClientState {
   public:
     static constexpr std::size_t kMaxPendingPackets = 256;  ///< The most custom packets kept between two receive().
+    static constexpr double kFastPingInterval = 0.1;        ///< Seconds between pings until the clock has a window.
+    static constexpr double kPingInterval = 1.0;            ///< Seconds between pings once it has.
 
     /// @brief Gives the time of the transport.
     using TimeSource = std::function<network::TimePoint()>;
@@ -122,6 +125,13 @@ class AYLO_REPLICATION_API ClientState {
 
     /// @return The transport. Only after connect().
     [[nodiscard]] network::client::NetClient& netClient() noexcept;
+
+    /// @return The estimate of the server clock now, in seconds (what `aylo.net.serverTime` returns), or nothing until
+    /// the first answer of the server to a ping, and again after a new connect(). Not const: it reads the clock.
+    [[nodiscard]] std::optional<double> serverTime();
+
+    /// @return The smoothed round trip to the server, in seconds, 0 until the first answer.
+    [[nodiscard]] double rtt() const noexcept;
 
     /// @brief Stores the input of the game for the frame; ignored until the manifest is accepted.
     /// @param input The input the game read from the player. Its buttons and axes are sent.
@@ -234,9 +244,16 @@ class AYLO_REPLICATION_API ClientState {
     /// forgets them.
     void removeUnlistedEntities(const std::unordered_set<std::uint32_t>& listed, ecs::Commands& commands);
 
-    network::io::Address _server;                                ///< The server's address.
-    network::NetworkSettings _settings;                          ///< The transport settings.
-    const ecs::World* _world;                                    ///< The world replicated into.
+    network::io::Address _server;        ///< The server's address.
+    network::NetworkSettings _settings;  ///< The transport settings.
+    const ecs::World* _world;            ///< The world replicated into.
+    /// @return The local clock, in seconds since the first call.
+    [[nodiscard]] double localSeconds();
+
+    /// @brief Sends a ping when one is due: every kFastPingInterval while the clock is being found, then every
+    /// kPingInterval.
+    void sendTimePing();
+
     TimeSource _time;                                            ///< The transport time.
     std::unique_ptr<network::client::NetClient> _client;         ///< Created by connect().
     ConnectionStatus _connection{ConnectionStatus::kIdle};       ///< Where the connection stands.
@@ -261,6 +278,9 @@ class AYLO_REPLICATION_API ClientState {
     std::uint32_t _nextInputSequence{1};            ///< The sequence of the next input sent.
     std::optional<component::PlayerInput> _input;   ///< The game's input for the frame.
     std::deque<input::InputSample> _recentInputs;   ///< The last three, oldest first.
+    timesync::ClockEstimator _clock;                ///< The server clock, from the pings.
+    std::optional<network::TimePoint> _epoch;       ///< The zero of the local clock, set on first use.
+    std::optional<double> _lastPing;                ///< The local clock when the last ping was sent.
     std::vector<network::Bytes> _packets;           ///< Custom packets waiting for takePackets().
     std::vector<state::StateMessage> _states;       ///< State values waiting for takeStates().
     bool _serverReady{false};                       ///< The server answered after our `Ready`.

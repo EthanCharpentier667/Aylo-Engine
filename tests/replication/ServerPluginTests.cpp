@@ -7,12 +7,15 @@
 
 #include <gtest/gtest.h>
 
+#include <array>
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <functional>
 #include <memory>
 #include <optional>
+#include <span>
 #include <string>
 #include <thread>
 #include <variant>
@@ -20,6 +23,8 @@
 
 #include "ServerFixtures.hpp"
 #include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/call/CallInfo.hpp"
+#include "aylo/ecs/call/Calls.hpp"
 #include "aylo/ecs/command/Commands.hpp"
 #include "aylo/ecs/component/ComponentInfo.hpp"
 #include "aylo/ecs/component/Components.hpp"
@@ -33,6 +38,7 @@
 #include "aylo/ecs/time/FixedTimestep.hpp"
 #include "aylo/ecs/time/Time.hpp"
 #include "aylo/ecs/time/TimePlugin.hpp"
+#include "aylo/ecs/world/World.hpp"
 #include "aylo/network/NetworkSettings.hpp"
 #include "aylo/network/Types.hpp"
 #include "aylo/network/admin/AdminClient.hpp"
@@ -59,6 +65,7 @@
 #include "aylo/replication/server/ServerPlugin.hpp"
 #include "aylo/replication/server/ServerState.hpp"
 #include "aylo/replication/snapshot/Snapshot.hpp"
+#include "aylo/replication/timesync/TimeCalls.hpp"
 
 namespace aylo::test::server_plugin {
 /// @brief What the game systems of the tests record.
@@ -643,4 +650,24 @@ TEST(ServerPlugin, TheSnapshotCarriesTheLastProcessedInputOfTheClient) {
         const std::optional<snapshot::Snapshot> last = lastSnapshot(server, remote);
         return last && last->lastProcessedInput == 3;
     }));
+}
+
+TEST(ServerPlugin, GivesScriptsItsOwnClock) {
+    Server server{RunMode::kServer};
+    server.app().runFrame();
+    aylo::ecs::World& world = server.app().getWorld();
+    const aylo::ecs::CallInfo* info = world.getCalls().findByName(aylo::replication::timesync::kServerTimeCall);
+    ASSERT_NE(info, nullptr);
+
+    std::array<std::byte, sizeof(aylo::replication::timesync::ServerTime)> result{};
+    world.getCalls().invoke(world, info->id, std::span<const std::byte>{}, result);
+    aylo::replication::timesync::ServerTime time{};
+    std::memcpy(&time, result.data(), sizeof(time));
+    const double after = server.state().serverTime();
+
+    // The clock `readInput().clientTime` is in: the server compares the two directly.
+    EXPECT_TRUE(time.synced);
+    EXPECT_GE(time.time, 0.0);
+    EXPECT_LE(time.time, after);
+    EXPECT_NEAR(time.time, after, 0.1);
 }
