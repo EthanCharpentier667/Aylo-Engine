@@ -404,13 +404,27 @@ class AYLO_RENDER_VULKAN_API VulkanRenderer final : public contract::renderer::I
     /// @return A texture of @p size and the swapchain's format, drawn into and then sampled, named @p name.
     [[nodiscard]] texture::Texture makeTargetTexture(glm::uvec2 size, std::string_view name) const;
 
-    /// @return The depth buffer of the 3D world, of @p extent: made again (the old one deferred) when the size changes.
-    [[nodiscard]] const memory::Image& acquireDepth(std::size_t frameIndex, vk::Extent2D extent);
+    /// @return The depth buffer in @p slot, of @p extent: made again (the old one deferred) when the size changes.
+    [[nodiscard]] const memory::Image& acquireDepth(std::unique_ptr<memory::Image>& slot, std::size_t frameIndex,
+                                                    vk::Extent2D extent, const char* name);
 
-    /// @brief Records the frame's 3D world into @p color, cleared to the clear colour, with its own scope and the depth
-    /// buffer: the first thing of the scene, under the 2D world. Nothing without a 3D view.
-    void recordWorld3D(const vk::raii::CommandBuffer& commandBuffer, std::size_t frameIndex, vk::ImageView color,
-                       vk::Extent2D extent, glm::vec2 viewSize, glm::uvec2 framebufferSize);
+    /// @brief What one picture of the 3D world is drawn from and into.
+    struct World3DTarget {
+        const contract::renderer::View3D* view;  ///< Where it is seen from.
+        vk::ImageView color;                     ///< The image it clears and draws into.
+        vk::Extent2D extent;                     ///< That image's size.
+        glm::vec2 viewSize;                      ///< The resolution the picture is designed for; 0x0: its own.
+        glm::uvec2 framebufferSize;              ///< The size the viewport is fitted in.
+        frame::FrameGlobals* globals;            ///< The uniforms its view goes in.
+        std::unique_ptr<memory::Image>* depth;   ///< Its depth buffer.
+        const char* depthName;                   ///< The depth buffer's debug name.
+        std::size_t lineVertices;                ///< How many of the uploaded line vertices it draws.
+    };
+
+    /// @brief Records a picture of the frame's 3D world into its target, cleared to the clear colour, with its own
+    /// scope and depth buffer: the first thing of the picture, under the 2D world.
+    void recordWorld3D(const vk::raii::CommandBuffer& commandBuffer, std::size_t frameIndex,
+                       const World3DTarget& target);
 
     /// @brief Copies the frame's world (sprites, particles, shapes) into the frame's buffers, once, for recordWorld().
     void uploadWorld(std::size_t frameIndex);
@@ -497,6 +511,9 @@ class AYLO_RENDER_VULKAN_API VulkanRenderer final : public contract::renderer::I
     contract::renderer::Mesh _mesh;                  ///< The frame's meshes, merged; cleared by beginFrame().
     std::optional<contract::renderer::ScenePreview> _previewRequest;  ///< From setScenePreview(): for beginFrame().
     std::optional<contract::renderer::View> _previewView;             ///< The preview's view as of the current frame.
+    std::optional<contract::renderer::View3D> _preview3D;  ///< The preview's 3D view as of the current frame.
+    bool _previewWorld2D{true};                            ///< Whether the preview draws the 2D world.
+    std::size_t _sceneLineVertices{0};              ///< The frame's line vertices; the preview's own come after them.
     std::optional<glm::uvec2> _previewSize;         ///< The preview texture's size now; empty: no preview.
     contract::renderer::TextureId _previewTexture;  ///< The preview's texture in _textures.
     contract::renderer::FrameStats _stats;          ///< What the last frame drew.
@@ -544,6 +561,8 @@ class AYLO_RENDER_VULKAN_API VulkanRenderer final : public contract::renderer::I
     std::unique_ptr<rendering::StaticMeshPass> _staticMeshPass;  ///< Draws _staticMeshDraws, in the 3D world.
     std::unique_ptr<frame::FrameGlobals> _globals3D;             ///< The frame uniforms of the 3D world: its view.
     std::unique_ptr<memory::Image> _sceneDepth;                  ///< The 3D world's depth buffer, the scene's size.
+    std::unique_ptr<memory::Image> _previewDepth;                ///< The preview's depth buffer, its size.
+    std::unique_ptr<frame::FrameGlobals> _previewGlobals3D;      ///< The frame uniforms of the preview's 3D view.
     std::unique_ptr<rendering::ParticlePass> _particlePass;  ///< Draws _particleRanges at endFrame(), among _sprites.
     std::unique_ptr<particle::ParticleSimulationPass> _particleSimulation;  ///< Runs _simulations at endFrame().
     std::unique_ptr<postprocess::ScreenPass> _screenPass;  ///< Runs the screen effects and shows the result.

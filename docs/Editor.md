@@ -181,6 +181,28 @@ as the level.
 The preview draws the world, so what the game places near the capsule's place would show too: nothing does that far
 away. A parallax layer follows the game's camera, not the preview, so it stays out of it.
 
+## The Scene panel
+
+After Unity's Scene view: the world from a camera that is not an entity, docked with the Game panel (which stays the
+game's camera). Its parts are plain code the tests drive without a window:
+
+- `scene/SceneCamera`: a pivot, a yaw and a pitch, a distance (3D), or a centre and a zoom (2D); `look()` (fly mode,
+  the camera stays in place), `fly()`, `orbit()` (the pivot stays), `pan()` (the world follows the mouse), `dolly()`,
+  `frame()`; `view3D()` and `view2D()`.
+- `scene/Picking`: `pick3D()` casts the ray under the mouse (`CameraView3D::screenToRay()`) at a sphere per entity with
+  a `GlobalTransform3D` (half its largest scale, at least 0.25); `pick2D()` takes the `GlobalTransform2D` origin nearest
+  the mouse within 16 pixels. `entityOfNode()` and `nodeOfEntity()` go between the edited capsule's nodes and their
+  entities, from the root the capsule spawned (its `CapsuleInstance`, not nested) down by the nodes' names; an entity
+  inside an instance of another capsule gives the instance's node.
+- `scene/Gizmo`: the handles in panel pixels, `hitGizmo()`, and `dragGizmo()` / `dragGizmo2D()`, which turn a mouse move
+  along (move, scale) or across (rotate) a handle into a new Transform.
+
+The panel asks for the renderer's preview (`ScenePreview`) with the camera's `view3D` and the grid as the preview's own
+`lines` (3D, `world2D` false), or its `view2D` (2D). A drag changes the entity's `Transform3D`/`Transform2D` as it goes
+(`EditorState::sceneDrag`); when it ends, while editing, the value is written to the node and the scene respawns
+(`scene::respawn()`), marked unsaved. The preview is one per frame: the Actor tabs are drawn first and keep it
+(`EditorState::previewUsed`), and the frame clears it when no panel asked.
+
 ## Console
 
 `console::OutputCapture` points the process's standard output and error (file descriptors 1 and 2) at a pipe a thread
@@ -231,6 +253,7 @@ background it would fail out of sight.
 | Toolbar | `panels/ToolbarPanel.cpp` | One padded row (`gui::beginToolbar()`): on the left File (Save scene, Ctrl+S; Quit, through `IPlatform::close()`) and View (panels, Reset layout), as flat buttons opening popups; in the center the mode chip and the last message; on the right the Standalone / Online choice and Play / Pause / Step / Stop. The three groups are placed by `gui::beginToolbarGroup()` |
 | Actor | `panels/ActorPanel.cpp` | One tab per capsule opened alone (`EditorState::actors`), docked with the Game panel; the one in front is drawn from the renderer's preview, centred; the wheel zooms; a tab's cross closes it |
 | Game | `panels/GamePanel.cpp` | Asks for a scene texture as big as its content, draws it as an image, tells the input bridge where it is (`GameViewport`) |
+| Scene | `panels/ScenePanel.cpp` | The world from the editor's camera (`scene::SceneCamera`, in `EditorState::sceneCamera`) through the renderer's preview, with a grid (the preview's own `lines`) in 3D; Unity's controls; click to pick (`scene::pick3D`, `pick2D`), F to frame; the W/E/R gizmo (`scene::Gizmo`) drawn over the picture with ImGui. See [The Scene panel](#the-scene-panel) |
 | Hierarchy | `panels/HierarchyPanel.cpp` | Editing: the scene's node tree; drag a node onto another to move it, drop a capsule file to place an instance, right-click to add or delete. Playing: the world's entities by their `Parent` and `Children`, named by their `Name`, or a flat list filtered by component name |
 | Inspector | `panels/InspectorPanel.cpp` | Editing: the selected node's name, side, instance and components (added with their type's default value, removed, edited). Playing: the selected entity's components, the same way, lost at Stop |
 | Assets | `panels/AssetsPanel.cpp` | A file explorer: on the left a small tree of the folders of `<game>/assets`; on the right the folder shown as a grid of icons (one per file type, told by `kindOf()` in `panels/AssetKind.cpp`, drawn with Nerd Font glyphs), with a breadcrumb, an up button and an icon size slider. Click selects, double-click enters a folder or opens a capsule, drag carries a file's path, right-click opens the menu (new scene / actor / folder, open, rename, delete) |
@@ -300,7 +323,7 @@ The window is titled `AYLO Editor - <Game>`, where `<Game>` is the game's `windo
 ## Limits
 
 - One window: no ImGui viewports outside it. A renderer without the tool calls of `IRenderer` shows no panel.
-- No undo yet. No gizmos in the Game panel: positions are edited in the Inspector.
+- No undo yet. The gizmos are in the Scene panel only, along the world's axes (not the parent's turned ones).
 - Entity fields are shown and not edited; neither are lists. An entity with no component is not listed.
 - Particle effects are edited in memory only (Copy as Luau to keep them).
 - The App is built again on `Engine::requestReload()`: the editor is too, with its ImGui context, and loses its

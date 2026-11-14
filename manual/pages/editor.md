@@ -33,6 +33,7 @@ An `.actor` named there opens alone (see below).
 | Panel | What it is for |
 |---|---|
 | **Game** | The game, as big as the panel. While editing, it shows the scene; while playing, the game you play |
+| **Scene** | The world seen from the editor's own camera, to look around, select and move things (see [The Scene panel](#the-scene-panel)). Docked with the Game panel |
 | **Hierarchy** | While editing, the tree of the scene's nodes. While playing, the entities of the game, by their parents |
 | **Inspector** | The components of what the Hierarchy selected, to change, add and remove |
 | **Assets** | An explorer for your `assets/` folder: the folders in a small tree on the left, the current folder as big icons on the right (one icon and color per kind of file). Double-click a folder to enter it, right-click to make a scene, an actor or a folder, rename, delete, or drag a file |
@@ -44,6 +45,32 @@ An `.actor` named there opens alone (see below).
 
 Drag a panel by its tab to dock it elsewhere. The editor remembers where they are, and **View**, **Reset layout** docks
 them as they were the first time. **File**, **Save scene** (Ctrl+S) saves the scene; **File**, **Quit** closes the editor.
+
+## The Scene panel
+
+The **Scene** tab, next to **Game**, shows the world from a camera of the editor's own, as Unity's Scene view does:
+the game's camera does not move, and what you see here is never what the player sees. Pick **3D** or **2D** at its
+top.
+
+| Input | 3D | 2D |
+|---|---|---|
+| Right mouse held, and W, A, S, D, Q, E | fly: the mouse turns the camera, the keys move it (Shift: faster) | |
+| Middle mouse drag | pan | pan |
+| Alt + left mouse drag | orbit around what you look at | pan |
+| Wheel | come closer or go back | zoom |
+| Left click | select the entity under the mouse | select the entity whose origin is near the mouse |
+| F | frame the selection | centre on the selection |
+| W, E, R | the move, rotate or scale tool | the same |
+
+The 3D view draws a grid on the ground (y = 0), red along X and blue along Z. The selection gets the gizmo of the
+tool: drag a handle (red X, green Y, blue Z) to move, turn or stretch it along that axis. While editing, a click
+selects the scene's node the entity came from (the Hierarchy and the Inspector follow), and the change is written to
+that node when you let go, so **File**, **Save scene** keeps it. While playing, it moves the entity itself, and Stop
+puts it back.
+
+The handles follow the world's axes and change the entity's own `Transform3D` (or `Transform2D`): for a child of a
+turned parent, the move is along the parent's axes. A 3D entity is picked by a sphere as big as its scale, a 2D one
+by its origin.
 
 ## Export your game
 
@@ -240,6 +267,7 @@ blending are kept as your script gives them.
 - There is no undo yet: save often, and keep your scenes in version control.
 - A scene cannot be opened while playing: press Stop first.
 - The editor draws through the renderer you named. It needs one that can draw into a texture, which `vulkan` does.
+- The Scene panel and an Actor tab share one picture: when both are in front, the Actor tab keeps it.
 - Leave the editor out of what you ship: `aylo-runtime` has no editor, and `aylo-editor` is not part of what you ship.
 
 ## See also

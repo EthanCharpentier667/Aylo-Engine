@@ -16,6 +16,7 @@
 #include <format>
 #include <glm/ext/vector_uint2.hpp>
 #include <memory>
+#include <optional>
 #include <span>
 #include <string>
 #include <utility>
@@ -49,7 +50,7 @@ namespace {
 constexpr float kLeftShare = 0.2F;     ///< Share of the window the Hierarchy takes in the default layout.
 constexpr float kRightShare = 0.25F;   ///< Share of what is left the Inspector takes.
 constexpr float kBottomShare = 0.25F;  ///< Share of what is left the Assets and the Stats take.
-constexpr int kLayoutVersion = 7;  ///< Raised when the panels change, so a kept layout is not read with the wrong ones.
+constexpr int kLayoutVersion = 8;  ///< Raised when the panels change, so a kept layout is not read with the wrong ones.
 constexpr float kFallbackFrame = 1.0F / 60.0F;  ///< The duration of the first frame, which has no previous one.
 
 /// @return Where the layout of the panels is kept: the user's cache, as the editor is a tool and not a game's data.
@@ -81,6 +82,7 @@ void buildDefaultLayout(ImGuiID dockspace) {
     ImGui::DockBuilderDockWindow("Particles", bottom);
     ImGui::DockBuilderDockWindow("Console", bottom);
     ImGui::DockBuilderDockWindow("Server", bottom);
+    ImGui::DockBuilderDockWindow("Scene", center);
     ImGui::DockBuilderDockWindow("Game", center);
     ImGui::DockBuilderFinish(dockspace);
 }
@@ -144,8 +146,13 @@ void runFrame(EditorState& state, contract::platform::IPlatform& platform, contr
     ImGui::NewFrame();
     panels::drawToolbar(state, platform);
     drawDockspace(state);
+    state.previewUsed = false;
     panels::drawGamePanel(state, renderer);
     panels::drawActorPanel(state, renderer);
+    panels::drawScenePanel(state, renderer);
+    if (!state.previewUsed) {
+        renderer.setScenePreview(std::nullopt);
+    }
     panels::drawHierarchyPanel(state);
     panels::drawInspectorPanel(state);
     panels::drawAssetsPanel(state);
