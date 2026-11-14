@@ -18,6 +18,7 @@
 #include <memory>
 #include <span>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "FakeBackend.hpp"
@@ -33,6 +34,9 @@
 #include "plugins/mesh/MeshPlugin.hpp"
 #include "plugins/mesh/MeshRenderer.hpp"
 #include "plugins/mesh/detail/GltfLoader.hpp"
+#include "plugins/shader/Material.hpp"
+#include "plugins/shader/MaterialAssets.hpp"
+#include "plugins/shader/ShaderAssets.hpp"
 #include "plugins/transform/Transform.hpp"
 
 namespace {
@@ -159,4 +163,50 @@ TEST(MeshAssets, GivesTheSameIdForTheSamePath) {
     MeshAssets meshes;
     EXPECT_EQ(meshes.load("models/a.glb"), meshes.load("models/./a.glb"));
     EXPECT_FALSE(meshes.getMesh(meshes.load("models/a.glb")));
+}
+
+namespace {
+/// @brief A MeshApp whose renderer runs game shaders, with a model at the origin drawn with @p shader's material.
+struct MaterialFixture {
+    AssetsFolder assets;
+    MeshApp fixture{assets};
+    aylo::core::asset::AssetId material;
+
+    explicit MaterialFixture(std::string_view shader) {
+        assets.writeTriangle();
+        fixture.state().shaders = true;
+        auto& resources = fixture.app().getWorld().getResources();
+        const aylo::core::asset::AssetId compiled =
+            resources.getMut<aylo::plugins::shader::ShaderAssets>()->add("test.shader", shader);
+        material = resources.getMut<aylo::plugins::shader::MaterialAssets>()->add(
+            "test.material", aylo::plugins::shader::Material{.shader = compiled});
+        const aylo::core::asset::AssetId mesh = fixture.meshes().load("models/tri.gltf");
+        fixture.app().getWorld().spawn(aylo::plugins::transform::Transform3D{},
+                                       MeshRenderer{.mesh = mesh, .material = material});
+    }
+};
+}  // namespace
+
+TEST(MeshPlugin, DrawsAModelWithItsMeshMaterial) {
+    MaterialFixture test{"#pragma mesh\nuniform vec4 tint = vec4(1.0);\nvoid fragment() { COLOR *= tint; }\n"};
+    test.fixture.runFrames(4);
+
+    ASSERT_FALSE(test.fixture.state().staticMeshDraws.empty());
+    EXPECT_NE(test.fixture.state().staticMeshDraws.back().material, aylo::contract::renderer::MaterialId{});
+}
+
+TEST(MeshPlugin, AModelWithA2DMaterialIsDrawnWithTheBuiltInShaderAndAWarning) {
+    MaterialFixture test{"void fragment() { COLOR.r = 1.0; }\n"};
+    testing::internal::CaptureStderr();
+    test.fixture.runFrames(4);
+    const std::string log = testing::internal::GetCapturedStderr();
+
+    ASSERT_FALSE(test.fixture.state().staticMeshDraws.empty());
+    EXPECT_EQ(test.fixture.state().staticMeshDraws.back().material, aylo::contract::renderer::MaterialId{});
+    EXPECT_NE(log.find("#pragma mesh"), std::string::npos) << log;
+    std::size_t warnings = 0;
+    for (std::size_t at = log.find("[Mesh]"); at != std::string::npos; at = log.find("[Mesh]", at + 1)) {
+        ++warnings;
+    }
+    EXPECT_EQ(warnings, 1U);  // once, not every frame
 }
