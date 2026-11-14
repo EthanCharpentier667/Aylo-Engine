@@ -15,6 +15,7 @@
 
 #include "aylo/contract/renderer/drawing/Color.hpp"
 #include "aylo/contract/renderer/drawing/Texture.hpp"
+#include "aylo/contract/renderer/shaders/CompiledShader.hpp"
 
 namespace aylo::contract::renderer {
 
@@ -55,6 +56,7 @@ struct StaticMeshDraw {
     StaticMeshId mesh;      ///< What to draw.
     glm::mat4 world{1.0F};  ///< Places the mesh in the world.
     Color color{1.0F};      ///< Linear RGBA, not premultiplied: multiplies every part's colour (a tint, a fade).
+    MaterialId material;  ///< A material whose shader has a ShaderTarget::kMesh variant; the default: built-in, unlit.
 };
 
 }  // namespace aylo::contract::renderer

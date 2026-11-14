@@ -20,6 +20,11 @@ layout(set = 0, binding = 0, std140) uniform AyloFrame {
 layout(set = 1, binding = 0) uniform sampler2D TEXTURE;
 #define TIME ayloFrame.time
 
+#ifdef AYLO_MESH
+vec3 VERTEX;  // Vertex stage: the vertex, in the model's space (its entity's transform places it).
+vec3 NORMAL;  // The surface's normal: in the model's space in the vertex stage, in the world's (unit) in the fragment.
+#else
 vec2 VERTEX;  // Vertex stage: the vertex, in world units.
+#endif
 vec2 UV;      // Where the texture is read.
 vec4 COLOR;   // Vertex stage: the drawing's colour; fragment stage: the pixel's, premultiplied.
