@@ -8,6 +8,7 @@ to be installed, apart from the graphics driver of the machine (Vulkan) for a ga
 | Folder or file | What it is |
 |---|---|
 | `runtime/` | The engine: `aylo-runtime`, `lib/` (its libraries), `plugins/` (its plugins). **This is the folder you ship with your game.** |
+| `editor/` | The editor, `aylo-editor`, with its own copy of the engine. **Never ship it.** |
 | `tools/aylo-sign` | Makes the keys and signatures of the native plugins of a game |
 | `templates/game/` | A game that runs: copy it to start yours |
 | `manual/` | The manual, to read offline: open `manual/index.html` |
@@ -22,10 +23,11 @@ From this folder:
 runtime/aylo-runtime --server templates/game     # the server, no window
 runtime/aylo-runtime templates/game              # a client, in a window
 runtime/aylo-runtime --version                          # which engine this is
+editor/aylo-editor templates/game                # the game in the editor, both sides in one window
 ```
 
-(`runtime\aylo-runtime.exe` on Windows.) On macOS, a zip downloaded with a browser is quarantined: run
-`xattr -dr com.apple.quarantine .` in this folder once.
+(`runtime\aylo-runtime.exe` and `editor\aylo-editor.exe` on Windows.) On macOS, a zip downloaded with a browser is
+quarantined: run `xattr -dr com.apple.quarantine .` in this folder once.
 
 ## Make a game
 
