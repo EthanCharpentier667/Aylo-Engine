@@ -89,11 +89,14 @@ Each client estimates it for you; you add nothing to `project.luau`.
 
 | Call | Where | Arguments | Result |
 |---|---|---|---|
-| `aylo.net.serverTime` | client | none (`{}`) | `{ synced, time }`: `synced` is `false` until the server has answered once since the connection (then `time` is `0`); `time` is the estimated server clock now, in seconds |
+| `aylo.net.serverTime` | both | none (`{}`) | `{ synced, time }`: `time` is the server clock now, in seconds. On the server it is the clock itself and `synced` is always `true`. On a client it is the estimate, and `synced` is `false` until the server has answered once since the connection (then `time` is `0`) |
 | `aylo.net.rtt` | server | `client` (number, the id as `net.Owner` and `net.ClientConnected` carry it) | `{ connected, rtt }`: `connected` is `false` for a client that is not there (then `rtt` is `0`); `rtt` is the smoothed round-trip time to that client, in seconds |
 
-List the call in the system's `calls`, like any engine call. Both calls exist only on their side: use
-`aylo.net.serverTime` in a `side = "client"` system and `aylo.net.rtt` in a `side = "server"` one.
+List the call in the system's `calls`, like any engine call. `aylo.net.serverTime` exists on both sides, so a
+`side = "both"` system can use it; `aylo.net.rtt` exists on the server only, so use it in a `side = "server"` system.
+The server clock counts seconds from the moment the server first needed it (about when it started). It is not
+`ctx.time.elapsed`: when the server and its clients must agree on a moment, read `aylo.net.serverTime` on both
+sides.
 
 ```luau
 engine.ecs.system("game.ShowBeat", {
@@ -114,33 +117,40 @@ The estimate is made from a short exchange of messages with the server, repeated
 packet does not move the clock. On a loopback connection it is within 5 milliseconds of the server's clock after about
 two seconds. When a client connects again it forgets the old estimate: `synced` is `false` until it has a new one.
 
-**Judging an action at the client's time.** The server can ask when a player pressed a button, and bound it by the
-measured round trip so a cheating client cannot claim a time far in the past or the future. A server script has no
-call that returns the server clock itself: keep your own beat clock (for example from `ctx.time`) and note that the
-estimate counts from the server's first use of the clock, not from `ctx.time.elapsed`, so compare only against a clock
-you built from the same offsets, or use the estimate as a relative time between two inputs of one client:
+**Judging an action at the client's time.** The server can ask when a player pressed a button. `fire.clientTime` and
+`aylo.net.serverTime` are on the same clock, so the server compares them directly. Bound the claim by the measured
+round trip: an honest press reaches the server about half a round trip after the player made it, so a time in the
+future, or much older than one round trip, is a cheat or a lost input.
 
 ```luau
 engine.ecs.system("game.JudgeFire", {
 	phase = "Update",
 	side = "server",
 	query = { read = { "net.Owner", "net.PlayerInput" } },
-	calls = { "aylo.replication.readInput", "aylo.net.rtt" },
+	calls = { "aylo.replication.readInput", "aylo.net.rtt", "aylo.net.serverTime" },
 	run = function(ctx)
+		local now = ctx.call("aylo.net.serverTime", {}).time
 		for entity, owner in ctx.query do
 			local fire = ctx.call("aylo.replication.readInput", { entity = entity, action = "fire" })
 			if fire.pressed then
 				local link = ctx.call("aylo.net.rtt", { client = owner.client })
-				if link.connected then
-					-- fire.clientTime is on the server clock, in seconds. Reject a shot dated far from your own beat
-					-- clock, by a margin of your choice (a few link.rtt). The bound is yours, not an engine rule.
-					local judgedAt = fire.clientTime
+				-- The press may be up to a round trip old, plus a little slack; never in the future.
+				local oldest = now - link.rtt - 0.05
+				local judgedAt = fire.clientTime
+				if not link.connected or judgedAt > now or judgedAt < oldest then
+					judgedAt = now -- not believable: judge it when it arrived
 				end
+				local beat = 0.5 -- one beat every half second of the server clock
+				local offBeat = math.abs(judgedAt - math.floor(judgedAt / beat + 0.5) * beat)
+				-- offBeat is how far from the nearest beat the press was, in seconds: score it as you like.
 			end
 		end
 	end,
 })
 ```
+
+The margin (`0.05` here) and what to do with a time that is not believable are yours to choose: the engine measures,
+your game decides.
 
 In a standalone run or the editor, `aylo.net.serverTime` returns `synced = true` and the game's own clock
 (`ctx.time.elapsed`), and `aylo.net.rtt` returns `{ connected = true, rtt = 0 }` for client 1 and `connected = false`
