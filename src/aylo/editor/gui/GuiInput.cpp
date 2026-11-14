@@ -207,10 +207,27 @@ bool GuiInput::filter(platform::Event& event) {
     ImGuiIO& io = ImGui::GetIO();
     const bool keyboardForGame = _viewport.focused && !io.WantTextInput;
 
+    if (_cursorCaptured) {
+        // The cursor is hidden and locked: its moves and buttons are the game's, never the editor's panels.
+        if (std::holds_alternative<platform::event::MouseMoved>(event) ||
+            std::holds_alternative<platform::event::MouseButtonPressed>(event) ||
+            std::holds_alternative<platform::event::MouseButtonReleased>(event) ||
+            std::holds_alternative<platform::event::MouseScrolled>(event)) {
+            return true;
+        }
+        if (const auto* pressed = std::get_if<platform::event::KeyPressed>(&event);
+            pressed != nullptr && pressed->key == platform::input::Key::kEscape) {
+            _cursorFreed = true;  // the way out, whatever the game does with the key
+        }
+    }
+
     if (auto* moved = std::get_if<platform::event::MouseMoved>(&event)) {
         return filterMouseMoved(io, *moved, _viewport, _gameButtons);
     }
     if (const auto* pressed = std::get_if<platform::event::MouseButtonPressed>(&event)) {
+        if (_viewport.hovered) {
+            _cursorFreed = false;  // a click on the game gives it the cursor again
+        }
         const bool forGame =
             filterMouseButton(io, toImGuiButton(pressed->button), true, _viewport.hovered, _gameButtons);
         feedModifiers(io, pressed->mods);

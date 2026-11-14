@@ -41,6 +41,24 @@ class AYLO_EDITOR_API GuiInput {
     /// @brief Tells the bridge where the game is: the Game panel calls it each frame.
     void setViewport(const GameViewport& viewport) noexcept { _viewport = viewport; }
 
+    /// @brief Tells the bridge whether the game holds the cursor captured: the editor calls it each frame. While it
+    /// does, the mouse goes to the game only (ImGui's cursor stays where it was), and Escape frees it
+    /// (isCursorFreed()).
+    void setCursorCaptured(bool captured) noexcept { _cursorCaptured = captured; }
+
+    /// @return Whether Escape freed the cursor since the last click on the picture of the game: the editor then stops
+    /// lending it to the game, so the user gets it back even when the game never releases it.
+    [[nodiscard]] bool isCursorFreed() const noexcept { return _cursorFreed; }
+
+    /// @brief Forgets that Escape freed the cursor (when the game stops).
+    void resetCursorFreed() noexcept { _cursorFreed = false; }
+
+    /// @return Whether the editor lends the cursor to the game: while the game plays (not paused), its Game panel has
+    /// the focus, and Escape did not free it.
+    [[nodiscard]] static bool lendsCursor(bool playing, bool gameFocused, bool freed) noexcept {
+        return playing && gameFocused && !freed;
+    }
+
     /// @brief Hands @p event to ImGui, then to the game if it concerns it.
     /// @param event The event of the window; changed to what the game sees.
     /// @return Whether the game sees @p event.
@@ -50,6 +68,8 @@ class AYLO_EDITOR_API GuiInput {
     ImGuiContext* _context;         ///< Where the events go.
     GameViewport _viewport;         ///< Where the game is on the screen.
     std::uint32_t _gameButtons{0};  ///< Bit per mouse button pressed over the game and not released yet.
+    bool _cursorCaptured{false};    ///< Whether the game holds the cursor captured.
+    bool _cursorFreed{false};       ///< Whether Escape freed it since the last click on the game.
 };
 
 }  // namespace aylo::editor::gui
