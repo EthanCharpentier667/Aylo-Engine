@@ -66,6 +66,26 @@ jobs:
           # Lint against the base of the whole stack, not the pull request below, to cover every pull request of it.
           echo "lint-base=$(jq -r '.stack.base.sha' <<< "$pr")" >> "$GITHUB_OUTPUT"
 
+  # Below the top of a stack, the build is skipped. A skipped matrix job reports one check named without its matrix
+  # ("Build and test"), never the required "Build and test (macos-latest)" and the others, so such a pull request
+  # waited for them forever. This job has the same name and matrix: it reports them as passed in a few seconds, on
+  # Ubuntu whatever the matrix says, as the top of the stack builds and tests the whole stack for real.
+  build-covered:
+    name: Build and test
+    needs: gate
+    if: needs.gate.outputs.run != 'true'
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+          - os: ubuntu-latest
+          - os: macos-latest
+    runs-on: ubuntu-latest
+    steps:
+      - name: Leave the build to the top of the stack
+        run: |
+          echo "::notice::${{ matrix.os }} is built and tested by the pull request at the top of the stack."
+
   # One job builds and tests: --Tests=y only adds the test targets, so this build covers the project's. The tests do
   # not run when it fails.
   build:
