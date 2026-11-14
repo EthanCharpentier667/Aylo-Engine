@@ -336,3 +336,80 @@ TEST(ClientPlugin, DropsAStateItDoesNotKnow) {
     ASSERT_TRUE(runUntil(server, client, [&] { return client.state().droppedCount() > 0; }));
     EXPECT_FALSE(client.app().getWorld().getResources().require<aylo::ecs::States>().has("game.Round"));
 }
+
+namespace {
+/// @brief Runs frames until the client has a full window of exchanges with the server.
+bool runUntilSynced(Server& server, Client& client) {
+    return runUntil(server, client,
+                    [&] { return client.state().rtt() > 0.0 && client.state().serverTime().has_value(); });
+}
+
+/// @brief Runs frames for @p duration of real time.
+void runFor(Server& server, Client& client, const std::chrono::milliseconds duration) {
+    const auto end = network::Clock::now() + duration;
+    while (network::Clock::now() < end) {
+        server.app().runFrame();
+        client.app().runFrame();
+        std::this_thread::sleep_for(1ms);
+    }
+}
+
+constexpr double kClockTolerance = 0.005;  // seconds
+}  // namespace
+
+TEST(ClientPlugin, EstimatesTheServerClockWithinFiveMillisecondsOnLoopback) {
+    Server server;
+    Client client{server.address()};
+    EXPECT_FALSE(client.state().serverTime());  // nothing before the first answer
+    ASSERT_TRUE(runUntilSynced(server, client));
+    runFor(server, client, 2000ms);
+    const std::optional<double> estimate = client.state().serverTime();
+    const double truth = server.state().serverTime();
+    ASSERT_TRUE(estimate);
+    EXPECT_NEAR(*estimate, truth, kClockTolerance);
+}
+
+TEST(ClientPlugin, EstimatesTheServerClockAgainAfterAReconnect) {
+    Server server;
+    {
+        Client first{server.address()};
+        ASSERT_TRUE(runUntilSynced(server, first));
+        runFor(server, first, 500ms);
+    }  // the client leaves (its socket closes), the server keeps running
+    Client again{server.address()};
+    EXPECT_FALSE(again.state().serverTime());  // a new connection starts with no estimate
+    ASSERT_TRUE(runUntilSynced(server, again));
+    runFor(server, again, 1000ms);
+    const std::optional<double> estimate = again.state().serverTime();
+    ASSERT_TRUE(estimate);
+    EXPECT_NEAR(*estimate, server.state().serverTime(), kClockTolerance);
+}
+
+TEST(ClientPlugin, GivesTheServerTheSmoothedRttOfEachClient) {
+    Server server;
+    Client client{server.address()};
+    ASSERT_TRUE(runUntil(server, client, [&] { return server.state().clientCount() == 1; }));
+    runFor(server, client, 300ms);
+    const network::ClientId id = client.state().clientId().value();
+    const std::optional<double> rtt = server.state().rtt(id);
+    ASSERT_TRUE(rtt);
+    EXPECT_GE(*rtt, 0.0);
+    EXPECT_LT(*rtt, 0.1);
+    EXPECT_FALSE(server.state().rtt(id + 100));  // unknown client
+}
+
+TEST(ClientPlugin, CarriesTheClientTimeOfAnInputToTheServer) {
+    Server server;
+    Client client{server.address()};
+    client.app()
+        .addSystem(Phase::kPostUpdate, "game.pressFire", &pressFire)
+        .setSide(aylo::ecs::Side::kClient)
+        .before(std::string{ClientPlugin::kSendInputSystem});
+    ASSERT_TRUE(runUntilSynced(server, client));
+    runFor(server, client, 1000ms);
+    const auto ship = server.state().findEntity(1);
+    ASSERT_TRUE(ship);
+    const double clientTime = server.app().getWorld().getComponents().get<PlayerInput>(*ship)->clientTime;
+    EXPECT_GT(clientTime, 0.0);
+    EXPECT_NEAR(clientTime, server.state().serverTime(), 0.1);  // sent a frame or two ago
+}

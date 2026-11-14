@@ -15,6 +15,7 @@
 #include "aylo/ecs/schedule/Phase.hpp"
 #include "aylo/ecs/system/EventWriter.hpp"
 #include "aylo/ecs/system/ResourceParam.hpp"
+#include "aylo/ecs/time/Time.hpp"
 #include "aylo/replication/ReplicationPlugin.hpp"
 #include "aylo/replication/client/ClientCalls.hpp"
 #include "aylo/replication/component/Owner.hpp"
@@ -54,17 +55,20 @@ void receive(ecs::ResMut<LocalSession> session, ecs::Res<packet::PacketRegistry>
 }
 
 /// @brief FixedUpdate: writes the local input in the entity of client 1, as the server does with a client's.
-void applyInputs(ecs::Res<LocalSession> session, ecs::Query<component::PlayerInput, const component::Owner> players) {
+void applyInputs(ecs::Res<LocalSession> session, ecs::Res<ecs::Time> time,
+                 ecs::Query<component::PlayerInput, const component::Owner> players) {
     for (auto [entity, input, owner] : players) {
         input->previousButtons = input->buttons;
         if (owner.client == LocalSession::kClient) {
             input->buttons = session->input().buttons;
             input->axes = session->input().axes;
             input->sequence = session->input().sequence;
+            input->clientTime = time->elapsed;  // the one clock: `aylo.net.serverTime` reads the same
         } else {
             input->buttons = 0;
             input->axes = {};
             input->sequence = 0;
+            input->clientTime = 0.0;
         }
     }
 }

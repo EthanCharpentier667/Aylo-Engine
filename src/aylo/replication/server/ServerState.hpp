@@ -129,6 +129,14 @@ class AYLO_REPLICATION_API ServerState {
     /// @return The sequence of the last input of the client the server applied, 0 if none or if it is unknown.
     [[nodiscard]] std::uint32_t lastProcessedInput(network::ClientId client) const noexcept;
 
+    /// @return The server clock, in seconds: the time since the first call of this method or of a client's ping, on the
+    /// clock of the transport. It is what clients estimate with `aylo.net.serverTime`.
+    [[nodiscard]] double serverTime();
+
+    /// @return The smoothed round-trip time to the client, in seconds, or nothing if the client is unknown or not
+    /// connected. Only after start().
+    [[nodiscard]] std::optional<double> rtt(network::ClientId client) const;
+
     /// @return The NetworkId of the entity, or nothing if it is not tracked.
     [[nodiscard]] std::optional<std::uint32_t> findNetworkId(ecs::Entity entity) const noexcept;
 
@@ -245,6 +253,7 @@ class AYLO_REPLICATION_API ServerState {
     const ecs::World* _world;                                      ///< The world replicated.
     std::vector<ecs::ComponentId> _replicated;                     ///< The components the queries were built from.
     TimeSource _time;                                              ///< The transport time.
+    std::optional<network::TimePoint> _epoch;                      ///< The zero of serverTime(), set on first use.
     std::unique_ptr<network::server::NetServer> _server;           ///< Created by start() (a NetServer cannot move).
     std::optional<network::admin::AdminSettings> _adminSettings;   ///< Set by setAdmin().
     std::unique_ptr<network::admin::AdminServer> _admin;           ///< Created by start() when the settings ask.
