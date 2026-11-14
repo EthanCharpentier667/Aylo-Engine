@@ -175,7 +175,7 @@ class Lexer {
     }
 
     /// @brief Moves past one character, counting lines.
-    void advance() noexcept {
+    void advance() {
         if (_text.at(_position) == '\n') {
             ++_line;
             _column = 1;
@@ -186,7 +186,7 @@ class Lexer {
     }
 
     /// @brief Moves past spaces, line ends and `#` comments.
-    void skipBlanks() noexcept {
+    void skipBlanks() {
         while (_position < _text.size()) {
             const char current = _text.at(_position);
             if (current == '#') {
