@@ -22,9 +22,9 @@ namespace aylo::plugins::shader {
 /// @brief The game's materials, as the ECS resource "aylo.MaterialAssets" the ShaderPlugin inserts: SpriteRenderer
 /// and the other drawings keep the AssetId of the one they are drawn with.
 ///
-/// @details Built in code for now (a loader for material files can come as for particle effects). The ShaderPlugin
-/// creates each material in the renderer once its shader and textures are ready, and updates it when setValue() or
-/// setTexture() change it, from the next frame drawn.
+/// @details Built in code (add()) or read from a `.material` file (loadMaterialFile(), MaterialFile.hpp). The
+/// ShaderPlugin creates each material in the renderer once its shader and textures are ready, and updates it when
+/// setValue() or setTexture() change it, from the next frame drawn.
 /// @code
 /// aylo::plugins::shader::Material hit{.shader = shaders->load("assets/shaders/flash.glsl")};
 /// const aylo::core::asset::AssetId material = materials->add("enemy_hit", hit.set("tint", glm::vec4{1.0F}));
@@ -49,6 +49,17 @@ class AYLO_PLUGIN_SHADER_API MaterialAssets {
     /// @return Its id (AssetId::fromPath(name)). Adding a name twice keeps the first material.
     /// @throws core::asset::exceptions::AssetLoadException If another name already has this id (a hash collision).
     core::asset::AssetId add(const std::string& name, Material material);
+
+    /// @brief Makes @p material the one known by @p name, adding it or replacing the one it had: a material file read
+    /// again (loadMaterialFile()).
+    /// @return Its id (AssetId::fromPath(name)).
+    /// @throws core::asset::exceptions::AssetLoadException If another name already has this id (a hash collision).
+    core::asset::AssetId define(const std::string& name, Material material);
+
+    /// @brief Changes the shader of the material @p id, keeping its values (a value the new shader does not declare is
+    /// reported when the material is created).
+    /// @return False, doing nothing, if no material has this id.
+    bool setShader(core::asset::AssetId id, core::asset::AssetId shader);
 
     /// @return The material @p id names, or nullptr if it is unknown.
     [[nodiscard]] const Material* get(core::asset::AssetId id) const;

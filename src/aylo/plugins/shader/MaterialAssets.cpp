@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -26,6 +27,26 @@ core::asset::AssetId MaterialAssets::add(const std::string& name, Material mater
         markChanged(stored.id);
     }
     return stored.id;
+}
+
+core::asset::AssetId MaterialAssets::define(const std::string& name, Material material) {
+    // Nothing when the name is known already: the material is replaced. A hash collision throws.
+    const core::asset::AssetId id = _materials.reserve(name).value_or(core::asset::AssetId::fromPath(name));
+    static_cast<void>(_materials.store(id, name, std::move(material)));
+    markChanged(id);
+    return id;
+}
+
+bool MaterialAssets::setShader(core::asset::AssetId id, core::asset::AssetId shader) {
+    const Entry* entry = _materials.getEntry(id);
+    if (entry == nullptr || !entry->value) {
+        return false;
+    }
+    Material material = *entry->value;
+    material.shader = shader;
+    static_cast<void>(_materials.store(id, entry->path, std::move(material)));
+    markChanged(id);
+    return true;
 }
 
 const Material* MaterialAssets::get(core::asset::AssetId id) const { return _materials.get(id); }
