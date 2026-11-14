@@ -40,10 +40,11 @@ static_assert(sizeof(StaticMeshVertex) == 32 && offsetof(StaticMeshVertex, norma
               "StaticMeshVertex must stay tightly packed: the pipeline's attribute offsets assume it");
 static_assert(sizeof(StaticMeshConstants) <= kMaxPushConstantsSize, "The push constants must fit the shared range");
 
-/// @return The static mesh pipeline.
-pipeline::GraphicsPipeline createPipeline(const core::Device& device, pipeline::ShaderCache& shaders,
-                                          const pipeline::PipelineLayout& layout, vk::Format colorFormat,
-                                          vk::Format depthFormat, const vk::raii::PipelineCache* cache) {
+/// @return A static mesh pipeline drawing with @p vertex and @p fragment.
+pipeline::GraphicsPipeline buildPipeline(const core::Device& device, const vk::raii::ShaderModule& vertex,
+                                         const vk::raii::ShaderModule& fragment, const pipeline::PipelineLayout& layout,
+                                         vk::Format colorFormat, vk::Format depthFormat,
+                                         const vk::raii::PipelineCache* cache) {
     const std::array bindings{
         vk::VertexInputBindingDescription{0, sizeof(StaticMeshVertex), vk::VertexInputRate::eVertex}};
     const std::array attributes{
@@ -52,14 +53,22 @@ pipeline::GraphicsPipeline createPipeline(const core::Device& device, pipeline::
         vk::VertexInputAttributeDescription{2, 0, vk::Format::eR32G32Sfloat, offsetof(StaticMeshVertex, uv)},
     };
     return pipeline::GraphicsPipeline::Builder{}
-        .setShaders(shaders.get("staticmesh.vert", aylo_shader_staticmesh_vert),
-                    shaders.get("staticmesh.frag", aylo_shader_staticmesh_frag))
+        .setShaders(vertex, fragment)
         .setVertexInput(bindings, attributes)
         .setBlend(pipeline::GraphicsPipeline::BlendMode::kPremultipliedAlpha)
         .setColorFormat(colorFormat)
         .setDepth(depthFormat, true)
         .setLayout(layout)
         .build(device, cache);
+}
+
+/// @return The built-in static mesh pipeline.
+pipeline::GraphicsPipeline createPipeline(const core::Device& device, pipeline::ShaderCache& shaders,
+                                          const pipeline::PipelineLayout& layout, vk::Format colorFormat,
+                                          vk::Format depthFormat, const vk::raii::PipelineCache* cache) {
+    return buildPipeline(device, shaders.get("staticmesh.vert", aylo_shader_staticmesh_vert),
+                         shaders.get("staticmesh.frag", aylo_shader_staticmesh_frag), layout, colorFormat, depthFormat,
+                         cache);
 }
 
 /// @throws std::invalid_argument If an index of @p desc names no vertex, or a part goes past its indices.
@@ -89,6 +98,13 @@ StaticMeshPass::StaticMeshPass(const core::Device& device, pipeline::ShaderCache
     device.setName(*_pipeline.getPipeline(), "Static mesh pipeline");
 }
 
+pipeline::GraphicsPipeline StaticMeshPass::createMaterialPipeline(
+    const core::Device& device, const vk::raii::ShaderModule& vertex, const vk::raii::ShaderModule& fragment,
+    bool /*instanceValues*/, const pipeline::PipelineLayout& layout, vk::Format colorFormat,
+    const vk::raii::PipelineCache* cache) {
+    return buildPipeline(device, vertex, fragment, layout, colorFormat, kWorld3DDepthFormat, cache);
+}
+
 GpuStaticMesh StaticMeshPass::upload(const memory::Allocator& allocator,
                                      const contract::renderer::StaticMeshDesc& desc) {
     validate(desc);
@@ -115,15 +131,26 @@ void StaticMeshPass::record(const vk::raii::CommandBuffer& commandBuffer, std::s
     if (draws.empty()) {
         return;
     }
-    _pipeline.bind(commandBuffer);
     commandBuffer.setViewport(0, viewport);
     commandBuffer.setScissor(0, scissor);
-    const vk::PipelineLayout layout = *_pipeline.getLayout().getLayout();
     const vk::ShaderStageFlags stages = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment;
+    const pipeline::GraphicsPipeline* boundPipeline = nullptr;
     vk::DescriptorSet bound;
     for (const Draw& draw : draws) {
         if (draw.mesh == nullptr) {
             continue;
+        }
+        const pipeline::GraphicsPipeline& used =
+            draw.material.pipeline != nullptr ? *draw.material.pipeline : _pipeline;
+        const vk::PipelineLayout layout = *used.getLayout().getLayout();
+        if (&used != boundPipeline) {
+            used.bind(commandBuffer);
+            boundPipeline = &used;
+            bound = vk::DescriptorSet{};  // another layout: the texture set is bound again
+        }
+        if (draw.material.pipeline != nullptr) {
+            commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, layout, kMaterialSet, draw.material.set,
+                                             {});
         }
         commandBuffer.bindVertexBuffers(0, *draw.mesh->vertices.getBuffer(), vk::DeviceSize{0});
         commandBuffer.bindIndexBuffer(*draw.mesh->indices.getBuffer(), 0, vk::IndexType::eUint32);

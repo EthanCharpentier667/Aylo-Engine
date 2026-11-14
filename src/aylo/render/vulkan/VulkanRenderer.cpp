@@ -106,7 +106,7 @@ constexpr vk::Format kDataTextureFormat = vk::Format::eR8G8B8A8Unorm;
 /// (postprocess::ScreenPass) and the meshes.
 constexpr vk::Format kSceneFormat = vk::Format::eR16G16B16A16Sfloat;
 /// The format of the 3D world's depth buffer: supported as a depth attachment by every desktop GPU.
-constexpr vk::Format kDepthFormat = vk::Format::eD32Sfloat;
+constexpr vk::Format kDepthFormat = rendering::kWorld3DDepthFormat;
 
 /// @brief Texture sets per descriptor pool: a new pool is added each time this many textures are alive.
 constexpr std::uint32_t kTextureSetsPerPool = 64;
@@ -121,6 +121,8 @@ material::GameShader::PipelineBuilder pipelineBuilderOf(contract::renderer::Shad
             return &rendering::ParticlePass::createMaterialPipeline;
         case contract::renderer::ShaderTarget::kScreen:
             return &postprocess::ScreenPass::createMaterialPipeline;
+        case contract::renderer::ShaderTarget::kMesh:
+            return &rendering::StaticMeshPass::createMaterialPipeline;
         case contract::renderer::ShaderTarget::kSprite:
         case contract::renderer::ShaderTarget::kGlyph:
             break;
@@ -782,7 +784,13 @@ void VulkanRenderer::recordWorld3D(const vk::raii::CommandBuffer& commandBuffer,
     meshes.reserve(_staticMeshDraws.size());
     for (const contract::renderer::StaticMeshDraw& draw : _staticMeshDraws) {
         if (const rendering::GpuStaticMesh* mesh = _staticMeshes.find(draw.mesh)) {
-            meshes.push_back(rendering::StaticMeshPass::Draw{.mesh = mesh, .world = draw.world, .color = draw.color});
+            meshes.push_back(rendering::StaticMeshPass::Draw{
+                .mesh = mesh,
+                .world = draw.world,
+                .color = draw.color,
+                .material = draw.material != contract::renderer::MaterialId{}
+                                ? findMaterial(draw.material, contract::renderer::ShaderTarget::kMesh, frameIndex)
+                                : rendering::MaterialBinding{}});
         }
     }
     _staticMeshPass->record(

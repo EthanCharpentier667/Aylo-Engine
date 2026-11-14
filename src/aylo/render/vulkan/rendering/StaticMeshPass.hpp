@@ -23,6 +23,7 @@
 #include "render/vulkan/pipeline/GraphicsPipeline.hpp"
 #include "render/vulkan/pipeline/PipelineLayout.hpp"
 #include "render/vulkan/pipeline/ShaderCache.hpp"
+#include "render/vulkan/rendering/MaterialBinding.hpp"
 
 namespace aylo::render::vulkan::rendering {
 
@@ -32,6 +33,10 @@ struct GpuStaticMesh {
     memory::Buffer indices;                                 ///< Its indices, 32-bit.
     std::vector<contract::renderer::StaticMeshPart> parts;  ///< Its runs of indices and their materials.
 };
+
+/// @brief The format of the 3D world's depth buffer, which the static mesh pipelines test against: supported as a depth
+/// attachment by every desktop GPU.
+inline constexpr vk::Format kWorld3DDepthFormat = vk::Format::eD32Sfloat;
 
 /// @brief The push constants of a static mesh draw: what shaders/staticmesh.vert reads as `draw`, 96 bytes.
 struct StaticMeshConstants {
@@ -56,6 +61,7 @@ class AYLO_RENDER_VULKAN_API StaticMeshPass {
         const GpuStaticMesh* mesh = nullptr;  ///< What to draw.
         glm::mat4 world{1.0F};                ///< Where.
         glm::vec4 color{1.0F};                ///< The tint.
+        MaterialBinding material;             ///< Its game material for ShaderTarget::kMesh; a null pipeline: none.
     };
 
     /// @param layout The shared layout (ShaderLayout.hpp); must outlive the pass.
@@ -70,6 +76,14 @@ class AYLO_RENDER_VULKAN_API StaticMeshPass {
     StaticMeshPass(StaticMeshPass&&) = delete;
     StaticMeshPass& operator=(StaticMeshPass&&) = delete;
 
+    /// @return The pipeline of a game shader's ShaderTarget::kMesh variant (a `#pragma mesh` shader): the static mesh
+    /// vertices, the depth test against kWorld3DDepthFormat, premultiplied alpha, no culling; a GameShader::
+    /// PipelineBuilder. A mesh shader's instance values are written into it, so @p instanceValues adds nothing.
+    [[nodiscard]] static pipeline::GraphicsPipeline createMaterialPipeline(
+        const core::Device& device, const vk::raii::ShaderModule& vertex, const vk::raii::ShaderModule& fragment,
+        bool instanceValues, const pipeline::PipelineLayout& layout, vk::Format colorFormat,
+        const vk::raii::PipelineCache* cache);
+
     /// @return @p desc uploaded into new buffers, written once (host-visible memory, like the other passes').
     /// @throws std::invalid_argument If an index or a part goes past the vertices or the indices.
     /// @throws vk::SystemError If a buffer cannot be created.
@@ -77,7 +91,7 @@ class AYLO_RENDER_VULKAN_API StaticMeshPass {
                                               const contract::renderer::StaticMeshDesc& desc);
 
     /// @brief Records @p draws inside dynamic rendering with a depth attachment; the frame's set 0 (the 3D view) must
-    /// be bound.
+    /// be bound. A draw with a game material is drawn with its pipeline and set 2, the others with the built-in one.
     /// @param findSet Gives the set of a part's texture.
     /// @param whiteSet The set of a part with no texture, or whose texture no longer exists: a white pixel.
     void record(const vk::raii::CommandBuffer& commandBuffer, std::span<const Draw> draws, const vk::Viewport& viewport,

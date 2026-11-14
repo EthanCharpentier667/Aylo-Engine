@@ -27,7 +27,7 @@ namespace {
 
 /// @brief What a target is called in the name of its pipeline, in ShaderTarget order.
 constexpr std::array<std::string_view, contract::renderer::kShaderTargetCount> kTargetNames{
-    "sprite", "glyph", "particle", "shape", "screen"};
+    "sprite", "glyph", "particle", "shape", "screen", "mesh"};
 
 /// @return A module named @p name for @p spirv, checked first.
 vk::raii::ShaderModule createModule(const core::Device& device, std::span<const std::uint32_t> spirv,
