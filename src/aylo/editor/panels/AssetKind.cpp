@@ -30,7 +30,8 @@ constexpr std::array kExtensions = std::to_array<Extension>({
     {".ogg", AssetKind::kAudio},   {".wav", AssetKind::kAudio},   {".flac", AssetKind::kAudio},
     {".ttf", AssetKind::kFont},    {".otf", AssetKind::kFont},    {".json", AssetKind::kData},
     {".tmj", AssetKind::kData},    {".tmx", AssetKind::kData},    {".txt", AssetKind::kText},
-    {".md", AssetKind::kText},
+    {".md", AssetKind::kText},     {".glsl", AssetKind::kShader}, {".material", AssetKind::kMaterial},
+    {".glb", AssetKind::kModel},   {".gltf", AssetKind::kModel},
 });
 
 constexpr std::size_t kUtf8TwoBytes = 0x80;
@@ -73,6 +74,12 @@ char32_t iconOf(AssetKind kind, bool open) {
             return U'\uf001';
         case AssetKind::kFont:
             return U'\uf031';
+        case AssetKind::kShader:
+            return U'\uf0d0';  // a magic wand
+        case AssetKind::kMaterial:
+            return U'\uf1fc';  // a paint brush
+        case AssetKind::kModel:
+            return U'\U000F01A7';  // an outlined cube (Material Design): the scene has the plain one
         case AssetKind::kData:
             return U'\uf1c0';
         case AssetKind::kText:
@@ -101,6 +108,12 @@ std::string_view labelOf(AssetKind kind) {
             return "Audio";
         case AssetKind::kFont:
             return "Font";
+        case AssetKind::kShader:
+            return "Shader";
+        case AssetKind::kMaterial:
+            return "Material";
+        case AssetKind::kModel:
+            return "3D model";
         case AssetKind::kData:
             return "Data";
         case AssetKind::kText:
@@ -129,6 +142,12 @@ std::uint32_t colorOf(AssetKind kind) {
             return 0xF08C5A;
         case AssetKind::kFont:
             return 0xC4C9D4;
+        case AssetKind::kShader:
+            return 0xB57CF2;
+        case AssetKind::kMaterial:
+            return 0xF2795A;
+        case AssetKind::kModel:
+            return 0x7AD9C2;
         case AssetKind::kData:
             return 0xD9C25A;
         case AssetKind::kText:
