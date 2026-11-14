@@ -8,7 +8,11 @@
 #include <gtest/gtest.h>
 
 #include <chrono>
+#include <filesystem>
+#include <format>
+#include <fstream>
 #include <memory>
+#include <random>
 #include <string>
 #include <utility>
 
@@ -18,6 +22,7 @@
 #include "aylo/ecs/schedule/RunMode.hpp"
 #include "aylo/ecs/time/TimePlugin.hpp"
 #include "aylo/scripting/ScriptHost.hpp"
+#include "plugins/AssetDirectory.hpp"
 #include "plugins/graphics/GraphicsPlugin.hpp"
 #include "plugins/input/InputPlugin.hpp"
 #include "plugins/shader/ShaderCalls.hpp"
@@ -33,8 +38,12 @@ struct Scripts {
     aylo::ecs::App app;
     std::unique_ptr<aylo::scripting::ScriptHost> host;
 
-    explicit Scripts(aylo::ecs::RunMode mode) : app{mode} {
+    /// @param assets The game's assets on disk, read by the shader plugin; empty: none.
+    explicit Scripts(aylo::ecs::RunMode mode, const std::filesystem::path& assets = {}) : app{mode} {
         state->shaders = true;
+        if (!assets.empty()) {
+            app.insertResource(aylo::plugins::AssetDirectory{.path = assets});
+        }
         app.addPlugin(aylo::ecs::TimePlugin::manual(std::chrono::milliseconds{100}));
         const bool client = mode == aylo::ecs::RunMode::kClient;
         if (client) {
@@ -118,4 +127,37 @@ TEST(ScriptScreenEffects, AnUnknownMaterialIsAnError) {
 TEST(ScriptScreenEffects, AServerIgnoresTheEffects) {
     Scripts server{aylo::ecs::RunMode::kServer};
     EXPECT_EQ(server.run(kBloomAndTonemap), "");
+}
+
+TEST(ScriptScreenEffects, AScriptLoadsAMaterialFile) {
+    const std::filesystem::path assets =
+        std::filesystem::temp_directory_path() / std::format("aylo_material_script_{:08x}", std::random_device{}());
+    std::filesystem::create_directories(assets / "materials");
+    std::ofstream{assets / "materials/tone.material"}
+        << R"({ "shader": "@aylo/tonemap.glsl", "values": { "mode": 2, "exposure": 1.5 } })";
+    {
+        Scripts client{aylo::ecs::RunMode::kClient, assets};
+        ASSERT_EQ(client.run(R"(
+            local tone = engine.assets.material("materials/tone.material")
+            assert(tone == engine.assetId("materials/tone.material"), "the id of its path")
+            engine.screenEffects({ tone })
+        )"),
+                  "");
+        client.app.runFrame();
+        ASSERT_FALSE(client.state->screenMaterials.empty());
+        EXPECT_EQ(client.state->screenMaterials.back().size(), 1U);
+        ASSERT_EQ(client.state->createdMaterials.size(), 1U);
+
+        const std::string error = client.run(R"(engine.assets.material("materials/missing.material"))");
+        EXPECT_TRUE(error.contains("materials/missing.material")) << error;
+    }
+    std::filesystem::remove_all(assets);
+}
+
+TEST(ScriptScreenEffects, OnAServerAMaterialFileOnlyGivesItsId) {
+    Scripts server{aylo::ecs::RunMode::kServer};
+    EXPECT_EQ(server.run(R"(
+        assert(engine.assets.material("materials/tone.material") == engine.assetId("materials/tone.material"))
+    )"),
+              "");
 }
