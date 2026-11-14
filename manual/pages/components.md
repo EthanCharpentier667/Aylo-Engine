@@ -44,7 +44,7 @@ declared the same components, and refuses a client that differs, naming the comp
 
 The engine's own components are declared by its plugins and used by name, with the same views as yours:
 `aylo.Name` (`value`, a text: what the editor shows an entity as, given by a [capsule](capsules.md) to each entity it
-spawns), `aylo.Transform2D`, `aylo.TransformInterpolation` (no fields: draws the entity smoothly between fixed ticks, see
+spawns), `aylo.Transform2D` and `aylo.Transform3D` (see [2D and 3D](3d.md)), `aylo.TransformInterpolation` (no fields: draws the entity smoothly between fixed ticks, see
 [Smooth movement](systems.md#smooth-movement)), `aylo.Camera`, `aylo.SpriteRenderer`, `aylo.TextRenderer`, `aylo.ShapeRenderer`,
 `aylo.AudioListener`, `aylo.Collider`, `aylo.RigidBody`, `aylo.Velocity`, and the network ones `net.Owner` and
 `net.PlayerInput`. Fields are written the same way (`size = { x = 48, y = 48 }`). What exists depends on the plugins
