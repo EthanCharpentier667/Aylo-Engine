@@ -164,8 +164,12 @@ The change takes effect at the start of the next frame. The `aylo.CursorCapture`
 | `captured` | `bool` | Whether the cursor is captured now |
 
 The engine gives the cursor back on its own when the player switches to another window, and captures it again when
-they come back, as long as `wanted` is `true`. In the [editor](editor.md) the cursor is never captured: the editor
-needs it, so `captured` stays `false` there.
+they come back, as long as `wanted` is `true`.
+
+In the [editor](editor.md), the cursor is captured only in the **Game** panel: while the game plays (Play, not paused)
+and the Game panel has the focus. Anywhere else (editing, paused, another panel focused) `captured` stays `false`, so
+the editor keeps its cursor. While the game holds it, **Escape** always gives it back, whatever your game does with the
+key; a click on the game captures it again.
 
 The engine does not decide which key frees the cursor: many games use Escape for a menu. This recipe toggles the
 capture with Escape and turns a camera with the mouse:
