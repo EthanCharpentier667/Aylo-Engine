@@ -9,6 +9,8 @@ option("nightly", {default = "", showmenu = true, description = "Commit a nightl
 add_moduledirs(path.join(os.scriptdir(), "xmake", "modules"))
 -- `xmake package-release`: the zip game developers download.
 includes("xmake/package-release.lua")
+-- `xmake check-notices`: every package a shipped binary uses has its third-party notice.
+includes("xmake/check-notices.lua")
 
 if is_plat("windows") then
     set_toolchains("msvc")
