@@ -1,10 +1,12 @@
 # Physics
 
-The physics plugin gives your game 2D bodies, colliders and collision events. Add it in `project.luau`:
+The physics plugin gives your game bodies, colliders and collision events, in 2D and in [3D](#3d-bodies). Add it in
+`project.luau`:
 
 ```luau
 engine.settings.plugins = { "aylo.Physics", "aylo.PhysicsDebug" }
-engine.settings.physics.gravity = { 0, 0 }     -- { x, y }, world units per second squared, Y down
+engine.settings.physics.gravity = { 0, 0 }            -- 2D: { x, y }, world units per second squared, Y down
+engine.settings.physics.gravity3D = { 0, -9.81, 0 }   -- 3D: { x, y, z }, metres per second squared, Y up (the default)
 ```
 
 The settings are in [Project settings](project-settings.md). The simulation runs on the server. Clients build the same
@@ -75,7 +77,7 @@ Declare them under `events = { read = {...} }` and read them with `ctx.events.re
 
 | Event | When |
 |---|---|
-| `aylo.CollisionStarted`, `aylo.CollisionEnded` | two bodies start or stop touching (`first`, `second` are entities) |
+| `aylo.CollisionStarted`, `aylo.CollisionEnded` | two bodies start or stop touching (`first`, `second` are entities). `CollisionStarted` also has where: `point` and `normal` (vec2) for two 2D bodies, `point3D` and `normal3D` (vec3) for two 3D bodies; the other pair stays zero |
 | `aylo.TriggerEntered`, `aylo.TriggerExited` | a body enters or leaves a sensor |
 
 ## Calls
@@ -91,6 +93,9 @@ List the ones you use under `calls` and make them with `ctx.call`.
 | `aylo.physics.applyForce`, `applyImpulse` | `entity`, `value` | nothing |
 | `aylo.physics.applyTorque` | `entity`, `torque` | nothing |
 | `aylo.physics.setGravity` | `gravity` | nothing |
+| `aylo.physics.raycast3D` | `origin`, `direction` (default `(0, 0, -1)`), `maxDistance`, `mask`, `ignore`, `includeSensors` | `{ hit, entity, point, normal, distance }`, in 3D |
+| `aylo.physics.applyForce3D`, `applyImpulse3D`, `applyTorque3D` | `entity`, `value` (a vec3) | nothing |
+| `aylo.physics.setGravity3D` | `gravity` (a vec3) | nothing |
 
 A null `ignore` (the default) skips no entity.
 
@@ -120,8 +125,80 @@ engine.ecs.system("game.Ships", {
 })
 ```
 
+## 3D bodies
+
+A 3D entity gets a body the same way: an `aylo.Collider3D` and an `aylo.Transform3D`, and an `aylo.RigidBody` to make it
+move. The 3D world is in metres, Y up (see [2D and 3D](3d.md)), and nothing is scaled by `unitsPerMeter`.
+
+```luau
+-- a floor, its top at y = 0, and a ball that falls on it and rests
+ctx.commands:spawn({
+	["aylo.Transform3D"] = { position = vector.create(0, -0.5, 0) },
+	["aylo.Collider3D"] = { shape = "box", size = vector.create(10, 1, 10) },
+})
+ctx.commands:spawn({
+	["aylo.Transform3D"] = { position = vector.create(0, 5, 0) },
+	["aylo.Collider3D"] = { shape = "sphere", radius = 0.5 },
+	["aylo.RigidBody"] = {},
+})
+```
+
+| Component | What it is |
+|---|---|
+| `aylo.Collider3D` | A 3D shape, its material and its collision categories (fields below) |
+| `aylo.RigidBody` | The same as in 2D; `fixedRotation` keeps a 3D body from turning around any axis |
+| `aylo.Velocity3D` | `linear` (vec3, metres per second) and `angular` (vec3, radians per second around each world axis) |
+| `aylo.Transform3D` | The pose; write it to move a body |
+
+`aylo.Collider3D`. Each shape reads its own fields: `size` for a box, `radius` for a sphere, `radius` and `halfHeight` for
+a capsule.
+
+| Field | Type | Default | Meaning |
+|---|---|---|---|
+| `shape` | string | `"box"` | `"box"`, `"sphere"` or `"capsule"` |
+| `size` | vec3 | `(1, 1, 1)` | box: full width, height and depth |
+| `radius` | f32 | `0.5` | sphere and capsule: the radius |
+| `halfHeight` | f32 | `0.5` | capsule: half the length of its straight part, along Y |
+| `offset` | vec3 | `(0, 0, 0)` | the shape's center relative to the `Transform3D`, in its axes |
+| `sensor`, `friction`, `restitution`, `layer`, `mask` | | | as for `aylo.Collider` |
+
+The 3D bodies run through the same systems, with the same names (order your systems [as in 2D](#ordering-your-systems),
+writing `aylo.Transform3D` and `aylo.Velocity3D`), and send the same events. `gravity3D` pulls them, `gravity` pulls
+the 2D ones; `gravityScale` multiplies whichever applies.
+
+```luau
+-- a ball (radius 0.5) that hops whenever it has ground under it
+engine.ecs.component("game.Hopper", { fields = {} })
+engine.ecs.system("game.Hop", {
+	phase = "FixedUpdate",
+	query = { read = { "aylo.Transform3D" }, with = { "game.Hopper" } },
+	calls = { "aylo.physics.raycast3D", "aylo.physics.applyImpulse3D" },
+	after = { "aylo.Physics.SyncBodies" },
+	before = { "aylo.Physics.SyncToPhysics" },
+	run = function(ctx)
+		for ball, transform in ctx.query do
+			local ground = ctx.call("aylo.physics.raycast3D", {
+				origin = transform.position, direction = vector.create(0, -1, 0), maxDistance = 0.55, ignore = ball,
+			})
+			if ground.hit then
+				ctx.call("aylo.physics.applyImpulse3D", { entity = ball, value = vector.create(0, 4, 0) })
+			end
+		end
+	end,
+})
+```
+
+!!! warning "2D and 3D never touch"
+    A 2D body and a 3D body never collide, even at the same place, and a 2D query (`raycast`, `overlap`...) never sees a
+    3D body, nor `raycast3D` a 2D one. An entity has one body: give it a `Collider` or a `Collider3D`; with both, the
+    `Collider3D` is used.
+
+A 3D body is placed by its own `Transform3D`, even under a parent: a 3D body with a parent is placed as if it had none.
+`shapeCast`, `overlap` and `moveAndSlide` are 2D only for now.
+
 ## The debug view
 
-With `"aylo.PhysicsDebug"` in `plugins` (client only), F3 toggles outlines of the colliders and arrows for the velocities.
+With `"aylo.PhysicsDebug"` in `plugins` (client only), F3 toggles outlines of the colliders and arrows for the velocities,
+in 2D and in 3D (wireframes and arrows drawn in the 3D world, by a renderer that draws 3D).
 `physicsDebug.drawAll = true` outlines every collider; otherwise only entities with an `aylo.PhysicsDebug` component are
 drawn.
