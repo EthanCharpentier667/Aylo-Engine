@@ -26,7 +26,7 @@ engine.ecs.system("game.SpawnCamera", {
 	run = function(ctx)
 		ctx.commands:spawn({
 			["aylo.Transform2D"] = { position = { x = Duel.viewWidth / 2, y = Duel.viewHeight / 2 } },
-			["aylo.Camera"] = {},
+			["aylo.Camera2D"] = {},
 			["aylo.AudioListener"] = {},
 		})
 	end,

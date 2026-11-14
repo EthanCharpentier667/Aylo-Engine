@@ -19,7 +19,7 @@ namespace aylo::plugins::tilemap {
 ///
 /// @details The TilemapPlugin's Render system "aylo.Tilemap.Parallax" (client only) sets the entity's GlobalTransform2D
 /// to its Transform2D, moved by `(camera - origin) * (1 - factor)` and by what it scrolled, `scroll` per second, so
-/// far. The camera is the GlobalTransform2D of the Camera entity with the highest priority. Works on any entity: a
+/// far. The camera is the GlobalTransform2D of the Camera2D entity with the highest priority. Works on any entity: a
 /// tilemap layer (spawnTilemap() gives each one the parallax factor and scroll Tiled gives it) or a sprite.
 /// @code
 /// // A far background: moves at a tenth of the camera's speed, and drifts left on its own.

@@ -165,7 +165,7 @@ graphics::VisibleArea visibleAreaOf(const contract::renderer::View& view, glm::v
 /// one found wins a tie. Records what the frame shows in the VisibleArea resource.
 void applyCamera(ecs::NonSendMut<plugins::graphics::Backend> backend, ecs::ResMut<graphics::VisibleArea> visible,
                  ecs::ResMut<graphics::ViewInfo> info,
-                 ecs::Query<const transform::GlobalTransform2D, const graphics::Camera> cameras) {
+                 ecs::Query<const transform::GlobalTransform2D, const graphics::Camera2D> cameras) {
     plugins::graphics::Backend& started = *backend;
     if (isStarted(started)) {
         // A scene drawn into a texture is seen as a window of its size: that is the framebuffer the game places things
@@ -310,7 +310,7 @@ void GraphicsPlugin::build(ecs::App& app) {
     resources.insertIfAbsent<graphics::OverlayQueue>();
     resources.insertIfAbsent<graphics::ViewInfo>();
     resources.insertIfAbsent<graphics::VisibleArea>();
-    static_cast<void>(app.getWorld().getComponents().registerType<graphics::Camera>());
+    static_cast<void>(app.getWorld().getComponents().registerType<graphics::Camera2D>());
     addTextureCalls(app);
 
     app.addSystem(ecs::Phase::kStartup, std::string{kCreateSystem}, &createBackend).setSide(ecs::Side::kClient);

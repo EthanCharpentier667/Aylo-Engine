@@ -90,7 +90,7 @@ TEST(GraphicsPlugin, InsertsTheTextureAssetsAndRegistersSpriteRenderer) {
     BackendApp app;
     EXPECT_TRUE(app.app().getWorld().getResources().has<aylo::plugins::graphics::TextureAssets>());
     EXPECT_TRUE(app.app().getWorld().getComponents().find("aylo.SpriteRenderer"));
-    EXPECT_TRUE(app.app().getWorld().getComponents().find("aylo.Camera"));
+    EXPECT_TRUE(app.app().getWorld().getComponents().find("aylo.Camera2D"));
 }
 
 TEST(GraphicsPlugin, LoadsTheQueuedTexturesBeforeTheFrame) {
@@ -371,8 +371,8 @@ TEST(GraphicsPlugin, FeedsInput) {
 }
 
 TEST(GraphicsPlugin, ReflectsTheCameraPriority) {
-    using Traits = aylo::ecs::ComponentTraits<aylo::plugins::graphics::Camera>;
-    EXPECT_EQ(Traits::kName, "aylo.Camera");
+    using Traits = aylo::ecs::ComponentTraits<aylo::plugins::graphics::Camera2D>;
+    EXPECT_EQ(Traits::kName, "aylo.Camera2D");
     ASSERT_EQ(Traits::kFields.size(), 1U);
     EXPECT_EQ(Traits::kFields[0].name, "priority");
     EXPECT_EQ(Traits::kFields[0].type, aylo::ecs::FieldType::kI32);
@@ -388,11 +388,11 @@ TEST(GraphicsPlugin, ShowsTheCameraWithTheHighestPriority) {
     BackendApp app;
     aylo::ecs::World& world = app.app().getWorld();
     world.spawn(aylo::plugins::transform::Transform2D{.position = {1.0F, 0.0F}},
-                aylo::plugins::graphics::Camera{.priority = 1});
+                aylo::plugins::graphics::Camera2D{.priority = 1});
     world.spawn(aylo::plugins::transform::Transform2D{.position = {2.0F, 0.0F}},
-                aylo::plugins::graphics::Camera{.priority = 5});
+                aylo::plugins::graphics::Camera2D{.priority = 5});
     world.spawn(aylo::plugins::transform::Transform2D{.position = {3.0F, 0.0F}},
-                aylo::plugins::graphics::Camera{.priority = -2});
+                aylo::plugins::graphics::Camera2D{.priority = -2});
     app.app().runFrame();
     ASSERT_EQ(app.state().views.size(), 1U);
     EXPECT_FLOAT_EQ(app.state().views[0].position.x, 2.0F);
@@ -402,7 +402,7 @@ TEST(GraphicsPlugin, ShowsTheCameraFromItsTransform) {
     BackendApp app;
     app.app().getWorld().spawn(
         aylo::plugins::transform::Transform2D{.position = {40.0F, -12.0F}, .rotation = 0.5F},
-        aylo::plugins::graphics::Camera{.projection = aylo::contract::renderer::Orthographic{.zoom = 3.0F}});
+        aylo::plugins::graphics::Camera2D{.projection = aylo::contract::renderer::Orthographic{.zoom = 3.0F}});
     app.app().runFrame();
     ASSERT_EQ(app.state().views.size(), 1U);
     const aylo::contract::renderer::View& view = app.state().views[0];
@@ -414,14 +414,14 @@ TEST(GraphicsPlugin, ShowsTheCameraFromItsTransform) {
 
 TEST(GraphicsPlugin, ShowsNoCameraWithoutATransform) {
     BackendApp app;
-    app.app().getWorld().spawn(aylo::plugins::graphics::Camera{});
+    app.app().getWorld().spawn(aylo::plugins::graphics::Camera2D{});
     app.app().runFrame();
     EXPECT_TRUE(app.state().views.empty());
 }
 
 TEST(GraphicsPlugin, AppliesTheCameraEveryFrameItIsDrawn) {
     BackendApp app;
-    app.app().getWorld().spawn(aylo::plugins::transform::Transform2D{}, aylo::plugins::graphics::Camera{});
+    app.app().getWorld().spawn(aylo::plugins::transform::Transform2D{}, aylo::plugins::graphics::Camera2D{});
     app.app().runFrame();
     app.app().runFrame();
     EXPECT_EQ(app.state().views.size(), 2U);
@@ -434,7 +434,7 @@ TEST(GraphicsPlugin, RecordsWhatTheCameraShows) {
     BackendApp app;
     app.app().getWorld().spawn(
         aylo::plugins::transform::Transform2D{.position = {1000.0F, 500.0F}},
-        aylo::plugins::graphics::Camera{.projection = aylo::contract::renderer::Orthographic{.zoom = 2.0F}});
+        aylo::plugins::graphics::Camera2D{.projection = aylo::contract::renderer::Orthographic{.zoom = 2.0F}});
     app.app().runFrame();
     const auto& visible = app.app().getWorld().getResources().require<aylo::plugins::graphics::VisibleArea>();
     constexpr float kTolerance = 0.01F;

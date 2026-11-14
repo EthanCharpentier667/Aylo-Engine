@@ -37,7 +37,7 @@ namespace aylo::plugins::graphics {
 ///   resource (updateTextures()), so a texture asked for during this frame's Update is drawn in this frame.
 /// - Render "aylo.graphics.beginFrame" and "aylo.graphics.endFrame": clear with the ClearColor resource, and show the
 ///   frame (a tool that draws over the game sets the ToolFrame resource, which endFrame calls just before it ends the
-///   frame). In between, "aylo.graphics.camera" shows the world from the entity with a Camera (the highest priority)
+///   frame). In between, "aylo.graphics.camera" shows the world from the entity with a Camera2D (the highest priority)
 ///   and a GlobalTransform2D, through IRenderer::setView() (none: the renderer's default view, window pixels from the
 ///   top-left corner). Drawing systems run between the two (`.after("aylo.graphics.beginFrame")`,
 ///   `.before("aylo.graphics.endFrame")`). Both are skipped while the window is minimized. The camera system also
