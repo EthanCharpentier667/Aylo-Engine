@@ -136,6 +136,71 @@ button (`"MouseLeft"`), `"MouseDeltaX"`, `"MouseScrollY"`, `"Gamepad"` plus a bu
 Prefer `engine.input.action`, see [Setup forms](setup-forms.md). To read an action on the server, see
 [Networking](networking.md).
 
+#### Capture the cursor (mouse-look)
+
+A first-person or third-person camera turns with the mouse. For that the cursor must not leave the window: you
+*capture* it. A captured cursor is hidden, stays in the window, and `"MouseDeltaX"` / `"MouseDeltaY"` keep reporting the
+movement however far the mouse goes.
+
+Capture it from the start in `project.luau`:
+
+```luau
+engine.settings.window.captureCursor = true
+```
+
+Or capture and release it while the game runs, for a pause menu:
+
+| Call | Arguments | Result |
+|---|---|---|
+| `aylo.graphics.captureCursor` | `capture` (`true` by default: capture; `false`: give the cursor back) | nothing |
+
+The change takes effect at the start of the next frame. The `aylo.CursorCapture` resource tells you where it stands
+(client side; read it with `resources = { read = { "aylo.CursorCapture" } }`):
+
+| Field | Type | Meaning |
+|---|---|---|
+| `wanted` | `bool` | What your game asked for: the setting, then the last `captureCursor` call |
+| `focused` | `bool` | Whether the window has the focus |
+| `captured` | `bool` | Whether the cursor is captured now |
+
+The engine gives the cursor back on its own when the player switches to another window, and captures it again when
+they come back, as long as `wanted` is `true`. In the [editor](editor.md) the cursor is never captured: the editor
+needs it, so `captured` stays `false` there.
+
+The engine does not decide which key frees the cursor: many games use Escape for a menu. This recipe toggles the
+capture with Escape and turns a camera with the mouse:
+
+```luau
+engine.input.action("look", "vector2", { bind = { { x = "MouseDeltaX", y = "MouseDeltaY" } } })
+engine.input.action("menu", "button", { bind = { "Escape" } })
+
+local yaw, pitch = 0, 0
+local sensitivity = 0.003 -- radians per pixel
+
+engine.ecs.system("game.MouseLook", {
+	phase = "Update",
+	side = "client",
+	resources = { read = { "aylo.CursorCapture" } },
+	calls = { "aylo.input.read", "aylo.graphics.captureCursor" },
+	run = function(ctx)
+		local cursor = ctx.resources["aylo.CursorCapture"]
+		if ctx.call("aylo.input.read", { action = "menu" }).pressed then
+			ctx.call("aylo.graphics.captureCursor", { capture = not cursor.wanted })
+		end
+		if not cursor.captured then
+			return -- the menu is open, or the window lost the focus: the mouse is the player's
+		end
+		local look = ctx.call("aylo.input.read", { action = "look" }).value
+		yaw -= look.x * sensitivity
+		pitch = math.clamp(pitch + look.y * sensitivity, -1.5, 1.5)
+		-- turn your camera's aylo.Transform3D with yaw and pitch here
+	end,
+})
+```
+
+`"MouseDeltaX"` is the movement of the frame in pixels, to the right; `"MouseDeltaY"` is up positive. A server has the
+call too, and it does nothing there: there is no window.
+
 ### Physics
 
 See [Physics](physics.md).
