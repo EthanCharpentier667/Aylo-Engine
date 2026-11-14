@@ -116,7 +116,7 @@ Click a `.material` file in the **Assets** panel: the **Inspector** shows it.
 
 What you change shows at once on everything that uses the material. **Save** (or Ctrl+S while a material is shown and
 changed) writes the file. Right-click a folder of the Assets, **New material**, to make one; give it a shader, then
-values. Shaders (`.glsl`), materials (`.material`) and 3D models (`.glb`, `.gltf`) have icons of their own in the
+values. Shaders (`.glsl`), materials (`.material`) and 3D models (`.glb`, `.gltf`, `.fbx`, `.obj`) have icons of their own in the
 Assets.
 
 ## Errors
