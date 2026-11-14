@@ -77,6 +77,7 @@ end
 | `aylo.TextRenderer`, `aylo.UiText` | `align` | `"left"`, `"center"`, `"right"` |
 | `aylo.AudioSource` | `bus` | `"music"`, `"effects"` (default `"effects"`) |
 | `aylo.ParticleEmitter` | `simulation` | `"auto"`, `"gpu"`, `"cpu"` |
+| `aylo.Camera3D` | `projection` | `"perspective"`, `"orthographic"` (see [2D and 3D](3d.md#seeing-the-3d-world)) |
 
 The layout fields of `aylo.UiNode` take the names of the [UI styles](ui.md#layout) (`"row-reverse"`,
 `"space-between"`...).
