@@ -66,8 +66,20 @@ The renderer contract gains a 3D view and 3D draws, all optional (a 2D renderer 
 
 ## Meshes
 
-glTF 2.0 (`.gltf` with its files, or `.glb`) is read by **cgltf**, private to a new `aylo.Mesh` plugin. A script loads
-one with the setup form `engine.assets.mesh(path)` and draws it with `aylo.MeshRenderer`. The first version is unlit:
+glTF 2.0 (`.gltf` with its files, or `.glb`) is read by **cgltf**, FBX and Wavefront OBJ (`.fbx`, `.obj` with its
+`.mtl`) by **ufbx**, both private to a new `aylo.Mesh` plugin. A script loads one with the setup form
+`engine.assets.mesh(path)` and draws it with `aylo.MeshRenderer`.
+
+Each loader turns its file into the same `detail::Model` (a `StaticMeshDesc` and the images of its parts);
+`detail::loadModel()` picks the loader by the extension, in any case. ufbx converts an FBX to the engine's axes and
+unit (right-handed, Y up, metres; `UFBX_SPACE_CONVERSION_MODIFY_GEOMETRY`), cuts polygons into triangles, shares the
+equal vertices of a part (`ufbx_generate_indices`), and gives every shading model (FBX Phong and Lambert, OBJ's `Kd`) as
+PBR values, of which the base colour and its texture are kept. An OBJ names neither unit nor axes: it is read as
+metres, Y up. FBX and OBJ count V from the bottom of a texture, so V is turned to the contract's top-left origin. The
+files a model names (an OBJ's `.mtl`) are read only through the game's `FileSource`, never from the disk at large; a
+missing `.mtl` leaves the model white instead of failing it. A texture named by an absolute path (the artist's machine)
+is looked for by its name next to the model. Assimp was set aside: one library for some forty formats, but heavy to
+build, and weaker than these two on glTF materials, skins and animations. The first version is unlit:
 each primitive is drawn with its base colour factor and base colour texture; the nodes of the file are flattened into
 one mesh, their transforms baked in. Lighting, materials, skins and animations come later.
 
