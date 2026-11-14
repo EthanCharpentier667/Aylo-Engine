@@ -61,6 +61,7 @@ class AYLO_PLUGIN_GRAPHICS_API GraphicsPlugin : public ecs::Plugin {
     static constexpr std::string_view kName = "aylo.graphics";                     ///< The plugin's name.
     static constexpr std::string_view kCreateSystem = "aylo.graphics.create";      ///< Startup: creates the Backend.
     static constexpr std::string_view kEventsSystem = "aylo.graphics.events";      ///< PreUpdate: sends the events.
+    static constexpr std::string_view kCursorSystem = "aylo.graphics.cursor";      ///< PreUpdate: captures the cursor.
     static constexpr std::string_view kTexturesSystem = "aylo.graphics.textures";  ///< Render: loads the textures.
     static constexpr std::string_view kBeginFrameSystem = "aylo.graphics.beginFrame";  ///< Render: starts the frame.
     static constexpr std::string_view kCameraSystem = "aylo.graphics.camera";          ///< Render: applies the camera.
