@@ -110,14 +110,22 @@ TEST(CursorCapture, TheCallCapturesAndReleasesItAtTheNextFrame) {
     EXPECT_EQ(app.state().cursorLocks, (std::vector<bool>{true, false}));
 }
 
-TEST(CursorCapture, NeverCapturesItWhileAToolDrawsOverTheGame) {
+TEST(CursorCapture, WhileAToolDrawsOverTheGameCapturesItOnlyWhenTheToolLendsIt) {
     CursorApp app{true};
-    app.app().getWorld().getResources().getMut<ToolFrame>()->draw = [](aylo::contract::platform::IPlatform&,
-                                                                       aylo::contract::renderer::IRenderer&) {};
+    auto tool = app.app().getWorld().getResources().getMut<ToolFrame>();
+    tool->draw = [](aylo::contract::platform::IPlatform&, aylo::contract::renderer::IRenderer&) {};
     app.app().runFrame();
     app.app().runFrame();
-    EXPECT_TRUE(app.state().cursorLocks.empty());
+    EXPECT_TRUE(app.state().cursorLocks.empty());  // the editor needs its cursor
     EXPECT_FALSE(app.cursor().captured);
+
+    app.app().getWorld().getResources().getMut<ToolFrame>()->lendsCursor = true;  // its Game panel is focused
+    app.app().runFrame();
+    EXPECT_TRUE(app.cursor().captured);
+    app.app().getWorld().getResources().getMut<ToolFrame>()->lendsCursor = false;
+    app.app().runFrame();
+    EXPECT_FALSE(app.cursor().captured);
+    EXPECT_EQ(app.state().cursorLocks, (std::vector<bool>{true, false}));
 }
 
 TEST(CursorCapture, TheServerHasTheCallAndNoWindowToCapture) {
