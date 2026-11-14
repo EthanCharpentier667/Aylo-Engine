@@ -9,6 +9,8 @@
 
 #include <miniaudio.h>
 
+#include <cstdint>
+
 #include "audio/miniaudio/MiniaudioConfig.hpp"
 #include "audio/miniaudio/exceptions/MiniaudioException.hpp"
 
