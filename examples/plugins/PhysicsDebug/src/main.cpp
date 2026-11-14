@@ -98,8 +98,8 @@ void spawnScene(ecs::Commands& commands) {
     for (std::size_t index = 0; index < 6; ++index) {
         commands.spawn()
             .add(Transform2D{.position = {180.0F + (90.0F * static_cast<float>(index)),
-                                        80.0F + (40.0F * static_cast<float>(index % 3))},
-                           .rotation = 0.2F * static_cast<float>(index)})
+                                          80.0F + (40.0F * static_cast<float>(index % 3))},
+                             .rotation = 0.2F * static_cast<float>(index)})
             .add(shapes.at(index % shapes.size()))
             .add(RigidBody{})
             .add(Velocity{.linear = {index % 2 == 0 ? 120.0F : -120.0F, 0.0F}})
@@ -147,23 +147,23 @@ core::config::Settings makeSettings(bool validate) {
 }  // namespace
 
 int main(int argc, char** argv) {
-    bool validate = false;
-    Lifetime lifetime;
-    const std::span<char*> arguments{argv, static_cast<std::size_t>(argc)};
-    const std::span<char*> options = arguments.empty() ? arguments : arguments.subspan(1);  // Without the program.
-    for (auto option = options.begin(); option != options.end(); ++option) {
-        const std::string_view argument{*option};
-        if (argument == "--validate") {
-            validate = true;
-        } else if (argument == "--seconds" && std::next(option) != options.end()) {
-            const std::string value{*++option};
-            float seconds = 0.0F;
-            if (std::from_chars(value.c_str(), std::to_address(value.end()), seconds).ec == std::errc{}) {
-                lifetime.seconds = seconds;
+    try {
+        bool validate = false;
+        Lifetime lifetime;
+        const std::span<char*> arguments{argv, static_cast<std::size_t>(argc)};
+        const std::span<char*> options = arguments.empty() ? arguments : arguments.subspan(1);  // Without the program.
+        for (auto option = options.begin(); option != options.end(); ++option) {
+            const std::string_view argument{*option};
+            if (argument == "--validate") {
+                validate = true;
+            } else if (argument == "--seconds" && std::next(option) != options.end()) {
+                const std::string value{*++option};
+                float seconds = 0.0F;
+                if (std::from_chars(value.c_str(), std::to_address(value.end()), seconds).ec == std::errc{}) {
+                    lifetime.seconds = seconds;
+                }
             }
         }
-    }
-    try {
         auto registry = std::make_unique<plugins::graphics::BackendRegistry>();
         platform::glfw::registerPlatform(registry->platforms);
         render::vulkan::registerRenderer(registry->renderers);
