@@ -7,6 +7,7 @@
 
 #include "plugins/mesh/MeshAssets.hpp"
 
+#include <algorithm>
 #include <filesystem>
 #include <format>
 #include <memory>
@@ -66,6 +67,14 @@ std::vector<core::asset::AssetId> MeshAssets::getIds() const {
         ids.push_back(id);
     }
     return ids;
+}
+
+bool MeshAssets::firstWarningFor(core::asset::AssetId material) {
+    if (std::ranges::find(_warned, material) != _warned.end()) {
+        return false;
+    }
+    _warned.push_back(material);
+    return true;
 }
 
 }  // namespace aylo::plugins::mesh

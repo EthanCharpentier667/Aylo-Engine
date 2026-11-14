@@ -104,7 +104,7 @@ plugin("particle", {"plugin-graphics", "plugin-shader", "plugin-transform"})
     add_files("particle/ParticleForms.luau")
     add_headerfiles("particle/**.hpp", "particle/**.tpp")
 
-plugin("mesh", {"plugin-graphics", "plugin-transform"})
+plugin("mesh", {"plugin-graphics", "plugin-shader", "plugin-transform"})
     add_files("mesh/**.cpp")
     add_files("mesh/MeshForms.luau")
     add_headerfiles("mesh/**.hpp|detail/**.hpp")

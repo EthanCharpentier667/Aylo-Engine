@@ -77,7 +77,12 @@ class AYLO_PLUGIN_MESH_API MeshAssets {
     /// @return The ids of every entry, for the plugin's systems.
     [[nodiscard]] std::vector<core::asset::AssetId> getIds() const;
 
+    /// @return True the first time it is asked for @p material: the draw system warns once about a material it cannot
+    /// draw a model with.
+    [[nodiscard]] bool firstWarningFor(core::asset::AssetId material);
+
   private:
+    std::vector<core::asset::AssetId> _warned;                 ///< The materials warned about.
     std::shared_ptr<const core::vfs::FileSource> _source;      ///< Where files are read.
     std::unordered_map<core::asset::AssetId, Entry> _entries;  ///< By id.
 };

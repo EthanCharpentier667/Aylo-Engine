@@ -24,6 +24,7 @@
 #include "aylo/contract/renderer/IRenderer.hpp"
 #include "aylo/contract/renderer/drawing/StaticMesh.hpp"
 #include "aylo/contract/renderer/drawing/Texture.hpp"
+#include "aylo/contract/renderer/shaders/CompiledShader.hpp"
 #include "aylo/ecs/app/App.hpp"
 #include "aylo/ecs/query/Query.hpp"
 #include "aylo/ecs/resource/Resources.hpp"
@@ -40,6 +41,9 @@
 #include "plugins/mesh/MeshCalls.hpp"
 #include "plugins/mesh/MeshRenderer.hpp"
 #include "plugins/mesh/detail/GltfLoader.hpp"
+#include "plugins/shader/ShaderAssets.hpp"
+#include "plugins/shader/ShaderHandles.hpp"
+#include "plugins/shader/ShaderPlugin.hpp"
 #include "plugins/transform/Transform.hpp"
 #include "plugins/transform/TransformMath.hpp"
 #include "plugins/transform/TransformPlugin.hpp"
@@ -134,8 +138,33 @@ void uploadMeshes(contract::renderer::IRenderer& renderer, MeshAssets& meshes,
 /// @brief Render: creates the meshes whose textures are ready, then draws each MeshRenderer whose mesh is loaded, at
 /// its GlobalTransform3D. One system, placed among the GraphicsPlugin's own, so no other plugin's use of the backend
 /// needs an order with it.
+/// @return The renderer's material for @p material, a material of a `#pragma mesh` shader; the default one for none,
+/// one not created yet, or one whose shader draws no mesh (warned about once).
+contract::renderer::MaterialId materialOf(core::asset::AssetId material, MeshAssets& meshes,
+                                          const shader::ShaderHandles& handles, const shader::ShaderAssets& shaders) {
+    if (material == core::asset::AssetId{}) {
+        return {};
+    }
+    const shader::ShaderHandles::Material* created = handles.getMaterial(material);
+    if (created == nullptr) {
+        return {};
+    }
+    const contract::renderer::CompiledShader* compiled = shaders.get(created->shader);
+    if (compiled != nullptr && compiled->findVariant(contract::renderer::ShaderTarget::kMesh) == nullptr) {
+        if (meshes.firstWarningFor(material)) {
+            std::cerr << std::format(
+                "[Mesh] The material of a MeshRenderer has a 2D shader ('{}'): a model needs a "
+                "'#pragma mesh' shader. It is drawn with the built-in one.\n",
+                compiled->name);
+        }
+        return {};
+    }
+    return created->material;
+}
+
 void drawMeshes(ecs::NonSendMut<graphics::Backend> backend, ecs::ResMut<MeshAssets> meshes,
-                ecs::Res<graphics::TextureAssets> textures,
+                ecs::Res<graphics::TextureAssets> textures, ecs::Res<shader::ShaderHandles> handles,
+                ecs::Res<shader::ShaderAssets> shaders,
                 ecs::Query<const transform::GlobalTransform3D, const MeshRenderer> renderers) {
     contract::renderer::IRenderer* renderer = rendererOf(*backend);
     if (renderer == nullptr) {
@@ -148,7 +177,10 @@ void drawMeshes(ecs::NonSendMut<graphics::Backend> backend, ecs::ResMut<MeshAsse
     for (auto [entity, global, model] : renderers) {
         if (const std::optional<contract::renderer::StaticMeshId> mesh = meshes->getMesh(model.mesh)) {
             renderer->drawStaticMesh(contract::renderer::StaticMeshDraw{
-                .mesh = *mesh, .world = transform::toMatrix(global), .color = model.color});
+                .mesh = *mesh,
+                .world = transform::toMatrix(global),
+                .color = model.color,
+                .material = materialOf(model.material, *meshes, *handles, *shaders)});
         }
     }
 }
@@ -158,8 +190,8 @@ void drawMeshes(ecs::NonSendMut<graphics::Backend> backend, ecs::ResMut<MeshAsse
 std::string_view MeshPlugin::getName() const noexcept { return kName; }
 
 std::span<const std::string_view> MeshPlugin::getDependencies() const noexcept {
-    static constexpr std::array<std::string_view, 2> kDependencies{graphics::GraphicsPlugin::kName,
-                                                                   transform::TransformPlugin::kName};
+    static constexpr std::array<std::string_view, 3> kDependencies{
+        graphics::GraphicsPlugin::kName, shader::ShaderPlugin::kName, transform::TransformPlugin::kName};
     return kDependencies;
 }
 
