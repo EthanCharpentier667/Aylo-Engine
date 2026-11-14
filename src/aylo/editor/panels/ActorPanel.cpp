@@ -96,7 +96,8 @@ bool drawActorTab(EditorState& state, contract::renderer::IRenderer& renderer, c
                 const float factor = std::pow(kZoomStep, ImGui::GetIO().MouseWheel);
                 state.prefabZoom = std::clamp(state.prefabZoom * factor, kMinZoom, kMaxZoom);
             }
-            ImGui::SetCursorPos(ImVec2{8.0F, 8.0F});
+            const ImVec2 start = ImGui::GetCursorStartPos();  // below the tab bar
+            ImGui::SetCursorPos(ImVec2{start.x + 8.0F, start.y + 8.0F});
             gui::textDisabled(std::format("zoom x{:.2f} (wheel)", state.prefabZoom));
         }
     }

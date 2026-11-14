@@ -386,7 +386,9 @@ void useKeys(EditorState& state, bool flying) {
 
 /// @brief The row over the picture: 2D or 3D, and the tool.
 void drawToolRow(EditorState& state) {
-    ImGui::SetCursorPos(ImVec2{8.0F, 6.0F});
+    // From where the content starts, below the tab bar: SetCursorPos() alone counts from the window's top edge.
+    const ImVec2 start = ImGui::GetCursorStartPos();
+    ImGui::SetCursorPos(ImVec2{start.x + 8.0F, start.y + 6.0F});
     scene::SceneCamera& camera = state.sceneCamera;
     if (ImGui::RadioButton("2D", camera.mode == SceneMode::k2D)) {
         camera.mode = SceneMode::k2D;
@@ -431,7 +433,7 @@ void drawScenePanel(EditorState& state, contract::renderer::IRenderer& renderer)
     }
     drawToolRow(state);
     ImGui::Dummy(ImVec2{0.0F, 4.0F});
-    ImGui::SetCursorPosX(0.0F);
+    ImGui::SetCursorPosX(ImGui::GetCursorStartPos().x);
     const ImVec2 available = ImGui::GetContentRegionAvail();
     if (state.previewUsed || available.x < 1.0F || available.y < 1.0F) {
         if (state.previewUsed) {
