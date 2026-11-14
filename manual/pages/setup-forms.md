@@ -37,6 +37,7 @@ Game.assets = {
 | `engine.assets.mesh(path)` | mesh id | a glTF 2.0 model, `.glb` or `.gltf` with its files; needs `aylo.Mesh`, see [2D and 3D](3d.md#models-aylomeshrenderer) |
 | `engine.assets.shader(path)` | shader id | written in the engine's GLSL dialect; `@aylo/bloom.glsl` and `@aylo/tonemap.glsl` are the engine's, see [Post-processing](post-processing.md) |
 | `engine.assets.material({ name, shader, values, textures })` | material id | a shader and its values |
+| `engine.assets.material(path)` | material id | a `.material` file, see [Materials](materials.md) |
 | `engine.assets.atlas({ path \| texture, name, linear, grid, frames, animations })` | atlas id | see below |
 | `engine.assets.particle({ name, ... })` | effect id | a particle effect, see [Particles](particles.md) |
 

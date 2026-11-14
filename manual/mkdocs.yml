@@ -36,6 +36,7 @@ nav:
   - Reading and writing capsule files: capsule-files.md
   - Particles: particles.md
   - Post-processing: post-processing.md
+  - Materials: materials.md
   - User interface: ui.md
   - HTTP: http.md
   - JSON: json.md

@@ -36,7 +36,7 @@ An `.actor` named there opens alone (see below).
 | **Scene** | The world seen from the editor's own camera, to look around, select and move things (see [The Scene panel](#the-scene-panel)). Docked with the Game panel |
 | **Hierarchy** | While editing, the tree of the scene's nodes. While playing, the entities of the game, by their parents |
 | **Inspector** | The components of what the Hierarchy selected, to change, add and remove |
-| **Assets** | An explorer for your `assets/` folder: the folders in a small tree on the left, the current folder as big icons on the right (one icon and color per kind of file). Double-click a folder to enter it, right-click to make a scene, an actor or a folder, rename, delete, or drag a file |
+| **Assets** | An explorer for your `assets/` folder: the folders in a small tree on the left, the current folder as big icons on the right (one icon and color per kind of file). Double-click a folder to enter it, right-click to make a scene, an actor, a material or a folder, rename, delete, or drag a file. Click a `.material` to edit it in the Inspector (see [Materials](materials.md#in-the-editor)) |
 | **Particles** | Your particle effects, to tune and preview |
 | **Console** | What your game writes: your scripts' `print`, the engine's errors and warnings |
 | **Stats** | The frame rate, the last frame times, and what the frame drew |
