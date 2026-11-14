@@ -10,7 +10,9 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <iterator>
 #include <optional>
+#include <span>
 
 namespace aylo::replication::timesync {
 void ClockEstimator::reset() noexcept {
@@ -24,7 +26,8 @@ bool ClockEstimator::addSample(const double sent, const double received, const d
         return false;
     }
     _rtt = _used == 0 ? rtt : _rtt + ((rtt - _rtt) * kRttSmoothing);
-    _samples.at(_used % kWindow) = Sample{.rtt = rtt, .offset = serverTime + (rtt / 2.0) - received};
+    *std::next(_samples.begin(), static_cast<std::ptrdiff_t>(_used % kWindow)) =
+        Sample{.rtt = rtt, .offset = serverTime + (rtt / 2.0) - received};
     ++_used;
     return true;
 }
@@ -37,9 +40,8 @@ std::optional<double> ClockEstimator::serverTime(const double local) const noexc
     if (_used == 0) {
         return std::nullopt;
     }
-    const auto end = _samples.begin() + static_cast<std::ptrdiff_t>(std::min(_used, kWindow));
-    const auto best =
-        std::min_element(_samples.begin(), end, [](const Sample& a, const Sample& b) { return a.rtt < b.rtt; });
+    const auto window = std::span<const Sample>{_samples}.first(std::min(_used, kWindow));
+    const auto best = std::ranges::min_element(window, {}, &Sample::rtt);
     return local + best->offset;
 }
 
