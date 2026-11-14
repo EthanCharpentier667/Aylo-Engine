@@ -35,7 +35,7 @@ struct StaticMeshVertex {
     glm::vec2 uv{0.0F};        ///< Texture coordinates, in [0, 1] over the texture, from its top-left corner.
 };
 
-/// @brief A run of a static mesh's indices drawn with one material: a glTF primitive.
+/// @brief A run of a static mesh's indices drawn with one material: a glTF primitive, an FBX or OBJ material's faces.
 struct StaticMeshPart {
     std::uint32_t indexOffset{0};  ///< First index of the run.
     std::uint32_t indexCount{0};   ///< Number of indices: a multiple of 3, one triangle per 3.

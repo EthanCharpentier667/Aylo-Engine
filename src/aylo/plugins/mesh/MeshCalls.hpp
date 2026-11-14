@@ -21,9 +21,9 @@ namespace aylo::plugins::mesh {
 
 inline constexpr std::string_view kLoadMeshCall = "aylo.mesh.load";  ///< MeshAssets::load().
 
-/// @brief The arguments of `aylo.mesh.load`: asks for a glTF file.
+/// @brief The arguments of `aylo.mesh.load`: asks for a model file.
 struct LoadMeshArguments {
-    ecs::String path;  ///< The `.gltf` or `.glb` file, from the assets folder.
+    ecs::String path;  ///< The `.gltf`, `.glb`, `.fbx` or `.obj` file, from the assets folder.
 };
 AYLO_ECS_CALL_DATA(LoadMeshArguments, "aylo.mesh.LoadMeshArguments", path);
 

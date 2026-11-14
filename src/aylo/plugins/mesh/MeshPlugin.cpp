@@ -40,7 +40,8 @@
 #include "plugins/mesh/MeshAssets.hpp"
 #include "plugins/mesh/MeshCalls.hpp"
 #include "plugins/mesh/MeshRenderer.hpp"
-#include "plugins/mesh/detail/GltfLoader.hpp"
+#include "plugins/mesh/detail/Model.hpp"
+#include "plugins/mesh/detail/ModelLoader.hpp"
 #include "plugins/shader/ShaderAssets.hpp"
 #include "plugins/shader/ShaderHandles.hpp"
 #include "plugins/shader/ShaderPlugin.hpp"
@@ -64,7 +65,7 @@ void fail(MeshAssets::Entry& entry, std::string error) {
     entry.model.reset();
 }
 
-/// @brief Render, before the GraphicsPlugin loads the textures: reads the queued glTF files and asks for the textures
+/// @brief Render, before the GraphicsPlugin loads the textures: reads the queued model files and asks for the textures
 /// of their parts (TextureAssets is appended to, as by the text and tilemap plugins).
 void readMeshes(ecs::ResMut<MeshAssets> meshes, ecs::ResAppend<graphics::TextureAssets> textures) {
     for (const core::asset::AssetId id : meshes->getIds()) {
@@ -77,7 +78,7 @@ void readMeshes(ecs::ResMut<MeshAssets> meshes, ecs::ResAppend<graphics::Texture
             continue;
         }
         try {
-            auto model = std::make_shared<detail::Model>(detail::loadGltf(entry.path, *meshes->getSource()));
+            auto model = std::make_shared<detail::Model>(detail::loadModel(entry.path, *meshes->getSource()));
             const contract::renderer::TextureDesc desc{.filter = contract::renderer::TextureFilter::kLinear,
                                                        .repeat = true};
             std::vector<std::optional<core::asset::AssetId>> images(model->images.size());
