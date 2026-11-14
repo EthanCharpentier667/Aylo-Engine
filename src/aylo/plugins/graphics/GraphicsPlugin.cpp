@@ -89,8 +89,8 @@ void createBackend(ecs::NonSendMut<BackendSetup> setup, ecs::NonSendMut<plugins:
     cursor->wanted = contract::platform::WindowConfig::fromSettings(setup->settings.section("window")).captureCursor;
 }
 
-/// @brief PreUpdate, after the events: captures the cursor while the game wants it, the window has the focus and no
-/// tool draws over the game (an editor needs its cursor); releases it otherwise.
+/// @brief PreUpdate, after the events: captures the cursor while the game wants it, the window has the focus and, if a
+/// tool draws over the game, the tool lends it (the editor, only to its focused Game panel); releases it otherwise.
 void applyCursorCapture(ecs::NonSendMut<plugins::graphics::Backend> backend, ecs::NonSend<ToolFrame> tool,
                         ecs::ResMut<CursorCapture> cursor,
                         ecs::EventReader<contract::platform::event::FocusChanged> focus) {
@@ -101,7 +101,8 @@ void applyCursorCapture(ecs::NonSendMut<plugins::graphics::Backend> backend, ecs
     if (!isStarted(started)) {
         return;
     }
-    const bool capture = cursor->wanted && cursor->focused && !tool->draw;
+    const bool lent = !tool->draw || tool->lendsCursor;
+    const bool capture = cursor->wanted && cursor->focused && lent;
     if (capture != cursor->captured) {
         started.platform->setCursorLocked(capture);
         cursor->captured = capture;

@@ -15,8 +15,9 @@ namespace aylo::plugins::graphics {
 /// resource, "aylo.CursorCapture".
 ///
 /// @details The game says what it wants (`window.captureCursor` in `project.luau`, then `aylo.graphics.captureCursor`);
-/// the PreUpdate system "aylo.graphics.cursor" captures the cursor while the window has the focus and no tool (an
-/// editor) draws over the game, and releases it otherwise, so a player who switches window gets the cursor back.
+/// the PreUpdate system "aylo.graphics.cursor" captures the cursor while the window has the focus and, when a tool (an
+/// editor) draws over the game, while the tool lends it (ToolFrame::lendsCursor), and releases it otherwise, so a
+/// player who switches window gets the cursor back.
 struct CursorCapture {
     bool wanted{false};    ///< What the game asks for.
     bool focused{true};    ///< Whether the window has the focus, from its FocusChanged events.
