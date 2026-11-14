@@ -71,10 +71,53 @@ ctx.commands:spawn({
 | Call | Arguments | Result |
 |---|---|---|
 | `aylo.audio.loadSound` | `path`, `stream` (decode while playing, for music) | the sound id |
-| `aylo.audio.playSound` | `sound`, `bus` (`"effects"` or `"music"`), `volume`, `pitch`, `position` | nothing |
+| `aylo.audio.playSound` | `sound`, `bus` (`"effects"` or `"music"`, default `"effects"`), `volume` (1), `pitch` (1), `position`, `loop` (false), `startAt` (0, seconds), `lowpass` (0, Hz) | the voice id (a number, never 0) |
+| `aylo.audio.getTime` | none | the audio clock, in seconds |
+| `aylo.audio.setVolume` | `voice`, `volume` (linear gain, 1 = unchanged) | nothing |
+| `aylo.audio.setFilter` | `voice`, `lowpass` (cutoff in Hz, 0 removes the filter) | nothing |
+| `aylo.audio.stopVoice` | `voice`, `fadeOut` (seconds, 0 = at once) | nothing |
 
-A `position` left out plays the sound centred. Music is started by sending the `aylo.PlayMusic` event
+All audio calls run on the client only. A `position` left out plays the sound centred. An unknown `bus` raises
+`Unknown bus 'x' (expected 'effects' or 'music')`. Music is started by sending the `aylo.PlayMusic` event
 (`{ sound, crossfade }`), and stopped with `aylo.StopMusic`.
+
+#### Scheduled playback
+
+`playSound` returns a voice id. Keep it to change or stop that one sound later. `startAt` is a time on the clock
+`aylo.audio.getTime` reads, so you schedule a sound relative to "now":
+
+```luau
+local kick = engine.call("aylo.audio.loadSound", { path = "kick.wav" })
+local voice = 0
+
+engine.ecs.system("game.Beat", {
+	phase = "Update",
+	side = "client",
+	query = {},
+	calls = { "aylo.audio.getTime", "aylo.audio.playSound", "aylo.audio.setVolume", "aylo.audio.setFilter" },
+	run = function(ctx)
+		if voice == 0 then
+			local now = ctx.call("aylo.audio.getTime", {})
+			voice = ctx.call("aylo.audio.playSound", { sound = kick, startAt = now + 0.5, loop = true })
+		else
+			ctx.call("aylo.audio.setVolume", { voice = voice, volume = 0.4 })
+			ctx.call("aylo.audio.setFilter", { voice = voice, lowpass = 800 })
+		end
+	end,
+})
+```
+
+To stop it, call `aylo.audio.stopVoice` (declare it in `calls`) with `{ voice = voice, fadeOut = 0.25 }`.
+
+- Voices given the same `startAt` start on the same audio sample, so stems stay locked together.
+- A `startAt` of 0, or a time already past, starts the voice at once.
+- `loop = true` plays until you call `stopVoice`.
+- The clock is the local audio device's, in seconds. It is 0 before the first frame. It is not the server's clock:
+  mapping the two is up to the game.
+- `setVolume`, `setFilter` and `stopVoice` on a voice that ended, was stopped, or whose sound was not loaded do
+  nothing and raise no error.
+- A sound starts at the end of the frame, so call `loadSound` early (at the top level of a file), not just before
+  `playSound`.
 
 ### Input
 
