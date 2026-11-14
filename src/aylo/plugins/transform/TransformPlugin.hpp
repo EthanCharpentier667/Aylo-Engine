@@ -14,9 +14,14 @@
 
 namespace aylo::ecs {
 class App;
+class PluginRegistry;
 }  // namespace aylo::ecs
 
 namespace aylo::plugins::transform {
+
+/// @brief Registers the transform's script forms (`engine.math.quat`, the rotations of Transform3D) in @p registry:
+/// called by the library, so a side that does not build the plugin still gets them, and by build().
+AYLO_PLUGIN_TRANSFORM_API void addTransformForms(ecs::PluginRegistry& registry);
 
 /// @brief Positions entities of both families: registers Transform2D, GlobalTransform2D, Transform3D,
 /// GlobalTransform3D and TransformInterpolation, and computes each world pose from its transform and the entity's

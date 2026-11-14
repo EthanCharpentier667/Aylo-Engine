@@ -13,5 +13,6 @@
 
 AYLO_PLUGIN_LIBRARY(registrar) {
     using aylo::plugins::transform::TransformPlugin;
+    aylo::plugins::transform::addTransformForms(registrar.getPlugins());
     registrar.getPlugins().add(std::string{TransformPlugin::kName}, [] { return std::make_unique<TransformPlugin>(); });
 }

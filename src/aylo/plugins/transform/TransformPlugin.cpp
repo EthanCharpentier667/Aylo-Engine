@@ -7,6 +7,7 @@
 
 #include "plugins/transform/TransformPlugin.hpp"
 
+#include <array>
 #include <string>
 #include <string_view>
 #include <tuple>
@@ -14,6 +15,7 @@
 #include <vector>
 
 #include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/app/PluginRegistry.hpp"
 #include "aylo/ecs/change/Mut.hpp"
 #include "aylo/ecs/command/Commands.hpp"
 #include "aylo/ecs/entity/Entity.hpp"
@@ -239,9 +241,18 @@ void propagateTransforms(FamilyQuery<Transform2D> transforms2D, FamilyQuery<Tran
 }
 }  // namespace
 
+void addTransformForms(ecs::PluginRegistry& registry) {
+    static constexpr auto kForms = std::to_array<char>({
+#include "TransformForms.luau.h"
+    });
+    // bin2c ends the bytes with a null terminator, which is not part of the source.
+    registry.addScriptForms("addTransformForms", std::string_view{kForms.data(), kForms.size() - 1});
+}
+
 std::string_view TransformPlugin::getName() const noexcept { return kName; }
 
 void TransformPlugin::build(ecs::App& app) {
+    addTransformForms(app.getPluginRegistry());
     static_cast<void>(app.getWorld().getComponents().registerType<Transform2D>());
     static_cast<void>(app.getWorld().getComponents().registerType<GlobalTransform2D>());
     static_cast<void>(app.getWorld().getComponents().registerType<Transform3D>());
