@@ -27,7 +27,9 @@ struct PlayerInput {
     std::uint32_t previousButtons{0};         ///< The buttons of the input applied before, to tell presses.
     std::array<float, kMaxInputAxes> axes{};  ///< The axis slots, each in [-1, 1].
     std::uint32_t sequence{0};                ///< The client input this one came from.
+    double clientTime{0.0};  ///< Server-side: what the client says its estimate of the server clock was, in seconds,
+                             ///< when it sampled this input; 0 if unknown. Untrusted, check it against the RTT.
 };
 
-AYLO_ECS_COMPONENT(PlayerInput, "net.PlayerInput", buttons, previousButtons, axes, sequence);
+AYLO_ECS_COMPONENT(PlayerInput, "net.PlayerInput", buttons, previousButtons, axes, sequence, clientTime);
 }  // namespace aylo::replication::component

@@ -29,8 +29,8 @@ constexpr float kAxisScale = 32767.0F;
 /// @brief Type (1), snapshot tick (4) and count (1).
 constexpr std::size_t kHeaderSize = 6;
 
-/// @brief Sequence (4) and buttons (4).
-constexpr std::size_t kSampleFixedSize = 8;
+/// @brief Sequence (4), buttons (4) and client time (8).
+constexpr std::size_t kSampleFixedSize = 16;
 
 [[nodiscard]] std::int16_t quantize(const float value) noexcept {
     if (std::isnan(value)) {
@@ -54,6 +54,7 @@ network::Bytes encodeInput(const InputMessage& message, const InputLayout& layou
     for (const InputSample& sample : message.inputs) {
         writer.writeU32(sample.sequence);
         writer.writeU32(sample.buttons);
+        writer.writeF64(sample.clientTime);
         for (std::size_t slot = 0; slot < slots; ++slot) {
             // NOLINTNEXTLINE(*-constant-array-index,*-avoid-unchecked-container-access): slot < kMaxInputAxes
             writer.writeI16(quantize(sample.axes[slot]));
@@ -82,6 +83,9 @@ std::optional<InputMessage> decodeInput(const std::span<const std::byte> message
             InputSample sample;
             sample.sequence = reader.readU32();
             sample.buttons = reader.readU32();
+            const double clientTime = reader.readF64();
+            // Untrusted: a time that is not a usable number of seconds is "unknown", the input still counts.
+            sample.clientTime = std::isfinite(clientTime) && clientTime >= 0.0 ? clientTime : 0.0;
             for (std::size_t slot = 0; slot < slots; ++slot) {
                 // NOLINTNEXTLINE(*-constant-array-index,*-avoid-unchecked-container-access): slot < kMaxInputAxes
                 sample.axes[slot] = dequantize(reader.readI16());

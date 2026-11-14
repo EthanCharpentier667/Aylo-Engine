@@ -8,6 +8,7 @@
 #include "aylo/replication/client/ClientState.hpp"
 
 #include <algorithm>
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -45,6 +46,7 @@
 #include "aylo/replication/serialization/FieldSerializer.hpp"
 #include "aylo/replication/snapshot/Snapshot.hpp"
 #include "aylo/replication/state/StateMessage.hpp"
+#include "aylo/replication/timesync/TimeSyncMessage.hpp"
 
 namespace aylo::replication::client {
 namespace {
@@ -248,6 +250,8 @@ void ClientState::connect() {
     _client = std::make_unique<network::client::NetClient>(_server, _settings);
     _connection = ConnectionStatus::kConnecting;
     _serverReady = false;
+    _clock.reset();  // the server may be another one: its clock is found again
+    _lastPing.reset();
     _client->connect(_time());
 }
 
@@ -297,6 +301,13 @@ void ClientState::handle(const network::client::ClientEvent& clientEvent, input:
         } else {
             _serverReady = true;  // it sends packets to the clients that are ready only
             _packets.push_back(message.payload);
+        }
+        return;
+    }
+    if (type == static_cast<std::uint8_t>(MessageType::kTimePong)) {
+        const std::optional<timesync::TimePong> pong = timesync::decodePong(message.payload);
+        if (!pong || !_clock.addSample(pong->clientTime, localSeconds(), pong->serverTime)) {
+            ++_dropped;  // malformed, from the future, or too slow to tell anything
         }
         return;
     }
@@ -523,12 +534,38 @@ bool ClientState::applySnapshot(const std::span<const std::byte> message, ecs::C
     return true;
 }
 
+double ClientState::localSeconds() {
+    const network::TimePoint now = _time();
+    if (!_epoch) {
+        _epoch = now;
+    }
+    return std::chrono::duration<double>{now - *_epoch}.count();
+}
+
+std::optional<double> ClientState::serverTime() { return _clock.serverTime(localSeconds()); }
+
+double ClientState::rtt() const noexcept { return _clock.rtt(); }
+
+void ClientState::sendTimePing() {
+    const double now = localSeconds();
+    const double interval =
+        _clock.sampleCount() < timesync::ClockEstimator::kWindow ? kFastPingInterval : kPingInterval;
+    if (_lastPing && now - *_lastPing < interval) {
+        return;
+    }
+    _lastPing = now;
+    static_cast<void>(_client->send(network::Channel::kUnreliable, timesync::encodePing({.clientTime = now})));
+}
+
 std::optional<network::Bytes> ClientState::nextInputMessage(const input::InputLayout& inputs) {
     if (_manifestStatus != ManifestStatus::kAccepted) {
         return std::nullopt;
     }
     const component::PlayerInput input = _input.value_or(component::PlayerInput{});
-    _recentInputs.push_back({.sequence = _nextInputSequence++, .buttons = input.buttons, .axes = input.axes});
+    _recentInputs.push_back({.sequence = _nextInputSequence++,
+                             .buttons = input.buttons,
+                             .axes = input.axes,
+                             .clientTime = serverTime().value_or(0.0)});
     while (_recentInputs.size() > input::kMaxInputsPerMessage) {
         _recentInputs.pop_front();
     }
@@ -544,6 +581,7 @@ void ClientState::sendInput(const input::InputLayout& inputs) {
     if (!_client || _connection != ConnectionStatus::kConnected) {
         return;
     }
+    sendTimePing();
     if (const std::optional<network::Bytes> message = nextInputMessage(inputs)) {
         static_cast<void>(_client->send(network::Channel::kUnreliable, *message));
         _client->flush(_time());

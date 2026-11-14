@@ -49,6 +49,7 @@ InputState readInput(ecs::Res<InputLayout> layout, ecs::Query<const component::P
     if (const auto found = inputs.get(arguments.entity)) {
         const component::PlayerInput& input = std::get<1>(*found);
         InputState state;
+        state.clientTime = input.clientTime;
         switch (action.kind) {
             case InputKind::kButton:
                 state.held = layout->isHeld(input, action);

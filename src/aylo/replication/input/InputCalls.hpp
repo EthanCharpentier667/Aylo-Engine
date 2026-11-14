@@ -54,13 +54,15 @@ AYLO_ECS_CALL_DATA(ReadInputArguments, "aylo.replication.ReadInputArguments", en
 
 /// @brief The result of `aylo.replication.readInput`: the fields of the action's kind are set, the others are zero.
 struct InputState {
-    bool held{false};      ///< A button: held now (InputLayout::isHeld()).
-    bool pressed{false};   ///< A button: held now and not at the input before (InputLayout::isPressed()).
-    bool released{false};  ///< A button: held at the input before and not now (InputLayout::isReleased()).
-    float axis{0.0F};      ///< An axis: its value, in [-1, 1] (InputLayout::readAxis()).
-    InputVector vector;    ///< A vector: its value (InputLayout::readVector()).
+    bool held{false};        ///< A button: held now (InputLayout::isHeld()).
+    bool pressed{false};     ///< A button: held now and not at the input before (InputLayout::isPressed()).
+    bool released{false};    ///< A button: held at the input before and not now (InputLayout::isReleased()).
+    float axis{0.0F};        ///< An axis: its value, in [-1, 1] (InputLayout::readAxis()).
+    InputVector vector;      ///< A vector: its value (InputLayout::readVector()).
+    double clientTime{0.0};  ///< Any kind: the client's own estimate of the server clock, in seconds, when it sampled
+                             ///< the input (PlayerInput::clientTime); 0 if it had none. Untrusted: the client can lie.
 };
-AYLO_ECS_CALL_DATA(InputState, "aylo.replication.InputState", held, pressed, released, axis, vector);
+AYLO_ECS_CALL_DATA(InputState, "aylo.replication.InputState", held, pressed, released, axis, vector, clientTime);
 
 /// @brief Registers the input engine calls on @p app, for scripts, on the `net.InputLayout` resource:
 /// `aylo.replication.addInput`, which declares an action while the layout is not frozen (scripts declare them while
