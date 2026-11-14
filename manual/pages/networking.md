@@ -76,6 +76,76 @@ if move.vector.x > 0 then ... end
 `pressed` is true on the tick the action went down. Order your system after `net.applyInputs`, which stores the tick's
 inputs.
 
+`clientTime` is the client's own estimate of the server clock (see [Server time and RTT](#server-time-and-rtt)) at the
+moment it sampled that input, in seconds, or `0` if it had no estimate yet. It is set for every kind of action, so read
+it from the action you care about (for example `fire`). It is **untrusted**: the client wrote it, and a cheating client
+can write anything. The server never rejects an input for it, but turns a value that is not a finite number `>= 0`
+into `0`. See [Security](#security).
+
+## Server time and RTT
+
+A game that runs to a beat (a rhythm game, a timed round) needs every machine to agree on one clock: the server's.
+Each client estimates it for you; you add nothing to `project.luau`.
+
+| Call | Where | Arguments | Result |
+|---|---|---|---|
+| `aylo.net.serverTime` | client | none (`{}`) | `{ synced, time }`: `synced` is `false` until the server has answered once since the connection (then `time` is `0`); `time` is the estimated server clock now, in seconds |
+| `aylo.net.rtt` | server | `client` (number, the id as `net.Owner` and `net.ClientConnected` carry it) | `{ connected, rtt }`: `connected` is `false` for a client that is not there (then `rtt` is `0`); `rtt` is the smoothed round-trip time to that client, in seconds |
+
+List the call in the system's `calls`, like any engine call. Both calls exist only on their side: use
+`aylo.net.serverTime` in a `side = "client"` system and `aylo.net.rtt` in a `side = "server"` one.
+
+```luau
+engine.ecs.system("game.ShowBeat", {
+	phase = "Update",
+	side = "client",
+	calls = { "aylo.net.serverTime" },
+	run = function(ctx)
+		local clock = ctx.call("aylo.net.serverTime", {})
+		if not clock.synced then
+			return
+		end
+		local beat = math.floor(clock.time / 0.5) -- one beat every half second of the server clock
+	end,
+})
+```
+
+The estimate is made from a short exchange of messages with the server, repeated about every second, and a delayed
+packet does not move the clock. On a local network it is within a few milliseconds of the server's clock after about
+two seconds. When a client connects again it forgets the old estimate: `synced` is `false` until it has a new one.
+
+**Judging an action at the client's time.** The server can ask when a player pressed a button, and bound it by the
+measured round trip so a cheating client cannot claim a time far in the past or the future. A server script has no
+call that returns the server clock itself: keep your own beat clock (for example from `ctx.time`) and note that the
+estimate counts from the server's first use of the clock, not from `ctx.time.elapsed`, so compare only against a clock
+you built from the same offsets, or use the estimate as a relative time between two inputs of one client:
+
+```luau
+engine.ecs.system("game.JudgeFire", {
+	phase = "Update",
+	side = "server",
+	query = { read = { "net.Owner", "net.PlayerInput" } },
+	calls = { "aylo.replication.readInput", "aylo.net.rtt" },
+	run = function(ctx)
+		for entity, owner in ctx.query do
+			local fire = ctx.call("aylo.replication.readInput", { entity = entity, action = "fire" })
+			if fire.pressed then
+				local link = ctx.call("aylo.net.rtt", { client = owner.client })
+				if link.connected then
+					-- fire.clientTime is on the server clock, in seconds. Reject a shot dated far from your own beat
+					-- clock, by a margin of your choice (a few link.rtt). The bound is yours, not an engine rule.
+					local judgedAt = fire.clientTime
+				end
+			end
+		end
+	end,
+})
+```
+
+In a standalone run or the editor, `aylo.net.serverTime` returns `synced = true` and the game's own clock
+(`ctx.time.elapsed`), and `aylo.net.rtt` returns `{ connected = true, rtt = 0 }` for client 1 and `connected = false`
+for any other.
+
 ## Your own messages
 
 A packet is a message your scripts declare, send and read. Use one for what is not state: a client asking for
@@ -254,6 +324,8 @@ sides. A networked game runs there **unchanged**; the engine plays the server wi
 - You are **client 1**. `net.ClientConnected { client = 1 }` is raised once when the game starts, so your server
   system spawns the player's entity as it does for a real client, with `net.Owner { client = 1 }`.
 - `aylo.replication.localClient` returns `{ connected = true, client = 1 }` at once.
+- `aylo.net.serverTime` returns the game's own clock and `aylo.net.rtt` is `0`, see
+  [Server time and RTT](#server-time-and-rtt).
 - Your keyboard and gamepad are the input of the entity client 1 owns: `aylo.replication.readInput` gives the same
   held, pressed and released as on a server, in the same order (after `net.applyInputs`).
 - Packets loop back inside the world, one frame later, checked like network ones (a wrong field is the same script

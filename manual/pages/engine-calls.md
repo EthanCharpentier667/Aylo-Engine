@@ -155,7 +155,9 @@ See [Capsules](capsules.md).
 | Call | Where | What |
 |---|---|---|
 | `aylo.replication.addInput` | both | declares a network input (made for you by `engine.input.action`) |
-| `aylo.replication.readInput` | server | the input of a player's action, see [Networking](networking.md) |
+| `aylo.replication.readInput` | server | the input of a player's action (`held`, `pressed`, `released`, `axis`, `vector`, and `clientTime`, untrusted), see [Networking](networking.md) |
+| `aylo.net.serverTime` | client | `{ synced, time }`: the estimated server clock, in seconds, see [Server time and RTT](networking.md#server-time-and-rtt) |
+| `aylo.net.rtt` | server | `{ client }` gives `{ connected, rtt }`: the smoothed round-trip time to that client, in seconds |
 | `aylo.replication.localClient` | client | `{ connected, client }`: whether the server gave this client its id, and the id (as `net.Owner` and `net.ClientConnected` carry it) |
 
 ### HTTP
