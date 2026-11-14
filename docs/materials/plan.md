@@ -16,7 +16,7 @@ gives the 3D models shaders and materials. It follows the 3D plan (`docs/3d/desi
 | Editing | In the Inspector: a `.material` clicked in the Assets shows its shader (drop a `.glsl` to change it), its uniforms with their types and defaults, its textures (drop an image); changes apply at once, **Save** (Ctrl+S) writes the file |
 | Per entity | Unchanged: `instance uniform` values stay in the entity's `aylo.MaterialInstance`, edited in its Inspector |
 | 3D shaders | A shader whose first lines hold `#pragma mesh` is a 3D shader, compiled for a new target `kMesh` only (as `#pragma screen` is for `kScreen`): unlit, `vertex()` and `fragment()` with `VERTEX` (vec3), `NORMAL`, `UV`, `COLOR`, `TEXTURE`, `TIME`. Lighting comes later, with the lights |
-| 3D materials | `aylo.MeshRenderer.material`: a material whose shader is a 3D one; none, a wrong one or one not ready yet draws with the built-in unlit shader |
+| 3D materials | `aylo.MeshRenderer.material`: a material whose shader is a 3D one; none, a wrong one or one not ready yet draws with the built-in unlit shader. A model's `instance uniform`s keep their defaults for now: the push constants of a mesh draw leave no room for them |
 | raylib | It runs no game shader (they are compiled to SPIR-V), in 2D as in 3D: it keeps drawing models unlit and ignores their material |
 
 ## The file

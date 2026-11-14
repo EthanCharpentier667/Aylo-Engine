@@ -38,7 +38,7 @@ and the materials are in `plugin-shader`.
 | `tilemap` | Tiled maps, parallax | `graphics`, `transform` |
 | `text` | MSDF fonts, `TextRenderer` | `graphics`, `shader`, `transform` |
 | `particle` | Emitters and effects | `graphics`, `shader`, `transform` |
-| `mesh` | glTF models (cgltf, private): `MeshAssets`, `MeshRenderer`, `engine.assets.mesh`, drawn unlit (`docs/3d/design.md`) | `graphics`, `transform` |
+| `mesh` | glTF models (cgltf, private): `MeshAssets`, `MeshRenderer`, `engine.assets.mesh`, drawn unlit or with a `#pragma mesh` material (`docs/3d/design.md`, `docs/materials/plan.md`) | `graphics`, `shader`, `transform` |
 | `audio` | `AudioSource`, `PlaySound`, `AudioVolumes` | `transform` |
 | `physics` | Jolt, `Collider`, `Collider3D`, `RigidBody` | `transform` |
 | `physics-debug` | Draws the colliders | `graphics`, `input`, `transform` |

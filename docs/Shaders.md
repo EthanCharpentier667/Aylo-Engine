@@ -54,7 +54,11 @@ the engine keeps for itself.
 
 A shader is compiled for every target that draws something (`kDrawingTargets`), so it must compile for all of them: a
 failure in one fails the shader. A shader whose first lines hold `#pragma screen` is a **screen effect** instead, and is
-compiled for `kScreen` only (see *Screen effects* below).
+compiled for `kScreen` only (see *Screen effects* below). One whose first lines hold `#pragma mesh` is a **3D shader**,
+compiled for `kMesh` only: the parts of a static mesh (`MeshRenderer::material`), with `VERTEX` and `NORMAL` as `vec3`
+(`AYLO_MESH` in `common.glsl`; the templates are `mesh.vert.glsl` and `mesh.frag.glsl`, whose push constants are the
+static mesh pass's world matrix and colours). A mesh has no drawing to carry instance values, so, as in a screen
+effect, their defaults are written into both stages. Both pragmas in one shader is an error.
 
 | Target      | Drawn on                    | `UV`                                    | `COLOR` in `fragment()` before the shader  |
 |-------------|-----------------------------|-----------------------------------------|--------------------------------------------|
@@ -63,6 +67,7 @@ compiled for `kScreen` only (see *Screen effects* below).
 | `kParticle` | Particles, on CPU or GPU    | The texture coordinates, by flipbook    | The texture times the colour               |
 | `kShape`    | `Shape`s                    | The position in the shape's box, 0 to 1 | The antialiased fill and outline           |
 | `kScreen`   | The whole screen, once      | The position on the screen, 0 to 1      | The pixel of the picture so far            |
+| `kMesh`     | The parts of a static mesh  | The vertex's texture coordinates        | The part's texture times its colours       |
 
 `UV` goes a little past 0 and 1 on a shape, in the margin of its antialiased edge. A shape has no texture: `TEXTURE`
 reads a white pixel there.
