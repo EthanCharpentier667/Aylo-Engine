@@ -239,7 +239,7 @@ A null `ignore` (the default) skips no entity. `raycastAll` has no call yet, for
 ```luau
 engine.ecs.system("game.Ships", {
     phase = "FixedUpdate",
-    query = { write = { "aylo.Transform" }, with = { "game.Ship" } },
+    query = { write = { "aylo.Transform2D" }, with = { "game.Ship" } },
     calls = { "aylo.physics.moveAndSlide" },
     after = { "aylo.Physics.SyncBodies" },
     before = { "aylo.Physics.SyncToPhysics" },

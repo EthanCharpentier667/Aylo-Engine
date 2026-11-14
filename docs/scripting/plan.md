@@ -724,7 +724,7 @@ their bytes would be wrong anyway.
 - **Physics.** Expose `Collider`, `RigidBody` and `Velocity` (SCR-01 covers their enums), the collision events
   (SCR-04) and the scene queries as engine calls.
   *Done:* `ctx.commands` spawns and adds the plain-data C++ components of the world (`aylo.Collider`,
-  `aylo.Transform`...) from their C++ defaults, not only script ones, with the same client rule (and, since the
+  `aylo.Transform2D`...) from their C++ defaults, not only script ones, with the same client rule (and, since the
   duel's texts, those that own memory, such as `aylo.TextRenderer`). The physics plugin
   registers `aylo.physics.raycast`, `shapeCast`, `overlap` (a count and one entity: call data holds no list),
   `moveAndSlide` (an entity's `Collider`), `applyForce`, `applyImpulse`, `applyTorque` and `setGravity`

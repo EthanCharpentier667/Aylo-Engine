@@ -296,7 +296,7 @@ a list **sorted by name**, so both sides compute the same ones.
 |---|---|
 | 1 | type `0x20` |
 | 2 | shortId: the component's position, from 0 |
-| 1 + n | name (`string8`), for instance `aylo.Transform` or `game.Health` |
+| 1 + n | name (`string8`), for instance `aylo.Transform2D` or `game.Health` |
 | 8 | wireHash: identifies the component's layout (section 8.4) |
 
 ### 8.2 ManifestInputAction

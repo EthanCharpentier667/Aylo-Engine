@@ -88,7 +88,7 @@ declare class ShieldComponent
     owner: Entity
 end
 
-type ComponentName = "aylo.Transform" | "aylo.SpriteRenderer" | "game.Shield" | "game.Health"
+type ComponentName = "aylo.Transform2D" | "aylo.SpriteRenderer" | "game.Shield" | "game.Health"
 type CapsulePath = "actors/bydo.actor" | "scenes/level1.scene"
 ```
 
@@ -274,7 +274,7 @@ manifest checks. On a client run by the `Engine`, a system (`aylo.engine.network
 ```luau
 engine.ecs.system("game.Ships", {
     phase = "FixedUpdate",
-    query = { write = { "aylo.Transform" }, with = { "net.PlayerInput" } },
+    query = { write = { "aylo.Transform2D" }, with = { "net.PlayerInput" } },
     calls = { "aylo.replication.readInput" },
     run = function(ctx)
         for ship, transform in ctx.query do

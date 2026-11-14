@@ -1001,7 +1001,7 @@ Entities are created and destroyed through the system's commands:
 ```luau
 function WaveSpawner:run(ctx)
     ctx.commands:spawn({
-        ["aylo.Transform"] = { position = vec2(800, 300) },
+        ["aylo.Transform2D"] = { position = vec2(800, 300) },
         ["game.Shield"] = {},                -- defaults
     })
     ctx.call("aylo.capsule.spawn", { capsule = "actors/bydo.actor" })
