@@ -31,7 +31,8 @@ constexpr std::array kExtensions = std::to_array<Extension>({
     {".ttf", AssetKind::kFont},    {".otf", AssetKind::kFont},    {".json", AssetKind::kData},
     {".tmj", AssetKind::kData},    {".tmx", AssetKind::kData},    {".txt", AssetKind::kText},
     {".md", AssetKind::kText},     {".glsl", AssetKind::kShader}, {".material", AssetKind::kMaterial},
-    {".glb", AssetKind::kModel},   {".gltf", AssetKind::kModel},
+    {".glb", AssetKind::kModel},   {".gltf", AssetKind::kModel},  {".fbx", AssetKind::kModel},
+    {".obj", AssetKind::kModel},
 });
 
 constexpr std::size_t kUtf8TwoBytes = 0x80;

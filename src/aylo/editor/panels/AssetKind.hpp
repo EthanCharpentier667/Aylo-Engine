@@ -27,7 +27,7 @@ enum class AssetKind : std::uint8_t {
     kFont,
     kShader,    ///< A game shader (`.glsl`).
     kMaterial,  ///< A material file (`.material`).
-    kModel,     ///< A 3D model (`.glb`, `.gltf`).
+    kModel,     ///< A 3D model (`.glb`, `.gltf`, `.fbx`, `.obj`).
     kData,      ///< Structured data: JSON, tilemaps.
     kText,
     kOther,
