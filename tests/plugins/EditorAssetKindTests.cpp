@@ -22,6 +22,18 @@ TEST(EditorAssetKind, TellsFilesApartByExtension) {
     EXPECT_EQ(kindOf("ui.ttf", false), AssetKind::kFont);
     EXPECT_EQ(kindOf("map.tmj", false), AssetKind::kData);
     EXPECT_EQ(kindOf("README.md", false), AssetKind::kText);
+    EXPECT_EQ(kindOf("shaders/flash.glsl", false), AssetKind::kShader);
+    EXPECT_EQ(kindOf("materials/hit.material", false), AssetKind::kMaterial);
+    EXPECT_EQ(kindOf("models/crate.glb", false), AssetKind::kModel);
+    EXPECT_EQ(kindOf("models/crate.gltf", false), AssetKind::kModel);
+}
+
+TEST(EditorAssetKind, ShadersMaterialsAndModelsHaveIconsOfTheirOwn) {
+    using aylo::editor::panels::iconOf;
+    EXPECT_NE(iconOf(AssetKind::kShader), iconOf(AssetKind::kScript));
+    EXPECT_NE(iconOf(AssetKind::kMaterial), iconOf(AssetKind::kImage));
+    EXPECT_NE(iconOf(AssetKind::kModel), iconOf(AssetKind::kScene));
+    EXPECT_EQ(aylo::editor::panels::toUtf8(iconOf(AssetKind::kModel)).size(), 4U);  // beyond the BMP: four bytes
 }
 
 TEST(EditorAssetKind, IgnoresCaseAndFallsBackToOther) {
