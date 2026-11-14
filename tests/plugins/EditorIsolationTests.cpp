@@ -37,7 +37,7 @@ class IsolationTest : public ::testing::Test {
         app.addPlugin(aylo::plugins::transform::TransformPlugin{});
         app.addPlugin(capsule::CapsulePlugin{});
         app.finishPlugins();
-        static_cast<void>(app.getWorld().getComponents().registerType<aylo::plugins::graphics::Camera>());
+        static_cast<void>(app.getWorld().getComponents().registerType<aylo::plugins::graphics::Camera2D>());
         capsule::Capsule turret{"actors/turret.actor"};
         turret.editNode(0).values.set(app.getWorld().getComponents(), Transform2D{.position = {50.0F, 20.0F}});
         static_cast<void>(turret.addNode("Muzzle", 0));

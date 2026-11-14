@@ -57,7 +57,7 @@ The renderer contract gains a 3D view and 3D draws, all optional (a 2D renderer 
   warning.
 - `setView3D(const View3D&)`: position, rotation and projection (`Perspective{fovY, near, far}` or
   `Orthographic3D{height, near, far}`) of the 3D camera of the frame.
-- `draw(const Lines3D&)`: lines in the world, for grids, gizmos and the physics debug view (D3-02).
+- `drawLines3D(const Lines3D&)`: lines in the world, for grids, gizmos and the physics debug view (D3-02).
 - Static meshes (D3-03): `createStaticMesh(const StaticMeshDesc&)` uploads positions, normals, UVs, indices and a base
   colour texture; `destroy(StaticMeshId)`; `draw(const StaticMeshDraw&)` draws one with a world matrix and a colour.
   The name keeps them apart from `Mesh`, the triangles a tool draws over the frame.

@@ -37,7 +37,7 @@ namespace aylo::plugins::graphics {
 ///   resource (updateTextures()), so a texture asked for during this frame's Update is drawn in this frame.
 /// - Render "aylo.graphics.beginFrame" and "aylo.graphics.endFrame": clear with the ClearColor resource, and show the
 ///   frame (a tool that draws over the game sets the ToolFrame resource, which endFrame calls just before it ends the
-///   frame). In between, "aylo.graphics.camera" shows the world from the entity with a Camera (the highest priority)
+///   frame). In between, "aylo.graphics.camera" shows the world from the entity with a Camera2D (the highest priority)
 ///   and a GlobalTransform2D, through IRenderer::setView() (none: the renderer's default view, window pixels from the
 ///   top-left corner). Drawing systems run between the two (`.after("aylo.graphics.beginFrame")`,
 ///   `.before("aylo.graphics.endFrame")`). Both are skipped while the window is minimized. The camera system also
@@ -64,8 +64,10 @@ class AYLO_PLUGIN_GRAPHICS_API GraphicsPlugin : public ecs::Plugin {
     static constexpr std::string_view kTexturesSystem = "aylo.graphics.textures";  ///< Render: loads the textures.
     static constexpr std::string_view kBeginFrameSystem = "aylo.graphics.beginFrame";  ///< Render: starts the frame.
     static constexpr std::string_view kCameraSystem = "aylo.graphics.camera";          ///< Render: applies the camera.
-    static constexpr std::string_view kSpritesSystem = "aylo.graphics.sprites";        ///< Render: draws the sprites.
-    static constexpr std::string_view kEndFrameSystem = "aylo.graphics.endFrame";      ///< Render: shows the frame.
+    static constexpr std::string_view kCamera3DSystem = "aylo.graphics.camera3D";  ///< Render: applies the 3D camera.
+    static constexpr std::string_view kLines3DSystem = "aylo.graphics.lines3D";    ///< Render: draws the 3D lines.
+    static constexpr std::string_view kSpritesSystem = "aylo.graphics.sprites";    ///< Render: draws the sprites.
+    static constexpr std::string_view kEndFrameSystem = "aylo.graphics.endFrame";  ///< Render: shows the frame.
 
     /// @param registry The platforms and renderers, registered by the executable.
     /// @param settings The configuration: `platform`, `renderer`, `window` and a section per backend.

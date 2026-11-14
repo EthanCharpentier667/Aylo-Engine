@@ -27,6 +27,7 @@
 #include "aylo/contract/platform/IPlatform.hpp"
 #include "aylo/contract/renderer/IRenderer.hpp"
 #include "aylo/contract/renderer/drawing/Color.hpp"
+#include "aylo/contract/renderer/drawing/Lines3D.hpp"
 #include "aylo/contract/renderer/drawing/Mesh.hpp"
 #include "aylo/contract/renderer/drawing/Overlay.hpp"
 #include "aylo/contract/renderer/drawing/Shape.hpp"
@@ -41,6 +42,7 @@
 #include "aylo/contract/renderer/view/CameraView.hpp"
 #include "aylo/contract/renderer/view/ScenePreview.hpp"
 #include "aylo/contract/renderer/view/View.hpp"
+#include "aylo/contract/renderer/view/View3D.hpp"
 #include "core/DebugMessenger.hpp"
 #include "core/DeletionQueue.hpp"
 #include "core/Device.hpp"
@@ -55,6 +57,7 @@
 #include "material/GameMaterial.hpp"
 #include "material/GameShader.hpp"
 #include "memory/Allocator.hpp"
+#include "memory/Image.hpp"
 #include "memory/Uploader.hpp"
 #include "particle/GpuParticleSystem.hpp"
 #include "particle/ParticleSimulationPass.hpp"
@@ -64,6 +67,7 @@
 #include "postprocess/ScreenPass.hpp"
 #include "presentation/Swapchain.hpp"
 #include "rendering/DrawList.hpp"
+#include "rendering/Lines3DPass.hpp"
 #include "rendering/MaterialBinding.hpp"
 #include "rendering/MeshPass.hpp"
 #include "rendering/ParticleConstants.hpp"
@@ -195,6 +199,16 @@ class AYLO_RENDER_VULKAN_API VulkanRenderer final : public contract::renderer::I
     /// set before endFrame() applies to every sprite of the frame. Until it is called, a frame shows the view from the
     /// world's origin at its top-left corner.
     void setView(const contract::renderer::View& view) override;
+
+    /// @return True: the renderer draws the 3D world, first in the scene, with a depth buffer.
+    [[nodiscard]] bool supports3D() const noexcept override;
+
+    /// @brief Sets the frame's 3D view; a frame without one draws no 3D world. The last one set applies.
+    void setView3D(const contract::renderer::View3D& view) override;
+
+    /// @brief Adds @p lines to the frame's 3D world, placed by their world matrix. Does nothing if beginFrame() skipped
+    /// the frame.
+    void drawLines3D(const contract::renderer::Lines3D& lines) override;
 
     /// @brief Adds @p sprite to the frame, drawn by endFrame() on top of the sprites drawn before it. Does nothing if
     /// beginFrame() skipped the frame.
@@ -376,6 +390,14 @@ class AYLO_RENDER_VULKAN_API VulkanRenderer final : public contract::renderer::I
     /// @return A texture of @p size and the swapchain's format, drawn into and then sampled, named @p name.
     [[nodiscard]] texture::Texture makeTargetTexture(glm::uvec2 size, std::string_view name) const;
 
+    /// @return The depth buffer of the 3D world, of @p extent: made again (the old one deferred) when the size changes.
+    [[nodiscard]] const memory::Image& acquireDepth(std::size_t frameIndex, vk::Extent2D extent);
+
+    /// @brief Records the frame's 3D world into @p color, cleared to the clear colour, with its own scope and the depth
+    /// buffer: the first thing of the scene, under the 2D world. Nothing without a 3D view.
+    void recordWorld3D(const vk::raii::CommandBuffer& commandBuffer, std::size_t frameIndex, vk::ImageView color,
+                       vk::Extent2D extent, glm::vec2 viewSize, glm::uvec2 framebufferSize);
+
     /// @brief Copies the frame's world (sprites, particles, shapes) into the frame's buffers, once, for recordWorld().
     void uploadWorld(std::size_t frameIndex);
 
@@ -439,13 +461,15 @@ class AYLO_RENDER_VULKAN_API VulkanRenderer final : public contract::renderer::I
     std::chrono::steady_clock::time_point _startTime;      ///< When init() ran: origin of FrameUniforms::time.
     std::chrono::steady_clock::time_point _lastFrameTime;  ///< When the previous frame ended: for deltaTime.
     std::optional<contract::renderer::View> _view;         ///< From setView(); reset by beginFrame().
-    std::filesystem::path _pipelineCachePath;     ///< Config::pipelineCache resolved by init(); empty: not kept.
-    contract::renderer::Color _clearColor{0.0F};  ///< From beginFrame(): what endFrame() clears with.
-    rendering::SpriteBatch _sprites;              ///< The frame's sprites; cleared by beginFrame().
-    rendering::ShapeBatch _shapes;                ///< The frame's shapes; cleared by beginFrame().
-    rendering::SpriteBatch _overlaySprites;       ///< The overlay's sprites and glyphs; cleared by beginFrame().
-    rendering::ShapeBatch _overlayShapes;         ///< The overlay's shapes; cleared by beginFrame().
-    std::vector<OverlayRun> _overlayRuns;         ///< The overlay, in draw order; cleared by beginFrame().
+    std::optional<contract::renderer::View3D> _view3D;     ///< From setView3D(); reset by beginFrame().
+    std::vector<rendering::LineVertex3D> _lines3D;  ///< The frame's 3D lines, in the world; cleared by beginFrame().
+    std::filesystem::path _pipelineCachePath;       ///< Config::pipelineCache resolved by init(); empty: not kept.
+    contract::renderer::Color _clearColor{0.0F};    ///< From beginFrame(): what endFrame() clears with.
+    rendering::SpriteBatch _sprites;                ///< The frame's sprites; cleared by beginFrame().
+    rendering::ShapeBatch _shapes;                  ///< The frame's shapes; cleared by beginFrame().
+    rendering::SpriteBatch _overlaySprites;         ///< The overlay's sprites and glyphs; cleared by beginFrame().
+    rendering::ShapeBatch _overlayShapes;           ///< The overlay's shapes; cleared by beginFrame().
+    std::vector<OverlayRun> _overlayRuns;           ///< The overlay, in draw order; cleared by beginFrame().
     std::vector<contract::renderer::ParticleInstance> _particleInstances;  ///< The frame's CPU particles.
     std::vector<ParticleRange> _particleRanges;  ///< The frame's particle draws; cleared by beginFrame().
     rendering::DrawList _drawList;               ///< Where the particle draws sit among the sprite batches.
@@ -501,6 +525,9 @@ class AYLO_RENDER_VULKAN_API VulkanRenderer final : public contract::renderer::I
     std::unique_ptr<rendering::ShapePass> _overlayShapePass;    ///< Draws _overlayShapes, with buffers of its own.
     std::unique_ptr<rendering::ShapePass> _shapePass;           ///< Draws _shapes at endFrame(), after the sprites.
     std::unique_ptr<rendering::MeshPass> _meshPass;             ///< Draws _mesh at endFrame(), over everything.
+    std::unique_ptr<rendering::Lines3DPass> _lines3DPass;       ///< Draws _lines3D first, in the 3D world.
+    std::unique_ptr<frame::FrameGlobals> _globals3D;            ///< The frame uniforms of the 3D world: its view.
+    std::unique_ptr<memory::Image> _sceneDepth;                 ///< The 3D world's depth buffer, the scene's size.
     std::unique_ptr<rendering::ParticlePass> _particlePass;  ///< Draws _particleRanges at endFrame(), among _sprites.
     std::unique_ptr<particle::ParticleSimulationPass> _particleSimulation;  ///< Runs _simulations at endFrame().
     std::unique_ptr<postprocess::ScreenPass> _screenPass;  ///< Runs the screen effects and shows the result.

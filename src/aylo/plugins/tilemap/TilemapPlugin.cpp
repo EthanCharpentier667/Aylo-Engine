@@ -52,7 +52,7 @@ namespace {
 /// @brief Render, client: moves each Parallax entity by the camera and its scroll.
 void applyParallax(
     ecs::Res<ecs::Time> time,
-    ecs::Query<const transform::GlobalTransform2D, const graphics::Camera, ecs::Without<Parallax>> cameras,
+    ecs::Query<const transform::GlobalTransform2D, const graphics::Camera2D, ecs::Without<Parallax>> cameras,
     ecs::Query<Parallax, transform::GlobalTransform2D> moved) {
     std::optional<glm::vec2> camera;
     std::int32_t priority = 0;

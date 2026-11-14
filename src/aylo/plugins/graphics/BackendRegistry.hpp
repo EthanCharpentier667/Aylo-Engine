@@ -23,6 +23,7 @@ namespace aylo::plugins::graphics {
 struct Backend {
     std::unique_ptr<contract::platform::IPlatform> platform;
     std::unique_ptr<contract::renderer::IRenderer> renderer;
+    bool warnedNo3D = false;  ///< Whether the plugin said this renderer does not draw 3D (said once).
 };
 
 /// @brief The platforms and renderers a program can start, so the configuration picks the pair instead of the code.

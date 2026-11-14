@@ -11,8 +11,15 @@
 #include <array>
 #include <cstdint>
 #include <glm/common.hpp>
+#include <glm/ext/matrix_float4x4.hpp>
+#include <glm/ext/matrix_transform.hpp>
+#include <glm/ext/quaternion_float.hpp>
+#include <glm/ext/quaternion_geometric.hpp>
 #include <glm/ext/vector_float2.hpp>
 #include <glm/ext/vector_uint2.hpp>
+#include <glm/gtc/quaternion.hpp>
+#include <glm/trigonometric.hpp>
+#include <iostream>
 #include <memory>
 #include <optional>
 #include <span>
@@ -26,10 +33,12 @@
 
 #include "aylo/contract/platform/event/Event.hpp"
 #include "aylo/contract/renderer/drawing/BlendMode.hpp"
+#include "aylo/contract/renderer/drawing/Lines3D.hpp"
 #include "aylo/contract/renderer/drawing/Overlay.hpp"
 #include "aylo/contract/renderer/drawing/Texture.hpp"
 #include "aylo/contract/renderer/view/CameraView.hpp"
 #include "aylo/contract/renderer/view/View.hpp"
+#include "aylo/contract/renderer/view/View3D.hpp"
 #include "aylo/ecs/app/App.hpp"
 #include "aylo/ecs/app/AppExit.hpp"
 #include "aylo/ecs/event/Events.hpp"
@@ -45,6 +54,7 @@
 #include "plugins/graphics/BackendRegistry.hpp"
 #include "plugins/graphics/Camera.hpp"
 #include "plugins/graphics/GraphicsResources.hpp"
+#include "plugins/graphics/Lines3D.hpp"
 #include "plugins/graphics/OverlayQueue.hpp"
 #include "plugins/graphics/PlatformEventFilter.hpp"
 #include "plugins/graphics/SpriteQueue.hpp"
@@ -165,7 +175,7 @@ graphics::VisibleArea visibleAreaOf(const contract::renderer::View& view, glm::v
 /// one found wins a tie. Records what the frame shows in the VisibleArea resource.
 void applyCamera(ecs::NonSendMut<plugins::graphics::Backend> backend, ecs::ResMut<graphics::VisibleArea> visible,
                  ecs::ResMut<graphics::ViewInfo> info,
-                 ecs::Query<const transform::GlobalTransform2D, const graphics::Camera> cameras) {
+                 ecs::Query<const transform::GlobalTransform2D, const graphics::Camera2D> cameras) {
     plugins::graphics::Backend& started = *backend;
     if (isStarted(started)) {
         // A scene drawn into a texture is seen as a window of its size: that is the framebuffer the game places things
@@ -198,6 +208,83 @@ void applyCamera(ecs::NonSendMut<plugins::graphics::Backend> backend, ecs::ResMu
         started.renderer->getSceneSize().value_or(started.platform->getFramebufferSize());
     *visible = visibleAreaOf(shown.value_or(contract::renderer::CameraView::makeDefaultView(viewSize, framebufferSize)),
                              viewSize, framebufferSize);
+}
+
+/// @return The view of a Camera3D seen from @p global, its planes and angle kept in a range the projection accepts.
+contract::renderer::View3D view3DOf(const transform::GlobalTransform3D& global, const graphics::Camera3D& camera) {
+    constexpr float kMinNear = 1e-4F;
+    constexpr float kMinFieldOfView = 1.0F;
+    constexpr float kMaxFieldOfView = 179.0F;
+    const float nearPlane = std::max(camera.nearPlane, kMinNear);
+    const float farPlane = std::max(camera.farPlane, nearPlane * 2.0F);
+    contract::renderer::Projection3D projection = contract::renderer::Perspective{
+        .fieldOfView = glm::radians(std::clamp(camera.fieldOfView, kMinFieldOfView, kMaxFieldOfView)),
+        .nearPlane = nearPlane,
+        .farPlane = farPlane};
+    if (camera.projection == graphics::CameraProjection::kOrthographic) {
+        projection = contract::renderer::Orthographic3D{
+            .height = std::max(camera.orthographicHeight, kMinNear), .nearPlane = nearPlane, .farPlane = farPlane};
+    }
+    return contract::renderer::View3D{
+        .position = global.position, .rotation = global.rotation, .projection = projection};
+}
+
+/// @return Whether the 3D world can be drawn this frame; says once, on a renderer that does not draw 3D, why not.
+bool draws3D(plugins::graphics::Backend& backend) {
+    if (!isStarted(backend) || isMinimized(backend)) {
+        return false;
+    }
+    if (!backend.renderer->supports3D()) {
+        if (!backend.warnedNo3D) {
+            std::cerr << "[graphics] This renderer does not draw 3D: the 3D world is not shown "
+                         "(docs/3d/design.md).\n";
+            backend.warnedNo3D = true;
+        }
+        return false;
+    }
+    return true;
+}
+
+/// @brief Render: shows the 3D world from the Camera3D entity with the highest priority, at its GlobalTransform3D; the
+/// first one found wins a tie. Without one, the frame draws no 3D world.
+void applyCamera3D(ecs::NonSendMut<plugins::graphics::Backend> backend,
+                   ecs::Query<const transform::GlobalTransform3D, const graphics::Camera3D> cameras) {
+    std::optional<contract::renderer::View3D> shown;
+    std::int32_t shownPriority = 0;
+    for (auto [entity, global, camera] : cameras) {
+        if (!shown || camera.priority > shownPriority) {
+            shown = view3DOf(global, camera);
+            shownPriority = camera.priority;
+        }
+    }
+    if (shown && draws3D(*backend)) {
+        backend->renderer->setView3D(*shown);
+    }
+}
+
+/// @return The matrix that places what is in @p global's axes in the world: its scale, then rotation, then position.
+glm::mat4 worldMatrixOf(const transform::GlobalTransform3D& global) {
+    const glm::quat rotation{global.rotation.w, global.rotation.x, global.rotation.y, global.rotation.z};
+    return glm::translate(glm::mat4{1.0F}, global.position) * glm::mat4_cast(glm::normalize(rotation)) *
+           glm::scale(glm::mat4{1.0F}, global.scale);
+}
+
+/// @brief Render: draws every Lines3D at its entity's GlobalTransform3D.
+void drawLines3D(ecs::NonSendMut<plugins::graphics::Backend> backend,
+                 ecs::Query<const transform::GlobalTransform3D, const graphics::Lines3D> sets) {
+    bool checked = false;
+    for (auto [entity, global, lines] : sets) {
+        if (!checked) {
+            if (!draws3D(*backend)) {
+                return;
+            }
+            checked = true;
+        }
+        if (lines.points.size() >= 2) {
+            backend->renderer->drawLines3D(contract::renderer::Lines3D{
+                .points = lines.points, .color = lines.color, .world = worldMatrixOf(global)});
+        }
+    }
 }
 
 /// @return Where an item goes in its layer: the cutout ones first, then the alpha-blended ones, then the additive ones.
@@ -310,7 +397,9 @@ void GraphicsPlugin::build(ecs::App& app) {
     resources.insertIfAbsent<graphics::OverlayQueue>();
     resources.insertIfAbsent<graphics::ViewInfo>();
     resources.insertIfAbsent<graphics::VisibleArea>();
-    static_cast<void>(app.getWorld().getComponents().registerType<graphics::Camera>());
+    static_cast<void>(app.getWorld().getComponents().registerType<graphics::Camera2D>());
+    static_cast<void>(app.getWorld().getComponents().registerType<graphics::Camera3D>());
+    static_cast<void>(app.getWorld().getComponents().registerType<graphics::Lines3D>());
     addTextureCalls(app);
 
     app.addSystem(ecs::Phase::kStartup, std::string{kCreateSystem}, &createBackend).setSide(ecs::Side::kClient);
@@ -321,8 +410,16 @@ void GraphicsPlugin::build(ecs::App& app) {
     app.addSystem(ecs::Phase::kRender, std::string{kBeginFrameSystem}, &beginFrame)
         .after(std::string{kTexturesSystem})
         .setSide(ecs::Side::kClient);
-    app.addSystem(ecs::Phase::kRender, std::string{kCameraSystem}, &applyCamera)
+    // The 3D world first, before the 2D camera: every system that draws the 2D world is ordered after the 2D camera, so
+    // after the 3D world too.
+    app.addSystem(ecs::Phase::kRender, std::string{kCamera3DSystem}, &applyCamera3D)
         .after(std::string{kBeginFrameSystem})
+        .setSide(ecs::Side::kClient);
+    app.addSystem(ecs::Phase::kRender, std::string{kLines3DSystem}, &drawLines3D)
+        .after(std::string{kCamera3DSystem})
+        .setSide(ecs::Side::kClient);
+    app.addSystem(ecs::Phase::kRender, std::string{kCameraSystem}, &applyCamera)
+        .after(std::string{kLines3DSystem})
         .setSide(ecs::Side::kClient);
     app.addSystem(ecs::Phase::kRender, std::string{kSpritesSystem}, &drawSprites)
         .after(std::string{kCameraSystem})

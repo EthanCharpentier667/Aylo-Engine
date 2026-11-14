@@ -185,6 +185,17 @@ GPU.
 
 `examples/graphic/render/vulkan/VulkanBlendModes` shows the three modes side by side.
 
+## The 3D world
+
+`setView3D()` and `drawLines3D()` fill the frame's 3D world (`docs/3d/design.md`). When a frame has a 3D view, the
+scene starts with a rendering scope of its own: the HDR scene image cleared, and a depth buffer (`D32_SFLOAT`, the
+scene's size, made again when it changes, `acquireDepth()`) cleared to 1. `rendering::Lines3DPass` draws the lines there
+(line list, depth test and writes, premultiplied blending, `shaders/lines3d.*`), with `_globals3D`: frame uniforms
+whose `viewProjection` is the 3D view's (`CameraView3D`, Vulkan's clip space). The 3D world is drawn in the letterboxed
+viewport of the 2D view. The 2D world then draws in a second scope that keeps the image (`loadedColorAttachment`), so
+it lies over the 3D world; the screen effects and the overlay follow as before. Without a 3D view, nothing changes. The
+2D pipelines have no depth attachment, which is why the two worlds draw in two scopes.
+
 ## Meshes and the scene texture
 
 A tool built on the renderer (the editor, [`Editor.md`](Editor.md)) uses two optional calls of `IRenderer`:

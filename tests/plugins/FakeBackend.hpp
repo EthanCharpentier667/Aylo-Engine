@@ -66,6 +66,9 @@ struct FakeBackendState {
     std::vector<std::vector<std::byte>> createdPixels;                   ///< Every createTexture() pixels.
     std::vector<aylo::contract::renderer::TextureId> destroyedTextures;  ///< Every destroy() call.
     std::vector<aylo::contract::renderer::View> views;                   ///< Every setView() call.
+    std::vector<aylo::contract::renderer::View3D> views3D;               ///< Every setView3D() call.
+    std::vector<aylo::contract::renderer::Lines3D> lines3D;              ///< Every drawLines3D() call.
+    bool draws3D{true};                                                  ///< What supports3D() returns.
     std::vector<aylo::contract::renderer::Sprite> sprites;               ///< Every draw(Sprite) call.
     std::vector<aylo::contract::renderer::Shape> shapes;                 ///< Every draw(Shape) call.
     std::vector<aylo::contract::renderer::Text> texts;                   ///< Every draw(Text) call.
@@ -165,6 +168,9 @@ class FakeRenderer : public aylo::contract::renderer::IRenderer {
     }
     void endFrame() override { ++_state->endFrames; }
     void setView(const aylo::contract::renderer::View& view) override { _state->views.push_back(view); }
+    [[nodiscard]] bool supports3D() const noexcept override { return _state->draws3D; }
+    void setView3D(const aylo::contract::renderer::View3D& view) override { _state->views3D.push_back(view); }
+    void drawLines3D(const aylo::contract::renderer::Lines3D& lines) override { _state->lines3D.push_back(lines); }
     void draw(const aylo::contract::renderer::Sprite& sprite) override {
         _state->sprites.push_back(sprite);
         _state->drawOrder.push_back('s');

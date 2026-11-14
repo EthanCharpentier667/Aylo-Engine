@@ -206,7 +206,7 @@ TEST(TilemapPlugin, MovesAParallaxEntityByTheCamera) {
     TilemapApp app;
     const aylo::ecs::Entity camera = app.world().spawn();
     app.world().getComponents().add(camera, Transform2D{.position = {400.0F, 300.0F}});
-    app.world().getComponents().add(camera, aylo::plugins::graphics::Camera{});
+    app.world().getComponents().add(camera, aylo::plugins::graphics::Camera2D{});
     const aylo::ecs::Entity far = app.world().spawn();
     app.world().getComponents().add(far, Transform2D{.position = {10.0F, 0.0F}});
     app.world().getComponents().add(far, Parallax{.factor = {0.5F, 0.0F}, .origin = {0.0F, 100.0F}});
@@ -219,7 +219,7 @@ TEST(TilemapPlugin, MovesAParallaxChildFromWhereItsParentPutsIt) {
     TilemapApp app;
     const aylo::ecs::Entity camera = app.world().spawn();
     app.world().getComponents().add(camera, Transform2D{.position = {400.0F, 300.0F}});
-    app.world().getComponents().add(camera, aylo::plugins::graphics::Camera{});
+    app.world().getComponents().add(camera, aylo::plugins::graphics::Camera2D{});
     const aylo::ecs::Entity parent = app.world().spawn();
     app.world().getComponents().add(parent, Transform2D{.position = {100.0F, 0.0F}});
     const aylo::ecs::Entity far = app.world().spawn();
