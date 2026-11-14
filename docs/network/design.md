@@ -580,6 +580,8 @@ server's game.
 | `0x30` | `kSnapshot` | unreliable | S → C | [7.4](#74-snapshots-server--client) |
 | `0x31` | `kInput` | unreliable | C → S | [7.5](#75-inputs-client--server) |
 | `0x32` | `kCustomPacket` | packet's channel | packet's direction | short id `u16`, fields ([8](#8-custom-packets)) |
+| `0x34` | `kTimePing` | unreliable | C → S | client clock `f64` (seconds), [7.5.1](#751-server-clock-and-round-trip-time) |
+| `0x35` | `kTimePong` | unreliable | S → C | echoed client clock `f64`, server clock `f64` |
 
 ### 7.4 Snapshots (server → client)
 
@@ -670,13 +672,17 @@ benchmarks say otherwise ([12](#12-testing)).
 u8   type = kInput
 u32  last applied snapshot tick        the confirmation of 7.4
 u8   input count (1 to 3)
-     input × { sequence u32, buttons u32, axes i16 × n }
+     input × { sequence u32, buttons u32, client time f64, axes i16 × n }
 ```
 
 - `buttons` has one bit per `kButton` action, in manifest order (at most 32, see [7.2](#72-manifest)); bits
   beyond the number of button actions must be 0. `axes` has one `i16` per `kAxis` action and two per `kVector2` action, in manifest order, mapping
   [-1, 1] to [-32767, 32767].
 - `sequence` is the client's own input counter, incremented once per fixed tick on the client.
+- `client time` is the client's estimate of the server clock (7.5.1) when it sampled the input, in seconds, 0 while it
+  has none. **It is untrusted**: the server never rejects an input for it (a value that is not a finite number >= 0
+  becomes 0) and writes it to `PlayerInput.clientTime`; a game that judges an action at that time must bound it by
+  the client's RTT (`aylo.net.rtt`) and the server's own clock.
 - **Each message carries the last 3 inputs.** If one datagram is lost, the next one still contains its
   input, with no extra delay. Resending reliably would not help: the resend would arrive after that tick is
   over. Three inputs cost about 24 bytes.
@@ -696,6 +702,17 @@ u8   input count (1 to 3)
 
 Every input is applied at most once and in order, which is what lets the client replay exactly the inputs the
 server has not processed yet.
+
+#### 7.5.1 Server clock and round-trip time
+
+The server clock is the time in seconds since the server first read it (`ServerState::serverTime()`). A client
+estimates it with pings: from the connection, `kTimePing` every 0.1 s until it has 8 exchanges, then every second. The
+server answers at once with `kTimePong` (the client's time echoed, and its own clock). For each exchange the client
+takes `rtt = now - sent` and `offset = serverTime + rtt / 2 - now`, and estimates the server clock with the offset of
+the exchange with the smallest `rtt` among the last 8 (`timesync::ClockEstimator`): a delayed packet is never the best
+one. The estimate is forgotten at each `connect()`, so a new connection finds it again. On loopback it is within 5 ms
+of the server clock. The server's RTT per client is the transport's smoothed RTT (`ServerState::rtt()`). Scripts reach
+them with `aylo.net.serverTime` (client) and `aylo.net.rtt` (server).
 
 ### 7.6 Client prediction and reconciliation
 
