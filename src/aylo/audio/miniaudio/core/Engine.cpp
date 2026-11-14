@@ -32,6 +32,10 @@ void Engine::stop() { ma_engine_stop(&_engine); }
 
 void Engine::start() { ma_engine_start(&_engine); }
 
+std::uint32_t Engine::sampleRate() const noexcept { return ma_engine_get_sample_rate(&_engine); }
+
+std::uint64_t Engine::timeInFrames() const noexcept { return ma_engine_get_time_in_pcm_frames(&_engine); }
+
 void Engine::setVolume(float volume) { ma_engine_set_volume(&_engine, volume); }
 
 }  // namespace aylo::audio::miniaudio::core

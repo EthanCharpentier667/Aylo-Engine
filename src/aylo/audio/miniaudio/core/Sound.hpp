@@ -50,6 +50,11 @@ class AYLO_AUDIO_MINIAUDIO_API Sound {
     Sound(Sound&& other) = delete;
     Sound& operator=(Sound&& other) = delete;
 
+    /// @brief Filters the sound through a low-pass of @p cutoff Hz, in a node put between it and its group the first
+    /// time; 0 (or less) opens the filter fully again.
+    /// @throws exceptions::MiniaudioException If the filter cannot be created.
+    void setLowpass(float cutoff);
+
     /// @return The sound, for the ma_sound_* calls.
     [[nodiscard]] ma_sound* get() noexcept;
 
@@ -57,7 +62,13 @@ class AYLO_AUDIO_MINIAUDIO_API Sound {
     [[nodiscard]] const ma_sound* get() const noexcept;
 
   private:
-    std::unique_ptr<ma_decoder> _decoder;  ///< What a sound decoded from memory reads; null otherwise.
-    ma_sound _sound{};                     ///< Never moves: its group and the resource manager point to it.
+    /// @brief Remembers what the filter node needs, once the sound is loaded.
+    void remember(Engine& engine, SoundGroup* group) noexcept;
+
+    Engine* _engine{nullptr};               ///< Whose graph the filter joins; set by the constructors.
+    ma_node* _output{nullptr};              ///< Where the sound plays into: its group, or the engine's output.
+    std::unique_ptr<ma_lpf_node> _lowpass;  ///< The filter between the sound and its output; null until asked for.
+    std::unique_ptr<ma_decoder> _decoder;   ///< What a sound decoded from memory reads; null otherwise.
+    ma_sound _sound{};                      ///< Never moves: its group and the resource manager point to it.
 };
 }  // namespace aylo::audio::miniaudio::core

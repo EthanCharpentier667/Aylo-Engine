@@ -9,6 +9,8 @@
 
 #include <miniaudio.h>
 
+#include <cstdint>
+
 #include "audio/miniaudio/MiniaudioConfig.hpp"
 #include "aylo/audio/miniaudio/Export.hpp"
 
@@ -32,6 +34,12 @@ class AYLO_AUDIO_MINIAUDIO_API Engine {
 
     /// @return The engine, for the groups and sounds attached to it.
     [[nodiscard]] ma_engine* get() noexcept;
+
+    /// @return The sample rate the engine mixes at, in Hz.
+    [[nodiscard]] std::uint32_t sampleRate() const noexcept;
+
+    /// @return Frames the output has mixed so far: the audio clock, which only the audio thread advances.
+    [[nodiscard]] std::uint64_t timeInFrames() const noexcept;
 
     /// @brief Sets the master volume of the engine, affecting all groups and sounds attached to it.
     /// @param volume The volume, 0.0 (silence) to 1.0 (full volume); values above 1.0 are allowed, but may distort.

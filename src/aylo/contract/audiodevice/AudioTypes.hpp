@@ -45,5 +45,9 @@ struct PlayParams {
     float pan{0.0F};     ///< -1 = left, 0 = centre, 1 = right.
     bool loop{false};
     float fadeIn{0.0F};  ///< Seconds from silence to `volume`; 0 starts at once.
+    /// @brief When it starts, on the clock of IAudioDevice::getTime(), in seconds: a time already past (or 0) starts it
+    /// at once; a later one starts it on that sample of the output, so voices given the same time start together.
+    double startAt{0.0};
+    float lowpass{0.0F};  ///< Low-pass cutoff in Hz; 0 lets everything through. Changed by IAudioDevice::setLowpass().
 };
 }  // namespace aylo::contract::audiodevice
