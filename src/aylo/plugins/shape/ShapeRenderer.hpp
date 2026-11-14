@@ -7,8 +7,10 @@
 
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <glm/ext/vector_float2.hpp>
+#include <string_view>
 #include <type_traits>
 
 #include "aylo/contract/renderer/drawing/BlendMode.hpp"
@@ -27,6 +29,11 @@
 template <>
 struct aylo::ecs::FieldTypeOf<aylo::contract::renderer::ShapeKind>
     : std::integral_constant<aylo::ecs::FieldType, aylo::ecs::FieldType::kU8> {};
+/// @brief The names scripts and capsule files give the values of a ShapeKind field.
+template <>
+struct aylo::ecs::FieldEnumNames<aylo::contract::renderer::ShapeKind> {
+    static constexpr std::array<std::string_view, 4> kNames{"rect", "circle", "capsule", "line"};
+};
 static_assert(sizeof(aylo::contract::renderer::ShapeKind) == 1, "ShapeKind must match FieldType::kU8");
 
 namespace aylo::plugins::shape {

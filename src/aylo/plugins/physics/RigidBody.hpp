@@ -7,7 +7,9 @@
 
 #pragma once
 
+#include <array>
 #include <cstdint>
+#include <string_view>
 #include <type_traits>
 
 #include "aylo/ecs/component/ComponentTraits.hpp"
@@ -31,6 +33,11 @@ enum class BodyType : std::uint8_t {
 template <>
 struct aylo::ecs::FieldTypeOf<aylo::plugins::physics::BodyType>
     : std::integral_constant<aylo::ecs::FieldType, aylo::ecs::FieldType::kU8> {};
+/// @brief The names scripts and capsule files give the values of a BodyType field.
+template <>
+struct aylo::ecs::FieldEnumNames<aylo::plugins::physics::BodyType> {
+    static constexpr std::array<std::string_view, 3> kNames{"static", "kinematic", "dynamic"};
+};
 static_assert(sizeof(aylo::plugins::physics::BodyType) == 1, "BodyType must match FieldType::kU8");
 
 namespace aylo::plugins::physics {

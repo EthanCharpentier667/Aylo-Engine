@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include <array>
+#include <string_view>
 #include <type_traits>
 
 #include "aylo/contract/audiodevice/AudioTypes.hpp"
@@ -19,4 +21,9 @@
 template <>
 struct aylo::ecs::FieldTypeOf<aylo::contract::audiodevice::Bus>
     : std::integral_constant<aylo::ecs::FieldType, aylo::ecs::FieldType::kU8> {};
+/// @brief The names scripts and capsule files give the values of a Bus field.
+template <>
+struct aylo::ecs::FieldEnumNames<aylo::contract::audiodevice::Bus> {
+    static constexpr std::array<std::string_view, 2> kNames{"music", "effects"};
+};
 static_assert(sizeof(aylo::contract::audiodevice::Bus) == 1, "Bus must match FieldType::kU8");

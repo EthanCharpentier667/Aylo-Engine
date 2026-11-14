@@ -7,8 +7,10 @@
 
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <glm/ext/vector_float2.hpp>
+#include <string_view>
 #include <type_traits>
 
 #include "aylo/ecs/component/ComponentTraits.hpp"
@@ -33,6 +35,11 @@ enum class ShapeType : std::uint8_t {
 template <>
 struct aylo::ecs::FieldTypeOf<aylo::plugins::physics::ShapeType>
     : std::integral_constant<aylo::ecs::FieldType, aylo::ecs::FieldType::kU8> {};
+/// @brief The names scripts and capsule files give the values of a ShapeType field.
+template <>
+struct aylo::ecs::FieldEnumNames<aylo::plugins::physics::ShapeType> {
+    static constexpr std::array<std::string_view, 3> kNames{"box", "circle", "capsule"};
+};
 static_assert(sizeof(aylo::plugins::physics::ShapeType) == 1, "ShapeType must match FieldType::kU8");
 
 namespace aylo::plugins::physics {
