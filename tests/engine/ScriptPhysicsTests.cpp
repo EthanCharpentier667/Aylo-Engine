@@ -245,3 +245,116 @@ TEST(ScriptPhysics, AScriptNamesTheShapeAndTheBodyType) {
     EXPECT_EQ(server.run(R"(assert(probe.shape == "circle" and probe.type == "kinematic", tostring(probe.shape)))"),
               "");
 }
+
+TEST(ScriptPhysics, AScriptDropsA3DBallOnAFloorAndCastsA3DRay) {
+    ServerScripts server;
+    ASSERT_EQ(server.run(R"(
+        engine.ecs.component("game.Ball", { fields = {} })
+        local spawned = false
+        engine.ecs.system("game.Spawn", {
+            phase = "Update",
+            run = function(ctx)
+                if spawned then return end
+                spawned = true
+                ctx.commands:spawn({
+                    ["aylo.Transform3D"] = { position = vector.create(0, -0.5, 0) },
+                    ["aylo.Collider3D"] = { shape = "box", size = vector.create(10, 1, 10) },
+                })
+                ctx.commands:spawn({
+                    ["game.Ball"] = {},
+                    ["aylo.Transform3D"] = { position = vector.create(0, 0.6, 0) },
+                    ["aylo.Collider3D"] = { shape = "sphere", radius = 0.5 },
+                    ["aylo.RigidBody"] = {},
+                })
+            end,
+        })
+        engine.ecs.system("game.Look", {
+            phase = "FixedUpdate",
+            after = { "aylo.Physics.Events" },
+            query = { read = { "aylo.Transform3D", "aylo.Collider3D" }, with = { "game.Ball" } },
+            calls = { "aylo.physics.raycast3D" },
+            run = function(ctx)
+                for entity, transform, collider in ctx.query do
+                    local hit = ctx.call("aylo.physics.raycast3D", {
+                        origin = vector.create(0, 5, 0), direction = vector.create(0, -1, 0), maxDistance = 10,
+                        ignore = entity,
+                    })
+                    probe.ballY = transform.position.y
+                    probe.shape = collider.shape
+                    probe.floorDistance = if hit.hit then hit.distance else -1
+                    probe.normalY = hit.normal.y
+                end
+            end,
+        })
+    )"),
+              "");
+
+    server.runFrames();
+
+    // The ball rests on the floor (its top at y = 0), and the ray, skipping it, hits the floor 5 m down.
+    EXPECT_EQ(server.run("assert(math.abs(probe.ballY - 0.5) < 0.05, tostring(probe.ballY))"), "");
+    EXPECT_EQ(server.run(R"(assert(probe.shape == "sphere", tostring(probe.shape)))"), "");
+    EXPECT_EQ(server.run("assert(math.abs(probe.floorDistance - 5) < 0.01, tostring(probe.floorDistance))"), "");
+    EXPECT_EQ(server.run("assert(math.abs(probe.normalY - 1) < 0.01, tostring(probe.normalY))"), "");
+}
+
+TEST(ScriptPhysics, TheManualsHopperPushesA3DBallUp) {
+    ServerScripts server;
+    // The recipe of the manual's 3D bodies section, with a floor, a ball and a probe of its height.
+    ASSERT_EQ(server.run(R"(
+        engine.ecs.component("game.Hopper", { fields = {} })
+        engine.ecs.system("game.Hop", {
+            phase = "FixedUpdate",
+            query = { read = { "aylo.Transform3D" }, with = { "game.Hopper" } },
+            calls = { "aylo.physics.raycast3D", "aylo.physics.applyImpulse3D" },
+            after = { "aylo.Physics.SyncBodies" },
+            before = { "aylo.Physics.SyncToPhysics" },
+            run = function(ctx)
+                for ball, transform in ctx.query do
+                    local ground = ctx.call("aylo.physics.raycast3D", {
+                        origin = transform.position, direction = vector.create(0, -1, 0), maxDistance = 0.55,
+                        ignore = ball,
+                    })
+                    if ground.hit then
+                        ctx.call("aylo.physics.applyImpulse3D", { entity = ball, value = vector.create(0, 4, 0) })
+                    end
+                end
+            end,
+        })
+        local spawned = false
+        engine.ecs.system("game.Spawn", {
+            phase = "Update",
+            run = function(ctx)
+                if spawned then return end
+                spawned = true
+                ctx.commands:spawn({
+                    ["aylo.Transform3D"] = { position = vector.create(0, -0.5, 0) },
+                    ["aylo.Collider3D"] = { shape = "box", size = vector.create(10, 1, 10) },
+                })
+                ctx.commands:spawn({
+                    ["game.Hopper"] = {},
+                    ["aylo.Transform3D"] = { position = vector.create(0, 0.5, 0) },
+                    ["aylo.Collider3D"] = { shape = "sphere", radius = 0.5 },
+                    ["aylo.RigidBody"] = {},
+                })
+            end,
+        })
+        probe.highest = 0
+        engine.ecs.system("game.Watch", {
+            phase = "FixedUpdate",
+            after = { "aylo.Physics.SyncFromPhysics" },
+            query = { read = { "aylo.Transform3D" }, with = { "game.Hopper" } },
+            run = function(ctx)
+                for _, transform in ctx.query do
+                    probe.highest = math.max(probe.highest, transform.position.y)
+                end
+            end,
+        })
+    )"),
+              "");
+
+    server.runFrames();
+
+    // An impulse of 4 on 1 kg is 4 m/s up: well above the resting height (0.5) within a few ticks.
+    EXPECT_EQ(server.run("assert(probe.highest > 0.6, tostring(probe.highest))"), "");
+}
