@@ -43,7 +43,7 @@ AYLO_ECS_CALL_DATA(RaycastArguments, "aylo.physics.RaycastArguments", origin, di
 /// @brief The arguments of `aylo.physics.shapeCast`: a shape, named by Collider's shape fields, swept along a
 /// direction.
 struct ShapeCastArguments {
-    ShapeType shape{ShapeType::kBox};  ///< Collider::shape: 0 a box, 1 a circle, 2 a capsule.
+    ShapeType shape{ShapeType::kBox};  ///< Collider::shape: "box", "circle" or "capsule" in a script.
     glm::vec2 size{32.0F, 32.0F};      ///< Collider::size.
     float radius{16.0F};               ///< Collider::radius.
     float halfHeight{16.0F};           ///< Collider::halfHeight.
@@ -71,7 +71,7 @@ AYLO_ECS_CALL_DATA(HitResult, "aylo.physics.HitResult", hit, entity, point, norm
 
 /// @brief The arguments of `aylo.physics.overlap`: a shape, named by Collider's shape fields, placed somewhere.
 struct OverlapArguments {
-    ShapeType shape{ShapeType::kBox};  ///< Collider::shape: 0 a box, 1 a circle, 2 a capsule.
+    ShapeType shape{ShapeType::kBox};  ///< Collider::shape: "box", "circle" or "capsule" in a script.
     glm::vec2 size{32.0F, 32.0F};      ///< Collider::size.
     float radius{16.0F};               ///< Collider::radius.
     float halfHeight{16.0F};           ///< Collider::halfHeight.

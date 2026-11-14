@@ -144,7 +144,7 @@ local ship = ctx.commands:spawn({
 	["game.Ship"] = { position = position, player = 0 },
 	["aylo.Transform"] = { position = position },
 })
-ctx.commands:add(ship, "aylo.RigidBody", { type = 1 })
+ctx.commands:add(ship, "aylo.RigidBody", { type = "kinematic" })
 ctx.commands:patch(ship, "game.Ship", { player = 1 })
 ctx.commands:setParent(child, parent)
 ctx.commands:removeParent(child)
@@ -229,3 +229,7 @@ See [Networking](networking.md).
 A bad declaration (an unknown option, a missing `phase`, an undeclared name) is an error naming the system, raised when
 the script loads, and the script fails to load. A mistake inside `run` (an undeclared resource, a call that was not
 listed, a stale view) is a Luau error naming the cause. Read the output of the program.
+
+A `run` that never ends or allocates without limit is stopped too, after `scripts.timeout` seconds (5 by default) or
+past `scripts.memoryLimit` megabytes (1024), with an error naming the system; the other systems and the next frames
+go on. See [Script limits](project-settings.md#script-limits).

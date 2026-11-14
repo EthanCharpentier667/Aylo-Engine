@@ -13,6 +13,7 @@
 #include <cstddef>
 #include <format>
 #include <map>
+#include <optional>
 #include <set>
 #include <string>
 #include <string_view>
@@ -28,6 +29,7 @@
 #include "Runtime.hpp"
 #include "Script.hpp"
 #include "Value.hpp"
+#include "detail/Budget.hpp"
 #include "detail/RawState.hpp"
 #include "detail/RequireFunction.hpp"
 #include "detail/Stack.hpp"
@@ -372,6 +374,8 @@ Result<Ref> ModuleLoader::execute(const ModuleSource& module) {
     if (_runHook) {
         _runHook(module.key, true);
     }
+    // The scope ends after the failure is read: its kind depends on whether the budget stopped the module.
+    std::optional<detail::CallScope> scope{std::in_place, thread};
     const int status = lua_pcall(thread, 0, LUA_MULTRET, 0);
     if (_runHook) {
         _runHook(module.key, false);
@@ -380,9 +384,12 @@ Result<Ref> ModuleLoader::execute(const ModuleSource& module) {
     if (status != LUA_OK) {
         const char* text = lua_tostring(thread, -1);
         std::string message{text != nullptr ? text : "unknown error"};
+        const ErrorKind kind = detail::failureKind(thread, status, message);
+        scope.reset();
         _edges.erase(module.key);
-        return Failure{ErrorKind::kRuntime, std::format("failed: {}", message)};
+        return Failure{kind, std::format("failed: {}", message)};
     }
+    scope.reset();
     const int count = lua_gettop(thread) - base;
     if (count > 1) {
         _edges.erase(module.key);

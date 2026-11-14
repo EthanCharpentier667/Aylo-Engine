@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <charconv>
+#include <chrono>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -151,6 +152,44 @@ std::uint16_t readPort(const aylo::core::config::Settings& network, const std::u
             "Invalid setting 'network.port': {} is not a port (a whole number from {} to 65535)", port, lowest)};
     }
     return static_cast<std::uint16_t>(port);
+}
+
+/// The default of `scripts.timeout`, in seconds: long enough for a module that loads many assets, short enough that a
+/// script stuck in a loop gives the game back.
+constexpr double kDefaultScriptTimeout = 5.0;
+/// The default of `scripts.memoryLimit`, in megabytes: far above what scripts hold, below what takes a machine down.
+constexpr double kDefaultScriptMemoryLimit = 1024.0;
+/// The largest `scripts.timeout`, in seconds (an hour), and `scripts.memoryLimit`, in megabytes (a terabyte).
+constexpr double kMaxScriptTimeout = 3600.0;
+constexpr double kMaxScriptMemoryLimit = 1024.0 * 1024.0;
+
+/// @return The `scripts.<key>` number, checked: from 0 to @p highest (0 turns the limit off).
+/// @throws aylo::engine::exceptions::RuntimeError If it is not, naming the setting and @p unit.
+double readScriptLimit(const aylo::core::config::Settings& scripts, const std::string_view key, const double fallback,
+                       const double highest, const std::string_view unit) {
+    const double value = scripts.getNumber(key, fallback);
+
+    if (!std::isfinite(value) || value < 0 || value > highest) {
+        throw aylo::engine::exceptions::RuntimeError{
+            std::format("Invalid setting 'scripts.{}': {} is not a number of {} from 0 (no limit) to {}", key, value,
+                        unit, highest)};
+    }
+    return value;
+}
+
+/// @return `scripts.timeout` (seconds) as the budget of a call into a script; zero: no limit.
+std::chrono::milliseconds readScriptTimeout(const aylo::core::config::Settings& scripts) {
+    constexpr double kMillisecondsPerSecond = 1000.0;
+    const double seconds = readScriptLimit(scripts, "timeout", kDefaultScriptTimeout, kMaxScriptTimeout, "seconds");
+    return std::chrono::milliseconds{static_cast<std::int64_t>(std::llround(seconds * kMillisecondsPerSecond))};
+}
+
+/// @return `scripts.memoryLimit` (megabytes) in bytes; 0: no limit.
+std::size_t readScriptMemoryLimit(const aylo::core::config::Settings& scripts) {
+    constexpr double kBytesPerMegabyte = 1024.0 * 1024.0;
+    const double megabytes =
+        readScriptLimit(scripts, "memoryLimit", kDefaultScriptMemoryLimit, kMaxScriptMemoryLimit, "megabytes");
+    return static_cast<std::size_t>(megabytes * kBytesPerMegabyte);
 }
 
 /// @return The `scripts.aliases` setting: alias name, then its target folder in `scripts/`.
@@ -588,8 +627,10 @@ void Engine::build() {
     const bool client = runsClient(_config.mode);
     const bool server = runsServer(_config.mode);
     const aylo::core::config::Settings scripts = _settings.section("scripts");
-    scripts.checkKeys({"main", "server", "client", "aliases", "native"}, "scripts");
+    scripts.checkKeys({"main", "server", "client", "aliases", "native", "timeout", "memoryLimit"}, "scripts");
     const bool nativeCode = scripts.getBool("native", true);
+    const std::chrono::milliseconds callBudget = readScriptTimeout(scripts);
+    const std::size_t memoryLimit = readScriptMemoryLimit(scripts);
     const std::shared_ptr<const core::vfs::FileSource> scriptFiles =
         _game.packed ? std::make_shared<core::vfs::SubSource>(_game.files, std::string{kScriptsDirectory}) : nullptr;
     std::map<std::string, std::string> aliases =
@@ -644,7 +685,12 @@ void Engine::build() {
         .server = std::move(serverEntry),
         .client = std::move(clientEntry),
         .aliases = std::move(aliases),
-        .options = {.isClient = client, .isServer = server, .isDebug = isDebug, .nativeCode = nativeCode},
+        .options = {.isClient = client,
+                    .isServer = server,
+                    .isDebug = isDebug,
+                    .nativeCode = nativeCode,
+                    .memoryLimit = memoryLimit,
+                    .callBudget = callBudget},
         .onBuilt = [this](aylo::scripting::ScriptHost& host) { _scriptHost = &host; },
     }});
     if (networkPlugin) {

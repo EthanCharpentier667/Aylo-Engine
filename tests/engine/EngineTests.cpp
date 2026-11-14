@@ -1113,3 +1113,25 @@ engine.ecs.system("game.Quit", {{
     EXPECT_NE(log.find("[HotReload] scripts: applied in"), std::string::npos) << log;
     EXPECT_EQ(log.find("the layout is frozen"), std::string::npos) << log;
 }
+
+TEST(Engine, RejectsAScriptsTimeoutOrMemoryLimitOutOfRange) {
+    for (const std::string_view setting :
+         {"scripts.timeout = -1", "scripts.timeout = 3601", "scripts.memoryLimit = -5"}) {
+        const std::string message =
+            buildError("aylo-engine-script-limits", std::format("engine.settings.network.port = 0\n"
+                                                                "engine.settings.{}\n",
+                                                                setting));
+        EXPECT_NE(message.find(setting.substr(0, setting.find(' '))), std::string::npos) << message;
+        EXPECT_NE(message.find("no limit"), std::string::npos) << message;
+    }
+}
+
+TEST(Engine, AcceptsTheScriptLimitsAndZeroForNone) {
+    const GameDirectory game{"aylo-engine-script-limits-ok", R"(
+        engine.settings.network.port = 0
+        engine.settings.scripts.timeout = 0.25
+        engine.settings.scripts.memoryLimit = 0
+    )"};
+
+    EXPECT_NO_THROW(Engine{serverConfig(game)});
+}

@@ -4,4 +4,4 @@
 [node path="."]
 game.Obstacle = {}
 aylo.Transform = {}
-aylo.Collider = { shape = 1, radius = 36, layer = 1 }
+aylo.Collider = { shape = "circle", radius = 36, layer = 1 }

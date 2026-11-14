@@ -116,6 +116,33 @@ Two field types are not copied as raw numbers:
   for the call data of engine calls (a text longer than 255 bytes, such as a prompt): a component declared in Luau has
   no hooks and uses `kString`.
 
+### Enum fields
+
+An enum is reflected as its integer (a `FieldTypeOf` specialization maps it to `kU8`...). Its values also get names
+when a `FieldEnumNames<T>` specialization lists them, next to the `FieldTypeOf` one (`ecs/type/FieldTypeOf.hpp`):
+value `i` is `kNames[i]`, so the values run from 0 without gaps.
+
+```c++
+template <>
+struct aylo::ecs::FieldEnumNames<aylo::plugins::physics::ShapeType> {
+    static constexpr std::array<std::string_view, 3> kNames{"box", "circle", "capsule"};
+};
+```
+
+The names reach `FieldInfo::enumNames` (empty for any other field, also set on a list of the enum) and change nothing
+in the bytes, the wire or the layout hash. They are for what people read and write:
+
+- **Scripts** (`scripting/view/FieldAccess`): a view reads the name, and a value with no name as its number; a write,
+  `spawn`, `add` and `patch` take the name or the number. An unknown name fails with
+  `'round' is not one of box, circle, capsule`.
+- **Capsule files** (`capsule/format/CapsuleText`): a value is read from a quoted name (`shape = "circle"`) or a
+  number, and written as its quoted name.
+- **The editor** (`editor/panels/FieldEditor`): a list of the names instead of a number.
+
+Every enum of the engine's components has its names, the same words its manual page and its setup forms use: the
+physics `ShapeType` and `BodyType`, `BlendMode`, `ShapeKind`, the audio `Bus`, `TextAlign`, `ParticleSimulation`
+and the UI layout enums (`"row-reverse"`, `"space-between"`...).
+
 A type with a list has a size and offsets that depend on the standard library, so client and server compare a hash of
 its name and fields instead of its layout hash (`computeManifestHash()`). A value that does not fit in a message is not
 sent: messages hold 1000 bytes.

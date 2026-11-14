@@ -120,7 +120,7 @@ capsule, 3 line) and the sprite's `source` as a `vec4` (`x`, `y` its position, `
 ctx.commands:spawn({
     ["aylo.Transform"] = { position = { x = 400, y = 300 } },
     ["aylo.ShapeRenderer"] = {
-        kind = 1, radius = 36, -- a circle
+        kind = "circle", radius = 36,
         fillColor = { x = 0.25, y = 0.27, z = 0.32, w = 1 },
         outlineColor = { x = 0.55, y = 0.6, z = 0.7, w = 1 }, outlineThickness = 2,
     },

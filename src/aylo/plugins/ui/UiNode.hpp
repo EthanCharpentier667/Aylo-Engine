@@ -7,7 +7,9 @@
 
 #pragma once
 
+#include <array>
 #include <cstdint>
+#include <string_view>
 #include <type_traits>
 
 #include "aylo/ecs/component/ComponentTraits.hpp"
@@ -104,30 +106,67 @@ struct UiLength {
 template <>
 struct aylo::ecs::FieldTypeOf<aylo::plugins::ui::UiDisplay>
     : std::integral_constant<aylo::ecs::FieldType, aylo::ecs::FieldType::kU8> {};
+/// @brief The names scripts and capsule files give the values of a UiDisplay field.
+template <>
+struct aylo::ecs::FieldEnumNames<aylo::plugins::ui::UiDisplay> {
+    static constexpr std::array<std::string_view, 2> kNames{"flex", "none"};
+};
 static_assert(sizeof(aylo::plugins::ui::UiDisplay) == 1, "UiDisplay must match FieldType::kU8");
 template <>
 struct aylo::ecs::FieldTypeOf<aylo::plugins::ui::UiPosition>
     : std::integral_constant<aylo::ecs::FieldType, aylo::ecs::FieldType::kU8> {};
+/// @brief The names scripts and capsule files give the values of a UiPosition field.
+template <>
+struct aylo::ecs::FieldEnumNames<aylo::plugins::ui::UiPosition> {
+    static constexpr std::array<std::string_view, 2> kNames{"relative", "absolute"};
+};
 static_assert(sizeof(aylo::plugins::ui::UiPosition) == 1, "UiPosition must match FieldType::kU8");
 template <>
 struct aylo::ecs::FieldTypeOf<aylo::plugins::ui::UiDirection>
     : std::integral_constant<aylo::ecs::FieldType, aylo::ecs::FieldType::kU8> {};
+/// @brief The names scripts and capsule files give the values of a UiDirection field.
+template <>
+struct aylo::ecs::FieldEnumNames<aylo::plugins::ui::UiDirection> {
+    static constexpr std::array<std::string_view, 4> kNames{"column", "column-reverse", "row", "row-reverse"};
+};
 static_assert(sizeof(aylo::plugins::ui::UiDirection) == 1, "UiDirection must match FieldType::kU8");
 template <>
 struct aylo::ecs::FieldTypeOf<aylo::plugins::ui::UiWrap>
     : std::integral_constant<aylo::ecs::FieldType, aylo::ecs::FieldType::kU8> {};
+/// @brief The names scripts and capsule files give the values of a UiWrap field.
+template <>
+struct aylo::ecs::FieldEnumNames<aylo::plugins::ui::UiWrap> {
+    static constexpr std::array<std::string_view, 3> kNames{"nowrap", "wrap", "wrap-reverse"};
+};
 static_assert(sizeof(aylo::plugins::ui::UiWrap) == 1, "UiWrap must match FieldType::kU8");
 template <>
 struct aylo::ecs::FieldTypeOf<aylo::plugins::ui::UiJustify>
     : std::integral_constant<aylo::ecs::FieldType, aylo::ecs::FieldType::kU8> {};
+/// @brief The names scripts and capsule files give the values of a UiJustify field.
+template <>
+struct aylo::ecs::FieldEnumNames<aylo::plugins::ui::UiJustify> {
+    static constexpr std::array<std::string_view, 6> kNames{"start",         "center",       "end",
+                                                            "space-between", "space-around", "space-evenly"};
+};
 static_assert(sizeof(aylo::plugins::ui::UiJustify) == 1, "UiJustify must match FieldType::kU8");
 template <>
 struct aylo::ecs::FieldTypeOf<aylo::plugins::ui::UiAlign>
     : std::integral_constant<aylo::ecs::FieldType, aylo::ecs::FieldType::kU8> {};
+/// @brief The names scripts and capsule files give the values of a UiAlign field.
+template <>
+struct aylo::ecs::FieldEnumNames<aylo::plugins::ui::UiAlign> {
+    static constexpr std::array<std::string_view, 9> kNames{
+        "auto", "start", "center", "end", "stretch", "baseline", "space-between", "space-around", "space-evenly"};
+};
 static_assert(sizeof(aylo::plugins::ui::UiAlign) == 1, "UiAlign must match FieldType::kU8");
 template <>
 struct aylo::ecs::FieldTypeOf<aylo::plugins::ui::UiOverflow>
     : std::integral_constant<aylo::ecs::FieldType, aylo::ecs::FieldType::kU8> {};
+/// @brief The names scripts and capsule files give the values of a UiOverflow field.
+template <>
+struct aylo::ecs::FieldEnumNames<aylo::plugins::ui::UiOverflow> {
+    static constexpr std::array<std::string_view, 3> kNames{"visible", "hidden", "scroll"};
+};
 static_assert(sizeof(aylo::plugins::ui::UiOverflow) == 1, "UiOverflow must match FieldType::kU8");
 template <>
 struct aylo::ecs::FieldTypeOf<aylo::plugins::ui::UiLength>

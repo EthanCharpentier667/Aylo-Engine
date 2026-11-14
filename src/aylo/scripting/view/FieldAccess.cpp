@@ -315,7 +315,50 @@ double loadPlainNumber(const std::span<const std::byte> bytes, const ecs::FieldI
     }
 }
 
-/// @brief Writes a number into a number field, checking that it fits.
+/// @return Whether @p field is an enum: an integer whose values have names (ecs::FieldEnumNames).
+bool isEnum(const ecs::FieldInfo& field) { return !field.enumNames.empty() && isPlainNumber(field.type); }
+
+/// @return The names an enum field takes, for the messages: `box, circle, capsule`.
+std::string enumChoices(const ecs::FieldInfo& field) {
+    std::string choices;
+    for (const std::string_view name : field.enumNames) {
+        choices += choices.empty() ? "" : ", ";
+        choices += name;
+    }
+    return choices;
+}
+
+/// @return The name of an enum field's value, or its number when it has none (a value the engine added without a
+/// name, or bytes written by hand).
+luau::Value readEnum(const std::span<const std::byte> bytes, const ecs::FieldInfo& field) {
+    const double number = loadPlainNumber(bytes, field);
+    if (number >= 0 && number < static_cast<double>(field.enumNames.size())) {
+        return luau::Value{std::string{*std::next(field.enumNames.begin(), static_cast<std::ptrdiff_t>(number))}};
+    }
+    return luau::Value{number};
+}
+
+/// @brief Writes a number into a number field, checking that it fits (defined below).
+Result<void> writeNumber(std::string_view component, const ecs::FieldInfo& field, std::span<std::byte> bytes,
+                         double number);
+
+/// @brief Writes an enum field from the name of its value, or from its number as any integer field.
+Result<void> writeEnum(const std::string_view component, const ecs::FieldInfo& field, const std::span<std::byte> bytes,
+                       const luau::Value& value) {
+    if (const auto* name = value.tryAs<std::string>()) {
+        const auto found = std::ranges::find(field.enumNames, std::string_view{*name});
+        if (found == field.enumNames.end()) {
+            return tl::unexpected{
+                fieldError(component, field, std::format("'{}' is not one of {}", *name, enumChoices(field)))};
+        }
+        return writeNumber(component, field, bytes, static_cast<double>(std::distance(field.enumNames.begin(), found)));
+    }
+    if (const auto* number = value.tryAs<double>()) {
+        return writeNumber(component, field, bytes, *number);
+    }
+    return tl::unexpected{fieldError(component, field, std::format("expected one of {}", enumChoices(field)))};
+}
+
 Result<void> writeNumber(const std::string_view component, const ecs::FieldInfo& field,
                          const std::span<std::byte> bytes, const double number) {
     switch (field.type) {
@@ -354,6 +397,9 @@ Result<luau::Value> readScalar(const std::string_view component, const ecs::Fiel
                                const std::span<const std::byte> bytes, const FieldReadContext& context) {
     if (auto supported = checkSupported(component, field, bytes); !supported) {
         return tl::unexpected{supported.error()};
+    }
+    if (isEnum(field)) {
+        return readEnum(bytes, field);
     }
     switch (field.type) {
         case ecs::FieldType::kBool:
@@ -447,6 +493,9 @@ Result<void> writeScalar(const std::string_view component, const ecs::FieldInfo&
         std::memcpy(bytes.subspan(field.offset).data(), &converted, sizeof(ecs::String));
         return {};
     }
+    if (isEnum(field)) {
+        return writeEnum(component, field, bytes, value);
+    }
     const auto* number = value.tryAs<double>();
     if (number == nullptr) {
         return tl::unexpected{fieldError(component, field, "expected a number")};
@@ -455,7 +504,9 @@ Result<void> writeScalar(const std::string_view component, const ecs::FieldInfo&
 }
 
 /// @return The field of one value of the list @p field, at the start of its bytes.
-ecs::FieldInfo elementOf(const ecs::FieldInfo& field) { return ecs::FieldInfo{.name = field.name, .type = field.type}; }
+ecs::FieldInfo elementOf(const ecs::FieldInfo& field) {
+    return ecs::FieldInfo{.name = field.name, .type = field.type, .enumNames = field.enumNames};
+}
 
 /// @return Nothing when @p bytes hold the vector of a list field, or the error saying why not.
 Result<void> checkList(const std::string_view component, const ecs::FieldInfo& field,
@@ -554,8 +605,9 @@ Result<void> pushField(const std::string_view component, const ecs::FieldInfo& f
                        const std::span<const std::byte> bytes, const FieldReadContext& context, luau::Pusher& result) {
     // Numbers, tables and userdata are pushed as they are made: a Value would be built and destroyed around each, and
     // a table or a userdata held through the registry first.
+    // An enum gives its name, a string: the general way.
     const bool fast =
-        field.list == nullptr &&
+        field.list == nullptr && !isEnum(field) &&
         (isPlainNumber(field.type) || field.type == ecs::FieldType::kBool || field.type == ecs::FieldType::kVec2 ||
          field.type == ecs::FieldType::kVec4 || field.type == ecs::FieldType::kEntity);
     if (!fast) {

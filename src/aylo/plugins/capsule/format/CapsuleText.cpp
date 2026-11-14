@@ -175,7 +175,7 @@ class Lexer {
     }
 
     /// @brief Moves past one character, counting lines.
-    void advance() noexcept {
+    void advance() {
         if (_text.at(_position) == '\n') {
             ++_line;
             _column = 1;
@@ -186,7 +186,7 @@ class Lexer {
     }
 
     /// @brief Moves past spaces, line ends and `#` comments.
-    void skipBlanks() noexcept {
+    void skipBlanks() {
         while (_position < _text.size()) {
             const char current = _text.at(_position);
             if (current == '#') {
@@ -587,9 +587,33 @@ class Reader {
         }
     }
 
-    /// @brief Writes one value of a field's type into `out`.
-    void writeScalar(const ecs::FieldInfo& field, std::span<std::byte> out, const Value& value,
+    /// @return For a quoted name in an enum field (`"circle"`), the number it stands for: its index among the field's
+    /// names. Nothing for any other value or field.
+    [[nodiscard]] std::optional<Value> enumNumber(const ecs::FieldInfo& field, const Value& value,
+                                                  std::string_view component) const {
+        if (field.enumNames.empty() || value.kind != Value::Kind::kString) {
+            return std::nullopt;
+        }
+        const auto found = std::ranges::find(field.enumNames, std::string_view{value.text});
+        if (found == field.enumNames.end()) {
+            std::string choices;
+            for (const std::string_view name : field.enumNames) {
+                choices += std::format("{}\"{}\"", choices.empty() ? "" : ", ", name);
+            }
+            fail(value.where, std::format("field '{}' of '{}' takes one of {}, not \"{}\"", field.name, component,
+                                          choices, value.text));
+        }
+        std::optional<Value> number;
+        number.emplace(Value::Kind::kNumber, std::to_string(std::distance(field.enumNames.begin(), found)),
+                       std::vector<Value>{}, value.where);
+        return number;
+    }
+
+    /// @brief Writes one value of a field's type into `out`; an enum field also takes the name of its value.
+    void writeScalar(const ecs::FieldInfo& field, std::span<std::byte> out, const Value& given,
                      std::string_view component) {
+        const std::optional<Value> number = enumNumber(field, given, component);
+        const Value& value = number ? *number : given;
         switch (field.type) {
             case ecs::FieldType::kBool: {
                 requireKind(value, Value::Kind::kBool, component, field);
@@ -861,7 +885,36 @@ class Writer {
         if (field.count > 1) {
             return list(field.type, value.subspan(field.offset, size * field.count), field.count);
         }
+        if (const std::optional<std::string_view> name = enumName(field, value.subspan(field.offset, size))) {
+            return quoteText(*name);  // an enum is saved as the name of its value
+        }
         return scalar(field.type, value.subspan(field.offset, size));
+    }
+
+    /// @return The name of an enum field's value in `bytes`, or nothing for any other field and a value with no name.
+    [[nodiscard]] static std::optional<std::string_view> enumName(const ecs::FieldInfo& field,
+                                                                  std::span<const std::byte> bytes) {
+        if (field.enumNames.empty()) {
+            return std::nullopt;
+        }
+        std::uint64_t index = 0;
+        switch (field.type) {
+            case ecs::FieldType::kU8:
+                index = read<std::uint8_t>(bytes);
+                break;
+            case ecs::FieldType::kU16:
+                index = read<std::uint16_t>(bytes);
+                break;
+            case ecs::FieldType::kU32:
+                index = read<std::uint32_t>(bytes);
+                break;
+            default:
+                return std::nullopt;
+        }
+        if (index >= field.enumNames.size()) {
+            return std::nullopt;
+        }
+        return *std::next(field.enumNames.begin(), static_cast<std::ptrdiff_t>(index));
     }
 
     /// @return `[a, b, ...]`.

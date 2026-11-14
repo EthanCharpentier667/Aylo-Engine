@@ -26,6 +26,7 @@
 #include "Runtime.hpp"
 #include "StackAccess.hpp"
 #include "ValuePack.hpp"
+#include "detail/Budget.hpp"
 #include "detail/Stack.hpp"
 
 namespace aylo::luau {
@@ -100,14 +101,15 @@ Result<ValuePack> Function::call(const ValuePack& args) const {
         lua_settop(_state, top);
         return forwardError<ValuePack>(std::move(argCount));
     }
-    if (lua_pcall(_state, static_cast<int>(*argCount), LUA_MULTRET, 0) != LUA_OK) {
+    const detail::CallScope scope{_state};
+    if (const int status = lua_pcall(_state, static_cast<int>(*argCount), LUA_MULTRET, 0); status != LUA_OK) {
         // The error value is not always a string (e.g. `error({})`), in which case lua_tostring returns null.
         const char* message{lua_tostring(_state, -1)};
         auto error = message != nullptr
                          ? std::string{message}
                          : std::format("error object is a {} value", lua_typename(_state, lua_type(_state, -1)));
         lua_pop(_state, 1);
-        return Failure{ErrorKind::kRuntime, std::move(error)};
+        return Failure{detail::failureKind(_state, status, error), std::move(error)};
     }
     // With LUA_MULTRET, every value above the saved top is a returned value.
     const auto resultCount{static_cast<std::size_t>(lua_gettop(_state) - top)};

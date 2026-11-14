@@ -7,4 +7,4 @@
 game.Ship = { position = (80, 300) }
 aylo.Transform = { position = (80, 300) }
 aylo.Collider = { size = (48, 48), layer = 4, mask = 3 }
-aylo.RigidBody = { type = 1 }
+aylo.RigidBody = { type = "kinematic" }

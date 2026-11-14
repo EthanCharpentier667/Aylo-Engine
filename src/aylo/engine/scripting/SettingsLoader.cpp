@@ -7,6 +7,7 @@
 
 #include "SettingsLoader.hpp"
 
+#include <chrono>
 #include <cstddef>
 #include <filesystem>
 #include <format>
@@ -31,6 +32,12 @@
 #include "aylo/luau/ValuePack.hpp"
 
 namespace {
+/// How long `project.luau` may run, and how much it may hold: it only assigns settings, so a loop or an allocation
+/// that goes past these is a mistake, reported instead of freezing the start. Fixed: the scripts' own limits are
+/// settings it sets.
+constexpr std::chrono::milliseconds kProjectTimeout{5000};
+constexpr std::size_t kProjectMemoryLimit = std::size_t{256} * 1024 * 1024;
+
 /// @return A runtime with the pure standard libraries (no `os`, no `debug`) and no optimization: project scripts only
 /// assign settings, but may use `table`, `string`, `math`, `tonumber`...
 aylo::luau::Runtime createRuntime() {
@@ -39,6 +46,8 @@ aylo::luau::Runtime createRuntime() {
         .libs = Libs::kBase | Libs::kMath | Libs::kTable | Libs::kString | Libs::kCoroutine | Libs::kBit32 |
                 Libs::kUtf8 | Libs::kBuffer | Libs::kVector,
         .optimizationLevel = aylo::luau::RuntimeConfig::OptimizationLevel::kDisabled,
+        .memoryLimit = kProjectMemoryLimit,
+        .callBudget = kProjectTimeout,
     };
     return aylo::luau::expect(aylo::luau::Runtime::create(config));
 }

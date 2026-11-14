@@ -257,3 +257,15 @@ TEST(SettingsLoader, ScriptsHaveNoOsLibrary) {
 
     EXPECT_THROW(loader.load(script.path()), aylo::luau::exceptions::RuntimeError);
 }
+
+TEST(SettingsLoader, AProjectThatLoopsFailsInsteadOfFreezingTheStart) {
+    SettingsLoader loader;
+    const TempScript script{"while true do end"};
+
+    try {
+        loader.load(script.path());
+        FAIL() << "expected a RuntimeError";
+    } catch (const aylo::luau::exceptions::RuntimeError& error) {
+        EXPECT_NE(std::string{error.what()}.find("ran longer than its budget"), std::string::npos) << error.what();
+    }
+}

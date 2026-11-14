@@ -13,6 +13,7 @@
 #include <glm/ext/vector_float2.hpp>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <vector>
 
 #include "aylo/ecs/component/ComponentTraits.hpp"
@@ -310,4 +311,52 @@ TEST_F(CapsuleTextTest, WritesFloatsInTheirShortestExactForm) {
         const std::string expected = std::format("rotation = {} }}", written);
         EXPECT_TRUE(text.contains(expected) || written == "0") << text;
     }
+}
+
+namespace aylo::test::capsule_text {
+/// @brief An enum whose values have names.
+enum class Stance : std::uint8_t { kIdle, kGuard, kCharge };
+}  // namespace aylo::test::capsule_text
+
+template <>
+struct aylo::ecs::FieldTypeOf<aylo::test::capsule_text::Stance>
+    : std::integral_constant<aylo::ecs::FieldType, aylo::ecs::FieldType::kU8> {};
+template <>
+struct aylo::ecs::FieldEnumNames<aylo::test::capsule_text::Stance> {
+    static constexpr std::array<std::string_view, 3> kNames{"idle", "guard", "charge"};
+};
+
+namespace aylo::test::capsule_text {
+struct Guard {
+    Stance stance{Stance::kIdle};
+    Stance fallback{Stance::kIdle};
+};
+AYLO_ECS_COMPONENT(Guard, "test.text.Guard", stance, fallback);
+}  // namespace aylo::test::capsule_text
+
+TEST_F(CapsuleTextTest, ReadsAnEnumByNameOrNumberAndWritesItsName) {
+    static_cast<void>(world.getComponents().registerType<tt::Guard>());
+
+    const capsule::Capsule read = this->read(R"([node path="."]
+test.text.Guard = { stance = "charge", fallback = 1 })");
+
+    EXPECT_EQ(get<tt::Guard>(read, 0)->stance, tt::Stance::kCharge);
+    EXPECT_EQ(get<tt::Guard>(read, 0)->fallback, tt::Stance::kGuard);
+    EXPECT_EQ(format::writeCapsule(read, world.getComponents(), capsules), R"([capsule format=1]
+
+[node path="."]
+test.text.Guard = { stance = "charge", fallback = "guard" }
+)");
+}
+
+TEST_F(CapsuleTextTest, RefusesAnEnumNameItDoesNotHave) {
+    static_cast<void>(world.getComponents().registerType<tt::Guard>());
+
+    const std::string message = errorOf(R"([node path="."]
+test.text.Guard = { stance = "sleep" })");
+
+    EXPECT_NE(
+        message.find(R"(field 'stance' of 'test.text.Guard' takes one of "idle", "guard", "charge", not "sleep")"),
+        std::string::npos)
+        << message;
 }

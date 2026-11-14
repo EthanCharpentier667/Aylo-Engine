@@ -72,12 +72,14 @@
 namespace aylo::scripting {
 namespace {
 /// @return The configuration of the scripts' runtime: the standard libraries (the runtime opens all of them or none),
-/// and machine code when @p nativeCode.
-luau::RuntimeConfig makeRuntimeConfig(const bool nativeCode) {
+/// machine code and the limits as @p options says.
+luau::RuntimeConfig makeRuntimeConfig(const ScriptHost::Options& options) {
     return {
         .libs = luau::RuntimeConfig::Libs::kStandard,
         .optimizationLevel = luau::RuntimeConfig::OptimizationLevel::kStandard,
-        .nativeCode = nativeCode,
+        .nativeCode = options.nativeCode,
+        .memoryLimit = options.memoryLimit,
+        .callBudget = options.callBudget,
     };
 }
 
@@ -120,7 +122,7 @@ void checkAlive(const AppHandle& handle) {
 
 luau::Result<std::unique_ptr<ScriptHost>> ScriptHost::create(ecs::App& app, const Options options,
                                                              luau::ModuleLoader::Resolver resolver) {
-    auto runtime = luau::Runtime::create(makeRuntimeConfig(options.nativeCode));
+    auto runtime = luau::Runtime::create(makeRuntimeConfig(options));
     if (!runtime) {
         return tl::unexpected{std::move(runtime.error())};
     }

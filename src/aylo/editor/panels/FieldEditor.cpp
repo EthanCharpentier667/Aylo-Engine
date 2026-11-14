@@ -18,6 +18,7 @@
 #include <cstring>
 #include <filesystem>
 #include <format>
+#include <iterator>
 #include <span>
 #include <string>
 #include <string_view>
@@ -167,6 +168,62 @@ bool editValue(ecs::World& world, const char* label, ecs::FieldType type, std::b
     // NOLINTEND(cppcoreguidelines-pro-type-reinterpret-cast)
 }
 
+/// @brief Shows an enum field as the list of its names (ecs::FieldInfo::enumNames).
+/// @param value Where the value is: an unsigned integer of 1, 2 or 4 bytes.
+/// @return Whether the user picked another name; false, with the number shown, for any other integer type.
+bool editEnum(const char* label, const ecs::FieldInfo& field, std::byte* value) {
+    std::uint32_t current = 0;
+    switch (field.type) {
+        case ecs::FieldType::kU8: {
+            std::uint8_t narrow = 0;
+            std::memcpy(&narrow, value, sizeof(narrow));
+            current = narrow;
+            break;
+        }
+        case ecs::FieldType::kU16: {
+            std::uint16_t narrow = 0;
+            std::memcpy(&narrow, value, sizeof(narrow));
+            current = narrow;
+            break;
+        }
+        case ecs::FieldType::kU32:
+            std::memcpy(&current, value, sizeof(current));
+            break;
+        default:
+            return editInteger(label, field.type, value);
+    }
+    const std::string preview = current < field.enumNames.size()
+                                    ? std::string{*std::next(field.enumNames.begin(), current)}
+                                    : std::to_string(current);
+    if (!ImGui::BeginCombo(label, preview.c_str())) {
+        return false;
+    }
+    bool changed = false;
+    std::uint32_t index = 0;
+    for (const std::string_view enumName : field.enumNames) {
+        const std::string name{enumName};
+        if (ImGui::Selectable(name.c_str(), index == current) && index != current) {
+            current = index;
+            changed = true;
+        }
+        ++index;
+    }
+    ImGui::EndCombo();
+    if (changed) {
+        // Written back at the width it was read at.
+        if (field.type == ecs::FieldType::kU8) {
+            const auto narrow = static_cast<std::uint8_t>(current);
+            std::memcpy(value, &narrow, sizeof(narrow));
+        } else if (field.type == ecs::FieldType::kU16) {
+            const auto narrow = static_cast<std::uint16_t>(current);
+            std::memcpy(value, &narrow, sizeof(narrow));
+        } else {
+            std::memcpy(value, &current, sizeof(current));
+        }
+    }
+    return changed;
+}
+
 /// @brief Shows a list field: a text as text, any other list as its length. Lists are not edited.
 void showList(const ecs::FieldInfo& field, std::span<const std::byte> value) {
     const std::span<const std::byte> elements = field.list->elements(value.subspan(field.offset).data());
@@ -219,7 +276,9 @@ bool editFields(ecs::World& world, const ecs::TypeInfo& type, std::span<std::byt
             alignas(std::max_align_t) Scratch scratch{};
             std::memcpy(scratch.data(), value.subspan(offset, size).data(), size);
             ImGui::PushID(static_cast<int>(offset));
-            if (editValue(world, label.c_str(), field.type, scratch.data())) {
+            const bool edited = field.enumNames.empty() ? editValue(world, label.c_str(), field.type, scratch.data())
+                                                        : editEnum(label.c_str(), field, scratch.data());
+            if (edited) {
                 std::memcpy(value.subspan(offset, size).data(), scratch.data(), size);
                 changed = true;
             }

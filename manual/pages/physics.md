@@ -28,7 +28,7 @@ An entity with a `Collider` and a `Transform` gets a body; without a `RigidBody`
 
 | Field | Type | Default | Meaning |
 |---|---|---|---|
-| `shape` | u8 | `0` | `0` box, `1` circle, `2` capsule |
+| `shape` | string | `"box"` | `"box"`, `"circle"` or `"capsule"` |
 | `size` | vec2 | `{ x = 32, y = 32 }` | box: full width and height |
 | `radius` | f32 | `16` | circle and capsule: the radius |
 | `halfHeight` | f32 | `16` | capsule: half the length of its straight part, along Y |
@@ -43,7 +43,7 @@ An entity with a `Collider` and a `Transform` gets a body; without a `RigidBody`
 
 | Field | Type | Default | Meaning |
 |---|---|---|---|
-| `type` | u8 | `2` | `0` static (never moves), `1` kinematic (moved by your script through its `Transform`, pushes dynamic bodies), `2` dynamic (gravity, forces, collisions) |
+| `type` | string | `"dynamic"` | `"static"` (never moves), `"kinematic"` (moved by your script through its `Transform`, pushes dynamic bodies), `"dynamic"` (gravity, forces, collisions) |
 | `mass` | f32 | `1` | in kilograms; only a dynamic body uses it |
 | `linearDamping` | f32 | `0.05` | slows the velocity down over time, per second |
 | `angularDamping` | f32 | `0.05` | slows the rotation down over time, per second |

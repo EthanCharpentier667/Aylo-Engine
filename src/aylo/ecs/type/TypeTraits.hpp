@@ -10,6 +10,7 @@
 #include <array>
 #include <cstddef>  // offsetof, used by AYLO_ECS_DETAIL_FIELD
 #include <cstdint>
+#include <span>
 #include <string_view>
 #include <type_traits>
 
@@ -31,11 +32,12 @@ enum class TypeKind : std::uint8_t {
 
 /// @brief One reflected field, known at compile time: the constexpr counterpart of FieldInfo.
 struct FieldDescription {
-    std::string_view name;             ///< Field name, as written in the declaring macro.
-    FieldType type{FieldType::kBool};  ///< Type of each value.
-    std::uint32_t offset{0};           ///< Byte offset inside the value.
-    std::uint32_t count{1};            ///< Number of values: 1, or N for an array.
-    const ListAccess* list{nullptr};   ///< How to reach the values of a list field; null otherwise.
+    std::string_view name;                        ///< Field name, as written in the declaring macro.
+    FieldType type{FieldType::kBool};             ///< Type of each value.
+    std::uint32_t offset{0};                      ///< Byte offset inside the value.
+    std::uint32_t count{1};                       ///< Number of values: 1, or N for an array.
+    const ListAccess* list{nullptr};              ///< How to reach the values of a list field; null otherwise.
+    std::span<const std::string_view> enumNames;  ///< The names of an enum field's values (FieldEnumNames); else empty.
 };
 
 /// @brief What a declaring macro records about a type: its name, its kind and its fields.

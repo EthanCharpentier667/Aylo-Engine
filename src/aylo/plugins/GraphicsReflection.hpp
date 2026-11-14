@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include <array>
+#include <string_view>
 #include <type_traits>
 
 #include "aylo/contract/renderer/drawing/BlendMode.hpp"
@@ -23,6 +25,11 @@
 template <>
 struct aylo::ecs::FieldTypeOf<aylo::contract::renderer::BlendMode>
     : std::integral_constant<aylo::ecs::FieldType, aylo::ecs::FieldType::kU8> {};
+/// @brief The names scripts and capsule files give the values of a BlendMode field.
+template <>
+struct aylo::ecs::FieldEnumNames<aylo::contract::renderer::BlendMode> {
+    static constexpr std::array<std::string_view, 3> kNames{"alpha", "additive", "cutout"};
+};
 static_assert(sizeof(aylo::contract::renderer::BlendMode) == 1, "BlendMode must match FieldType::kU8");
 
 /// @brief A contract::renderer::math::Rect field is reflected as kVec4: x and y are its position, z and w its width and

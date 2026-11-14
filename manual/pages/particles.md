@@ -156,7 +156,7 @@ with the entity.
 | `rateScale` | number | `1` | Multiplies the effect's `rate`: more smoke as a ship gets damaged |
 | `seed` | whole number | `0` | The same seed gives the same particles; `0` picks one |
 | `material` | material id | none | Replaces the effect's material |
-| `overrideSimulation`, `simulation` | boolean, number | `false`, `0` | `true` replaces the effect's `simulation` with this one: `0` auto, `1` GPU, `2` CPU |
+| `overrideSimulation`, `simulation` | boolean, string | `false`, `"auto"` | `true` replaces the effect's `simulation` with this one: `"auto"`, `"gpu"` or `"cpu"` |
 
 ```luau
 local effects = require("@scripts/client/effects_assets")

@@ -7,7 +7,9 @@
 
 #pragma once
 
+#include <array>
 #include <cstdint>
+#include <string_view>
 #include <type_traits>
 
 #include "aylo/contract/renderer/particle/Particle.hpp"
@@ -21,6 +23,11 @@
 template <>
 struct aylo::ecs::FieldTypeOf<aylo::contract::renderer::ParticleSimulation>
     : std::integral_constant<aylo::ecs::FieldType, aylo::ecs::FieldType::kU8> {};
+/// @brief The names scripts and capsule files give the values of a ParticleSimulation field.
+template <>
+struct aylo::ecs::FieldEnumNames<aylo::contract::renderer::ParticleSimulation> {
+    static constexpr std::array<std::string_view, 3> kNames{"auto", "gpu", "cpu"};
+};
 
 namespace aylo::plugins::particle {
 /// @brief Plays an effect at its entity's GlobalTransform, as the component "aylo.ParticleEmitter". Client-side.
