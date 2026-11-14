@@ -111,7 +111,7 @@ engine.ecs.system("game.ShowBeat", {
 ```
 
 The estimate is made from a short exchange of messages with the server, repeated about every second, and a delayed
-packet does not move the clock. On a local network it is within a few milliseconds of the server's clock after about
+packet does not move the clock. On a loopback connection it is within 5 milliseconds of the server's clock after about
 two seconds. When a client connects again it forgets the old estimate: `synced` is `false` until it has a new one.
 
 **Judging an action at the client's time.** The server can ask when a player pressed a button, and bound it by the
