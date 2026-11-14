@@ -6,21 +6,22 @@
 */
 
 #include <Jolt/Jolt.h>  // IWYU pragma: keep
-#include <Jolt/Core/Reference.h>
+#include <Jolt/Math/MathTypes.h>
 #include <Jolt/Math/Real.h>
 #include <Jolt/Math/Vec3.h>
-#include <Jolt/Physics/Body/AllowedDOFs.h>
 #include <Jolt/Physics/Body/Body.h>
 #include <Jolt/Physics/Body/BodyCreationSettings.h>
 #include <Jolt/Physics/Body/BodyID.h>
 #include <Jolt/Physics/Body/BodyInterface.h>
 #include <Jolt/Physics/Body/BodyLock.h>
+#include <Jolt/Physics/Body/BodyManager.h>
 #include <Jolt/Physics/Body/BodyType.h>
 #include <Jolt/Physics/Body/MotionType.h>
 #include <Jolt/Physics/Collision/CastResult.h>
 #include <Jolt/Physics/Collision/CollisionCollectorImpl.h>
 #include <Jolt/Physics/Collision/NarrowPhaseQuery.h>
 #include <Jolt/Physics/Collision/RayCast.h>
+#include <Jolt/Physics/Collision/Shape/Shape.h>
 #include <Jolt/Physics/EActivation.h>
 
 #include <algorithm>
