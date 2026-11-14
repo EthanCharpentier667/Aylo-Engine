@@ -140,6 +140,7 @@ void drawPlayButtons(EditorState& state) {
 /// @brief The items of the View menu: which panels are shown, and the layout.
 void drawViewMenuItems(EditorState& state) {
     ImGui::MenuItem("Game", nullptr, &state.showGame);
+    ImGui::MenuItem("Scene", nullptr, &state.showScene);
     ImGui::MenuItem("Hierarchy", nullptr, &state.showHierarchy);
     ImGui::MenuItem("Inspector", nullptr, &state.showInspector);
     ImGui::MenuItem("Assets", nullptr, &state.showAssets);
@@ -151,7 +152,8 @@ void drawViewMenuItems(EditorState& state) {
     ImGui::Separator();
     if (ImGui::MenuItem("Reset layout")) {
         state.resetLayout = true;
-        state.showGame = state.showHierarchy = state.showInspector = state.showAssets = state.showStats = true;
+        state.showGame = state.showScene = state.showHierarchy = state.showInspector = state.showAssets =
+            state.showStats = true;
         state.showParticles = state.showConsole = state.showPlugins = state.showServer = true;
     }
 }

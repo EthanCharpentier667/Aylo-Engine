@@ -48,8 +48,7 @@ std::uint32_t toPixels(float length, float scale) {
 
 namespace {
 /// @brief Draws the tab of the actor @p id; @return whether it asks to close.
-/// @param previewed Whether a tab already drew the preview this frame.
-bool drawActorTab(EditorState& state, contract::renderer::IRenderer& renderer, capsule::CapsuleId id, bool& previewed) {
+bool drawActorTab(EditorState& state, contract::renderer::IRenderer& renderer, capsule::CapsuleId id) {
     const auto* capsules = state.world->getResources().get<plugins::capsule::Capsules>();
     const auto* shown = capsules != nullptr ? capsules->find(id) : nullptr;
     const std::string path = shown != nullptr ? std::string{shown->getPath()} : std::string{"(gone)"};
@@ -89,7 +88,7 @@ bool drawActorTab(EditorState& state, contract::renderer::IRenderer& renderer, c
             .view = view,
             .size = {toPixels(available.x, scale.x), toPixels(available.y, scale.y)},
         });
-        previewed = true;
+        state.previewUsed = true;
         const contract::renderer::TextureId texture = renderer.getPreviewTexture();
         if (texture != contract::renderer::TextureId{}) {
             ImGui::Image(ImTextureRef{gui::toImGuiTexture(texture)}, available);
@@ -107,16 +106,12 @@ bool drawActorTab(EditorState& state, contract::renderer::IRenderer& renderer, c
 }  // namespace
 
 void drawActorPanel(EditorState& state, contract::renderer::IRenderer& renderer) {
-    bool previewed = false;
     const std::vector<capsule::CapsuleId> tabs = state.actors;  // a tab closing changes the list
     std::vector<capsule::CapsuleId> closed;
     for (const capsule::CapsuleId id : tabs) {
-        if (drawActorTab(state, renderer, id, previewed)) {
+        if (drawActorTab(state, renderer, id)) {
             closed.push_back(id);
         }
-    }
-    if (!previewed) {
-        renderer.setScenePreview(std::nullopt);
     }
     state.focusActor.reset();
     state.dockActor = false;

@@ -31,6 +31,12 @@ AYLO_EDITOR_API void drawExportPanel(EditorState& state);
 /// bridge where it is so the mouse and the keyboard reach the game only when they should.
 AYLO_EDITOR_API void drawGamePanel(EditorState& state, contract::renderer::IRenderer& renderer);
 
+/// @brief The Scene panel, after Unity's Scene view: the world from the editor's own camera, through the renderer's
+/// preview, docked with the Game panel. In 3D: right mouse + WASD/QE flies (Shift: faster), the middle mouse pans,
+/// Alt + left mouse orbits, the wheel comes closer; in 2D: the middle mouse (or Alt + left) pans, the wheel zooms. A
+/// click selects the entity under the mouse (its node while editing), F frames it, W, E and R pick the move, rotate and
+/// scale gizmo, whose handles drag the selection's Transform (written to its node when the drag ends).
+AYLO_EDITOR_API void drawScenePanel(EditorState& state, contract::renderer::IRenderer& renderer);
 /// @brief The Hierarchy panel: while editing a scene, the tree of its nodes, to select, add, delete and move them (drag
 /// one onto another, or drop a capsule file to place an instance of it); while playing, the entities of the world,
 /// by their parents, named by their Name.
