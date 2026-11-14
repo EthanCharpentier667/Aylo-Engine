@@ -8,19 +8,27 @@
 #pragma once
 
 #include <Jolt/Jolt.h>  // IWYU pragma: keep
+#include <Jolt/Core/Core.h>
 #include <Jolt/Core/JobSystemSingleThreaded.h>
 #include <Jolt/Core/TempAllocator.h>
+#include <Jolt/Math/MathTypes.h>
 #include <Jolt/Math/Real.h>
 #include <Jolt/Math/Vec3.h>
+#include <Jolt/Physics/Body/Body.h>
 #include <Jolt/Physics/Body/BodyID.h>
 #include <Jolt/Physics/Body/BodyInterface.h>
 #include <Jolt/Physics/Body/BodyLock.h>
+#include <Jolt/Physics/Body/BodyManager.h>
+#include <Jolt/Physics/Body/BodyType.h>
+#include <Jolt/Physics/Body/MotionProperties.h>
 #include <Jolt/Physics/Body/MotionType.h>
 #include <Jolt/Physics/PhysicsSettings.h>
 #include <Jolt/Physics/PhysicsSystem.h>
 
 #include <cstdint>
 #include <glm/ext/vector_float2.hpp>
+#include <glm/ext/vector_float3.hpp>
+#include <glm/ext/vector_float4.hpp>
 #include <optional>
 #include <unordered_map>
 #include <vector>
@@ -30,6 +38,7 @@
 #include "plugins/physics/PhysicsWorld.hpp"
 #include "plugins/physics/QueryFilter.hpp"
 #include "plugins/physics/Velocity.hpp"
+#include "plugins/physics/Velocity3D.hpp"
 #include "plugins/physics/detail/ContactCollector.hpp"
 #include "plugins/physics/detail/JoltMath.hpp"
 #include "plugins/physics/detail/Layers.hpp"
@@ -54,9 +63,14 @@ inline ecs::Entity entityFromBits(std::uint64_t bits) noexcept {
 struct PhysicsWorld::Impl {
     /// @brief What the world knows of an entity's body.
     struct BodyEntry {
-        JPH::BodyID body;                    ///< The body.
-        bool hasRigidBody = false;           ///< Whether it was built with a RigidBody: catches one added or removed.
-        std::uint64_t seenPass = 0;          ///< The last body pass that saw the entity.
+        JPH::BodyID body;                ///< The body.
+        bool hasRigidBody = false;       ///< Whether it was built with a RigidBody: catches one added or removed.
+        bool spatial = false;            ///< Whether it is a 3D body (Collider3D): its pose is in the 3D fields.
+        float gravityScale = 1.0F;       ///< A 3D body's RigidBody::gravityScale, for the 3D gravity.
+        glm::vec3 lastPosition3D{0.0F};  ///< A 3D body's last position given or read, in metres.
+        glm::vec4 lastRotation3D{0.0F, 0.0F, 0.0F, 1.0F};  ///< A 3D body's last rotation given or read.
+        std::optional<Velocity3D> lastVelocity3D;          ///< A 3D body's last velocity given or read.
+        std::uint64_t seenPass = 0;                        ///< The last body pass that saw the entity.
         glm::vec2 lastPosition{0.0F, 0.0F};  ///< The last position given to the body or read from it, in world units.
         float lastRotation = 0.0F;           ///< The last rotation given to the body or read from it.
         std::optional<glm::vec2> lastLocalPosition;  ///< A child's last relative position; nothing if not recorded.
@@ -76,6 +90,15 @@ struct PhysicsWorld::Impl {
             lastPosition = position;
             lastRotation = rotation;
         }
+        /// @return Whether this is the last 3D pose given or read, exactly.
+        [[nodiscard]] bool isAt3D(const glm::vec3& position, const glm::vec4& rotation) const noexcept {
+            return lastPosition3D == position && lastRotation3D == rotation;
+        }
+        /// @brief Records the 3D pose given to the body or read from it.
+        void remember3D(const glm::vec3& position, const glm::vec4& rotation) noexcept {
+            lastPosition3D = position;
+            lastRotation3D = rotation;
+        }
     };
 
     /// @brief What a push does to a body.
@@ -89,10 +112,12 @@ struct PhysicsWorld::Impl {
         std::uint64_t entity;  ///< Entity::getBits() of the pushed entity.
         PushKind kind;         ///< What the push does.
         JPH::Vec3 value;       ///< Already in Jolt's units and axes.
+        bool spatial;          ///< Whether it pushes a 3D body: a push of the other family is ignored.
     };
 
     explicit Impl(const PhysicsSettings& settings)
         : unitsPerMeter{settings.unitsPerMeter},
+          gravity3D{settings.gravity3D},
           tempAllocator{static_cast<JPH::uint>(settings.tempAllocatorBytes)},
           jobSystem{JPH::cMaxPhysicsJobs} {
         system.Init(settings.maxBodies, 0, settings.maxBodyPairs, settings.maxContactConstraints, broadPhaseLayers,
@@ -119,11 +144,24 @@ struct PhysicsWorld::Impl {
     detail::ContactCollector contacts;                          ///< Records the contacts during the steps.
     JPH::PhysicsSystem system;                                  ///< Points to the four above: declared after them.
     std::unordered_map<std::uint64_t, BodyEntry> bodies;        ///< The bodies by Entity::getBits().
+    glm::vec3 gravity3D;                                        ///< The 3D bodies' gravity, in m/s².
     std::vector<Push> pushes;                                   ///< Queued for the next step, in call order.
 
+    /// @return The entity's body if it is of the family asked for, else bodies.end().
+    [[nodiscard]] std::unordered_map<std::uint64_t, BodyEntry>::iterator find(ecs::Entity entity, bool spatial) {
+        const auto found = bodies.find(entity.getBits());
+        return found != bodies.end() && found->second.spatial == spatial ? found : bodies.end();
+    }
+    /// @return The entity's body if it is of the family asked for, else bodies.end().
+    [[nodiscard]] std::unordered_map<std::uint64_t, BodyEntry>::const_iterator find(ecs::Entity entity,
+                                                                                    bool spatial) const {
+        const auto found = bodies.find(entity.getBits());
+        return found != bodies.end() && found->second.spatial == spatial ? found : bodies.end();
+    }
+
     /// @brief Queues a push for the next step.
-    void queue(ecs::Entity entity, PushKind kind, JPH::Vec3Arg value) {
-        pushes.push_back(Push{.entity = entity.getBits(), .kind = kind, .value = value});
+    void queue(ecs::Entity entity, PushKind kind, JPH::Vec3Arg value, bool spatial = false) {
+        pushes.push_back(Push{.entity = entity.getBits(), .kind = kind, .value = value, .spatial = spatial});
     }
 
     /// @brief Applies the queued pushes to the dynamic bodies they name, then forgets them.
@@ -131,7 +169,8 @@ struct PhysicsWorld::Impl {
         JPH::BodyInterface& bodyInterface = system.GetBodyInterface();
         for (const Push& push : pushes) {
             const auto found = bodies.find(push.entity);
-            if (found == bodies.end() || bodyInterface.GetMotionType(found->second.body) != JPH::EMotionType::Dynamic) {
+            if (found == bodies.end() || found->second.spatial != push.spatial ||
+                bodyInterface.GetMotionType(found->second.body) != JPH::EMotionType::Dynamic) {
                 continue;
             }
             switch (push.kind) {
@@ -170,6 +209,32 @@ struct PhysicsWorld::Impl {
                       .point = detail::fromJolt2D(point) * unitsPerMeter,
                       .normal = detail::fromJolt2D(normal),
                       .distance = distance};
+    }
+
+    /// @brief Pushes the active dynamic 3D bodies with the 3D gravity (times their gravityScale) for the next step.
+    /// @details Jolt's gravity is the 2D one, so the 3D bodies get theirs as a force; sleeping bodies get none, as
+    /// with Jolt's gravity.
+    void applyGravity3D() {
+        if (gravity3D == glm::vec3{0.0F}) {
+            return;
+        }
+        JPH::BodyIDVector active;
+        system.GetActiveBodies(JPH::EBodyType::RigidBody, active);
+        const JPH::BodyLockInterface& locks = system.GetBodyLockInterfaceNoLock();
+        for (const JPH::BodyID id : active) {
+            const JPH::BodyLockWrite lock{locks, id};
+            if (!lock.Succeeded() || !lock.GetBody().IsDynamic() ||
+                !detail::layers::isSpatial(lock.GetBody().GetObjectLayer())) {
+                continue;
+            }
+            JPH::Body& body = lock.GetBody();
+            const auto found = bodies.find(body.GetUserData());
+            const float inverseMass = body.GetMotionProperties()->GetInverseMass();
+            if (found == bodies.end() || !(inverseMass > 0.0F)) {
+                continue;
+            }
+            body.AddForce(detail::toJolt(gravity3D * (found->second.gravityScale / inverseMass)));
+        }
     }
 
     /// @brief Removes a body from the simulation and frees it.

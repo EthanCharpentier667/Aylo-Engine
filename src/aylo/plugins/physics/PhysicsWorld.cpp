@@ -9,9 +9,7 @@
 
 #include <Jolt/Jolt.h>  // IWYU pragma: keep
 #include <Jolt/Core/Core.h>
-#include <Jolt/Core/JobSystemSingleThreaded.h>
 #include <Jolt/Core/Reference.h>
-#include <Jolt/Core/TempAllocator.h>
 #include <Jolt/Math/MathTypes.h>
 #include <Jolt/Math/Real.h>
 #include <Jolt/Math/Vec3.h>
@@ -32,7 +30,6 @@
 #include <Jolt/Physics/Collision/ShapeCast.h>
 #include <Jolt/Physics/EActivation.h>
 #include <Jolt/Physics/EPhysicsUpdateError.h>
-#include <Jolt/Physics/PhysicsSettings.h>
 #include <Jolt/Physics/PhysicsSystem.h>
 
 #include <algorithm>
@@ -59,7 +56,6 @@
 #include "plugins/physics/detail/ContactCollector.hpp"
 #include "plugins/physics/detail/JoltMath.hpp"
 #include "plugins/physics/detail/JoltRuntime.hpp"
-#include "plugins/physics/detail/Layers.hpp"
 #include "plugins/physics/detail/QueryFilters.hpp"
 #include "plugins/physics/detail/WorldImpl.hpp"
 #include "plugins/physics/exceptions/PhysicsExceptions.hpp"
@@ -144,18 +140,18 @@ std::optional<ecs::Entity> PhysicsWorld::findEntity(PhysicsHandle handle) const 
 }
 
 bool PhysicsWorld::isOutOfSync(ecs::Entity entity, const transform::Transform2D& transform) const {
-    const auto found = _impl->bodies.find(entity.getBits());
+    const auto found = _impl->find(entity, /*spatial=*/false);
     return found != _impl->bodies.end() && !found->second.isAt(transform.position, transform.rotation);
 }
 
 bool PhysicsWorld::isLocalOutOfSync(ecs::Entity entity, const transform::Transform2D& local) const {
-    const auto found = _impl->bodies.find(entity.getBits());
+    const auto found = _impl->find(entity, /*spatial=*/false);
     return found != _impl->bodies.end() && found->second.lastLocalPosition &&
            (*found->second.lastLocalPosition != local.position || found->second.lastLocalRotation != local.rotation);
 }
 
 std::optional<PhysicsWorld::BodyPose> PhysicsWorld::getBodyPose(ecs::Entity entity) const {
-    const auto found = _impl->bodies.find(entity.getBits());
+    const auto found = _impl->find(entity, /*spatial=*/false);
     if (found == _impl->bodies.end()) {
         return std::nullopt;
     }
@@ -167,7 +163,7 @@ std::optional<PhysicsWorld::BodyPose> PhysicsWorld::getBodyPose(ecs::Entity enti
 }
 
 std::optional<glm::vec2> PhysicsWorld::getBodyPosition(ecs::Entity entity) const {
-    const auto found = _impl->bodies.find(entity.getBits());
+    const auto found = _impl->find(entity, /*spatial=*/false);
     if (found == _impl->bodies.end()) {
         return std::nullopt;
     }
@@ -175,7 +171,7 @@ std::optional<glm::vec2> PhysicsWorld::getBodyPosition(ecs::Entity entity) const
 }
 
 std::optional<Velocity> PhysicsWorld::getBodyVelocity(ecs::Entity entity) const {
-    const auto found = _impl->bodies.find(entity.getBits());
+    const auto found = _impl->find(entity, /*spatial=*/false);
     if (found == _impl->bodies.end()) {
         return std::nullopt;
     }
@@ -185,7 +181,7 @@ std::optional<Velocity> PhysicsWorld::getBodyVelocity(ecs::Entity entity) const 
 }
 
 bool PhysicsWorld::isVelocityOutOfSync(ecs::Entity entity, const Velocity& velocity) const {
-    const auto found = _impl->bodies.find(entity.getBits());
+    const auto found = _impl->find(entity, /*spatial=*/false);
     return found != _impl->bodies.end() &&
            _impl->system.GetBodyInterface().GetMotionType(found->second.body) != JPH::EMotionType::Static &&
            found->second.lastVelocity != velocity;
@@ -197,6 +193,7 @@ void PhysicsWorld::setGravity(glm::vec2 gravity) noexcept {
 
 void PhysicsWorld::step(float deltaSeconds) {
     _impl->applyPushes();
+    _impl->applyGravity3D();
     const JPH::EPhysicsUpdateError errors =
         _impl->system.Update(deltaSeconds, kCollisionSteps, &_impl->tempAllocator, &_impl->jobSystem);
     _impl->contacts.settle(_impl->system.GetBodyInterfaceNoLock());
@@ -264,7 +261,7 @@ bool PhysicsWorld::destroyBody(ecs::Entity entity) {
 void PhysicsWorld::beginBodyPass() noexcept { ++_impl->pass; }
 
 bool PhysicsWorld::touchBody(ecs::Entity entity, bool hasRigidBody) noexcept {
-    const auto found = _impl->bodies.find(entity.getBits());
+    const auto found = _impl->find(entity, /*spatial=*/false);
     if (found == _impl->bodies.end() || found->second.hasRigidBody != hasRigidBody) {
         return false;
     }
@@ -287,7 +284,7 @@ std::vector<ecs::Entity> PhysicsWorld::endBodyPass() {
 }
 
 void PhysicsWorld::moveKinematic(ecs::Entity entity, const transform::Transform2D& transform, float deltaSeconds) {
-    const auto found = _impl->bodies.find(entity.getBits());
+    const auto found = _impl->find(entity, /*spatial=*/false);
     if (found == _impl->bodies.end()) {
         return;
     }
@@ -303,7 +300,7 @@ void PhysicsWorld::moveKinematic(ecs::Entity entity, const transform::Transform2
 }
 
 void PhysicsWorld::teleport(ecs::Entity entity, const transform::Transform2D& transform) {
-    const auto found = _impl->bodies.find(entity.getBits());
+    const auto found = _impl->find(entity, /*spatial=*/false);
     if (found == _impl->bodies.end()) {
         return;
     }
@@ -314,14 +311,14 @@ void PhysicsWorld::teleport(ecs::Entity entity, const transform::Transform2D& tr
 }
 
 void PhysicsWorld::rememberPose(ecs::Entity entity, const transform::Transform2D& pose) {
-    const auto found = _impl->bodies.find(entity.getBits());
+    const auto found = _impl->find(entity, /*spatial=*/false);
     if (found != _impl->bodies.end()) {
         found->second.remember(pose.position, pose.rotation);
     }
 }
 
 void PhysicsWorld::rememberLocal(ecs::Entity entity, const transform::Transform2D& local) {
-    const auto found = _impl->bodies.find(entity.getBits());
+    const auto found = _impl->find(entity, /*spatial=*/false);
     if (found != _impl->bodies.end()) {
         found->second.lastLocalPosition = local.position;
         found->second.lastLocalRotation = local.rotation;
@@ -329,7 +326,7 @@ void PhysicsWorld::rememberLocal(ecs::Entity entity, const transform::Transform2
 }
 
 void PhysicsWorld::setVelocity(ecs::Entity entity, const Velocity& velocity) {
-    const auto found = _impl->bodies.find(entity.getBits());
+    const auto found = _impl->find(entity, /*spatial=*/false);
     if (found == _impl->bodies.end()) {
         return;
     }
@@ -369,7 +366,8 @@ std::vector<PhysicsWorld::BodyPose> PhysicsWorld::collectMovedBodies() {
         }
         const JPH::Body& body = lock.GetBody();
         const auto found = _impl->bodies.find(body.GetUserData());
-        if (found == _impl->bodies.end() || (body.IsKinematic() && found->second.kinematicMoveStep == _impl->steps)) {
+        if (found == _impl->bodies.end() || found->second.spatial ||
+            (body.IsKinematic() && found->second.kinematicMoveStep == _impl->steps)) {
             continue;
         }
         const glm::vec2 position = detail::fromJolt2D(body.GetPosition()) * _impl->unitsPerMeter;
@@ -399,6 +397,18 @@ std::vector<PhysicsWorld::Contact> PhysicsWorld::takeContacts() {
     std::vector<Contact> contacts;
     contacts.reserve(events.size());
     for (const detail::ContactCollector::ContactEvent& event : events) {
+        const auto body = _impl->bodies.find(event.first);
+        if (body != _impl->bodies.end() && body->second.spatial) {
+            contacts.push_back(Contact{
+                .kind = static_cast<Contact::Kind>(event.kind),
+                .first = detail::entityFromBits(event.first),
+                .second = detail::entityFromBits(event.second),
+                .spatial = true,
+                .point3D = detail::fromJolt(event.point),
+                .normal3D = detail::fromJolt(event.normal),
+            });
+            continue;
+        }
         contacts.push_back(Contact{
             .kind = static_cast<Contact::Kind>(event.kind),
             .first = detail::entityFromBits(event.first),
@@ -546,7 +556,7 @@ std::vector<PhysicsWorld::BodyVelocity> PhysicsWorld::collectChangedVelocities()
         }
         const JPH::Body& body = lock.GetBody();
         const auto found = _impl->bodies.find(body.GetUserData());
-        if (found == _impl->bodies.end()) {
+        if (found == _impl->bodies.end() || found->second.spatial) {
             continue;
         }
         const Velocity velocity =
