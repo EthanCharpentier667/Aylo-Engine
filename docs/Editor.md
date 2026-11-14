@@ -82,6 +82,8 @@ owns it):
   resized by the real `Resized` events whatever it decides.
 - **`ToolFrame`** (`plugins/graphics/ToolFrame.hpp`): `aylo.graphics.endFrame` calls it after the overlay, just before
   the renderer ends the frame, with the platform and the renderer. It is not called while the window is minimized.
+- **No cursor capture.** While the editor's `ToolFrame` draws, the graphics plugin never captures the cursor, even
+  for a game whose `window.captureCursor` is true: the editor needs it (`docs/Input.md#cursor-lock`).
 
 The editor reads and writes the world from that callback, which is not a system with declared access: it runs on the
 main thread where nothing else runs, and the scheduler is serial. A parallel scheduler would need it to be an exclusive
