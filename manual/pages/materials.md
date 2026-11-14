@@ -52,6 +52,52 @@ A material file can also be a [screen effect](post-processing.md): give it a `#p
 engine.screenEffects({ engine.assets.material("materials/tone.material") })
 ```
 
+## 3D materials
+
+A model (`aylo.MeshRenderer`) takes a material too, whose shader says `#pragma mesh` on one of its first lines: a 3D
+shader, compiled for models only. It is unlit, as the built-in one, and can do its own shading from the normals.
+
+```glsl
+// assets/shaders/glow.glsl
+#pragma mesh
+uniform vec4 tint = vec4(1.0);
+uniform float swell = 0.0;
+instance uniform float glow = 0.5;
+
+void vertex() { VERTEX += NORMAL * swell; }
+void fragment() { COLOR *= tint; COLOR.rgb += glow * max(NORMAL.y, 0.0); }
+```
+
+```json
+{ "shader": "shaders/glow.glsl", "values": { "tint": [0.6, 1.0, 0.7, 1.0], "swell": 0.05 } }
+```
+
+```luau
+ctx.commands:spawn({
+	["aylo.Transform3D"] = { position = vector.create(0, 0.5, 0) },
+	["aylo.MeshRenderer"] = { mesh = crate, material = engine.assets.material("materials/glow.material") },
+})
+```
+
+What a 3D shader reads and writes:
+
+| Name | Type | In `vertex()` | In `fragment()` |
+|---|---|---|---|
+| `VERTEX` | `vec3` | the vertex, in the model's space (the entity's transform places it after) | - |
+| `NORMAL` | `vec3` | the vertex's normal, in the model's space | the surface's normal, in the world, unit |
+| `UV` | `vec2` | where the texture will be read | where the texture is read |
+| `COLOR` | `vec4` | the draw's colour times the part's base colour, straight alpha | the pixel's colour, **premultiplied** (texture times colour) |
+| `TEXTURE` | `sampler2D` | the part's base colour texture (white without one) | the same |
+| `TIME` | `float` | seconds since the renderer started | the same |
+
+A model's `instance uniform` values are the ones the shader declares: a model has no `aylo.MaterialInstance` yet. The
+Inspector edits a 3D material as a 2D one. A shader cannot say both `#pragma screen` and `#pragma mesh`.
+
+!!! warning "A 2D material on a model"
+    A model given a material whose shader is a 2D one (no `#pragma mesh`) is drawn with the built-in shader, and the
+    output says once `[Mesh] The material of a MeshRenderer has a 2D shader (...)`. A 3D shader is not drawn on
+    sprites either. The raylib renderer draws no game shader: there, a model keeps the built-in look.
+
 ## Changing it while the game runs
 
 With hot reload on, saving a `.material` file your game loaded changes every drawing that uses it in the next frame.
@@ -82,6 +128,7 @@ Assets.
 | `Material '...': value 'tint' must be a number or 2 to 4 numbers` | a value of the wrong kind |
 | `Material '...': texture 'noise' must be an image path` | a texture that is not a string |
 | `Material '...': ...` with the reason of the file system | the file cannot be read (missing, misspelled) |
+| `Shader '...': it says both #pragma screen and #pragma mesh; it can be one or the other` | both pragmas in one shader |
 
 A value the shader does not declare, or of another type than the declared one, is reported when the material is
 created, and the drawings keep the default material.
