@@ -98,7 +98,7 @@ camera that is not an entity, with Unity's controls:
 | W, E, R | move, rotate, scale tool; the gizmo of the tool on the selection |
 | 2D / 3D button | the 2D world from above (pan, zoom) or the 3D world |
 
-It draws through the renderer's preview (a second view into a texture), a grid with `Lines3D`, and the gizmos over it.
+It draws through the renderer's preview (a second view into a texture, which gains a 3D view and lines of its own), a grid with `Lines3D`, and the gizmos over it with ImGui. Details in `docs/Editor.md` (The Scene panel).
 
 ## Tasks
 

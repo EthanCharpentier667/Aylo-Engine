@@ -218,7 +218,10 @@ A tool built on the renderer (the editor, [`Editor.md`](Editor.md)) uses two opt
   (`_previewTexture`, made like the scene's by `adoptTarget()`). The world is uploaded once (`uploadWorld()`) and
   recorded twice (`recordWorld()`), first into the preview, with its own `FrameGlobals` (`_previewGlobals`, one unit
   per pixel at zoom 1), then into the scene; neither the overlay nor the meshes are in the preview, and `clearWorld()`
-  forgets the world once both are recorded.
+  forgets the world once both are recorded. With `preview.view3D`, the 3D world is recorded into the preview first
+  (`recordWorld3D()` with a `World3DTarget` of its own: `_previewGlobals3D`, `_previewDepth`), then the 2D world over
+  it unless `world2D` is false. The preview's own `lines` are appended to the frame's 3D lines before the upload: the
+  scene draws the first `_sceneLineVertices`, the preview all of them.
 
 `getFrameStats()` gives the sprites, shapes, overlay items, mesh triangles and textures of the last frame.
 
