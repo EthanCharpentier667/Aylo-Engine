@@ -52,6 +52,8 @@ struct FakeAudioState {
     std::map<std::uint32_t, float> volumes;                        ///< The last setVolume() of each voice index.
     std::map<std::uint32_t, float> pitches;                        ///< The last setPitch() of each voice index.
     std::map<std::uint32_t, float> pans;                           ///< The last setPan() of each voice index.
+    std::map<std::uint32_t, float> lowpasses;                      ///< The last setLowpass() of each voice index.
+    double time{0.0};                                              ///< What getTime() returns; the test moves it.
     float masterVolume{-1.0F};                                     ///< The last setMasterVolume().
     std::map<aylo::contract::audiodevice::Bus, float> busVolumes;  ///< The last setBusVolume() of each bus.
     std::set<std::uint32_t> playing;                               ///< The voice indices playing.
@@ -125,6 +127,14 @@ class FakeAudioDevice : public aylo::contract::audiodevice::IAudioDevice {
             _state->pans[voice.index] = pan;
         }
     }
+
+    void setLowpass(aylo::contract::audiodevice::VoiceId voice, float cutoff) override {
+        if (isPlaying(voice)) {
+            _state->lowpasses[voice.index] = cutoff;
+        }
+    }
+
+    [[nodiscard]] double getTime() const override { return _state->time; }
 
     [[nodiscard]] bool isPlaying(aylo::contract::audiodevice::VoiceId voice) const override {
         return voice.generation == 1 && _state->playing.contains(voice.index);
