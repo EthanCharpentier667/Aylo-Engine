@@ -154,18 +154,41 @@ void startPendingMusic(Audio& audio, const AudioAssets& sounds) {
 
 /// @brief PostUpdate: plays the one-shot sounds, then the music events.
 void playEvents(ecs::NonSendMut<Audio> audio, ecs::Res<AudioAssets> sounds, ecs::EventReader<PlaySound> playSounds,
-                ecs::EventReader<StopMusic> stopMusics, ecs::EventReader<PlayMusic> playMusics, Listeners listeners) {
+                ecs::EventReader<ControlVoice> controls, ecs::EventReader<StopMusic> stopMusics,
+                ecs::EventReader<PlayMusic> playMusics, Listeners listeners) {
     if (!audio->device) {
         return;
     }
     const std::optional<glm::vec2> listener = findListener(listeners);
     for (const PlaySound& event : playSounds) {
         if (const std::optional<contract::audiodevice::SoundId> sound = sounds->getSound(event.sound)) {
-            static_cast<void>(audio->device->play(
+            const contract::audiodevice::VoiceId voice = audio->device->play(
                 *sound, contract::audiodevice::PlayParams{.bus = event.bus,
                                                           .volume = event.volume,
                                                           .pitch = event.pitch,
-                                                          .pan = panOf(event.position, listener, audio->panDistance)}));
+                                                          .pan = panOf(event.position, listener, audio->panDistance),
+                                                          .loop = event.loop,
+                                                          .startAt = event.startAt,
+                                                          .lowpass = event.lowpass});
+            if (event.voice != 0) {
+                audio->scripted.insert_or_assign(event.voice, voice);
+            }
+        }
+    }
+    for (const ControlVoice& event : controls) {
+        const auto found = audio->scripted.find(event.voice);
+        if (found == audio->scripted.end()) {
+            continue;
+        }
+        if (event.volume) {
+            audio->device->setVolume(found->second, *event.volume);
+        }
+        if (event.lowpass) {
+            audio->device->setLowpass(found->second, *event.lowpass);
+        }
+        if (event.stop) {
+            audio->device->stop(found->second, event.fadeOut);
+            audio->scripted.erase(found);
         }
     }
     for (const StopMusic& event : stopMusics) {
@@ -229,6 +252,7 @@ void updateDevice(ecs::NonSendMut<Audio> audio, ecs::Res<plugins::audio::AudioVo
     }
     applyVolumes(*audio, *volumes);
     audio->device->update();
+    std::erase_if(audio->scripted, [&](const auto& entry) { return !audio->device->isPlaying(entry.second); });
 }
 }  // namespace
 
@@ -245,6 +269,7 @@ std::span<const std::string_view> AudioPlugin::getDependencies() const noexcept 
 void AudioPlugin::build(ecs::App& app) {
     ecs::Events& events = app.getWorld().getEvents();
     static_cast<void>(events.registerType<PlaySound>());
+    static_cast<void>(events.registerType<ControlVoice>());
     static_cast<void>(events.registerType<PlayMusic>());
     static_cast<void>(events.registerType<StopMusic>());
 

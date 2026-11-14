@@ -471,15 +471,62 @@ TEST(AudioCalls, LoadSoundAsksForTheSound) {
     EXPECT_TRUE(entry->desc.stream);
 }
 
+TEST(AudioCalls, PlaySoundGivesAVoiceIdAndTheSchedule) {
+    AudioCallsApp audio;
+    const AssetId kick = AssetId::fromPath("kick.wav");
+    const auto first = call<aylo::plugins::audio::VoiceResult>(
+        audio.app, aylo::plugins::audio::kPlaySoundCall,
+        aylo::plugins::audio::PlaySoundArguments{.sound = kick, .loop = true, .startAt = 1.5, .lowpass = 800.0F});
+    const auto second = call<aylo::plugins::audio::VoiceResult>(
+        audio.app, aylo::plugins::audio::kPlaySoundCall, aylo::plugins::audio::PlaySoundArguments{.sound = kick});
+    EXPECT_NE(first.voice, 0U);
+    EXPECT_NE(first.voice, second.voice);
+
+    aylo::ecs::EventCursor cursor;
+    for (const aylo::plugins::audio::PlaySound& sound :
+         audio.app.getWorld().getEvents().read<aylo::plugins::audio::PlaySound>(cursor)) {
+        if (sound.voice == first.voice) {
+            EXPECT_TRUE(sound.loop);
+            EXPECT_DOUBLE_EQ(sound.startAt, 1.5);
+            EXPECT_FLOAT_EQ(sound.lowpass, 800.0F);
+        }
+    }
+}
+
+namespace {
+/// @return What `aylo.audio.getTime` says.
+double audioTime(aylo::ecs::App& app) {
+    aylo::ecs::Calls& calls = app.getWorld().getCalls();
+    const aylo::ecs::CallInfo* info = calls.findByName(aylo::plugins::audio::kGetTimeCall);
+    EXPECT_NE(info, nullptr);
+    std::array<std::byte, sizeof(aylo::plugins::audio::TimeResult)> result{};
+    calls.invoke(app.getWorld(), info->id, std::span<const std::byte>{}, result);
+    aylo::plugins::audio::TimeResult value{};
+    std::memcpy(&value, result.data(), sizeof(value));
+    return value.time;
+}
+}  // namespace
+
+TEST(AudioCalls, GetTimeReadsTheAudioClock) {
+    AudioCallsApp audio;
+    EXPECT_DOUBLE_EQ(audioTime(audio.app), 0.0);  // no device before the first frame
+    audio.app.runFrame();
+    audio.state->time = 12.5;
+    EXPECT_DOUBLE_EQ(audioTime(audio.app), 12.5);
+}
+
 TEST(AudioCalls, PlaySoundSendsAPlaySound) {
     AudioCallsApp audio;
     const AssetId shot = AssetId::fromPath("shot.wav");
-    call<void>(audio.app, aylo::plugins::audio::kPlaySoundCall,
-               aylo::plugins::audio::PlaySoundArguments{.sound = shot, .bus = "music", .volume = 0.5F});
-    call<void>(audio.app, aylo::plugins::audio::kPlaySoundCall,
-               aylo::plugins::audio::PlaySoundArguments{.sound = shot, .position = {3.0F, 4.0F}});
-    EXPECT_THROW(call<void>(audio.app, aylo::plugins::audio::kPlaySoundCall,
-                            aylo::plugins::audio::PlaySoundArguments{.sound = shot, .bus = "voice"}),
+    call<aylo::plugins::audio::VoiceResult>(
+        audio.app, aylo::plugins::audio::kPlaySoundCall,
+        aylo::plugins::audio::PlaySoundArguments{.sound = shot, .bus = "music", .volume = 0.5F});
+    call<aylo::plugins::audio::VoiceResult>(
+        audio.app, aylo::plugins::audio::kPlaySoundCall,
+        aylo::plugins::audio::PlaySoundArguments{.sound = shot, .position = {3.0F, 4.0F}});
+    EXPECT_THROW(call<aylo::plugins::audio::VoiceResult>(
+                     audio.app, aylo::plugins::audio::kPlaySoundCall,
+                     aylo::plugins::audio::PlaySoundArguments{.sound = shot, .bus = "voice"}),
                  aylo::plugins::audio::exceptions::AudioCallException);
 
     aylo::ecs::EventCursor cursor;

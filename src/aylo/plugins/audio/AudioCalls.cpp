@@ -21,6 +21,7 @@
 #include "aylo/ecs/system/ResourceParam.hpp"
 #include "plugins/audio/AudioAssets.hpp"
 #include "plugins/audio/AudioEvents.hpp"
+#include "plugins/audio/AudioResources.hpp"
 #include "plugins/audio/exceptions/AudioCallException.hpp"
 
 namespace aylo::plugins::audio {
@@ -42,17 +43,39 @@ SoundResult loadSound(ecs::ResMut<AudioAssets> sounds, const LoadSoundArguments&
     return SoundResult{.sound = sounds->load(std::filesystem::path{arguments.path.view()}, desc)};
 }
 
-void playSound(ecs::EventWriter<PlaySound> sounds, const PlaySoundArguments& arguments) {
+VoiceResult playSound(ecs::NonSendMut<Audio> audio, ecs::EventWriter<PlaySound> sounds,
+                      const PlaySoundArguments& arguments) {
     PlaySound sound{
         .sound = arguments.sound,
         .bus = requireBus(arguments.bus),
         .volume = arguments.volume,
         .pitch = arguments.pitch,
+        .loop = arguments.loop,
+        .startAt = arguments.startAt,
+        .lowpass = arguments.lowpass,
+        .voice = audio->nextVoice++,
     };
     if (!std::isnan(arguments.position.x) && !std::isnan(arguments.position.y)) {
         sound.position = arguments.position;
     }
     sounds.send(sound);
+    return VoiceResult{.voice = sound.voice};
+}
+
+TimeResult getTime(ecs::NonSend<Audio> audio) {
+    return TimeResult{.time = audio->device ? audio->device->getTime() : 0.0};
+}
+
+void setVolume(ecs::EventWriter<ControlVoice> controls, const SetVolumeArguments& arguments) {
+    controls.send(ControlVoice{.voice = arguments.voice, .volume = arguments.volume});
+}
+
+void setFilter(ecs::EventWriter<ControlVoice> controls, const SetFilterArguments& arguments) {
+    controls.send(ControlVoice{.voice = arguments.voice, .lowpass = arguments.lowpass});
+}
+
+void stopVoice(ecs::EventWriter<ControlVoice> controls, const StopVoiceArguments& arguments) {
+    controls.send(ControlVoice{.voice = arguments.voice, .stop = true, .fadeOut = arguments.fadeOut});
 }
 }  // namespace
 
@@ -68,6 +91,10 @@ void addAudioCalls(ecs::App& app) {
     addAudioForms(app.getPluginRegistry());
     app.addCall(std::string{kLoadSoundCall}, &loadSound);
     app.addCall(std::string{kPlaySoundCall}, &playSound);
+    app.addCall(std::string{kGetTimeCall}, &getTime);
+    app.addCall(std::string{kSetVolumeCall}, &setVolume);
+    app.addCall(std::string{kSetFilterCall}, &setFilter);
+    app.addCall(std::string{kStopVoiceCall}, &stopVoice);
 }
 
 }  // namespace aylo::plugins::audio

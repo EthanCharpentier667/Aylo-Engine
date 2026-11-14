@@ -59,7 +59,9 @@ class AYLO_AUDIO_MINIAUDIO_API MiniaudioDevice : public contract::audiodevice::I
     void setVolume(contract::audiodevice::VoiceId voice, float volume) override;
     void setPitch(contract::audiodevice::VoiceId voice, float pitch) override;
     void setPan(contract::audiodevice::VoiceId voice, float pan) override;
+    void setLowpass(contract::audiodevice::VoiceId voice, float cutoff) override;
     [[nodiscard]] bool isPlaying(contract::audiodevice::VoiceId voice) const override;
+    [[nodiscard]] double getTime() const override;
 
     void setMasterVolume(float volume) override;
     void setBusVolume(contract::audiodevice::Bus bus, float volume) override;

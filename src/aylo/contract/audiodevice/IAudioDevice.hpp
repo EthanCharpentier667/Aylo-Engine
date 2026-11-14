@@ -46,9 +46,15 @@ class AYLO_HEADER_ONLY_API IAudioDevice {
     virtual void setVolume(VoiceId voice, float volume) = 0;
     virtual void setPitch(VoiceId voice, float pitch) = 0;
     virtual void setPan(VoiceId voice, float pan) = 0;
+    /// @brief Filters the voice through a low-pass of @p cutoff Hz; 0 (or less) removes the filter.
+    virtual void setLowpass(VoiceId voice, float cutoff) = 0;
     /// @return False once the voice has ended or been stopped.
     [[nodiscard]] virtual bool isPlaying(VoiceId voice) const = 0;
     /// @}
+
+    /// @brief The audio clock, in seconds: it advances with the samples the output consumes (not with the frame rate),
+    /// from 0 when the device opens. The time PlayParams::startAt is read against.
+    [[nodiscard]] virtual double getTime() const = 0;
 
     /// @name Mixing
     /// @{

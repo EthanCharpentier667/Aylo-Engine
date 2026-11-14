@@ -8,10 +8,12 @@
 #include <gtest/gtest.h>
 
 #include <array>
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <exception>
 #include <memory>
+#include <thread>
 #include <vector>
 
 #include "aylo/audio/miniaudio/Registration.hpp"
@@ -21,6 +23,7 @@
 #include "aylo/core/config/Settings.hpp"
 
 using aylo::contract::audiodevice::IAudioDevice;
+using aylo::contract::audiodevice::PlayParams;
 using aylo::contract::audiodevice::SoundDesc;
 using aylo::contract::audiodevice::SoundId;
 
@@ -107,4 +110,55 @@ TEST_F(MiniaudioDeviceTest, RefusesBytesThatAreNoSound) {
 
     EXPECT_ANY_THROW(static_cast<void>(_device->createSound(noise, SoundDesc{.stream = true})));
     EXPECT_ANY_THROW(static_cast<void>(_device->createSound(noise, SoundDesc{.stream = false})));
+}
+
+TEST_F(MiniaudioDeviceTest, TheAudioClockAdvancesWithTheOutput) {
+    const double before = _device->getTime();
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds{2};
+    while (_device->getTime() <= before && std::chrono::steady_clock::now() < deadline) {
+        std::this_thread::sleep_for(std::chrono::milliseconds{1});
+    }
+    EXPECT_GT(_device->getTime(), before);
+}
+
+TEST_F(MiniaudioDeviceTest, TwoVoicesScheduledOnTheSameTimeStartTogether) {
+    // 0.05 s of silence each: the voices end 0.05 s after they start, so their ends show their starts.
+    const SoundId sound = _device->createSound(silentWav(2205), SoundDesc{.stream = false});
+    ASSERT_NE(sound.value, 0U);
+    const double startAt = _device->getTime() + 0.3;
+    const auto first = _device->play(sound, PlayParams{.startAt = startAt});
+    const auto second = _device->play(sound, PlayParams{.startAt = startAt});
+    EXPECT_TRUE(_device->isPlaying(first));  // scheduled, not ended
+    EXPECT_TRUE(_device->isPlaying(second));
+
+    using Clock = std::chrono::steady_clock;
+    const auto deadline = Clock::now() + std::chrono::seconds{3};
+    while (_device->isPlaying(first) && Clock::now() < deadline) {
+    }
+    ASSERT_FALSE(_device->isPlaying(first)) << "the first voice never ended";
+    const auto firstEnded = Clock::now();
+    while (_device->isPlaying(second) && Clock::now() < deadline) {
+    }
+    const auto gap = Clock::now() - firstEnded;
+    ASSERT_FALSE(_device->isPlaying(second)) << "the second voice never ended";
+    EXPECT_LT(gap, std::chrono::milliseconds{1});
+    EXPECT_GE(_device->getTime(), startAt);
+    _device->destroySound(sound);
+}
+
+TEST_F(MiniaudioDeviceTest, ALoopingVoiceKeepsPlayingUntilStoppedAndTakesVolumeAndLowpass) {
+    const SoundId sound = _device->createSound(silentWav(441), SoundDesc{.stream = false});  // 0.01 s
+    ASSERT_NE(sound.value, 0U);
+    const auto voice = _device->play(sound, PlayParams{.loop = true, .lowpass = 800.0F});
+    std::this_thread::sleep_for(std::chrono::milliseconds{100});
+    _device->update();
+    EXPECT_TRUE(_device->isPlaying(voice));
+    _device->setVolume(voice, 0.4F);
+    _device->setLowpass(voice, 300.0F);
+    _device->setLowpass(voice, 0.0F);
+    EXPECT_TRUE(_device->isPlaying(voice));
+    _device->stop(voice);
+    EXPECT_FALSE(_device->isPlaying(voice));
+    _device->setLowpass(voice, 300.0F);  // stale: nothing happens
+    _device->destroySound(sound);
 }

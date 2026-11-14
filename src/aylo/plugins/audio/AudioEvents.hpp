@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <glm/ext/vector_float2.hpp>
 #include <optional>
 
@@ -25,8 +26,23 @@ struct PlaySound {
     float volume{1.0F};                                                    ///< Linear gain, 1 = unchanged.
     float pitch{1.0F};                                                     ///< Playback speed, 1 = unchanged.
     std::optional<glm::vec2> position;  ///< World position to pan from; none: centred.
+    bool loop{false};                   ///< Plays until stopped.
+    double startAt{0.0};                ///< When to start, in seconds of the audio clock; 0 or past: at once.
+    float lowpass{0.0F};                ///< Low-pass cutoff in Hz; 0: none.
+    std::uint32_t voice{0};             ///< The id `aylo.audio.playSound` gave the script; 0: not asked for.
 };
 AYLO_ECS_EVENT(PlaySound, "aylo.PlaySound");
+
+/// @brief Changes or stops a voice a script started with `aylo.audio.playSound`, by the id the call gave. Does nothing
+/// if that voice ended, was never played (its sound was not loaded) or was never given.
+struct ControlVoice {
+    std::uint32_t voice{0};        ///< The id `aylo.audio.playSound` gave.
+    std::optional<float> volume;   ///< New linear gain.
+    std::optional<float> lowpass;  ///< New low-pass cutoff in Hz; 0 removes it.
+    bool stop{false};              ///< Stops the voice, after the changes above.
+    float fadeOut{0.0F};           ///< Seconds the stop fades out over.
+};
+AYLO_ECS_EVENT(ControlVoice, "aylo.ControlVoice");
 
 /// @brief Replaces the music: the current track fades out while this one fades in, looping on the music bus. Waits for
 /// its sound if it is not loaded yet; a later PlayMusic or StopMusic replaces it.

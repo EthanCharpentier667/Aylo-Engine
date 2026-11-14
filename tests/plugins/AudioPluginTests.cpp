@@ -346,3 +346,47 @@ TEST(AudioPlugin, StopsNoMusicBeforeTheFirstOne) {
     app.app().runFrame();
     EXPECT_EQ(app.state().stopCalls, 0);
 }
+
+TEST(AudioPlugin, PlaysAScheduledLoopingFilteredVoice) {
+    AudioApp app;
+    const aylo::core::asset::AssetId kick = app.load("kick.wav");
+    app.send(
+        aylo::plugins::audio::PlaySound{.sound = kick, .loop = true, .startAt = 4.25, .lowpass = 800.0F, .voice = 1});
+    app.app().runFrame();
+    ASSERT_EQ(app.state().plays.size(), 1U);
+    const auto& params = app.state().plays[0].params;
+    EXPECT_TRUE(params.loop);
+    EXPECT_DOUBLE_EQ(params.startAt, 4.25);
+    EXPECT_FLOAT_EQ(params.lowpass, 800.0F);
+}
+
+TEST(AudioPlugin, ControlsAScriptVoiceByItsId) {
+    AudioApp app;
+    app.send(aylo::plugins::audio::PlaySound{.sound = app.load("kick.wav"), .loop = true, .voice = 7});
+    app.app().runFrame();
+
+    app.send(aylo::plugins::audio::ControlVoice{.voice = 7, .volume = 0.4F, .lowpass = 500.0F});
+    app.app().runFrame();
+    EXPECT_FLOAT_EQ(app.state().volumes.at(0), 0.4F);
+    EXPECT_FLOAT_EQ(app.state().lowpasses.at(0), 500.0F);
+
+    app.send(aylo::plugins::audio::ControlVoice{.voice = 7, .stop = true, .fadeOut = 0.5F});
+    app.app().runFrame();
+    ASSERT_EQ(app.state().stops.size(), 1U);
+    EXPECT_FLOAT_EQ(app.state().stops[0].second, 0.5F);
+    EXPECT_FALSE(app.state().playing.contains(0));
+}
+
+TEST(AudioPlugin, IgnoresAControlForAVoiceThatIsUnknownOrEnded) {
+    AudioApp app;
+    app.send(aylo::plugins::audio::PlaySound{.sound = app.load("kick.wav"), .voice = 3});
+    app.app().runFrame();
+    app.state().playing.clear();  // the voice ended
+    app.app().runFrame();         // the plugin forgets it
+
+    app.send(aylo::plugins::audio::ControlVoice{.voice = 3, .volume = 0.1F});
+    app.send(aylo::plugins::audio::ControlVoice{.voice = 99, .volume = 0.1F, .stop = true});
+    app.app().runFrame();
+    EXPECT_TRUE(app.state().volumes.empty());
+    EXPECT_EQ(app.state().stopCalls, 0);
+}

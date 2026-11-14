@@ -7,6 +7,7 @@
 
 #include "plugins/audio/NullAudioDevice.hpp"
 
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
@@ -57,7 +58,11 @@ contract::audiodevice::VoiceId NullAudioDevice::play(contract::audiodevice::Soun
         _voices.emplace_back();
     }
     Voice& voice = _voices.at(index);
-    voice = Voice{.generation = voice.generation + 1, .sound = sound, .playing = true, .loop = params.loop};
+    voice = Voice{.generation = voice.generation + 1,
+                  .sound = sound,
+                  .playing = true,
+                  .loop = params.loop,
+                  .startAt = params.startAt};
     return contract::audiodevice::VoiceId{.index = static_cast<std::uint32_t>(index), .generation = voice.generation};
 }
 
@@ -79,6 +84,12 @@ void NullAudioDevice::setPitch(contract::audiodevice::VoiceId /*voice*/, float /
 
 void NullAudioDevice::setPan(contract::audiodevice::VoiceId /*voice*/, float /*pan*/) {}
 
+void NullAudioDevice::setLowpass(contract::audiodevice::VoiceId /*voice*/, float /*cutoff*/) {}
+
+double NullAudioDevice::getTime() const {
+    return std::chrono::duration<double>(std::chrono::steady_clock::now() - _opened).count();
+}
+
 bool NullAudioDevice::isPlaying(contract::audiodevice::VoiceId voice) const { return find(voice) != nullptr; }
 
 void NullAudioDevice::setMasterVolume(float /*volume*/) {}
@@ -86,8 +97,9 @@ void NullAudioDevice::setMasterVolume(float /*volume*/) {}
 void NullAudioDevice::setBusVolume(contract::audiodevice::Bus /*bus*/, float /*volume*/) {}
 
 void NullAudioDevice::update() {
+    const double now = getTime();
     for (Voice& voice : _voices) {
-        if (voice.playing && !voice.loop && !voice.paused) {
+        if (voice.playing && !voice.loop && !voice.paused && voice.startAt <= now) {
             voice.playing = false;
         }
     }

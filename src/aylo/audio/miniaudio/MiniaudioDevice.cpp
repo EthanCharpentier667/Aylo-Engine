@@ -9,6 +9,7 @@
 
 #include <miniaudio.h>
 
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
@@ -90,6 +91,18 @@ contract::audiodevice::VoiceId MiniaudioDevice::play(contract::audiodevice::Soun
         ma_sound_set_fade_in_milliseconds(raw, 0.0F, 1.0F,
                                           static_cast<ma_uint64>(static_cast<double>(params.fadeIn) * 1000.0));
     }
+    try {
+        if (params.lowpass > 0.0F) {
+            voice->setLowpass(params.lowpass);
+        }
+    } catch (const exceptions::MiniaudioException& error) {
+        std::cerr << "[MiniaudioDevice] " << error.what() << '\n';
+    }
+    const double rate = _engine.sampleRate();
+    if (params.startAt > 0.0) {
+        // On a sample of the output clock, so voices given the same time start on the same sample.
+        ma_sound_set_start_time_in_pcm_frames(raw, static_cast<ma_uint64>(std::llround(params.startAt * rate)));
+    }
     return _voices.add(std::move(voice), sound, params.bus);
 }
 
@@ -117,6 +130,20 @@ void MiniaudioDevice::setPan(contract::audiodevice::VoiceId voice, float pan) {
     if (core::Sound* found = _voices.find(voice)) {
         ma_sound_set_pan(found->get(), pan);
     }
+}
+
+void MiniaudioDevice::setLowpass(contract::audiodevice::VoiceId voice, float cutoff) {
+    if (core::Sound* found = _voices.find(voice)) {
+        try {
+            found->setLowpass(cutoff);
+        } catch (const exceptions::MiniaudioException& error) {
+            std::cerr << "[MiniaudioDevice] " << error.what() << '\n';
+        }
+    }
+}
+
+double MiniaudioDevice::getTime() const {
+    return static_cast<double>(_engine.timeInFrames()) / static_cast<double>(_engine.sampleRate());
 }
 
 bool MiniaudioDevice::isPlaying(contract::audiodevice::VoiceId voice) const { return _voices.isPlaying(voice); }
