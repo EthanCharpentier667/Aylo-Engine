@@ -11,6 +11,8 @@
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
+#include <span>
+#include <string_view>
 #include <type_traits>
 
 #include "aylo/ecs/entity/Entity.hpp"
@@ -66,6 +68,27 @@ struct FieldTypeOf<detail::TextByte> : std::integral_constant<FieldType, FieldTy
 template <typename T>
 concept HasFieldType = requires {
     { FieldTypeOf<T>::value } -> std::convertible_to<FieldType>;
+};
+
+/// @brief The names of the values of an enum reflected as an integer, in `kNames`: value `i` is `kNames[i]`, so the
+/// enum's values must run from 0 without gaps. Empty for other types.
+///
+/// @details Specialize it next to the enum's FieldTypeOf, with the names scripts and capsule files write: short,
+/// lowercase, as the manual spells them. A field of the enum then reads as its name in a script and takes the name or
+/// the number.
+/// @code
+/// template <>
+/// struct aylo::ecs::FieldEnumNames<aylo::plugins::physics::ShapeType> {
+///     static constexpr std::array<std::string_view, 3> kNames{"box", "circle", "capsule"};
+/// };
+/// @endcode
+template <typename T>
+struct FieldEnumNames {};
+
+/// @brief True when a FieldEnumNames specialization names the values of `T`.
+template <typename T>
+concept HasEnumNames = requires {
+    { std::span<const std::string_view>{FieldEnumNames<T>::kNames} };
 };
 
 namespace detail {

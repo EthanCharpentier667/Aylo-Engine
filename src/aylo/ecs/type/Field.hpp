@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <span>
 #include <string>
+#include <string_view>
 
 namespace aylo::ecs {
 /// @brief Types a field of a component or a resource can have, understood by reflection, scripting and
@@ -92,5 +93,8 @@ struct FieldInfo {
     std::uint32_t offset{0};           ///< Byte offset of the first value inside the type's value.
     std::uint32_t count{1};            ///< Number of values: 1 for a scalar, N for a fixed array.
     const ListAccess* list{nullptr};   ///< How to reach the values of a list field; null for any other field.
+    /// The names of the values of an enum field, which is reflected as its integer: value `i` is `enumNames[i]`
+    /// (FieldEnumNames). Empty for any other field. Scripts, capsule files and the editor show and take the names.
+    std::span<const std::string_view> enumNames;
 };
 }  // namespace aylo::ecs

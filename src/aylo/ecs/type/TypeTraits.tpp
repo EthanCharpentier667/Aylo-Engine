@@ -22,11 +22,16 @@ constexpr FieldDescription describeField(std::string_view name, std::size_t offs
         "AYLO_ECS: a listed field has a type with no FieldType. Use a supported type (bool, fixed-size integers, "
         "float, double, Entity, or a std::array or std::vector of them) or specialize aylo::ecs::FieldTypeOf.");
     if constexpr (HasFieldType<Element>) {
+        std::span<const std::string_view> enumNames;
+        if constexpr (HasEnumNames<Element>) {
+            enumNames = FieldEnumNames<Element>::kNames;
+        }
         return FieldDescription{.name = name,
                                 .type = FieldTypeOf<Element>::value,
                                 .offset = static_cast<std::uint32_t>(offset),
                                 .count = FieldElement<Member>::kCount,
-                                .list = FieldElement<Member>::kList};
+                                .list = FieldElement<Member>::kList,
+                                .enumNames = enumNames};
     } else {
         return FieldDescription{};  // Not reached: the static_assert above already failed; avoids a second error.
     }
@@ -43,7 +48,8 @@ TypeInfo TypeTraits<T>::makeTypeInfo() {
                                         .type = field.type,
                                         .offset = field.offset,
                                         .count = field.count,
-                                        .list = field.list});
+                                        .list = field.list,
+                                        .enumNames = field.enumNames});
     }
     return info;
 }
