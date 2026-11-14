@@ -62,17 +62,20 @@ struct FakeBackendState {
     int endFrames{0};                                  ///< renderer.endFrame() calls.
     aylo::contract::renderer::Color clearColor{0.0F};  ///< The last clear colour.
     std::vector<glm::uvec2> resizes;                   ///< Every renderer.resize() call.
-    std::vector<aylo::contract::renderer::TextureDesc> createdTextures;  ///< Every createTexture() desc.
-    std::vector<std::vector<std::byte>> createdPixels;                   ///< Every createTexture() pixels.
-    std::vector<aylo::contract::renderer::TextureId> destroyedTextures;  ///< Every destroy() call.
-    std::vector<aylo::contract::renderer::View> views;                   ///< Every setView() call.
-    std::vector<aylo::contract::renderer::View3D> views3D;               ///< Every setView3D() call.
-    std::vector<aylo::contract::renderer::Lines3D> lines3D;              ///< Every drawLines3D() call.
-    bool draws3D{true};                                                  ///< What supports3D() returns.
-    std::vector<aylo::contract::renderer::Sprite> sprites;               ///< Every draw(Sprite) call.
-    std::vector<aylo::contract::renderer::Shape> shapes;                 ///< Every draw(Shape) call.
-    std::vector<aylo::contract::renderer::Text> texts;                   ///< Every draw(Text) call.
-    bool gpuParticles{false};                                            ///< What supportsGpuParticles() returns.
+    std::vector<aylo::contract::renderer::TextureDesc> createdTextures;         ///< Every createTexture() desc.
+    std::vector<std::vector<std::byte>> createdPixels;                          ///< Every createTexture() pixels.
+    std::vector<aylo::contract::renderer::TextureId> destroyedTextures;         ///< Every destroy() call.
+    std::vector<aylo::contract::renderer::View> views;                          ///< Every setView() call.
+    std::vector<aylo::contract::renderer::View3D> views3D;                      ///< Every setView3D() call.
+    std::vector<aylo::contract::renderer::Lines3D> lines3D;                     ///< Every drawLines3D() call.
+    bool draws3D{true};                                                         ///< What supports3D() returns.
+    std::vector<aylo::contract::renderer::StaticMeshDesc> createdStaticMeshes;  ///< Every createStaticMesh() call.
+    std::vector<aylo::contract::renderer::StaticMeshId> destroyedStaticMeshes;  ///< Every destroyStaticMesh() call.
+    std::vector<aylo::contract::renderer::StaticMeshDraw> staticMeshDraws;      ///< Every drawStaticMesh() call.
+    std::vector<aylo::contract::renderer::Sprite> sprites;                      ///< Every draw(Sprite) call.
+    std::vector<aylo::contract::renderer::Shape> shapes;                        ///< Every draw(Shape) call.
+    std::vector<aylo::contract::renderer::Text> texts;                          ///< Every draw(Text) call.
+    bool gpuParticles{false};  ///< What supportsGpuParticles() returns.
     std::vector<aylo::contract::renderer::ParticleSystemDesc> createdParticleSystems;  ///< Every create call.
     std::vector<aylo::contract::renderer::ParticleSystemId> destroyedParticleSystems;  ///< Every destroy() call.
     std::vector<aylo::contract::renderer::ParticleEmission> simulations;               ///< Every simulate() call.
@@ -171,6 +174,20 @@ class FakeRenderer : public aylo::contract::renderer::IRenderer {
     [[nodiscard]] bool supports3D() const noexcept override { return _state->draws3D; }
     void setView3D(const aylo::contract::renderer::View3D& view) override { _state->views3D.push_back(view); }
     void drawLines3D(const aylo::contract::renderer::Lines3D& lines) override { _state->lines3D.push_back(lines); }
+    [[nodiscard]] aylo::contract::renderer::StaticMeshId createStaticMesh(
+        const aylo::contract::renderer::StaticMeshDesc& desc) override {
+        if (!_state->draws3D) {
+            throw aylo::contract::platform::exceptions::UnsupportedFeatureException("FakeRenderer: no 3D");
+        }
+        _state->createdStaticMeshes.push_back(desc);
+        return {.index = static_cast<std::uint32_t>(_state->createdStaticMeshes.size()), .generation = 1};
+    }
+    void destroyStaticMesh(aylo::contract::renderer::StaticMeshId mesh) override {
+        _state->destroyedStaticMeshes.push_back(mesh);
+    }
+    void drawStaticMesh(const aylo::contract::renderer::StaticMeshDraw& draw) override {
+        _state->staticMeshDraws.push_back(draw);
+    }
     void draw(const aylo::contract::renderer::Sprite& sprite) override {
         _state->sprites.push_back(sprite);
         _state->drawOrder.push_back('s');

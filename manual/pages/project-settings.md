@@ -162,6 +162,7 @@ end
 | `aylo.Ui`, see [User interface](ui.md) | Menus and HUDs: layout, buttons, sliders, text fields | client |
 | `aylo.Editor`, see [Editor](editor.md) | Your scenes edited in a window of panels, and the game played there. Do not list it: `aylo-editor` adds it | both, in one process |
 | `aylo.Particle`, see [Particles](particles.md) | Particle emitters and effects | client |
+| `aylo.Mesh`, see [2D and 3D](3d.md#models-aylomeshrenderer) | 3D models from glTF files | client |
 | `aylo.audio` | Sounds, music and the listener | client |
 | `aylo.Physics`, see [Physics](physics.md) | 2D physics | both |
 | `aylo.PhysicsDebug` | Draws the colliders and velocities | client |

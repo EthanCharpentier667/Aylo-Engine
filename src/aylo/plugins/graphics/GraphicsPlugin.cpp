@@ -11,13 +11,8 @@
 #include <array>
 #include <cstdint>
 #include <glm/common.hpp>
-#include <glm/ext/matrix_float4x4.hpp>
-#include <glm/ext/matrix_transform.hpp>
-#include <glm/ext/quaternion_float.hpp>
-#include <glm/ext/quaternion_geometric.hpp>
 #include <glm/ext/vector_float2.hpp>
 #include <glm/ext/vector_uint2.hpp>
-#include <glm/gtc/quaternion.hpp>
 #include <glm/trigonometric.hpp>
 #include <iostream>
 #include <memory>
@@ -67,6 +62,7 @@
 #include "plugins/input/InputPlugin.hpp"
 #include "plugins/input/PlatformEvent.hpp"
 #include "plugins/transform/Transform.hpp"
+#include "plugins/transform/TransformMath.hpp"
 #include "plugins/transform/TransformPlugin.hpp"
 
 namespace aylo::plugins::graphics {
@@ -262,13 +258,6 @@ void applyCamera3D(ecs::NonSendMut<plugins::graphics::Backend> backend,
     }
 }
 
-/// @return The matrix that places what is in @p global's axes in the world: its scale, then rotation, then position.
-glm::mat4 worldMatrixOf(const transform::GlobalTransform3D& global) {
-    const glm::quat rotation{global.rotation.w, global.rotation.x, global.rotation.y, global.rotation.z};
-    return glm::translate(glm::mat4{1.0F}, global.position) * glm::mat4_cast(glm::normalize(rotation)) *
-           glm::scale(glm::mat4{1.0F}, global.scale);
-}
-
 /// @brief Render: draws every Lines3D at its entity's GlobalTransform3D.
 void drawLines3D(ecs::NonSendMut<plugins::graphics::Backend> backend,
                  ecs::Query<const transform::GlobalTransform3D, const graphics::Lines3D> sets) {
@@ -282,7 +271,7 @@ void drawLines3D(ecs::NonSendMut<plugins::graphics::Backend> backend,
         }
         if (lines.points.size() >= 2) {
             backend->renderer->drawLines3D(contract::renderer::Lines3D{
-                .points = lines.points, .color = lines.color, .world = worldMatrixOf(global)});
+                .points = lines.points, .color = lines.color, .world = transform::toMatrix(global)});
         }
     }
 }

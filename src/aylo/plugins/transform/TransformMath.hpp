@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include <glm/ext/matrix_float4x4.hpp>
+
 #include "Transform.hpp"
 #include "plugins/transform/Export.hpp"
 
@@ -42,4 +44,7 @@ namespace aylo::plugins::transform {
 /// arc (spherical interpolation).
 [[nodiscard]] AYLO_PLUGIN_TRANSFORM_API Transform3D interpolate(const Transform3D& from, const Transform3D& to,
                                                                 float alpha) noexcept;
+/// @return The matrix that places what is in @p global's axes in the world: its scale, then rotation, then position.
+/// What rendering hands the renderer for a 3D entity.
+[[nodiscard]] AYLO_PLUGIN_TRANSFORM_API glm::mat4 toMatrix(const GlobalTransform3D& global) noexcept;
 }  // namespace aylo::plugins::transform

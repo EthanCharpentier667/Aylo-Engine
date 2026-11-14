@@ -34,6 +34,7 @@ Game.assets = {
 | `engine.assets.sound(path, { stream })` | sound id | `stream = true` decodes while playing, for music |
 | `engine.assets.font(path)` | font id | a font atlas made with msdf-atlas-gen (`.json` next to its `.png`) |
 | `engine.assets.tilemap(path)` | map id | a Tiled `.tmj` |
+| `engine.assets.mesh(path)` | mesh id | a glTF 2.0 model, `.glb` or `.gltf` with its files; needs `aylo.Mesh`, see [2D and 3D](3d.md#models-aylomeshrenderer) |
 | `engine.assets.shader(path)` | shader id | written in the engine's GLSL dialect; `@aylo/bloom.glsl` and `@aylo/tonemap.glsl` are the engine's, see [Post-processing](post-processing.md) |
 | `engine.assets.material({ name, shader, values, textures })` | material id | a shader and its values |
 | `engine.assets.atlas({ path \| texture, name, linear, grid, frames, animations })` | atlas id | see below |

@@ -192,7 +192,10 @@ scene starts with a rendering scope of its own: the HDR scene image cleared, and
 scene's size, made again when it changes, `acquireDepth()`) cleared to 1. `rendering::Lines3DPass` draws the lines there
 (line list, depth test and writes, premultiplied blending, `shaders/lines3d.*`), with `_globals3D`: frame uniforms
 whose `viewProjection` is the 3D view's (`CameraView3D`, Vulkan's clip space). The 3D world is drawn in the letterboxed
-viewport of the 2D view. The 2D world then draws in a second scope that keeps the image (`loadedColorAttachment`), so
+viewport of the 2D view. `rendering::StaticMeshPass` draws the static meshes there first, before the lines
+(`shaders/staticmesh.*`: triangles, depth test and writes, no culling, the world matrix and the colours as push
+constants, the base colour texture at set 1); the meshes live in `_staticMeshes`, host-visible buffers written once
+by `createStaticMesh()` and freed through the deletion queue. The 2D world then draws in a second scope that keeps the image (`loadedColorAttachment`), so
 it lies over the 3D world; the screen effects and the overlay follow as before. Without a 3D view, nothing changes. The
 2D pipelines have no depth attachment, which is why the two worlds draw in two scopes.
 
