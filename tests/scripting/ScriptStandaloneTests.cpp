@@ -227,3 +227,31 @@ engine.ecs.system("t.Bad", {
 
     EXPECT_NE(errors.find("t.Bad"), std::string::npos);
 }
+
+TEST(ScriptStandalone, ServerTimeRttAndTheClientTimeOfAnInputAreReadable) {
+    StandaloneWorld world{R"(
+engine.ecs.system("t.Time", {
+    phase = "Update", side = "both", query = { read = { "net.Owner" } },
+    calls = { "aylo.net.serverTime", "aylo.net.rtt", "aylo.replication.readInput" },
+    events = { send = { "test.standalone.Checked" } },
+    run = function(ctx)
+        local t = ctx.call("aylo.net.serverTime", {})
+        local rtt = ctx.call("aylo.net.rtt", { client = 1 })
+        local nobody = ctx.call("aylo.net.rtt", { client = 9 })
+        for entity in ctx.query do
+            local fire = ctx.call("aylo.replication.readInput", { entity = entity, action = "fire" })
+            ctx.events.send("test.standalone.Checked", {
+                what = "time:" .. tostring(t.synced) .. ":" .. tostring(t.time > 0) .. ":" .. tostring(rtt.connected)
+                    .. ":" .. rtt.rtt .. ":" .. tostring(nobody.connected) .. ":" .. tostring(fire.clientTime > 0) })
+        end
+    end,
+})
+)"};
+    world.app().getWorld().spawn(Owner{.client = 1}, PlayerInput{});
+    world.frame();
+    world.frame();
+
+    // Standalone: server and client are one, so the clock is the game's, there is no round trip, and the input
+    // carries the time it was applied at.
+    EXPECT_TRUE(has(world.frame(), "time:true:true:true:0:false:true"));
+}

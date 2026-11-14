@@ -10,6 +10,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <span>
 
 #include "aylo/network/Types.hpp"
@@ -54,7 +55,7 @@ TEST(InputMessage, RoundTripsOneInput) {
     const InputMessage message{.lastAppliedSnapshot = 42, .inputs = {makeSample(7, 0b10)}};
 
     const auto bytes = encodeInput(message, layout);
-    EXPECT_EQ(bytes.size(), 6U + 8U + 6U);
+    EXPECT_EQ(bytes.size(), 6U + 16U + 6U);
     EXPECT_EQ(bytes[0], static_cast<std::byte>(aylo::replication::MessageType::kInput));
 
     const auto decoded = decodeInput(view(bytes), layout);
@@ -129,9 +130,9 @@ TEST(InputMessage, ReadsMinus32768AsMinusOne) {
     const InputLayout layout = makeLayout();
     const InputMessage message{.lastAppliedSnapshot = 0, .inputs = {makeSample(1, 0)}};
     auto bytes = encodeInput(message, layout);
-    // The first axis slot starts after the type, the tick, the count, the sequence and the buttons.
-    bytes[14] = std::byte{0x00};
-    bytes[15] = std::byte{0x80};
+    // The first axis slot starts after the type, the tick, the count, the sequence, the buttons and the client time.
+    bytes[22] = std::byte{0x00};
+    bytes[23] = std::byte{0x80};
 
     const auto decoded = decodeInput(view(bytes), layout);
     ASSERT_TRUE(decoded);
@@ -143,8 +144,30 @@ TEST(InputMessage, QuantizesToPlusMinus32767) {
     const InputMessage message{.lastAppliedSnapshot = 0, .inputs = {makeSample(1, 0)}};
     const auto bytes = encodeInput(message, layout);
 
-    EXPECT_EQ(bytes[14], std::byte{0xFF});
-    EXPECT_EQ(bytes[15], std::byte{0x7F});
-    EXPECT_EQ(bytes[16], std::byte{0x01});
-    EXPECT_EQ(bytes[17], std::byte{0x80});
+    EXPECT_EQ(bytes[22], std::byte{0xFF});
+    EXPECT_EQ(bytes[23], std::byte{0x7F});
+    EXPECT_EQ(bytes[24], std::byte{0x01});
+    EXPECT_EQ(bytes[25], std::byte{0x80});
+}
+
+TEST(InputMessage, CarriesTheClientTime) {
+    const InputLayout layout = makeLayout();
+    InputSample sample = makeSample(1, 0b1);
+    sample.clientTime = 12.345;
+    const auto decoded = decodeInput(view(encodeInput({.lastAppliedSnapshot = 0, .inputs = {sample}}, layout)), layout);
+    ASSERT_TRUE(decoded);
+    EXPECT_DOUBLE_EQ(decoded->inputs.at(0).clientTime, 12.345);
+}
+
+TEST(InputMessage, TurnsAClientTimeThatIsNotATimeIntoZeroWithoutDroppingTheInput) {
+    const InputLayout layout = makeLayout();
+    for (const double bad : {-1.0, std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::infinity()}) {
+        InputSample sample = makeSample(1, 0b1);
+        sample.clientTime = bad;
+        const auto decoded =
+            decodeInput(view(encodeInput({.lastAppliedSnapshot = 0, .inputs = {sample}}, layout)), layout);
+        ASSERT_TRUE(decoded);
+        EXPECT_EQ(decoded->inputs.at(0).clientTime, 0.0);
+        EXPECT_EQ(decoded->inputs.at(0).buttons, 0b1U);
+    }
 }
