@@ -172,7 +172,7 @@ scene names no component of a client's plugin: a dedicated server reads it too, 
 - **`assets.luau`** loads everything with the `engine.assets` forms and returns the ids; the files that draw require
   it. See
   [Setup forms](setup-forms.md).
-- **`scene.luau`** spawns the camera (`aylo.Camera` and `aylo.AudioListener`) in a `Startup` system, gives each
+- **`scene.luau`** spawns the camera (`aylo.Camera2D` and `aylo.AudioListener`) in a `Startup` system, gives each
   obstacle a `aylo.ShapeRenderer` (and the `aylo.Transform2D` the server's `game.Obstacle` says, when it came through
   the network) in `PostUpdate`, which also runs while the editor edits the arena, and spawns the space background map
   and the planets that pass.
