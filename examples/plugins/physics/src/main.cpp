@@ -6,7 +6,7 @@
 */
 
 // Runs a small physics scene with the physics plugin, headless, for three seconds, and prints it twice per second:
-// - a ball falls under gravity and bounces on a static floor; its Transform and Velocity follow its body;
+// - a ball falls under gravity and bounces on a static floor; its Transform2D and Velocity follow its body;
 // - a kinematic ship flies at the speed its Velocity gives it, pushing nothing but never pushed;
 // - a crate falls on the floor, then gameplay kicks it with an impulse after one second;
 // - a fast bullet flies through the ship (their collision layers ignore each other) and stops on a target that only
@@ -17,7 +17,7 @@
 // ship fires a laser (a raycast) ahead of itself each time the scene is printed.
 // - a drone flies down and to the right at a constant speed, moved by moveAndSlide() as a predicted system would move a
 //   ship (the same code on the server and on a client, without stepping): it lands on the floor and slides along it.
-// Gameplay only writes components (Transform, Collider, RigidBody, Velocity) and calls the PhysicsWorld resource.
+// Gameplay only writes components (Transform2D, Collider, RigidBody, Velocity) and calls the PhysicsWorld resource.
 
 #include <cstdint>
 #include <exception>
@@ -53,7 +53,7 @@
 
 using namespace aylo::ecs;
 using namespace aylo::plugins::physics;
-using aylo::plugins::transform::Transform;
+using aylo::plugins::transform::Transform2D;
 
 namespace {
 constexpr std::uint64_t kTicksPerSecond = 60;
@@ -87,19 +87,19 @@ AYLO_ECS_RESOURCE(Scene, "example.Scene");
 void spawnScene(Commands& commands, ResMut<Scene> scene) {
     // A static floor: a Collider without RigidBody. Its top is at y = 300.
     scene->floor = commands.spawn()
-                       .add(Transform{.position = {0.0F, 316.0F}})
+                       .add(Transform2D{.position = {0.0F, 316.0F}})
                        .add(Collider{.shape = ShapeType::kBox, .size = {2000.0F, 32.0F}})
                        .getEntity();
 
     // A sensor zone on the ball's way down, just above the ship's lane: it detects them without stopping them.
     scene->zone = commands.spawn()
-                      .add(Transform{.position = {0.0F, 60.0F}})
+                      .add(Transform2D{.position = {0.0F, 60.0F}})
                       .add(Collider{.shape = ShapeType::kBox, .size = {64.0F, 32.0F}, .sensor = true})
                       .getEntity();
 
     // A bouncy ball. With a Velocity, the physics writes its speed back every step.
     scene->ball = commands.spawn()
-                      .add(Transform{.position = {0.0F, 0.0F}})
+                      .add(Transform2D{.position = {0.0F, 0.0F}})
                       .add(Collider{.shape = ShapeType::kCircle, .radius = 16.0F, .restitution = 0.6F})
                       .add(RigidBody{})
                       .add(Velocity{})
@@ -108,7 +108,7 @@ void spawnScene(Commands& commands, ResMut<Scene> scene) {
     // A kinematic ship: it flies at its Velocity, gravity and contacts never move it. It only collides with scenery.
     scene->ship =
         commands.spawn()
-            .add(Transform{.position = {-400.0F, 100.0F}})
+            .add(Transform2D{.position = {-400.0F, 100.0F}})
             .add(Collider{
                 .shape = ShapeType::kCapsule, .radius = 8.0F, .halfHeight = 16.0F, .layer = kShip, .mask = kScenery})
             .add(RigidBody{.type = BodyType::kKinematic})
@@ -117,7 +117,7 @@ void spawnScene(Commands& commands, ResMut<Scene> scene) {
 
     // A heavy crate that will be kicked.
     scene->crate = commands.spawn()
-                       .add(Transform{.position = {200.0F, 200.0F}})
+                       .add(Transform2D{.position = {200.0F, 200.0F}})
                        .add(Collider{.shape = ShapeType::kBox, .size = {48.0F, 48.0F}})
                        .add(RigidBody{.mass = 10.0F, .fixedRotation = true})
                        .getEntity();
@@ -125,7 +125,7 @@ void spawnScene(Commands& commands, ResMut<Scene> scene) {
     // A target in the ship's lane, hit only by bullets: the ship flies through it.
     scene->target =
         commands.spawn()
-            .add(Transform{.position = {400.0F, 100.0F}})
+            .add(Transform2D{.position = {400.0F, 100.0F}})
             .add(Collider{.shape = ShapeType::kBox, .size = {32.0F, 64.0F}, .layer = kTarget, .mask = kBullet})
             .getEntity();
 
@@ -133,15 +133,15 @@ void spawnScene(Commands& commands, ResMut<Scene> scene) {
     // through; it hits scenery and targets. No gravity, and continuous collision so it never tunnels at this speed.
     scene->bullet =
         commands.spawn()
-            .add(Transform{.position = {-700.0F, 100.0F}})
+            .add(Transform2D{.position = {-700.0F, 100.0F}})
             .add(Collider{.shape = ShapeType::kCircle, .radius = 4.0F, .layer = kBullet, .mask = kScenery | kTarget})
             .add(RigidBody{.gravityScale = 0.0F, .fixedRotation = true, .continuousCollision = true})
             .add(Velocity{.linear = {600.0F, 0.0F}})
             .getEntity();
 
-    // A drone far to the left, kinematic: its Transform is written by flyDrone(), and its body follows it.
+    // A drone far to the left, kinematic: its Transform2D is written by flyDrone(), and its body follows it.
     scene->drone = commands.spawn()
-                       .add(Transform{.position = {-600.0F, 200.0F}})
+                       .add(Transform2D{.position = {-600.0F, 200.0F}})
                        .add(Collider{.shape = ShapeType::kCircle, .radius = 12.0F, .layer = kShip, .mask = kScenery})
                        .add(RigidBody{.type = BodyType::kKinematic})
                        .getEntity();
@@ -149,7 +149,7 @@ void spawnScene(Commands& commands, ResMut<Scene> scene) {
 
 // FixedUpdate, before the Transforms drive the bodies: moves the drone by its speed, stopped and slid along by the
 // scenery its mask sees. A predicted system on a client would do the same, replaying the player's inputs.
-void flyDrone(Res<PhysicsWorld> world, Res<Scene> scene, Res<Time> time, Query<Transform, const Collider> bodies) {
+void flyDrone(Res<PhysicsWorld> world, Res<Scene> scene, Res<Time> time, Query<Transform2D, const Collider> bodies) {
     for (auto [entity, transform, collider] : bodies) {
         if (entity == scene->drone) {
             transform->position =
@@ -208,7 +208,7 @@ void printContacts(Res<PhysicsWorld> world, Res<Scene> scene, EventReader<Collis
 }
 
 // FixedUpdate, after the physics wrote the Transforms back: prints the scene twice per second.
-void report(Res<PhysicsWorld> world, Res<Scene> scene, Query<const Transform> transforms,
+void report(Res<PhysicsWorld> world, Res<Scene> scene, Query<const Transform2D> transforms,
             Query<const Velocity> velocities) {
     if (world->getStepCount() % kReportTicks != 0) {
         return;
@@ -250,7 +250,7 @@ void report(Res<PhysicsWorld> world, Res<Scene> scene, Query<const Transform> tr
         bullet.x, crate.x, crate.y, drone.x, drone.y, world->getBodyCount(), aim);
 }
 
-// FixedUpdate, between the Transform sync and the step: kicks the crate once, then stops the App.
+// FixedUpdate, between the Transform2D sync and the step: kicks the crate once, then stops the App.
 void script(ResMut<PhysicsWorld> world, Res<Scene> scene, EventWriter<AppExit> exit) {
     if (world->getStepCount() == kKickTick) {
         // An impulse is a mass times a change of speed: 10 kg at (200, -400) units/s, up and to the right.

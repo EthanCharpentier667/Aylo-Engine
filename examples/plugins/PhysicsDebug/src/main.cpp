@@ -57,7 +57,7 @@
 using namespace aylo;
 using namespace aylo::plugins::physics;
 using aylo::contract::renderer::Color;
-using aylo::plugins::transform::Transform;
+using aylo::plugins::transform::Transform2D;
 
 namespace {
 constexpr double kWidth = 800.0;
@@ -77,15 +77,15 @@ AYLO_ECS_RESOURCE(Lifetime, "example.Lifetime");
 void spawnScene(ecs::Commands& commands) {
     // A static floor and two walls: colliders without RigidBody, drawn in the default green.
     commands.spawn()
-        .add(Transform{.position = {400.0F, 560.0F}})
+        .add(Transform2D{.position = {400.0F, 560.0F}})
         .add(Collider{.shape = ShapeType::kBox, .size = {760.0F, 20.0F}})
         .add(debug::PhysicsDebug{});
     commands.spawn()
-        .add(Transform{.position = {30.0F, 400.0F}, .rotation = 0.3F})
+        .add(Transform2D{.position = {30.0F, 400.0F}, .rotation = 0.3F})
         .add(Collider{.shape = ShapeType::kBox, .size = {20.0F, 300.0F}})
         .add(debug::PhysicsDebug{});
     commands.spawn()
-        .add(Transform{.position = {770.0F, 400.0F}, .rotation = -0.3F})
+        .add(Transform2D{.position = {770.0F, 400.0F}, .rotation = -0.3F})
         .add(Collider{.shape = ShapeType::kBox, .size = {20.0F, 300.0F}})
         .add(debug::PhysicsDebug{});
 
@@ -97,9 +97,9 @@ void spawnScene(ecs::Commands& commands) {
     };
     for (std::size_t index = 0; index < 6; ++index) {
         commands.spawn()
-            .add(Transform{.position = {180.0F + (90.0F * static_cast<float>(index)),
-                                        80.0F + (40.0F * static_cast<float>(index % 3))},
-                           .rotation = 0.2F * static_cast<float>(index)})
+            .add(Transform2D{.position = {180.0F + (90.0F * static_cast<float>(index)),
+                                          80.0F + (40.0F * static_cast<float>(index % 3))},
+                             .rotation = 0.2F * static_cast<float>(index)})
             .add(shapes.at(index % shapes.size()))
             .add(RigidBody{})
             .add(Velocity{.linear = {index % 2 == 0 ? 120.0F : -120.0F, 0.0F}})
@@ -108,7 +108,7 @@ void spawnScene(ecs::Commands& commands) {
 
     // A kinematic ship flying across at its Velocity, pushing the balls in its way.
     commands.spawn()
-        .add(Transform{.position = {-60.0F, 470.0F}})
+        .add(Transform2D{.position = {-60.0F, 470.0F}})
         .add(Collider{.shape = ShapeType::kCapsule, .radius = 14.0F, .halfHeight = 20.0F})
         .add(RigidBody{.type = BodyType::kKinematic})
         .add(Velocity{.linear = {90.0F, 0.0F}})
@@ -116,7 +116,7 @@ void spawnScene(ecs::Commands& commands) {
 
     // A sensor zone in the middle: drawn fainter, it detects without colliding.
     commands.spawn()
-        .add(Transform{.position = {400.0F, 300.0F}})
+        .add(Transform2D{.position = {400.0F, 300.0F}})
         .add(Collider{.shape = ShapeType::kCircle, .radius = 70.0F, .sensor = true})
         .add(debug::PhysicsDebug{.color = kYellow});
 }
@@ -147,23 +147,23 @@ core::config::Settings makeSettings(bool validate) {
 }  // namespace
 
 int main(int argc, char** argv) {
-    bool validate = false;
-    Lifetime lifetime;
-    const std::span<char*> arguments{argv, static_cast<std::size_t>(argc)};
-    const std::span<char*> options = arguments.empty() ? arguments : arguments.subspan(1);  // Without the program.
-    for (auto option = options.begin(); option != options.end(); ++option) {
-        const std::string_view argument{*option};
-        if (argument == "--validate") {
-            validate = true;
-        } else if (argument == "--seconds" && std::next(option) != options.end()) {
-            const std::string value{*++option};
-            float seconds = 0.0F;
-            if (std::from_chars(value.c_str(), std::to_address(value.end()), seconds).ec == std::errc{}) {
-                lifetime.seconds = seconds;
+    try {
+        bool validate = false;
+        Lifetime lifetime;
+        const std::span<char*> arguments{argv, static_cast<std::size_t>(argc)};
+        const std::span<char*> options = arguments.empty() ? arguments : arguments.subspan(1);  // Without the program.
+        for (auto option = options.begin(); option != options.end(); ++option) {
+            const std::string_view argument{*option};
+            if (argument == "--validate") {
+                validate = true;
+            } else if (argument == "--seconds" && std::next(option) != options.end()) {
+                const std::string value{*++option};
+                float seconds = 0.0F;
+                if (std::from_chars(value.c_str(), std::to_address(value.end()), seconds).ec == std::errc{}) {
+                    lifetime.seconds = seconds;
+                }
             }
         }
-    }
-    try {
         auto registry = std::make_unique<plugins::graphics::BackendRegistry>();
         platform::glfw::registerPlatform(registry->platforms);
         render::vulkan::registerRenderer(registry->renderers);

@@ -119,3 +119,38 @@ TEST(PhysicsLayers, ThePairFilterAppliesTheRule) {
     EXPECT_TRUE(filter.ShouldCollide(player, enemy));
     EXPECT_FALSE(filter.ShouldCollide(player, bullet));
 }
+
+TEST(PhysicsLayers, TheFamilyIsKeptAndALayerIsNeverInvalid) {
+    for (const bool isStatic : {false, true}) {
+        const JPH::ObjectLayer layer = layers::encode(layers::kAllCategories, layers::kAllCategories, isStatic, true);
+        EXPECT_NE(layer, JPH::cObjectLayerInvalid);
+        EXPECT_TRUE(layers::isSpatial(layer));
+        EXPECT_EQ(layers::isStatic(layer), isStatic);
+        EXPECT_EQ(layers::categoriesOf(layer), layers::kAllCategories);
+        EXPECT_EQ(layers::maskOf(layer), layers::kAllCategories);
+    }
+    EXPECT_FALSE(layers::isSpatial(layers::encode(kPlayer, kWall, false)));
+}
+
+TEST(PhysicsLayers, A2DBodyAndA3DBodyNeverCollide) {
+    const JPH::ObjectLayer flat = layers::encode(kPlayer, layers::kAllCategories, false);
+    const JPH::ObjectLayer solid = layers::encode(kPlayer, layers::kAllCategories, false, true);
+    EXPECT_TRUE(layers::canCollide(solid, solid));
+    EXPECT_FALSE(layers::canCollide(flat, solid));
+    EXPECT_FALSE(ObjectLayerPairFilter{}.ShouldCollide(solid, flat));
+}
+
+TEST(PhysicsLayers, EachFamilyHasItsOwnTrees) {
+    const BroadPhaseLayers broadPhase;
+    const ObjectVsBroadPhaseFilter filter;
+    const JPH::ObjectLayer wall = layers::encode(kWall, layers::kAllCategories, true, true);
+    const JPH::ObjectLayer ball = layers::encode(kPlayer, layers::kAllCategories, false, true);
+    EXPECT_EQ(broadPhase.GetBroadPhaseLayer(wall), broadPhaseLayers::kNonMoving3D);
+    EXPECT_EQ(broadPhase.GetBroadPhaseLayer(ball), broadPhaseLayers::kMoving3D);
+    EXPECT_TRUE(filter.ShouldCollide(ball, broadPhaseLayers::kNonMoving3D));
+    EXPECT_TRUE(filter.ShouldCollide(wall, broadPhaseLayers::kMoving3D));
+    EXPECT_FALSE(filter.ShouldCollide(wall, broadPhaseLayers::kNonMoving3D));
+    EXPECT_FALSE(filter.ShouldCollide(ball, broadPhaseLayers::kMoving));
+    EXPECT_FALSE(filter.ShouldCollide(ball, broadPhaseLayers::kNonMoving));
+    EXPECT_FALSE(filter.ShouldCollide(layers::encode(kPlayer, kWall, false), broadPhaseLayers::kMoving3D));
+}

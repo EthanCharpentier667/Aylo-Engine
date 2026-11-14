@@ -15,7 +15,7 @@
 #include "aylo/ecs/type/Field.hpp"
 #include "aylo/ecs/type/FieldTypeOf.hpp"
 
-// Lets the plugins' components reflect glm vector fields (AYLO_ECS_COMPONENT(Transform, ..., position, ...)): the ECS
+// Lets the plugins' components reflect glm vector fields (AYLO_ECS_COMPONENT(Transform2D, ..., position, ...)): the ECS
 // maps scalars only and depends on no math library, so the plugins, which use glm, tell it how. Each vector has the
 // size and alignment of its FieldType: plain floats, no SIMD padding (GLM_FORCE_XYZW_ONLY, no aligned gentypes).
 

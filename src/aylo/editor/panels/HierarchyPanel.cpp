@@ -99,6 +99,7 @@ void drawNode(EditorState& state, const capsule::Capsule& capsule, std::uint32_t
     const bool open = ImGui::TreeNodeEx("##node", flags, "%s", label.c_str());
     if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
         state.selectedNode = index;
+        state.inspectedMaterial.clear();
     }
     if (index != 0 && ImGui::BeginDragDropSource()) {
         ImGui::SetDragDropPayload(kNodePayload, &index, sizeof(index));
@@ -231,6 +232,7 @@ void drawEntityTree(EditorState& state, ecs::Entity entity) {
     const bool open = ImGui::TreeNodeEx("##entity", flags, "%s", label.c_str());
     if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
         state.selected = entity;
+        state.inspectedMaterial.clear();
     }
     if (open) {
         if (children != nullptr) {
@@ -260,6 +262,8 @@ void drawWorldTree(EditorState& state) {
             ImGui::PushID(static_cast<int>(entity.getIndex()));
             if (ImGui::Selectable(label.c_str(), entity == state.selected)) {
                 state.selected = entity;
+                state.inspectedMaterial.clear();
+                state.inspectedMaterial.clear();
             }
             ImGui::PopID();
         }

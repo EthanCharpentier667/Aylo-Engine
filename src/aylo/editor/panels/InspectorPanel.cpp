@@ -252,7 +252,9 @@ void drawInspectorPanel(EditorState& state) {
     }
     if (ImGui::Begin("Inspector", &state.showInspector)) {
         const std::optional<plugins::capsule::CapsuleId> edited = state.getEdited();
-        if (!state.play.isPlaying() && edited && state.selectedNode) {
+        if (!state.inspectedMaterial.empty()) {
+            drawMaterialInspector(state);
+        } else if (!state.play.isPlaying() && edited && state.selectedNode) {
             drawNode(state, *edited, *state.selectedNode);
         } else if (!state.selected.isNull() && state.world->isAlive(state.selected)) {
             // Online, the world is the server's copy: a client never writes it. Edit it from the Server panel.

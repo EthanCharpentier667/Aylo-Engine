@@ -78,7 +78,7 @@ TEST(ScriptParticles, AScriptPlaysAnEmitterAndAOneShotOfItsEffects) {
                 if started then return end
                 started = true
                 ctx.commands:spawn({
-                    ["aylo.Transform"] = { position = { x = 10, y = 20 } },
+                    ["aylo.Transform2D"] = { position = { x = 10, y = 20 } },
                     ["aylo.ParticleEmitter"] = { effect = smoke, rateScale = 2 },
                 })
                 ctx.events.send("aylo.SpawnParticles", { effect = hit, position = { x = 50, y = 0 }, layer = 1 })
@@ -123,7 +123,7 @@ TEST(ScriptParticles, AnEmitterCanNameItsEffect) {
                 if started then return end
                 started = true
                 ctx.commands:spawn({
-                    ["aylo.Transform"] = {},
+                    ["aylo.Transform2D"] = {},
                     ["aylo.ParticleEmitter"] = { effect = "game.smoke" },
                 })
             end,
@@ -169,7 +169,7 @@ TEST(ScriptParticles, TheManualsRecipesRun) {
         engine.ecs.system("game.MuzzleSparks", {
             phase = "Update",
             side = "client",
-            query = { read = { "aylo.Transform" }, added = { "game.Laser" } },
+            query = { read = { "aylo.Transform2D" }, added = { "game.Laser" } },
             events = { send = { "aylo.SpawnParticles" } },
             run = function(ctx)
                 for _, transform in ctx.query do
@@ -198,8 +198,8 @@ TEST(ScriptParticles, TheManualsRecipesRun) {
             run = function(ctx)
                 if spawned then return end
                 spawned = true
-                ctx.commands:spawn({ ["game.Ship"] = {}, ["aylo.Transform"] = { position = { x = 1, y = 2 } } })
-                ctx.commands:spawn({ ["game.Laser"] = {}, ["aylo.Transform"] = { position = { x = 3, y = 4 } } })
+                ctx.commands:spawn({ ["game.Ship"] = {}, ["aylo.Transform2D"] = { position = { x = 1, y = 2 } } })
+                ctx.commands:spawn({ ["game.Laser"] = {}, ["aylo.Transform2D"] = { position = { x = 3, y = 4 } } })
             end,
         })
     )"),

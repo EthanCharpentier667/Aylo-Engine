@@ -27,7 +27,7 @@ namespace aylo::plugins::particle {
 /// - PostUpdate "aylo.Particle.Spawn": spawns a one-shot emitter (ParticleOneShot) for each SpawnParticles event; it
 ///   plays from the next frame, once its commands are applied.
 /// - PostUpdate "aylo.Particle.Update", after the TransformPlugin's propagation: starts the emitters with a
-///   GlobalTransform whose effect is loaded (restarting the ones whose effect changed), picking the CPU or the GPU
+///   GlobalTransform2D whose effect is loaded (restarting the ones whose effect changed), picking the CPU or the GPU
 ///   (the emitter's override, else the effect's choice; the CPU when the renderer cannot, reported once per effect
 ///   that asked for the GPU), stops the ones whose ParticleEmitter is gone, destroying their GPU system, counts what
 ///   each one spawns (computeSpawnCount()) and runs the CPU simulations. It sends ParticlesFinished once a one-shot

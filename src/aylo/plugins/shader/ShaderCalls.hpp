@@ -23,6 +23,7 @@ namespace aylo::plugins::shader {
 
 inline constexpr std::string_view kLoadShaderCall = "aylo.shader.load";            ///< ShaderAssets::load().
 inline constexpr std::string_view kAddMaterialCall = "aylo.shader.addMaterial";    ///< MaterialAssets::add().
+inline constexpr std::string_view kLoadMaterialCall = "aylo.shader.loadMaterial";  ///< loadMaterialFile().
 inline constexpr std::string_view kSetValueCall = "aylo.shader.setMaterialValue";  ///< MaterialAssets::setValue().
 inline constexpr std::string_view kSetTextureCall =
     "aylo.shader.setMaterialTexture";  ///< MaterialAssets::setTexture().
@@ -34,6 +35,12 @@ struct LoadShaderArguments {
     ecs::String path;  ///< The file, relative to the game directory.
 };
 AYLO_ECS_CALL_DATA(LoadShaderArguments, "aylo.shader.LoadShaderArguments", path);
+
+/// @brief The arguments of `aylo.shader.loadMaterial`.
+struct LoadMaterialArguments {
+    ecs::String path;  ///< The `.material` file, in the assets.
+};
+AYLO_ECS_CALL_DATA(LoadMaterialArguments, "aylo.shader.LoadMaterialArguments", path);
 
 /// @brief The result of `aylo.shader.load`.
 struct ShaderResult {

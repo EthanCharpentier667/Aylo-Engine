@@ -29,17 +29,18 @@ and the materials are in `plugin-shader`.
 | Plugin | Brings | Requires |
 |---|---|---|
 | `capsule` | `Capsules`, `CapsuleInstance`: actors and levels described once, spawned, loaded and reloaded | |
-| `transform` | `Transform`, `GlobalTransform`, `TransformInterpolation` | |
+| `transform` | `Transform2D`, `GlobalTransform2D`, `Transform3D`, `GlobalTransform3D`, `TransformInterpolation`, `engine.math.quat` (`docs/3d/design.md`) | |
 | `input` | `Input`, actions, `PlatformEvent` and the input events | |
-| `graphics` | Starts the window and the renderer, frames, `Camera`, `TextureAssets`, `SpriteQueue` | `input`, `transform` |
+| `graphics` | Starts the window and the renderer, frames, `Camera2D`, `Camera3D`, `Lines3D`, `TextureAssets`, `SpriteQueue` | `input`, `transform` |
 | `shader` | The shader language, `Material`, `MaterialInstance` | `graphics` |
 | `sprite` | `SpritePlugin`: `SpriteRenderer`, atlases, animations | |
 | `sprite` | `SpriteDrawPlugin`: draws the sprites | `SpritePlugin`, `graphics`, `shader`, `transform` |
 | `tilemap` | Tiled maps, parallax | `graphics`, `transform` |
 | `text` | MSDF fonts, `TextRenderer` | `graphics`, `shader`, `transform` |
 | `particle` | Emitters and effects | `graphics`, `shader`, `transform` |
+| `mesh` | glTF, FBX and OBJ models (cgltf and ufbx, private): `MeshAssets`, `MeshRenderer`, `engine.assets.mesh`, drawn unlit or with a `#pragma mesh` material (`docs/3d/design.md`, `docs/materials/plan.md`) | `graphics`, `shader`, `transform` |
 | `audio` | `AudioSource`, `PlaySound`, `AudioVolumes` | `transform` |
-| `physics` | Jolt, `Collider`, `RigidBody` | `transform` |
+| `physics` | Jolt, `Collider`, `Collider3D`, `RigidBody` | `transform` |
 | `physics-debug` | Draws the colliders | `graphics`, `input`, `transform` |
 | `ui` | The user interface, laid out by Yoga: nodes, widgets, focus | `graphics`, `input`, `text` |
 | `http` | HTTPS requests for scripts: `HttpClient`, `HttpResponse`, `aylo.http.request` (libcurl) | |

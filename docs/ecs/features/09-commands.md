@@ -136,7 +136,7 @@ sequenceDiagram
 function WaveSpawner:run(ctx)
     local enemy = ctx.call("aylo.capsule.spawn", { capsule = "actors/bydo.actor" })   -- or engine.capsule.spawn
     ctx.commands:add(enemy, "game.Shield", { strength = 20 })          -- the whole value: defaults + strength
-    ctx.commands:patch(enemy, "aylo.Transform", { position = { x = 820, y = 140 } })   -- only position
+    ctx.commands:patch(enemy, "aylo.Transform2D", { position = { x = 820, y = 140 } })   -- only position
 end
 ```
 

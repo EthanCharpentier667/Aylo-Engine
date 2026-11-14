@@ -59,7 +59,7 @@ void queueFontTextures(ecs::ResMut<FontAssets> fonts, ecs::ResAppend<graphics::T
 void drawTexts(
     ecs::Res<FontAssets> fonts, ecs::Res<graphics::TextureAssets> textures, ecs::Res<shader::ShaderHandles> handles,
     ecs::ResAppend<graphics::SpriteQueue> queue,
-    ecs::Query<const transform::GlobalTransform, const TextRenderer, ecs::Optional<const shader::MaterialInstance>>
+    ecs::Query<const transform::GlobalTransform2D, const TextRenderer, ecs::Optional<const shader::MaterialInstance>>
         texts) {
     for (auto [entity, global, drawn, instance] : texts) {
         const Font* font = fonts->get(drawn.font);

@@ -28,8 +28,8 @@
 #include "plugins/transform/TransformPlugin.hpp"
 
 namespace {
-using aylo::plugins::transform::GlobalTransform;
-using aylo::plugins::transform::Transform;
+using aylo::plugins::transform::GlobalTransform2D;
+using aylo::plugins::transform::Transform2D;
 using aylo::plugins::transform::TransformInterpolation;
 
 /// @brief An App with the TransformPlugin.
@@ -40,20 +40,20 @@ struct TransformApp {
         app.addPlugin(aylo::plugins::transform::TransformPlugin{});
     }
 
-    /// @return The entity's GlobalTransform, or nullptr.
-    [[nodiscard]] const GlobalTransform* globalOf(aylo::ecs::Entity entity) {
-        return app.getWorld().getComponents().get<GlobalTransform>(entity);
+    /// @return The entity's GlobalTransform2D, or nullptr.
+    [[nodiscard]] const GlobalTransform2D* globalOf(aylo::ecs::Entity entity) {
+        return app.getWorld().getComponents().get<GlobalTransform2D>(entity);
     }
 
     /// @return A new entity at @p transform.
-    aylo::ecs::Entity spawn(const Transform& transform) {
+    aylo::ecs::Entity spawn(const Transform2D& transform) {
         const aylo::ecs::Entity entity = app.getWorld().spawn();
         app.getWorld().getComponents().add(entity, transform);
         return entity;
     }
 
     /// @return A new entity at @p transform, child of @p parent.
-    aylo::ecs::Entity spawnChild(aylo::ecs::Entity parent, const Transform& transform) {
+    aylo::ecs::Entity spawnChild(aylo::ecs::Entity parent, const Transform2D& transform) {
         const aylo::ecs::Entity entity = spawn(transform);
         EXPECT_TRUE(app.getWorld().setParent(entity, parent));
         return entity;
@@ -61,43 +61,43 @@ struct TransformApp {
 
     /// @brief Moves @p entity to @p position, as gameplay does.
     void move(aylo::ecs::Entity entity, glm::vec2 position) {
-        app.getWorld().getComponents().getMut<Transform>(entity)->position = position;
+        app.getWorld().getComponents().getMut<Transform2D>(entity)->position = position;
     }
 
     /// @return Where @p entity is in the world.
     [[nodiscard]] glm::vec2 positionOf(aylo::ecs::Entity entity) {
-        const GlobalTransform* global = globalOf(entity);
+        const GlobalTransform2D* global = globalOf(entity);
         EXPECT_NE(global, nullptr);
         return global != nullptr ? global->position : glm::vec2{};
     }
 };
 }  // namespace
 
-TEST(Transform, ReflectsItsFields) {
-    using Traits = aylo::ecs::ComponentTraits<Transform>;
-    EXPECT_EQ(Traits::kName, "aylo.Transform");
+TEST(Transform2D, ReflectsItsFields) {
+    using Traits = aylo::ecs::ComponentTraits<Transform2D>;
+    EXPECT_EQ(Traits::kName, "aylo.Transform2D");
     ASSERT_EQ(Traits::kFields.size(), 3U);
     EXPECT_EQ(Traits::kFields[0].type, aylo::ecs::FieldType::kVec2);
     EXPECT_EQ(Traits::kFields[1].type, aylo::ecs::FieldType::kF32);
     EXPECT_EQ(Traits::kFields[2].type, aylo::ecs::FieldType::kVec2);
-    EXPECT_EQ(aylo::ecs::ComponentTraits<GlobalTransform>::kName, "aylo.GlobalTransform");
+    EXPECT_EQ(aylo::ecs::ComponentTraits<GlobalTransform2D>::kName, "aylo.GlobalTransform2D");
 }
 
 TEST(TransformPlugin, RegistersTheComponents) {
     TransformApp fixture;
-    EXPECT_TRUE(fixture.app.getWorld().getComponents().find("aylo.Transform"));
-    EXPECT_TRUE(fixture.app.getWorld().getComponents().find("aylo.GlobalTransform"));
+    EXPECT_TRUE(fixture.app.getWorld().getComponents().find("aylo.Transform2D"));
+    EXPECT_TRUE(fixture.app.getWorld().getComponents().find("aylo.GlobalTransform2D"));
 }
 
 TEST(TransformPlugin, GivesAGlobalTransformEqualToTheTransform) {
     TransformApp fixture;
     const aylo::ecs::Entity ship = fixture.app.getWorld().spawn();
     fixture.app.getWorld().getComponents().add(
-        ship, Transform{.position = {10.0F, 20.0F}, .rotation = 0.5F, .scale = {2.0F, 3.0F}});
+        ship, Transform2D{.position = {10.0F, 20.0F}, .rotation = 0.5F, .scale = {2.0F, 3.0F}});
 
     fixture.app.runFrame();
 
-    const GlobalTransform* global = fixture.globalOf(ship);
+    const GlobalTransform2D* global = fixture.globalOf(ship);
     ASSERT_NE(global, nullptr);
     EXPECT_EQ(global->position, (glm::vec2{10.0F, 20.0F}));
     EXPECT_FLOAT_EQ(global->rotation, 0.5F);
@@ -107,10 +107,10 @@ TEST(TransformPlugin, GivesAGlobalTransformEqualToTheTransform) {
 TEST(TransformPlugin, FollowsTheTransformWhenItChanges) {
     TransformApp fixture;
     const aylo::ecs::Entity ship = fixture.app.getWorld().spawn();
-    fixture.app.getWorld().getComponents().add(ship, Transform{.position = {10.0F, 20.0F}});
+    fixture.app.getWorld().getComponents().add(ship, Transform2D{.position = {10.0F, 20.0F}});
     fixture.app.runFrame();
 
-    fixture.app.getWorld().getComponents().getMut<Transform>(ship)->position = {30.0F, 40.0F};
+    fixture.app.getWorld().getComponents().getMut<Transform2D>(ship)->position = {30.0F, 40.0F};
     fixture.app.runFrame();
 
     ASSERT_NE(fixture.globalOf(ship), nullptr);
@@ -122,9 +122,9 @@ TEST(TransformPlugin, RunsOnEverySide) {
         aylo::ecs::App app{mode};
         app.addPlugin(aylo::plugins::transform::TransformPlugin{});
         const aylo::ecs::Entity ship = app.getWorld().spawn();
-        app.getWorld().getComponents().add(ship, Transform{.position = {1.0F, 2.0F}});
+        app.getWorld().getComponents().add(ship, Transform2D{.position = {1.0F, 2.0F}});
         app.runFrame();
-        EXPECT_NE(app.getWorld().getComponents().get<GlobalTransform>(ship), nullptr);
+        EXPECT_NE(app.getWorld().getComponents().get<GlobalTransform2D>(ship), nullptr);
     }
 }
 
@@ -137,17 +137,17 @@ TEST(TransformPlugin, LeavesEntitiesWithoutATransformAlone) {
 
 TEST(TransformHierarchy, PlacesAChildOnItsFirstFrame) {
     TransformApp fixture;
-    const aylo::ecs::Entity parent = fixture.spawn(Transform{.position = {100.0F, 50.0F}});
-    const aylo::ecs::Entity child = fixture.spawnChild(parent, Transform{.position = {10.0F, 5.0F}});
+    const aylo::ecs::Entity parent = fixture.spawn(Transform2D{.position = {100.0F, 50.0F}});
+    const aylo::ecs::Entity child = fixture.spawnChild(parent, Transform2D{.position = {10.0F, 5.0F}});
     fixture.app.runFrame();
     EXPECT_EQ(fixture.positionOf(child), (glm::vec2{110.0F, 55.0F}));
 }
 
 TEST(TransformHierarchy, PlacesAChainSpawnedInOneFrameWhateverTheOrder) {
     TransformApp fixture;
-    const aylo::ecs::Entity leaf = fixture.spawn(Transform{.position = {1.0F, 0.0F}});
-    const aylo::ecs::Entity middle = fixture.spawn(Transform{.position = {10.0F, 0.0F}});
-    const aylo::ecs::Entity root = fixture.spawn(Transform{.position = {100.0F, 0.0F}});
+    const aylo::ecs::Entity leaf = fixture.spawn(Transform2D{.position = {1.0F, 0.0F}});
+    const aylo::ecs::Entity middle = fixture.spawn(Transform2D{.position = {10.0F, 0.0F}});
+    const aylo::ecs::Entity root = fixture.spawn(Transform2D{.position = {100.0F, 0.0F}});
     EXPECT_TRUE(fixture.app.getWorld().setParent(leaf, middle));
     EXPECT_TRUE(fixture.app.getWorld().setParent(middle, root));
     fixture.app.runFrame();
@@ -156,18 +156,18 @@ TEST(TransformHierarchy, PlacesAChainSpawnedInOneFrameWhateverTheOrder) {
 
 TEST(TransformHierarchy, PlacesANewChildOfAnEntityAlreadyPlaced) {
     TransformApp fixture;
-    const aylo::ecs::Entity parent = fixture.spawn(Transform{.position = {100.0F, 0.0F}});
+    const aylo::ecs::Entity parent = fixture.spawn(Transform2D{.position = {100.0F, 0.0F}});
     fixture.app.runFrame();
-    const aylo::ecs::Entity child = fixture.spawnChild(parent, Transform{.position = {10.0F, 0.0F}});
+    const aylo::ecs::Entity child = fixture.spawnChild(parent, Transform2D{.position = {10.0F, 0.0F}});
     fixture.app.runFrame();
     EXPECT_EQ(fixture.positionOf(child), (glm::vec2{110.0F, 0.0F}));
 }
 
 TEST(TransformHierarchy, MovesTheWholeSubtreeWithItsRoot) {
     TransformApp fixture;
-    const aylo::ecs::Entity root = fixture.spawn(Transform{.position = {100.0F, 0.0F}});
-    const aylo::ecs::Entity child = fixture.spawnChild(root, Transform{.position = {10.0F, 0.0F}});
-    const aylo::ecs::Entity leaf = fixture.spawnChild(child, Transform{.position = {1.0F, 0.0F}});
+    const aylo::ecs::Entity root = fixture.spawn(Transform2D{.position = {100.0F, 0.0F}});
+    const aylo::ecs::Entity child = fixture.spawnChild(root, Transform2D{.position = {10.0F, 0.0F}});
+    const aylo::ecs::Entity leaf = fixture.spawnChild(child, Transform2D{.position = {1.0F, 0.0F}});
     fixture.app.runFrame();
     fixture.move(root, {200.0F, 50.0F});
     fixture.app.runFrame();
@@ -177,9 +177,9 @@ TEST(TransformHierarchy, MovesTheWholeSubtreeWithItsRoot) {
 
 TEST(TransformHierarchy, FollowsAChangeOfParent) {
     TransformApp fixture;
-    const aylo::ecs::Entity first = fixture.spawn(Transform{.position = {100.0F, 0.0F}});
-    const aylo::ecs::Entity second = fixture.spawn(Transform{.position = {500.0F, 0.0F}});
-    const aylo::ecs::Entity child = fixture.spawnChild(first, Transform{.position = {10.0F, 0.0F}});
+    const aylo::ecs::Entity first = fixture.spawn(Transform2D{.position = {100.0F, 0.0F}});
+    const aylo::ecs::Entity second = fixture.spawn(Transform2D{.position = {500.0F, 0.0F}});
+    const aylo::ecs::Entity child = fixture.spawnChild(first, Transform2D{.position = {10.0F, 0.0F}});
     fixture.app.runFrame();
     EXPECT_TRUE(fixture.app.getWorld().setParent(child, second));
     fixture.app.runFrame();
@@ -188,8 +188,8 @@ TEST(TransformHierarchy, FollowsAChangeOfParent) {
 
 TEST(TransformHierarchy, TreatsADetachedChildAsARoot) {
     TransformApp fixture;
-    const aylo::ecs::Entity parent = fixture.spawn(Transform{.position = {100.0F, 0.0F}});
-    const aylo::ecs::Entity child = fixture.spawnChild(parent, Transform{.position = {10.0F, 0.0F}});
+    const aylo::ecs::Entity parent = fixture.spawn(Transform2D{.position = {100.0F, 0.0F}});
+    const aylo::ecs::Entity child = fixture.spawnChild(parent, Transform2D{.position = {10.0F, 0.0F}});
     fixture.app.runFrame();
     EXPECT_TRUE(fixture.app.getWorld().removeParent(child));
     fixture.app.runFrame();
@@ -199,7 +199,7 @@ TEST(TransformHierarchy, TreatsADetachedChildAsARoot) {
 TEST(TransformHierarchy, TreatsAChildOfAnEntityWithoutTransformAsARoot) {
     TransformApp fixture;
     const aylo::ecs::Entity parent = fixture.app.getWorld().spawn();
-    const aylo::ecs::Entity child = fixture.spawnChild(parent, Transform{.position = {10.0F, 0.0F}});
+    const aylo::ecs::Entity child = fixture.spawnChild(parent, Transform2D{.position = {10.0F, 0.0F}});
     fixture.app.runFrame();
     EXPECT_EQ(fixture.positionOf(child), (glm::vec2{10.0F, 0.0F}));
     fixture.move(child, {20.0F, 0.0F});
@@ -209,11 +209,11 @@ TEST(TransformHierarchy, TreatsAChildOfAnEntityWithoutTransformAsARoot) {
 
 TEST(TransformHierarchy, CombinesRotationAndScale) {
     TransformApp fixture;
-    const aylo::ecs::Entity parent = fixture.spawn(Transform{.scale = {2.0F, 2.0F}});
+    const aylo::ecs::Entity parent = fixture.spawn(Transform2D{.scale = {2.0F, 2.0F}});
     const aylo::ecs::Entity child =
-        fixture.spawnChild(parent, Transform{.position = {10.0F, 0.0F}, .rotation = 0.5F, .scale = {3.0F, 3.0F}});
+        fixture.spawnChild(parent, Transform2D{.position = {10.0F, 0.0F}, .rotation = 0.5F, .scale = {3.0F, 3.0F}});
     fixture.app.runFrame();
-    const GlobalTransform* global = fixture.globalOf(child);
+    const GlobalTransform2D* global = fixture.globalOf(child);
     ASSERT_NE(global, nullptr);
     EXPECT_EQ(global->position, (glm::vec2{20.0F, 0.0F}));
     EXPECT_FLOAT_EQ(global->rotation, 0.5F);
@@ -222,24 +222,24 @@ TEST(TransformHierarchy, CombinesRotationAndScale) {
 
 TEST(TransformHierarchy, DoesNotMarkAnEntityThatDidNotMoveAsChanged) {
     TransformApp fixture;
-    const aylo::ecs::Entity plain = fixture.spawn(Transform{.position = {1.0F, 0.0F}});
-    const aylo::ecs::Entity parent = fixture.spawn(Transform{.position = {2.0F, 0.0F}});
-    const aylo::ecs::Entity child = fixture.spawnChild(parent, Transform{.position = {3.0F, 0.0F}});
+    const aylo::ecs::Entity plain = fixture.spawn(Transform2D{.position = {1.0F, 0.0F}});
+    const aylo::ecs::Entity parent = fixture.spawn(Transform2D{.position = {2.0F, 0.0F}});
+    const aylo::ecs::Entity child = fixture.spawnChild(parent, Transform2D{.position = {3.0F, 0.0F}});
     fixture.app.runFrame();
     fixture.app.runFrame();
     const aylo::ecs::Components& components = fixture.app.getWorld().getComponents();
-    const auto plainTicks = components.getTicks<GlobalTransform>(plain);
-    const auto childTicks = components.getTicks<GlobalTransform>(child);
+    const auto plainTicks = components.getTicks<GlobalTransform2D>(plain);
+    const auto childTicks = components.getTicks<GlobalTransform2D>(child);
     ASSERT_TRUE(plainTicks && childTicks);
     fixture.app.runFrame();
-    EXPECT_EQ(components.getTicks<GlobalTransform>(plain)->changed, plainTicks->changed);
-    EXPECT_EQ(components.getTicks<GlobalTransform>(child)->changed, childTicks->changed);
+    EXPECT_EQ(components.getTicks<GlobalTransform2D>(plain)->changed, plainTicks->changed);
+    EXPECT_EQ(components.getTicks<GlobalTransform2D>(child)->changed, childTicks->changed);
 }
 
 TEST(TransformHierarchy, DetachInPlaceKeepsAChildWhereItIs) {
     TransformApp fixture;
-    const aylo::ecs::Entity parent = fixture.spawn(Transform{.position = {100.0F, 50.0F}, .scale = {2.0F, 2.0F}});
-    const aylo::ecs::Entity child = fixture.spawnChild(parent, Transform{.position = {10.0F, 5.0F}});
+    const aylo::ecs::Entity parent = fixture.spawn(Transform2D{.position = {100.0F, 50.0F}, .scale = {2.0F, 2.0F}});
+    const aylo::ecs::Entity child = fixture.spawnChild(parent, Transform2D{.position = {10.0F, 5.0F}});
     fixture.app.runFrame();
     aylo::ecs::Commands commands{fixture.app.getWorld()};
     aylo::plugins::transform::detachInPlace(commands, child, *fixture.globalOf(child));
@@ -253,8 +253,8 @@ TEST(TransformHierarchy, DetachInPlaceKeepsAChildWhereItIs) {
 
 TEST(TransformHierarchy, AttachInPlaceKeepsAnEntityWhereItIs) {
     TransformApp fixture;
-    const aylo::ecs::Entity parent = fixture.spawn(Transform{.position = {100.0F, 50.0F}, .scale = {2.0F, 2.0F}});
-    const aylo::ecs::Entity entity = fixture.spawn(Transform{.position = {120.0F, 60.0F}});
+    const aylo::ecs::Entity parent = fixture.spawn(Transform2D{.position = {100.0F, 50.0F}, .scale = {2.0F, 2.0F}});
+    const aylo::ecs::Entity entity = fixture.spawn(Transform2D{.position = {120.0F, 60.0F}});
     fixture.app.runFrame();
     aylo::ecs::Commands commands{fixture.app.getWorld()};
     aylo::plugins::transform::attachInPlace(commands, entity, *fixture.globalOf(entity), parent,
@@ -275,7 +275,7 @@ TEST(TransformPlugin, RegistersTheHierarchy) {
 
 namespace {
 /// @brief FixedUpdate: moves every root 10 units right per tick, as gameplay or the physics would.
-void moveRoots(aylo::ecs::Query<Transform, aylo::ecs::Without<aylo::ecs::Parent>> roots) {
+void moveRoots(aylo::ecs::Query<Transform2D, aylo::ecs::Without<aylo::ecs::Parent>> roots) {
     for (auto [entity, transform] : roots) {
         transform->position.x += 10.0F;
     }
@@ -291,14 +291,14 @@ struct InterpolatedApp : TransformApp {
 
     /// @return A new root at the origin, interpolated.
     aylo::ecs::Entity spawnInterpolated() {
-        const aylo::ecs::Entity entity = spawn(Transform{});
+        const aylo::ecs::Entity entity = spawn(Transform2D{});
         app.getWorld().getComponents().add(entity, TransformInterpolation{});
         return entity;
     }
 
-    /// @return Where @p entity is simulated: its Transform.
+    /// @return Where @p entity is simulated: its Transform2D.
     [[nodiscard]] float simulatedX(aylo::ecs::Entity entity) {
-        return app.getWorld().getComponents().get<Transform>(entity)->position.x;
+        return app.getWorld().getComponents().get<Transform2D>(entity)->position.x;
     }
 };
 }  // namespace
@@ -332,7 +332,7 @@ TEST(TransformInterpolation, DrawsBetweenTheLastTwoTicks) {
 
 TEST(TransformInterpolation, LeavesTheOtherEntitiesAtTheirTransform) {
     InterpolatedApp fixture;
-    const aylo::ecs::Entity rock = fixture.spawn(Transform{});
+    const aylo::ecs::Entity rock = fixture.spawn(Transform2D{});
     for (int frame = 0; frame < 3; ++frame) {
         fixture.app.runFrame();
     }
@@ -353,7 +353,7 @@ TEST(TransformInterpolation, DrawsAMoveOutOfTheTicksAtOnce) {
 TEST(TransformInterpolation, MovesTheChildrenWithTheirBlendedParent) {
     InterpolatedApp fixture;
     const aylo::ecs::Entity ship = fixture.spawnInterpolated();
-    const aylo::ecs::Entity turret = fixture.spawnChild(ship, Transform{.position = {0.0F, 3.0F}});
+    const aylo::ecs::Entity turret = fixture.spawnChild(ship, Transform2D{.position = {0.0F, 3.0F}});
     for (int frame = 0; frame < 3; ++frame) {
         fixture.app.runFrame();
     }

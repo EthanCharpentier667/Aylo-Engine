@@ -59,7 +59,7 @@ string (`engine.assets.font` in a setup gives the same id):
 
 ```lua
 ctx.commands:spawn({
-	["aylo.Transform"] = { position = { x = 400, y = 12 } },
+	["aylo.Transform2D"] = { position = { x = 400, y = 12 } },
 	["aylo.TextRenderer"] = { text = "Player 1", font = Duel.assets.font, size = 22, anchor = { x = 0.5, y = 0 } },
 })
 ```

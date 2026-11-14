@@ -31,7 +31,7 @@ struct Transform {
     float x;
     float y;
 };
-AYLO_ECS_COMPONENT(Transform, "aylo.Transform", x, y);
+AYLO_ECS_COMPONENT(Transform, "aylo.Transform2D", x, y);
 
 struct Dead {};
 AYLO_ECS_COMPONENT(Dead, "aylo.Dead");

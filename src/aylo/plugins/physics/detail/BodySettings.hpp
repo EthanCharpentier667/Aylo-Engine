@@ -15,6 +15,7 @@
 #include <cstdint>
 
 #include "plugins/physics/Collider.hpp"
+#include "plugins/physics/Collider3D.hpp"
 #include "plugins/physics/Export.hpp"
 #include "plugins/physics/RigidBody.hpp"
 #include "plugins/transform/Transform.hpp"
@@ -35,10 +36,21 @@ namespace aylo::plugins::physics::detail {
 /// @param userData Stored on the body to find the entity back (Entity::getBits()).
 /// @throws exceptions::PhysicsException When the shape is invalid, a dynamic body's mass is not positive, or the
 /// collider's layer or mask does not fit (layers::isValid()).
-[[nodiscard]] AYLO_PLUGIN_PHYSICS_API JPH::BodyCreationSettings makeBodySettings(const Collider& collider,
-                                                                                 const RigidBody* body,
-                                                                                 const transform::Transform& transform,
-                                                                                 float unitsPerMeter,
-                                                                                 std::uint64_t userData);
+[[nodiscard]] AYLO_PLUGIN_PHYSICS_API JPH::BodyCreationSettings makeBodySettings(
+    const Collider& collider, const RigidBody* body, const transform::Transform2D& transform, float unitsPerMeter,
+    std::uint64_t userData);
+
+/// @brief Builds a 3D collider's Jolt shape: a box, a sphere or a capsule along Y, moved by its offset. In metres.
+/// @throws exceptions::PhysicsException When the shape's size, radius or half height is not positive.
+[[nodiscard]] AYLO_PLUGIN_PHYSICS_API JPH::RefConst<JPH::Shape> makeShape3D(const Collider3D& collider);
+
+/// @brief Builds the creation settings of a 3D entity's body, free to move and turn along every axis.
+/// @param collider The entity's shape and material.
+/// @param body How it moves, or nullptr for a static body.
+/// @param transform Where it is, in metres, Y up.
+/// @param userData Stored on the body to find the entity back (Entity::getBits()).
+/// @throws exceptions::PhysicsException As makeBodySettings().
+[[nodiscard]] AYLO_PLUGIN_PHYSICS_API JPH::BodyCreationSettings makeBodySettings3D(
+    const Collider3D& collider, const RigidBody* body, const transform::Transform3D& transform, std::uint64_t userData);
 
 }  // namespace aylo::plugins::physics::detail

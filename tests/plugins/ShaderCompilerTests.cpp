@@ -127,6 +127,34 @@ TEST(ShaderCompiler, CompilesAScreenShaderForTheScreenOnly) {
     EXPECT_EQ(shader.variants.front().fragment.front(), kSpirvMagic);
 }
 
+TEST(ShaderCompiler, CompilesAMeshShaderForMeshesOnly) {
+    // manual/pages/materials.md: "3D materials".
+    const CompiledShader shader = compileShader(
+        "#pragma mesh\n"
+        "uniform vec4 tint = vec4(1.0);\n"
+        "uniform float swell = 0.0;\n"
+        "instance uniform float glow = 0.5;\n"
+        "void vertex() { VERTEX += NORMAL * swell; }\n"
+        "void fragment() { COLOR *= tint; COLOR.rgb += glow * max(NORMAL.y, 0.0); }\n",
+        "glow");
+    ASSERT_EQ(shader.variants.size(), 1U);
+    EXPECT_EQ(shader.variants.front().target, ShaderTarget::kMesh);
+    EXPECT_EQ(shader.variants.front().vertex.front(), kSpirvMagic);
+    EXPECT_EQ(shader.variants.front().fragment.front(), kSpirvMagic);
+    EXPECT_EQ(shader.materialValues.size(), 2U);
+}
+
+TEST(ShaderCompiler, AShaderIsAScreenEffectOrAMeshShaderNotBoth) {
+    EXPECT_THROW(static_cast<void>(compileShader("#pragma screen\n#pragma mesh\nvoid fragment() {}\n", "both")),
+                 aylo::plugins::shader::exceptions::ShaderException);
+}
+
+TEST(ShaderCompiler, A2DShaderCannotReadNormal) {
+    // NORMAL is a built-in of 3D shaders only: a 2D shader that reads it does not compile.
+    EXPECT_THROW(static_cast<void>(compileShader("void fragment() { COLOR.rgb = NORMAL; }\n", "flat")),
+                 aylo::plugins::shader::exceptions::ShaderException);
+}
+
 TEST(ShaderCompiler, GivesAScreenShaderItsInstanceDefaultsAsConstants) {
     const CompiledShader shader = compileShader(
         "#pragma screen\ninstance uniform vec2 shift = vec2(0.25, 1.0);\ninstance uniform int mode = 3;\n"

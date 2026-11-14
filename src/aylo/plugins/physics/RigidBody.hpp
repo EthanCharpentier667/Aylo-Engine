@@ -21,7 +21,7 @@ namespace aylo::plugins::physics {
 /// @brief How a body moves.
 enum class BodyType : std::uint8_t {
     kStatic,     ///< Never moves (walls, ground).
-    kKinematic,  ///< Moved by gameplay through its Transform, pushes dynamic bodies.
+    kKinematic,  ///< Moved by gameplay through its Transform2D, pushes dynamic bodies.
     kDynamic,    ///< Moved by the simulation: gravity, forces, collisions.
 };
 
@@ -47,7 +47,7 @@ namespace aylo::plugins::physics {
 /// Collider to get a body; a Collider without a RigidBody is a static body.
 /// @code
 /// commands.spawn()
-///     .add(aylo::plugins::transform::Transform{.position = {100.0F, 200.0F}})
+///     .add(aylo::plugins::transform::Transform2D{.position = {100.0F, 200.0F}})
 ///     .add(aylo::plugins::physics::RigidBody{.type = aylo::plugins::physics::BodyType::kDynamic})
 ///     .add(aylo::plugins::physics::Collider{.shape = aylo::plugins::physics::ShapeType::kCircle, .radius = 8.0F});
 /// @endcode

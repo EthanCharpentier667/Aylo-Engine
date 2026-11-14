@@ -19,7 +19,7 @@ namespace aylo::plugins::physics::debug {
 /// never touches the simulation.
 /// @code
 /// commands.spawn()
-///     .add(aylo::plugins::transform::Transform{.position = {100.0F, 200.0F}})
+///     .add(aylo::plugins::transform::Transform2D{.position = {100.0F, 200.0F}})
 ///     .add(aylo::plugins::physics::Collider{.shape = aylo::plugins::physics::ShapeType::kCircle, .radius = 8.0F})
 ///     .add(aylo::plugins::physics::RigidBody{})
 ///     .add(aylo::plugins::physics::debug::PhysicsDebug{});

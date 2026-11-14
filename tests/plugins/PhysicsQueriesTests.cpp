@@ -27,7 +27,7 @@ using aylo::plugins::physics::PhysicsWorld;
 using aylo::plugins::physics::QueryFilter;
 using aylo::plugins::physics::ShapeType;
 using aylo::plugins::physics::exceptions::PhysicsException;
-using aylo::plugins::transform::Transform;
+using aylo::plugins::transform::Transform2D;
 
 namespace {
 constexpr float kTolerance = 0.05F;
@@ -47,17 +47,17 @@ struct Walls {
     Walls() {
         static_cast<void>(
             world.createBody(near, Collider{.shape = ShapeType::kBox, .size = {20.0F, 200.0F}, .layer = kWallLayer},
-                             nullptr, Transform{.position = {100.0F, 0.0F}}));
+                             nullptr, Transform2D{.position = {100.0F, 0.0F}}));
         static_cast<void>(
             world.createBody(far, Collider{.shape = ShapeType::kBox, .size = {20.0F, 200.0F}, .layer = kOtherLayer},
-                             nullptr, Transform{.position = {200.0F, 0.0F}}));
+                             nullptr, Transform2D{.position = {200.0F, 0.0F}}));
     }
 
     /// @brief Adds a static circle of the radius at the position.
     void addCircle(Entity entity, glm::vec2 position, float radius, bool sensor = false) {
         static_cast<void>(world.createBody(entity,
                                            Collider{.shape = ShapeType::kCircle, .radius = radius, .sensor = sensor},
-                                           nullptr, Transform{.position = position}));
+                                           nullptr, Transform2D{.position = position}));
     }
 };
 }  // namespace
@@ -90,7 +90,7 @@ TEST(PhysicsQueries, RaysFollowTheYDownAxes) {
     Walls walls;
     const Entity floor{3, 1};
     static_cast<void>(walls.world.createBody(floor, Collider{.shape = ShapeType::kBox, .size = {40.0F, 20.0F}}, nullptr,
-                                             Transform{.position = {0.0F, 100.0F}}));
+                                             Transform2D{.position = {0.0F, 100.0F}}));
     const std::optional<PhysicsWorld::RayHit> hit = walls.world.raycast({0.0F, 0.0F}, {0.0F, 1.0F}, 1000.0F);
     ASSERT_TRUE(hit);
     EXPECT_EQ(hit->entity, floor);

@@ -34,7 +34,7 @@ using aylo::plugins::physics::PhysicsWorld;
 using aylo::plugins::physics::RigidBody;
 using aylo::plugins::physics::ShapeType;
 using aylo::plugins::physics::Velocity;
-using aylo::plugins::transform::Transform;
+using aylo::plugins::transform::Transform2D;
 
 namespace {
 constexpr float kFixedDelta = 1.0F / 60.0F;
@@ -70,13 +70,13 @@ struct PhysicsApp {
     [[nodiscard]] aylo::ecs::Mut<PhysicsWorld> physics() {
         return app.getWorld().getResources().requireMut<PhysicsWorld>();
     }
-    [[nodiscard]] Transform transformOf(Entity entity) { return *components().get<Transform>(entity); }
+    [[nodiscard]] Transform2D transformOf(Entity entity) { return *components().get<Transform2D>(entity); }
     [[nodiscard]] Velocity velocityOf(Entity entity) { return *components().get<Velocity>(entity); }
 
     /// @return A new entity at the position with a circle Collider and, when given, a RigidBody and a Velocity.
     Entity spawn(glm::vec2 position, std::optional<RigidBody> body, std::optional<Velocity> velocity = std::nullopt) {
         const Entity entity = app.getWorld().spawn();
-        components().add(entity, Transform{.position = position});
+        components().add(entity, Transform2D{.position = position});
         components().add(entity, Collider{.shape = ShapeType::kCircle, .radius = 8.0F});
         if (body) {
             components().add(entity, *body);
@@ -161,7 +161,7 @@ TEST(PhysicsVelocity, AKinematicBodyMovedByGameplayGoesBackToItsVelocity) {
     fixture.tick(10);
     EXPECT_NEAR(fixture.transformOf(ship).position.x, 10.0F, kTolerance);
 
-    fixture.components().add(ship, Transform{.position = {100.0F, 0.0F}});
+    fixture.components().add(ship, Transform2D{.position = {100.0F, 0.0F}});
     fixture.tick();
     std::optional<glm::vec2> position = fixture.physics()->getBodyPosition(ship);
     ASSERT_TRUE(position);
@@ -279,7 +279,7 @@ TEST(PhysicsForces, PushesForAnEntityWithoutBodyAreForgotten) {
     fixture.physics()->applyImpulse(ship, {100.0F, 0.0F});
     fixture.tick();  // No body yet: the impulse is dropped.
 
-    fixture.components().add(ship, Transform{});
+    fixture.components().add(ship, Transform2D{});
     fixture.components().add(ship, Collider{.shape = ShapeType::kCircle, .radius = 8.0F});
     fixture.components().add(ship, kFreeBody);
     fixture.tick(10);

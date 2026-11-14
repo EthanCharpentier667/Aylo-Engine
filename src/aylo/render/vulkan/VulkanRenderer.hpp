@@ -27,10 +27,12 @@
 #include "aylo/contract/platform/IPlatform.hpp"
 #include "aylo/contract/renderer/IRenderer.hpp"
 #include "aylo/contract/renderer/drawing/Color.hpp"
+#include "aylo/contract/renderer/drawing/Lines3D.hpp"
 #include "aylo/contract/renderer/drawing/Mesh.hpp"
 #include "aylo/contract/renderer/drawing/Overlay.hpp"
 #include "aylo/contract/renderer/drawing/Shape.hpp"
 #include "aylo/contract/renderer/drawing/Sprite.hpp"
+#include "aylo/contract/renderer/drawing/StaticMesh.hpp"
 #include "aylo/contract/renderer/drawing/Text.hpp"
 #include "aylo/contract/renderer/drawing/Texture.hpp"
 #include "aylo/contract/renderer/math/Rect.hpp"
@@ -41,6 +43,7 @@
 #include "aylo/contract/renderer/view/CameraView.hpp"
 #include "aylo/contract/renderer/view/ScenePreview.hpp"
 #include "aylo/contract/renderer/view/View.hpp"
+#include "aylo/contract/renderer/view/View3D.hpp"
 #include "core/DebugMessenger.hpp"
 #include "core/DeletionQueue.hpp"
 #include "core/Device.hpp"
@@ -55,6 +58,7 @@
 #include "material/GameMaterial.hpp"
 #include "material/GameShader.hpp"
 #include "memory/Allocator.hpp"
+#include "memory/Image.hpp"
 #include "memory/Uploader.hpp"
 #include "particle/GpuParticleSystem.hpp"
 #include "particle/ParticleSimulationPass.hpp"
@@ -64,6 +68,7 @@
 #include "postprocess/ScreenPass.hpp"
 #include "presentation/Swapchain.hpp"
 #include "rendering/DrawList.hpp"
+#include "rendering/Lines3DPass.hpp"
 #include "rendering/MaterialBinding.hpp"
 #include "rendering/MeshPass.hpp"
 #include "rendering/ParticleConstants.hpp"
@@ -72,6 +77,7 @@
 #include "rendering/ShapePass.hpp"
 #include "rendering/SpriteBatch.hpp"
 #include "rendering/SpritePass.hpp"
+#include "rendering/StaticMeshPass.hpp"
 #include "texture/SamplerCache.hpp"
 #include "texture/Texture.hpp"
 
@@ -195,6 +201,28 @@ class AYLO_RENDER_VULKAN_API VulkanRenderer final : public contract::renderer::I
     /// set before endFrame() applies to every sprite of the frame. Until it is called, a frame shows the view from the
     /// world's origin at its top-left corner.
     void setView(const contract::renderer::View& view) override;
+
+    /// @return True: the renderer draws the 3D world, first in the scene, with a depth buffer.
+    [[nodiscard]] bool supports3D() const noexcept override;
+
+    /// @brief Sets the frame's 3D view; a frame without one draws no 3D world. The last one set applies.
+    void setView3D(const contract::renderer::View3D& view) override;
+
+    /// @brief Adds @p lines to the frame's 3D world, placed by their world matrix. Does nothing if beginFrame() skipped
+    /// the frame.
+    void drawLines3D(const contract::renderer::Lines3D& lines) override;
+
+    /// @brief Uploads a static mesh (rendering::StaticMeshPass::upload()), kept until destroyStaticMesh().
+    /// @throws std::invalid_argument If an index or a part goes past the vertices or the indices.
+    [[nodiscard]] contract::renderer::StaticMeshId createStaticMesh(
+        const contract::renderer::StaticMeshDesc& desc) override;
+
+    /// @brief Destroys a static mesh once the frames that draw it are done; an unknown one is ignored.
+    void destroyStaticMesh(contract::renderer::StaticMeshId mesh) override;
+
+    /// @brief Adds a static mesh to the frame's 3D world, drawn before the 3D lines. Does nothing if beginFrame()
+    /// skipped the frame.
+    void drawStaticMesh(const contract::renderer::StaticMeshDraw& draw) override;
 
     /// @brief Adds @p sprite to the frame, drawn by endFrame() on top of the sprites drawn before it. Does nothing if
     /// beginFrame() skipped the frame.
@@ -376,6 +404,28 @@ class AYLO_RENDER_VULKAN_API VulkanRenderer final : public contract::renderer::I
     /// @return A texture of @p size and the swapchain's format, drawn into and then sampled, named @p name.
     [[nodiscard]] texture::Texture makeTargetTexture(glm::uvec2 size, std::string_view name) const;
 
+    /// @return The depth buffer in @p slot, of @p extent: made again (the old one deferred) when the size changes.
+    [[nodiscard]] const memory::Image& acquireDepth(std::unique_ptr<memory::Image>& slot, std::size_t frameIndex,
+                                                    vk::Extent2D extent, const char* name);
+
+    /// @brief What one picture of the 3D world is drawn from and into.
+    struct World3DTarget {
+        const contract::renderer::View3D* view;  ///< Where it is seen from.
+        vk::ImageView color;                     ///< The image it clears and draws into.
+        vk::Extent2D extent;                     ///< That image's size.
+        glm::vec2 viewSize;                      ///< The resolution the picture is designed for; 0x0: its own.
+        glm::uvec2 framebufferSize;              ///< The size the viewport is fitted in.
+        frame::FrameGlobals* globals;            ///< The uniforms its view goes in.
+        std::unique_ptr<memory::Image>* depth;   ///< Its depth buffer.
+        const char* depthName;                   ///< The depth buffer's debug name.
+        std::size_t lineVertices;                ///< How many of the uploaded line vertices it draws.
+    };
+
+    /// @brief Records a picture of the frame's 3D world into its target, cleared to the clear colour, with its own
+    /// scope and depth buffer: the first thing of the picture, under the 2D world.
+    void recordWorld3D(const vk::raii::CommandBuffer& commandBuffer, std::size_t frameIndex,
+                       const World3DTarget& target);
+
     /// @brief Copies the frame's world (sprites, particles, shapes) into the frame's buffers, once, for recordWorld().
     void uploadWorld(std::size_t frameIndex);
 
@@ -439,6 +489,9 @@ class AYLO_RENDER_VULKAN_API VulkanRenderer final : public contract::renderer::I
     std::chrono::steady_clock::time_point _startTime;      ///< When init() ran: origin of FrameUniforms::time.
     std::chrono::steady_clock::time_point _lastFrameTime;  ///< When the previous frame ended: for deltaTime.
     std::optional<contract::renderer::View> _view;         ///< From setView(); reset by beginFrame().
+    std::optional<contract::renderer::View3D> _view3D;     ///< From setView3D(); reset by beginFrame().
+    std::vector<rendering::LineVertex3D> _lines3D;  ///< The frame's 3D lines, in the world; cleared by beginFrame().
+    std::vector<contract::renderer::StaticMeshDraw> _staticMeshDraws;  ///< The frame's meshes; cleared by beginFrame().
     std::filesystem::path _pipelineCachePath;     ///< Config::pipelineCache resolved by init(); empty: not kept.
     contract::renderer::Color _clearColor{0.0F};  ///< From beginFrame(): what endFrame() clears with.
     rendering::SpriteBatch _sprites;              ///< The frame's sprites; cleared by beginFrame().
@@ -458,6 +511,9 @@ class AYLO_RENDER_VULKAN_API VulkanRenderer final : public contract::renderer::I
     contract::renderer::Mesh _mesh;                  ///< The frame's meshes, merged; cleared by beginFrame().
     std::optional<contract::renderer::ScenePreview> _previewRequest;  ///< From setScenePreview(): for beginFrame().
     std::optional<contract::renderer::View> _previewView;             ///< The preview's view as of the current frame.
+    std::optional<contract::renderer::View3D> _preview3D;  ///< The preview's 3D view as of the current frame.
+    bool _previewWorld2D{true};                            ///< Whether the preview draws the 2D world.
+    std::size_t _sceneLineVertices{0};              ///< The frame's line vertices; the preview's own come after them.
     std::optional<glm::uvec2> _previewSize;         ///< The preview texture's size now; empty: no preview.
     contract::renderer::TextureId _previewTexture;  ///< The preview's texture in _textures.
     contract::renderer::FrameStats _stats;          ///< What the last frame drew.
@@ -501,13 +557,20 @@ class AYLO_RENDER_VULKAN_API VulkanRenderer final : public contract::renderer::I
     std::unique_ptr<rendering::ShapePass> _overlayShapePass;    ///< Draws _overlayShapes, with buffers of its own.
     std::unique_ptr<rendering::ShapePass> _shapePass;           ///< Draws _shapes at endFrame(), after the sprites.
     std::unique_ptr<rendering::MeshPass> _meshPass;             ///< Draws _mesh at endFrame(), over everything.
+    std::unique_ptr<rendering::Lines3DPass> _lines3DPass;       ///< Draws _lines3D first, in the 3D world.
+    std::unique_ptr<rendering::StaticMeshPass> _staticMeshPass;  ///< Draws _staticMeshDraws, in the 3D world.
+    std::unique_ptr<frame::FrameGlobals> _globals3D;             ///< The frame uniforms of the 3D world: its view.
+    std::unique_ptr<memory::Image> _sceneDepth;                  ///< The 3D world's depth buffer, the scene's size.
+    std::unique_ptr<memory::Image> _previewDepth;                ///< The preview's depth buffer, its size.
+    std::unique_ptr<frame::FrameGlobals> _previewGlobals3D;      ///< The frame uniforms of the preview's 3D view.
     std::unique_ptr<rendering::ParticlePass> _particlePass;  ///< Draws _particleRanges at endFrame(), among _sprites.
     std::unique_ptr<particle::ParticleSimulationPass> _particleSimulation;  ///< Runs _simulations at endFrame().
     std::unique_ptr<postprocess::ScreenPass> _screenPass;  ///< Runs the screen effects and shows the result.
     std::unique_ptr<postprocess::ScreenPass::Targets>
         _screenTargets;  ///< The HDR scene and the effects' other
                          ///< image; its sets come from _textureDescriptors.
-    core::SlotMap<contract::renderer::TextureId, texture::Texture> _textures;  ///< By TextureId.
+    core::SlotMap<contract::renderer::TextureId, texture::Texture> _textures;                 ///< By TextureId.
+    core::SlotMap<contract::renderer::StaticMeshId, rendering::GpuStaticMesh> _staticMeshes;  ///< By StaticMeshId.
     core::SlotMap<contract::renderer::ParticleSystemId, particle::GpuParticleSystem>
         _particleSystems;                                                              ///< By ParticleSystemId.
     core::SlotMap<contract::renderer::ShaderId, material::GameShader> _gameShaders;    ///< By ShaderId.

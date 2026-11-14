@@ -35,6 +35,8 @@ TEST(PhysicsSettings, KeepsTheDefaultsOfAnEmptySection) {
     EXPECT_FLOAT_EQ(settings.gravity.x, defaults.gravity.x);
     EXPECT_FLOAT_EQ(settings.gravity.y, defaults.gravity.y);
     EXPECT_FLOAT_EQ(settings.unitsPerMeter, defaults.unitsPerMeter);
+    EXPECT_EQ(settings.gravity3D, defaults.gravity3D);
+    EXPECT_FLOAT_EQ(defaults.gravity3D.y, -9.81F);
     EXPECT_EQ(settings.maxBodies, defaults.maxBodies);
     EXPECT_EQ(settings.maxBodyPairs, defaults.maxBodyPairs);
     EXPECT_EQ(settings.maxContactConstraints, defaults.maxContactConstraints);
@@ -44,6 +46,7 @@ TEST(PhysicsSettings, KeepsTheDefaultsOfAnEmptySection) {
 TEST(PhysicsSettings, ReadsEveryKey) {
     Settings section;
     section.set("gravity", std::vector<double>{0.0, 981.0});
+    section.set("gravity3D", std::vector<double>{0.0, -20.0, 1.0});
     section.set("unitsPerMeter", 64.0);
     section.set("maxBodies", 128.0);
     section.set("maxBodyPairs", 256.0);
@@ -53,6 +56,8 @@ TEST(PhysicsSettings, ReadsEveryKey) {
     EXPECT_FLOAT_EQ(settings.gravity.x, 0.0F);
     EXPECT_FLOAT_EQ(settings.gravity.y, 981.0F);
     EXPECT_FLOAT_EQ(settings.unitsPerMeter, 64.0F);
+    EXPECT_FLOAT_EQ(settings.gravity3D.y, -20.0F);
+    EXPECT_FLOAT_EQ(settings.gravity3D.z, 1.0F);
     EXPECT_EQ(settings.maxBodies, 128U);
     EXPECT_EQ(settings.maxBodyPairs, 256U);
     EXPECT_EQ(settings.maxContactConstraints, 512U);
@@ -64,6 +69,9 @@ TEST(PhysicsSettings, RejectsInvalidValues) {
     EXPECT_THROW(static_cast<void>(PhysicsSettings::fromSettings(sectionWith("gravity", std::vector<double>{1.0}))),
                  SettingsException);
     EXPECT_THROW(static_cast<void>(PhysicsSettings::fromSettings(sectionWith("gravity", 9.8))), SettingsException);
+    EXPECT_THROW(
+        static_cast<void>(PhysicsSettings::fromSettings(sectionWith("gravity3D", std::vector<double>{0.0, -9.8}))),
+        SettingsException);
     EXPECT_THROW(static_cast<void>(PhysicsSettings::fromSettings(sectionWith("unitsPerMeter", 0.0))),
                  SettingsException);
     EXPECT_THROW(static_cast<void>(PhysicsSettings::fromSettings(sectionWith("maxBodies", 0.0))), SettingsException);

@@ -10,6 +10,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <glm/ext/vector_float2.hpp>
+#include <glm/ext/vector_float3.hpp>
+#include <glm/ext/vector_float4.hpp>
 #include <memory>
 #include <optional>
 #include <vector>
@@ -17,12 +19,14 @@
 #include "aylo/ecs/entity/Entity.hpp"
 #include "aylo/ecs/resource/ResourceTraits.hpp"
 #include "plugins/physics/Collider.hpp"
+#include "plugins/physics/Collider3D.hpp"
 #include "plugins/physics/Export.hpp"
 #include "plugins/physics/PhysicsHandle.hpp"
 #include "plugins/physics/PhysicsSettings.hpp"
 #include "plugins/physics/QueryFilter.hpp"
 #include "plugins/physics/RigidBody.hpp"
 #include "plugins/physics/Velocity.hpp"
+#include "plugins/physics/Velocity3D.hpp"
 #include "plugins/transform/Transform.hpp"
 
 namespace aylo::plugins::physics {
@@ -34,8 +38,10 @@ class JoltRuntime;
 /// @brief One physics world: a resource the PhysicsPlugin inserts, stepped once per fixed tick.
 ///
 /// @details Each App (each room on a server) has its own world, stepped on the App's thread with no thread of its
-/// own. Its API is in world units, Y down, like Transform; it converts to Jolt's meters
-/// (PhysicsSettings::unitsPerMeter) and axes inside. The Jolt objects live behind a pointer, so moving the resource
+/// own. Its 2D API is in world units, Y down, like Transform2D; it converts to Jolt's meters
+/// (PhysicsSettings::unitsPerMeter) and axes inside. Its 3D API (the functions ending in 3D) is in metres, Y up, like
+/// Transform3D, with no conversion. 2D and 3D bodies share the world but never touch, and a 2D function ignores a 3D
+/// body (and the other way round). The Jolt objects live behind a pointer, so moving the resource
 /// never moves what Jolt points to, and this header includes no Jolt. A moved-from world can only be destroyed or
 /// assigned to.
 /// @code
@@ -43,7 +49,7 @@ class JoltRuntime;
 /// @endcode
 class AYLO_PLUGIN_PHYSICS_API PhysicsWorld {
   public:
-    /// @brief Where a body is, as a Transform sees it.
+    /// @brief Where a body is, as a Transform2D sees it.
     struct BodyPose {
         ecs::Entity entity;  ///< The entity the body belongs to.
         glm::vec2 position;  ///< In world units, Y down.
@@ -69,6 +75,28 @@ class AYLO_PLUGIN_PHYSICS_API PhysicsWorld {
         ecs::Entity second;                   ///< The other entity.
         glm::vec2 point{0.0F, 0.0F};          ///< Where they touched, in world units, Y down; zero for an end.
         glm::vec2 normal{0.0F, 0.0F};         ///< Unit vector from first to second, Y down; zero for an end.
+        bool spatial = false;                 ///< Whether it is between 3D bodies: point3D and normal3D are set.
+        glm::vec3 point3D{0.0F};              ///< Between 3D bodies: where they touched, in metres; else zero.
+        glm::vec3 normal3D{0.0F};             ///< Between 3D bodies: unit vector from first to second; else zero.
+    };
+
+    /// @brief Where a 3D body is, as a Transform3D sees it.
+    struct BodyPose3D {
+        ecs::Entity entity;  ///< The entity the body belongs to.
+        glm::vec3 position;  ///< In metres.
+        glm::vec4 rotation;  ///< A unit quaternion, x, y, z, w.
+    };
+    /// @brief How fast a 3D body moves, as a Velocity3D sees it.
+    struct BodyVelocity3D {
+        ecs::Entity entity;   ///< The entity the body belongs to.
+        Velocity3D velocity;  ///< In metres and radians per second.
+    };
+    /// @brief What a 3D ray hit.
+    struct RayHit3D {
+        ecs::Entity entity;      ///< The hit entity.
+        glm::vec3 point{0.0F};   ///< Where, in metres.
+        glm::vec3 normal{0.0F};  ///< The surface normal there, unit, pointing out of the hit body.
+        float distance = 0.0F;   ///< From the origin, in metres.
     };
 
     /// @brief What a ray or a moving shape hit.
@@ -110,18 +138,22 @@ class AYLO_PLUGIN_PHYSICS_API PhysicsWorld {
     [[nodiscard]] std::optional<BodyPose> getBodyPose(ecs::Entity entity) const;
     /// @return How fast the entity's body moves; nothing if it has no body.
     [[nodiscard]] std::optional<Velocity> getBodyVelocity(ecs::Entity entity) const;
-    /// @return Whether the Transform differs from the last pose the world gave the body or read from it: gameplay moved
-    /// the entity. False for an entity without a body.
-    [[nodiscard]] bool isOutOfSync(ecs::Entity entity, const transform::Transform& transform) const;
-    /// @return Whether a child's Transform, relative to its parent, differs from the last one rememberLocal() recorded:
-    /// gameplay moved the entity. False when none was recorded, or for an entity without a body.
-    [[nodiscard]] bool isLocalOutOfSync(ecs::Entity entity, const transform::Transform& local) const;
+    /// @return Whether the Transform2D differs from the last pose the world gave the body or read from it: gameplay
+    /// moved the entity. False for an entity without a body.
+    [[nodiscard]] bool isOutOfSync(ecs::Entity entity, const transform::Transform2D& transform) const;
+    /// @return Whether a child's Transform2D, relative to its parent, differs from the last one rememberLocal()
+    /// recorded: gameplay moved the entity. False when none was recorded, or for an entity without a body.
+    [[nodiscard]] bool isLocalOutOfSync(ecs::Entity entity, const transform::Transform2D& local) const;
     /// @return Whether the Velocity differs from the last velocity the world gave the body or read from it: gameplay
-    /// changed it, or the body was rebuilt or moved to a Transform since. False for an entity without a moving body.
+    /// changed it, or the body was rebuilt or moved to a Transform2D since. False for an entity without a moving body.
     [[nodiscard]] bool isVelocityOutOfSync(ecs::Entity entity, const Velocity& velocity) const;
 
     /// @param gravity In world units per second squared, Y down.
     void setGravity(glm::vec2 gravity) noexcept;
+    /// @return The 3D bodies' gravity, in metres per second squared, Y up.
+    [[nodiscard]] glm::vec3 getGravity3D() const noexcept;
+    /// @param gravity The 3D bodies' gravity, in metres per second squared, Y up.
+    void setGravity3D(const glm::vec3& gravity) noexcept;
 
     /// @brief Advances the simulation by one step.
     /// @details Applies the forces, impulses and torques queued since the last step first, then forgets them.
@@ -142,17 +174,17 @@ class AYLO_PLUGIN_PHYSICS_API PhysicsWorld {
     /// @return The new body.
     /// @throws exceptions::PhysicsException When the components are invalid or the world holds maxBodies bodies.
     PhysicsHandle createBody(ecs::Entity entity, const Collider& collider, const RigidBody* body,
-                             const transform::Transform& at);
+                             const transform::Transform2D& at);
     /// @brief Destroys the entity's body.
     /// @return Whether it had one.
     bool destroyBody(ecs::Entity entity);
 
     /// @brief Starts a body pass: the bodies that are not touched or created before endBodyPass() are destroyed.
     /// @details This is how bodies follow despawned entities and removed Colliders, which the ECS does not report: the
-    /// physics plugin touches every entity that still has a Collider and a Transform, once per tick.
+    /// physics plugin touches every entity that still has a Collider and a Transform2D, once per tick.
     void beginBodyPass() noexcept;
     /// @brief Marks the entity's body as seen by the current body pass.
-    /// @param entity The entity, which still has a Collider and a Transform.
+    /// @param entity The entity, which still has a Collider and a Transform2D.
     /// @param hasRigidBody Whether it has a RigidBody now.
     /// @return False when its body must be created: it has none, or it gained or lost its RigidBody since.
     [[nodiscard]] bool touchBody(ecs::Entity entity, bool hasRigidBody) noexcept;
@@ -160,21 +192,21 @@ class AYLO_PLUGIN_PHYSICS_API PhysicsWorld {
     /// @return The entities whose body was destroyed.
     std::vector<ecs::Entity> endBodyPass();
 
-    /// @brief Moves a kinematic body to the entity's Transform during the next step.
-    /// @details Gives the body the velocity that reaches the Transform in deltaSeconds, so it pushes the dynamic bodies
-    /// on its way instead of passing through them; called every tick, it stops when the Transform stops. Its Velocity
-    /// counts as out of sync afterwards, so setVelocity() gives it back. Does nothing for an entity without a kinematic
-    /// body.
-    void moveKinematic(ecs::Entity entity, const transform::Transform& transform, float deltaSeconds);
-    /// @brief Puts the entity's body at its Transform at once, waking it up: a respawn, a moved wall.
+    /// @brief Moves a kinematic body to the entity's Transform2D during the next step.
+    /// @details Gives the body the velocity that reaches the Transform2D in deltaSeconds, so it pushes the dynamic
+    /// bodies on its way instead of passing through them; called every tick, it stops when the Transform2D stops. Its
+    /// Velocity counts as out of sync afterwards, so setVelocity() gives it back. Does nothing for an entity without a
+    /// kinematic body.
+    void moveKinematic(ecs::Entity entity, const transform::Transform2D& transform, float deltaSeconds);
+    /// @brief Puts the entity's body at its Transform2D at once, waking it up: a respawn, a moved wall.
     /// @details Keeps the body's velocity. Does nothing for an entity without a body.
-    void teleport(ecs::Entity entity, const transform::Transform& transform);
-    /// @brief Records the pose isOutOfSync() compares to, without moving the body: the pose a child's Transform gives
+    void teleport(ecs::Entity entity, const transform::Transform2D& transform);
+    /// @brief Records the pose isOutOfSync() compares to, without moving the body: the pose a child's Transform2D gives
     /// back, which can differ from the body's by a rounding. Does nothing for an entity without a body.
-    void rememberPose(ecs::Entity entity, const transform::Transform& pose);
-    /// @brief Records a child's Transform, relative to its parent, for isLocalOutOfSync(). Does nothing for an entity
+    void rememberPose(ecs::Entity entity, const transform::Transform2D& pose);
+    /// @brief Records a child's Transform2D, relative to its parent, for isLocalOutOfSync(). Does nothing for an entity
     /// without a body.
-    void rememberLocal(ecs::Entity entity, const transform::Transform& local);
+    void rememberLocal(ecs::Entity entity, const transform::Transform2D& local);
     /// @brief Sets how fast the entity's body moves, waking it up when the velocity is not zero.
     /// @details An axis the body cannot move along (RigidBody::fixedRotation) stays at zero. Does nothing for an entity
     /// without a dynamic or kinematic body.
@@ -198,9 +230,9 @@ class AYLO_PLUGIN_PHYSICS_API PhysicsWorld {
 
     /// @brief Reads the bodies the last step moved, for their Transforms.
     /// @details The dynamic bodies and the kinematic ones moving at their velocity, not those moveKinematic() moved to
-    /// their Transform. Only the bodies Jolt keeps active, and only those whose pose changed: sleeping bodies never
-    /// mark their Transform as changed, so replication does not send them. Each pose is remembered, so isOutOfSync()
-    /// does not take the Transform written from it for a move by gameplay.
+    /// their Transform2D. Only the bodies Jolt keeps active, and only those whose pose changed: sleeping bodies never
+    /// mark their Transform2D as changed, so replication does not send them. Each pose is remembered, so isOutOfSync()
+    /// does not take the Transform2D written from it for a move by gameplay.
     [[nodiscard]] std::vector<BodyPose> collectMovedBodies();
     /// @brief Reads the dynamic bodies whose velocity the last step changed, for their Velocity.
     /// @details Only the bodies Jolt keeps active. Each velocity is remembered, so isVelocityOutOfSync() does not take
@@ -241,6 +273,57 @@ class AYLO_PLUGIN_PHYSICS_API PhysicsWorld {
     /// @throws exceptions::PhysicsException When the shape is invalid (as for a Collider).
     [[nodiscard]] std::vector<ecs::Entity> overlap(const Collider& shape, glm::vec2 at,
                                                    const QueryFilter& filter = {}) const;
+
+    /// @name 3D bodies
+    /// The 3D family's functions, the 2D ones' counterparts: in metres, Y up, rotations as quaternions (x, y, z, w).
+    /// @{
+
+    /// @brief Creates the entity's 3D body from its components, replacing the body it had (of either family).
+    /// @throws exceptions::PhysicsException When the components are invalid or the world holds maxBodies bodies.
+    PhysicsHandle createBody3D(ecs::Entity entity, const Collider3D& collider, const RigidBody* body,
+                               const transform::Transform3D& at);
+    /// @brief Marks the entity's 3D body as seen by the current body pass, as touchBody().
+    /// @return False when its body must be created: it has none, its body is a 2D one, or it gained or lost its
+    /// RigidBody since.
+    [[nodiscard]] bool touchBody3D(ecs::Entity entity, bool hasRigidBody) noexcept;
+    /// @return Where the entity's 3D body is and how it is turned; nothing if it has no 3D body.
+    [[nodiscard]] std::optional<BodyPose3D> getBodyPose3D(ecs::Entity entity) const;
+    /// @return How fast the entity's 3D body moves; nothing if it has no 3D body.
+    [[nodiscard]] std::optional<Velocity3D> getBodyVelocity3D(ecs::Entity entity) const;
+    /// @return Whether the Transform3D differs from the last pose the world gave the 3D body or read from it.
+    [[nodiscard]] bool isOutOfSync3D(ecs::Entity entity, const transform::Transform3D& transform) const;
+    /// @return Whether the Velocity3D differs from the last one the world gave the moving 3D body or read from it.
+    [[nodiscard]] bool isVelocityOutOfSync3D(ecs::Entity entity, const Velocity3D& velocity) const;
+    /// @brief Moves a kinematic 3D body to the Transform3D during the next step, as moveKinematic().
+    void moveKinematic3D(ecs::Entity entity, const transform::Transform3D& transform, float deltaSeconds);
+    /// @brief Puts the entity's 3D body at its Transform3D at once, waking it up, as teleport().
+    void teleport3D(ecs::Entity entity, const transform::Transform3D& transform);
+    /// @brief Sets how fast the entity's moving 3D body moves, as setVelocity(); an axis it cannot turn around
+    /// (fixedRotation) stays at zero.
+    void setVelocity3D(ecs::Entity entity, const Velocity3D& velocity);
+    /// @brief Pushes the entity's dynamic 3D body during the next step, as applyForce(). @param force In newtons.
+    void applyForce3D(ecs::Entity entity, const glm::vec3& force);
+    /// @brief Changes the entity's dynamic 3D body's velocity at the next step, as applyImpulse().
+    /// @param impulse In kilogram metres per second.
+    void applyImpulse3D(ecs::Entity entity, const glm::vec3& impulse);
+    /// @brief Turns the entity's dynamic 3D body during the next step, as applyTorque().
+    /// @param torque In newton metres, around each world axis.
+    void applyTorque3D(ecs::Entity entity, const glm::vec3& torque);
+    /// @brief Reads the 3D bodies the last step moved, for their Transform3D, as collectMovedBodies().
+    [[nodiscard]] std::vector<BodyPose3D> collectMovedBodies3D();
+    /// @brief Reads the dynamic 3D bodies whose velocity the last step changed, as collectChangedVelocities().
+    [[nodiscard]] std::vector<BodyVelocity3D> collectChangedVelocities3D();
+    /// @brief Casts a ray among the 3D bodies and returns the closest one it hits, as raycast().
+    /// @param origin Where the ray starts, in metres.
+    /// @param direction Where it goes; normalized here.
+    /// @param maxDistance How far it goes, in metres.
+    /// @param filter Which bodies it sees.
+    [[nodiscard]] std::optional<RayHit3D> raycast3D(const glm::vec3& origin, const glm::vec3& direction,
+                                                    float maxDistance, const QueryFilter& filter = {}) const;
+    /// @brief Casts a ray among the 3D bodies and returns every body it hits, closest first: one hit per body.
+    [[nodiscard]] std::vector<RayHit3D> raycastAll3D(const glm::vec3& origin, const glm::vec3& direction,
+                                                     float maxDistance, const QueryFilter& filter = {}) const;
+    /// @}
 
   private:
     struct Impl;

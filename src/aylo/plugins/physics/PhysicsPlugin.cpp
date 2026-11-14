@@ -35,6 +35,7 @@
 #include "aylo/ecs/system/Side.hpp"
 #include "aylo/ecs/time/Time.hpp"
 #include "plugins/physics/Collider.hpp"
+#include "plugins/physics/Collider3D.hpp"
 #include "plugins/physics/CollisionEvents.hpp"
 #include "plugins/physics/ComponentOptions.hpp"
 #include "plugins/physics/PhysicsCalls.hpp"
@@ -43,6 +44,7 @@
 #include "plugins/physics/PhysicsWorld.hpp"
 #include "plugins/physics/RigidBody.hpp"
 #include "plugins/physics/Velocity.hpp"
+#include "plugins/physics/Velocity3D.hpp"
 #include "plugins/transform/Transform.hpp"
 #include "plugins/transform/TransformMath.hpp"
 #include "plugins/transform/TransformPlugin.hpp"
@@ -50,13 +52,21 @@
 
 namespace aylo::plugins::physics {
 namespace {
-/// @brief Entities that get a body: a Collider and a Transform, maybe a RigidBody.
+/// @brief Entities that get a 2D body: a Collider and a Transform2D, maybe a RigidBody, and no Collider3D (which wins).
 template <typename... Filters>
-using Bodies = ecs::Query<const Collider, ecs::Optional<const RigidBody>, const transform::Transform,
-                          ecs::Optional<const ecs::Parent>, Filters...>;
+using Bodies = ecs::Query<const Collider, ecs::Optional<const RigidBody>, const transform::Transform2D,
+                          ecs::Optional<const ecs::Parent>, ecs::Without<Collider3D>, Filters...>;
+
+/// @brief Entities that get a 3D body: a Collider3D and a Transform3D, maybe a RigidBody.
+template <typename... Filters>
+using Bodies3D = ecs::Query<const Collider3D, ecs::Optional<const RigidBody>, const transform::Transform3D, Filters...>;
+
+/// @brief The 3D bodies whose RigidBody changed.
+using ChangedBodies3D =
+    ecs::Query<const Collider3D, const RigidBody, const transform::Transform3D, ecs::Changed<RigidBody>>;
 
 /// @brief Everything that can be an ancestor of a body.
-using Placed = ecs::Query<const transform::Transform, ecs::Optional<const ecs::Parent>>;
+using Placed = ecs::Query<const transform::Transform2D, ecs::Optional<const ecs::Parent>>;
 
 /// @brief The bodies that have a parent.
 using ChildBodies = ecs::Query<const ecs::Parent, ecs::With<Collider>>;
@@ -74,26 +84,44 @@ transform::WorldPoses collectPoses(Placed& placed, ChildBodies& children) {
     return poses;
 }
 
-/// @return Where a body goes: its Transform, or for a child the pose its parents give it. Only the position and the
+/// @return Where a body goes: its Transform2D, or for a child the pose its parents give it. Only the position and the
 /// rotation are meaningful: bodies have no scale.
-transform::Transform poseOf(const transform::WorldPoses& poses, ecs::Entity entity, const transform::Transform& local,
-                            const ecs::Parent* parent) {
+transform::Transform2D poseOf(const transform::WorldPoses& poses, ecs::Entity entity,
+                              const transform::Transform2D& local, const ecs::Parent* parent) {
     if (parent == nullptr) {
         return local;
     }
-    const transform::GlobalTransform pose = poses.of(entity);
-    return transform::Transform{.position = pose.position, .rotation = pose.rotation, .scale = pose.scale};
+    const transform::GlobalTransform2D pose = poses.of(entity);
+    return transform::Transform2D{.position = pose.position, .rotation = pose.rotation, .scale = pose.scale};
 }
 
-/// @brief FixedUpdate, before the step: keeps one body per entity with a Collider and a Transform.
+/// @brief Creates the 3D bodies, as syncBodies() does the 2D ones: no hierarchy, a 3D body is placed by its own
+/// Transform3D.
+void syncBodies3D(PhysicsWorld& world, ecs::Commands& commands, Bodies3D<ecs::Changed<Collider3D>>& colliders,
+                  ChangedBodies3D& bodies, Bodies3D<>& all) {
+    for (auto [entity, collider, body, transform] : colliders) {
+        commands.entity(entity).add(world.createBody3D(entity, collider, body, transform));
+    }
+    for (auto [entity, collider, body, transform] : bodies) {
+        commands.entity(entity).add(world.createBody3D(entity, collider, &body, transform));
+    }
+    for (auto [entity, collider, body, transform] : all) {
+        if (!world.touchBody3D(entity, body != nullptr)) {
+            commands.entity(entity).add(world.createBody3D(entity, collider, body, transform));
+        }
+    }
+}
+
+/// @brief FixedUpdate, before the step: keeps one body per entity with a Collider and a Transform2D.
 /// @details Rebuilds the bodies whose Collider or RigidBody changed (creating the new ones), creates the missing ones
 /// and those whose RigidBody appeared or went, then destroys the bodies of entities that were despawned or lost their
-/// Collider or Transform. Their PhysicsHandle follows, through the commands applied at the end of the phase.
+/// Collider or Transform2D. Their PhysicsHandle follows, through the commands applied at the end of the phase.
 void syncBodies(ecs::ResMut<PhysicsWorld> world, ecs::Commands& commands, Bodies<ecs::Changed<Collider>> colliders,
-                ecs::Query<const Collider, const RigidBody, const transform::Transform,
-                           ecs::Optional<const ecs::Parent>, ecs::Changed<RigidBody>>
+                ecs::Query<const Collider, const RigidBody, const transform::Transform2D,
+                           ecs::Optional<const ecs::Parent>, ecs::Without<Collider3D>, ecs::Changed<RigidBody>>
                     bodies,
-                Bodies<> all, ecs::Query<const PhysicsHandle> handles, Placed placed, ChildBodies children) {
+                Bodies<> all, ecs::Query<const PhysicsHandle> handles, Placed placed, ChildBodies children,
+                Bodies3D<ecs::Changed<Collider3D>> colliders3D, ChangedBodies3D bodies3D, Bodies3D<> all3D) {
     const transform::WorldPoses poses = collectPoses(placed, children);
     world->beginBodyPass();
     for (auto [entity, collider, body, transform, parent] : colliders) {
@@ -110,6 +138,7 @@ void syncBodies(ecs::ResMut<PhysicsWorld> world, ecs::Commands& commands, Bodies
                 world->createBody(entity, collider, body, poseOf(poses, entity, transform, parent)));
         }
     }
+    syncBodies3D(*world, commands, colliders3D, bodies3D, all3D);
     static_cast<void>(world->endBodyPass());
     for (auto [entity, handle] : handles) {
         if (!world->findBody(entity)) {
@@ -118,19 +147,41 @@ void syncBodies(ecs::ResMut<PhysicsWorld> world, ecs::Commands& commands, Bodies
     }
 }
 
+/// @brief The 3D bodies an entity drives: its Transform3D, its RigidBody and Velocity3D if any.
+using Driven3D = ecs::Query<const transform::Transform3D, ecs::Optional<const RigidBody>,
+                            ecs::Optional<const Velocity3D>, ecs::With<Collider3D>>;
+
+/// @brief Drives the 3D bodies from their Transform3D and Velocity3D, as syncToPhysics() does the 2D ones.
+void syncToPhysics3D(PhysicsWorld& world, float deltaSeconds, Driven3D& bodies) {
+    for (auto [entity, transform, body, velocity] : bodies) {
+        const bool outOfSync = world.isOutOfSync3D(entity, transform);
+        if (body != nullptr && body->type == BodyType::kKinematic && (velocity == nullptr || outOfSync)) {
+            world.moveKinematic3D(entity, transform, deltaSeconds);
+            continue;
+        }
+        if (outOfSync) {
+            world.teleport3D(entity, transform);
+        }
+        if (velocity != nullptr && world.isVelocityOutOfSync3D(entity, *velocity)) {
+            world.setVelocity3D(entity, *velocity);
+        }
+    }
+}
+
 /// @brief FixedUpdate, after the body sync and before the step: gameplay's Transforms and Velocities drive the bodies.
-/// @details Kinematic bodies without a Velocity move to their Transform every tick (and stop when it stops); those with
-/// one move to their Transform on the ticks gameplay moved it, and at their Velocity otherwise. Other bodies only
-/// follow a Transform that gameplay moved, as a teleport (respawn, moved wall): one the physics wrote itself is not a
-/// move. Likewise, a Velocity is only given to the body when gameplay changed it.
+/// @details Kinematic bodies without a Velocity move to their Transform2D every tick (and stop when it stops); those
+/// with one move to their Transform2D on the ticks gameplay moved it, and at their Velocity otherwise. Other bodies
+/// only follow a Transform2D that gameplay moved, as a teleport (respawn, moved wall): one the physics wrote itself is
+/// not a move. Likewise, a Velocity is only given to the body when gameplay changed it.
 void syncToPhysics(ecs::ResMut<PhysicsWorld> world, ecs::Res<ecs::Time> time,
-                   ecs::Query<const transform::Transform, ecs::Optional<const RigidBody>, ecs::Optional<const Velocity>,
-                              ecs::Optional<const ecs::Parent>, ecs::With<Collider>>
+                   ecs::Query<const transform::Transform2D, ecs::Optional<const RigidBody>,
+                              ecs::Optional<const Velocity>, ecs::Optional<const ecs::Parent>, ecs::With<Collider>>
                        bodies,
-                   Placed placed, ChildBodies children) {
+                   Placed placed, ChildBodies children, Driven3D bodies3D) {
+    syncToPhysics3D(*world, time->fixedDelta, bodies3D);
     const transform::WorldPoses poses = collectPoses(placed, children);
     for (auto [entity, transform, body, velocity, parent] : bodies) {
-        const transform::Transform pose = poseOf(poses, entity, transform, parent);
+        const transform::Transform2D pose = poseOf(poses, entity, transform, parent);
         const bool dynamicChild = parent != nullptr && body != nullptr && body->type == BodyType::kDynamic;
         const bool outOfSync =
             dynamicChild ? world->isLocalOutOfSync(entity, transform) : world->isOutOfSync(entity, pose);
@@ -148,16 +199,21 @@ void syncToPhysics(ecs::ResMut<PhysicsWorld> world, ecs::Res<ecs::Time> time,
 }
 
 /// @brief FixedUpdate, after the body sync, in client mode in place of syncToPhysics(): puts the bodies at their
-/// Transform, which replication (or gameplay) wrote.
+/// Transform2D, which replication (or gameplay) wrote.
 /// @details Clients never step, so their bodies only serve scene queries (predicted movement, lasers) and the debug
-/// view: each one follows its Transform as a teleport, kinematic or not, and no Velocity is read.
+/// view: each one follows its Transform2D as a teleport, kinematic or not, and no Velocity is read.
 void followTransforms(
     ecs::ResMut<PhysicsWorld> world,
-    ecs::Query<const transform::Transform, ecs::Optional<const ecs::Parent>, ecs::With<Collider>> bodies, Placed placed,
-    ChildBodies children) {
+    ecs::Query<const transform::Transform2D, ecs::Optional<const ecs::Parent>, ecs::With<Collider>> bodies,
+    Placed placed, ChildBodies children, ecs::Query<const transform::Transform3D, ecs::With<Collider3D>> bodies3D) {
+    for (auto [entity, transform] : bodies3D) {
+        if (world->isOutOfSync3D(entity, transform)) {
+            world->teleport3D(entity, transform);
+        }
+    }
     const transform::WorldPoses poses = collectPoses(placed, children);
     for (auto [entity, transform, parent] : bodies) {
-        const transform::Transform pose = poseOf(poses, entity, transform, parent);
+        const transform::Transform2D pose = poseOf(poses, entity, transform, parent);
         if (world->isOutOfSync(entity, pose)) {
             world->teleport(entity, pose);
         }
@@ -184,13 +240,45 @@ void syncVelocitiesFromPhysics(PhysicsWorld& world, ecs::Query<Velocity, ecs::Wi
     }
 }
 
-/// @brief A body with a parent whose Transform must be written back, once its parents' are.
+/// @brief The 3D bodies the step moved write their pose to their Transform3D, and the dynamic ones their velocity to
+/// their Velocity3D.
+void syncFromPhysics3D(PhysicsWorld& world, ecs::Query<transform::Transform3D, ecs::With<Collider3D>>& transforms,
+                       ecs::Query<Velocity3D, ecs::With<Collider3D>>& velocities) {
+    const std::vector<PhysicsWorld::BodyVelocity3D> changed = world.collectChangedVelocities3D();
+    if (!changed.empty()) {
+        std::unordered_map<std::uint64_t, const Velocity3D*> byEntity;
+        for (const PhysicsWorld::BodyVelocity3D& body : changed) {
+            byEntity.emplace(body.entity.getBits(), &body.velocity);
+        }
+        for (auto [entity, velocity] : velocities) {
+            if (const auto found = byEntity.find(entity.getBits()); found != byEntity.end()) {
+                *velocity = *found->second;
+            }
+        }
+    }
+    const std::vector<PhysicsWorld::BodyPose3D> moved = world.collectMovedBodies3D();
+    if (moved.empty()) {
+        return;
+    }
+    std::unordered_map<std::uint64_t, const PhysicsWorld::BodyPose3D*> poses;
+    for (const PhysicsWorld::BodyPose3D& pose : moved) {
+        poses.emplace(pose.entity.getBits(), &pose);
+    }
+    for (auto [entity, transform] : transforms) {
+        if (const auto found = poses.find(entity.getBits()); found != poses.end()) {
+            transform->position = found->second->position;
+            transform->rotation = found->second->rotation;
+        }
+    }
+}
+
+/// @brief A body with a parent whose Transform2D must be written back, once its parents' are.
 struct ChildWrite {
-    ecs::Entity entity;                    ///< The entity.
-    ecs::Mut<transform::Transform> local;  ///< Its Transform, relative to its parent.
-    ecs::Entity parent;                    ///< Its parent.
-    glm::vec2 position;                    ///< Where its body is in the world.
-    float rotation;                        ///< How its body is turned in the world.
+    ecs::Entity entity;                      ///< The entity.
+    ecs::Mut<transform::Transform2D> local;  ///< Its Transform2D, relative to its parent.
+    ecs::Entity parent;                      ///< Its parent.
+    glm::vec2 position;                      ///< Where its body is in the world.
+    float rotation;                          ///< How its body is turned in the world.
 };
 
 /// @brief Writes the Transforms of `children`, parents first: each is the body's pose seen from its parent, so a
@@ -198,32 +286,35 @@ struct ChildWrite {
 void writeChildren(PhysicsWorld& world, const transform::WorldPoses& poses, std::vector<ChildWrite>& children) {
     std::ranges::sort(children, {}, [&poses](const ChildWrite& child) { return poses.depthOf(child.entity); });
     for (ChildWrite& child : children) {
-        const transform::GlobalTransform parent = poses.of(child.parent);
-        const transform::Transform relative = transform::toLocal(
-            parent, transform::GlobalTransform{.position = child.position, .rotation = child.rotation});
-        const transform::Transform& current = child.local.get();
+        const transform::GlobalTransform2D parent = poses.of(child.parent);
+        const transform::Transform2D relative = transform::toLocal(
+            parent, transform::GlobalTransform2D{.position = child.position, .rotation = child.rotation});
+        const transform::Transform2D& current = child.local.get();
         if (current.position != relative.position || current.rotation != relative.rotation) {
             child.local->position = relative.position;
             child.local->rotation = relative.rotation;
         }
         world.rememberLocal(child.entity, child.local.get());
-        const transform::GlobalTransform global = transform::combine(parent, child.local.get());
+        const transform::GlobalTransform2D global = transform::combine(parent, child.local.get());
         world.rememberPose(child.entity,
-                           transform::Transform{.position = global.position, .rotation = global.rotation});
+                           transform::Transform2D{.position = global.position, .rotation = global.rotation});
     }
 }
 
-/// @brief FixedUpdate, after the step: the bodies the step moved write their pose to their Transform, and the dynamic
+/// @brief FixedUpdate, after the step: the bodies the step moved write their pose to their Transform2D, and the dynamic
 /// ones their velocity to their Velocity.
 /// @details Only the moved bodies are written, so the Transforms of sleeping bodies are not marked as changed. Joins on
 /// Collider rather than PhysicsHandle: a body created this tick gets its handle only when the phase ends, and its pose
-/// must still be written, or the next tick would take the stale Transform for a teleport by gameplay. Dynamic children
-/// are written every tick, moved or not: their parent may have moved under them.
+/// must still be written, or the next tick would take the stale Transform2D for a teleport by gameplay. Dynamic
+/// children are written every tick, moved or not: their parent may have moved under them.
 void syncFromPhysics(ecs::ResMut<PhysicsWorld> world,
-                     ecs::Query<transform::Transform, ecs::Optional<const ecs::Parent>, ecs::Optional<const RigidBody>,
-                                ecs::With<Collider>>
+                     ecs::Query<transform::Transform2D, ecs::Optional<const ecs::Parent>,
+                                ecs::Optional<const RigidBody>, ecs::With<Collider>>
                          transforms,
-                     ecs::Query<Velocity, ecs::With<Collider>> velocities, Placed placed, ChildBodies children) {
+                     ecs::Query<Velocity, ecs::With<Collider>> velocities, Placed placed, ChildBodies children,
+                     ecs::Query<transform::Transform3D, ecs::With<Collider3D>> transforms3D,
+                     ecs::Query<Velocity3D, ecs::With<Collider3D>> velocities3D) {
+    syncFromPhysics3D(*world, transforms3D, velocities3D);
     syncVelocitiesFromPhysics(*world, velocities);
     const std::vector<PhysicsWorld::BodyPose> moved = world->collectMovedBodies();
     const transform::WorldPoses ancestors = collectPoses(placed, children);
@@ -271,7 +362,9 @@ void sendContactEvents(ecs::ResMut<PhysicsWorld> world, ecs::EventWriter<Collisi
                 started.send(CollisionStarted{.first = contact.first,
                                               .second = contact.second,
                                               .point = contact.point,
-                                              .normal = contact.normal});
+                                              .normal = contact.normal,
+                                              .point3D = contact.point3D,
+                                              .normal3D = contact.normal3D});
                 break;
             case PhysicsWorld::Contact::Kind::kCollisionEnded:
                 ended.send(CollisionEnded{.first = contact.first, .second = contact.second});
@@ -305,6 +398,8 @@ void PhysicsPlugin::build(ecs::App& app) {
     static_cast<void>(app.getWorld().getComponents().registerType<RigidBody>(kRigidBodyOptions));
     static_cast<void>(app.getWorld().getComponents().registerType<Collider>(kColliderOptions));
     static_cast<void>(app.getWorld().getComponents().registerType<Velocity>());
+    static_cast<void>(app.getWorld().getComponents().registerType<Collider3D>(kColliderOptions));
+    static_cast<void>(app.getWorld().getComponents().registerType<Velocity3D>());
     static_cast<void>(app.getWorld().getComponents().registerType<PhysicsHandle>());
     ecs::Events& events = app.getWorld().getEvents();
     static_cast<void>(events.registerType<CollisionStarted>());

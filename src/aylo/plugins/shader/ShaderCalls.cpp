@@ -24,8 +24,10 @@
 #include "aylo/ecs/app/PluginRegistry.hpp"
 #include "aylo/ecs/system/ResourceParam.hpp"
 #include "core/asset/AssetId.hpp"
+#include "plugins/graphics/TextureAssets.hpp"
 #include "plugins/shader/Material.hpp"
 #include "plugins/shader/MaterialAssets.hpp"
+#include "plugins/shader/MaterialFile.hpp"
 #include "plugins/shader/ScreenMaterials.hpp"
 #include "plugins/shader/ShaderAssets.hpp"
 #include "plugins/shader/exceptions/ShaderExceptions.hpp"
@@ -75,6 +77,12 @@ MaterialResult addMaterial(ecs::ResMut<MaterialAssets> materials, const AddMater
                               materials->add(std::string{arguments.name.view()}, Material{.shader = arguments.shader})};
 }
 
+MaterialResult loadMaterial(ecs::ResMut<ShaderAssets> shaders, ecs::ResMut<MaterialAssets> materials,
+                            ecs::ResMut<graphics::TextureAssets> textures, const LoadMaterialArguments& arguments) {
+    return MaterialResult{
+        .material = loadMaterialFile(std::filesystem::path{arguments.path.view()}, *shaders, *materials, *textures)};
+}
+
 MaterialResult setMaterialValue(ecs::Res<ShaderAssets> shaders, ecs::ResMut<MaterialAssets> materials,
                                 const SetMaterialValueArguments& arguments) {
     const bool integer = isInt(*shaders, *materials, arguments.material, arguments.name.view());
@@ -114,6 +122,7 @@ void addShaderCalls(ecs::App& app) {
     addShaderForms(app.getPluginRegistry());
     app.addCall(std::string{kLoadShaderCall}, &loadShader);
     app.addCall(std::string{kAddMaterialCall}, &addMaterial);
+    app.addCall(std::string{kLoadMaterialCall}, &loadMaterial);
     app.addCall(std::string{kSetValueCall}, &setMaterialValue);
     app.addCall(std::string{kSetTextureCall}, &setMaterialTexture);
     app.addCall(std::string{kSetScreenMaterialsCall}, &setScreenMaterials);

@@ -23,10 +23,10 @@ namespace aylo::plugins::sprite {
 /// server animates sprites without the GraphicsPlugin.
 ///
 /// @details Render "aylo.Sprite.Draw", on the client, between the GraphicsPlugin's "aylo.graphics.camera" and
-/// "aylo.graphics.sprites": pushes every entity with a GlobalTransform and a SpriteRenderer whose texture is loaded to
-/// the SpriteQueue. A SpriteRenderer's material is used once the ShaderPlugin created it (ShaderHandles), the default
-/// material until then, with the entity's MaterialInstance values if it has some. It requires the SpritePlugin, the
-/// GraphicsPlugin, the ShaderPlugin and the TransformPlugin.
+/// "aylo.graphics.sprites": pushes every entity with a GlobalTransform2D and a SpriteRenderer whose texture is loaded
+/// to the SpriteQueue. A SpriteRenderer's material is used once the ShaderPlugin created it (ShaderHandles), the
+/// default material until then, with the entity's MaterialInstance values if it has some. It requires the SpritePlugin,
+/// the GraphicsPlugin, the ShaderPlugin and the TransformPlugin.
 class AYLO_PLUGIN_SPRITE_API SpriteDrawPlugin : public ecs::Plugin {
   public:
     static constexpr std::string_view kName = "aylo.SpriteDraw";         ///< The plugin's name.

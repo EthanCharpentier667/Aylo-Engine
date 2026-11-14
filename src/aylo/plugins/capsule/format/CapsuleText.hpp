@@ -33,7 +33,7 @@ class Capsules;
 /// game.Health = { value = 50 }
 ///
 /// [node path="LeftTurret" instance="actors/turret.actor"]
-/// aylo.Transform = { position = (-40, 0) }
+/// aylo.Transform2D = { position = (-40, 0) }
 ///
 /// [node path="Background" side=client]
 /// aylo.SpriteRenderer = { texture = "sprites/bg.png", layer = -10 }

@@ -9,6 +9,8 @@
 add_requires("joltphysics 5.6.x", {alias = "joltphysics", configs = {object_layer_bits = "32"}})
 add_requires("nlohmann_json 3.12.x", {alias = "nlohmann_json"})
 add_requires("yoga 3.2.x", {alias = "yoga"})
+add_requires("cgltf v1.15", {alias = "cgltf"})
+add_requires("ufbx v0.23.0", {alias = "ufbx"})
 -- HTTPS for the http plugin: Schannel on Windows, OpenSSL 3 elsewhere (the package picks it). Never the system's, nor
 -- its OpenSSL: xmake builds both, static, as the system's (apt's libcurl4 and libssl3, Homebrew's openssl@4) are shared
 -- libraries the release does not hold (docs/release/self-contained.md).
@@ -42,6 +44,7 @@ plugin("capsule", {})
 
 plugin("transform", {})
     add_files("transform/**.cpp")
+    add_files("transform/TransformForms.luau")
     add_headerfiles("transform/**.hpp", "transform/**.tpp")
 
 plugin("input", {"contract-platform"})
@@ -63,6 +66,8 @@ plugin("shader", {"plugin-graphics"})
     -- The shaders' compiler (glslang, required by the root xmake.lua). Private: only shader/detail/ShaderCompiler.cpp
     -- includes it.
     add_packages("glslang")
+    -- Reads and writes the material files. Private: only shader/MaterialFile.cpp includes it.
+    add_packages("nlohmann_json")
     -- The shaders ABI of the renderer contract (contract/renderer/shaders/*.glsl), the prelude of the game's shaders,
     -- embedded as byte arrays that shader/detail/ShaderAssembler.cpp includes as "<file>.glsl.h".
     add_files("../contract/renderer/shaders/*.glsl")
@@ -99,6 +104,14 @@ plugin("particle", {"plugin-graphics", "plugin-shader", "plugin-transform"})
     add_files("particle/**.cpp")
     add_files("particle/ParticleForms.luau")
     add_headerfiles("particle/**.hpp", "particle/**.tpp")
+
+plugin("mesh", {"plugin-graphics", "plugin-shader", "plugin-transform"})
+    add_files("mesh/**.cpp")
+    add_files("mesh/MeshForms.luau")
+    add_headerfiles("mesh/**.hpp|detail/**.hpp")
+    -- Read the model files. Private: cgltf (glTF) only in mesh/detail/GltfLoader.cpp, ufbx (FBX, OBJ) only in
+    -- mesh/detail/UfbxLoader.cpp.
+    add_packages("cgltf", "ufbx")
 
 plugin("audio", {"contract-audiodevice", "plugin-transform"})
     add_files("audio/**.cpp")
@@ -148,6 +161,6 @@ plugin("persistence", {})
 -- Every plugin library, for what loads them without linking them: the executables build after it.
 target("plugin-libraries")
     set_kind("phony")
-    add_deps("plugin-audio", "plugin-capsule", "plugin-graphics", "plugin-http", "plugin-input", "plugin-json", "plugin-particle",
+    add_deps("plugin-audio", "plugin-capsule", "plugin-graphics", "plugin-http", "plugin-input", "plugin-json", "plugin-mesh", "plugin-particle",
              "plugin-persistence", "plugin-physics", "plugin-physics-debug", "plugin-shader", "plugin-shape", "plugin-sprite", "plugin-text",
              "plugin-tilemap", "plugin-transform", "plugin-ui")

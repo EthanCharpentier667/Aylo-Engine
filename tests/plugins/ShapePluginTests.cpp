@@ -62,11 +62,11 @@ TEST(ShapePlugin, DrawsTheShapesAtTheirGlobalTransformOverTheSprites) {
     const aylo::core::asset::AssetId ship = world.getResources().getMut<aylo::plugins::graphics::TextureAssets>()->load(
         "ship.png", aylo::test::plugins::twoPixelPng());
     const aylo::ecs::Entity sprite = world.spawn();
-    world.getComponents().add(sprite, aylo::plugins::transform::Transform{});
+    world.getComponents().add(sprite, aylo::plugins::transform::Transform2D{});
     world.getComponents().add(sprite, aylo::plugins::sprite::SpriteRenderer{.texture = ship, .layer = 100});
     const aylo::ecs::Entity wall = world.spawn();
-    world.getComponents().add(
-        wall, aylo::plugins::transform::Transform{.position = {10.0F, 20.0F}, .rotation = 0.5F, .scale = {2.0F, 3.0F}});
+    world.getComponents().add(wall, aylo::plugins::transform::Transform2D{
+                                        .position = {10.0F, 20.0F}, .rotation = 0.5F, .scale = {2.0F, 3.0F}});
     world.getComponents().add(wall, aylo::plugins::shape::ShapeRenderer{.size = {4.0F, 5.0F},
                                                                         .cornerRadius = 1.0F,
                                                                         .fillColor = {0.5F, 0.5F, 0.5F, 1.0F},
@@ -89,7 +89,7 @@ TEST(ShapePlugin, DrawsALineToItsEndInTheEntitysSpace) {
     ShapeApp app;
     aylo::ecs::World& world = app.app().getWorld();
     const aylo::ecs::Entity line = world.spawn();
-    world.getComponents().add(line, aylo::plugins::transform::Transform{
+    world.getComponents().add(line, aylo::plugins::transform::Transform2D{
                                         .position = {10.0F, 0.0F}, .rotation = 1.5707964F, .scale = {2.0F, 2.0F}});
     world.getComponents().add(
         line, aylo::plugins::shape::ShapeRenderer{
@@ -108,7 +108,7 @@ TEST(ShapePlugin, DrawsTheShapesByLayer) {
     aylo::ecs::World& world = app.app().getWorld();
     for (const auto& [x, layer] : {std::pair{3.0F, 5}, std::pair{1.0F, -2}, std::pair{2.0F, 0}}) {
         const aylo::ecs::Entity entity = world.spawn();
-        world.getComponents().add(entity, aylo::plugins::transform::Transform{.position = {x, 0.0F}});
+        world.getComponents().add(entity, aylo::plugins::transform::Transform2D{.position = {x, 0.0F}});
         world.getComponents().add(entity, aylo::plugins::shape::ShapeRenderer{.size = {1.0F, 1.0F}, .layer = layer});
     }
     app.app().runFrame();

@@ -31,6 +31,12 @@ AYLO_EDITOR_API void drawExportPanel(EditorState& state);
 /// bridge where it is so the mouse and the keyboard reach the game only when they should.
 AYLO_EDITOR_API void drawGamePanel(EditorState& state, contract::renderer::IRenderer& renderer);
 
+/// @brief The Scene panel, after Unity's Scene view: the world from the editor's own camera, through the renderer's
+/// preview, docked with the Game panel. In 3D: right mouse + WASD/QE flies (Shift: faster), the middle mouse pans,
+/// Alt + left mouse orbits, the wheel comes closer; in 2D: the middle mouse (or Alt + left) pans, the wheel zooms. A
+/// click selects the entity under the mouse (its node while editing), F frames it, W, E and R pick the move, rotate and
+/// scale gizmo, whose handles drag the selection's Transform (written to its node when the drag ends).
+AYLO_EDITOR_API void drawScenePanel(EditorState& state, contract::renderer::IRenderer& renderer);
 /// @brief The Hierarchy panel: while editing a scene, the tree of its nodes, to select, add, delete and move them (drag
 /// one onto another, or drop a capsule file to place an instance of it); while playing, the entities of the world,
 /// by their parents, named by their Name.
@@ -40,6 +46,12 @@ AYLO_EDITOR_API void drawHierarchyPanel(EditorState& state);
 /// playing, with their fields editable in place, and components to add and remove.
 AYLO_EDITOR_API void drawInspectorPanel(EditorState& state);
 
+/// @brief The Inspector's view of a material file (EditorState::inspectedMaterial): its shader (drop a `.glsl` to
+/// change it), the shader's uniforms by type, starting from its defaults, and its textures (drop an image), applied at
+/// once to every drawing using it; Save writes the file.
+AYLO_EDITOR_API void drawMaterialInspector(EditorState& state);
+/// @brief Writes the material the Inspector shows to its file.
+AYLO_EDITOR_API void saveMaterial(EditorState& state);
 /// @brief The Assets panel: the files of the game's assets, to open a scene, make new scenes, actors and folders,
 /// rename and delete, and drag a file onto a node or a field.
 AYLO_EDITOR_API void drawAssetsPanel(EditorState& state);

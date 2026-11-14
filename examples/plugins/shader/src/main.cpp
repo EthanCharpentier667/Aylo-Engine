@@ -72,7 +72,7 @@ using namespace aylo::plugins::particle;
 using namespace aylo::plugins::shader;
 using namespace aylo::plugins::text;
 using aylo::core::asset::AssetId;
-using aylo::plugins::transform::Transform;
+using aylo::plugins::transform::Transform2D;
 
 namespace {
 constexpr float kWidth = 960.0F;
@@ -92,10 +92,10 @@ void spawnShips(ecs::ResMut<TextureAssets> textures, ecs::ResMut<ShaderAssets> s
     const AssetId flashing = materials->add("example.flashing", Material{.shader = flash});
 
     const SpriteRenderer ship{.texture = sheet, .source = {{9.0F, 9.0F}, {48.0F, 48.0F}}, .origin = {24.0F, 24.0F}};
-    commands.spawn().add(Transform{.position = {kWidth * 0.2F, kHeight / 2.0F}, .scale = kScale}).add(ship);
+    commands.spawn().add(Transform2D{.position = {kWidth * 0.2F, kHeight / 2.0F}, .scale = kScale}).add(ship);
     SpriteRenderer waved = ship;
     waved.material = waving;
-    commands.spawn().add(Transform{.position = {kWidth * 0.5F, kHeight / 2.0F}, .scale = kScale}).add(waved);
+    commands.spawn().add(Transform2D{.position = {kWidth * 0.5F, kHeight / 2.0F}, .scale = kScale}).add(waved);
     SpriteRenderer flashed = ship;
     flashed.material = flashing;
     const aylo::contract::renderer::CompiledShader* compiled = shaders->get(flash);
@@ -104,16 +104,16 @@ void spawnShips(ecs::ResMut<TextureAssets> textures, ecs::ResMut<ShaderAssets> s
         return;
     }
     commands.spawn()
-        .add(Transform{.position = {kWidth * 0.8F, kHeight * 0.3F}, .scale = kScale})
+        .add(Transform2D{.position = {kWidth * 0.8F, kHeight * 0.3F}, .scale = kScale})
         .add(flashed)
         .add(MaterialInstance::of(*compiled).set(*compiled, "amount", 0.2F));
     commands.spawn()
-        .add(Transform{.position = {kWidth * 0.8F, kHeight * 0.7F}, .scale = kScale})
+        .add(Transform2D{.position = {kWidth * 0.8F, kHeight * 0.7F}, .scale = kScale})
         .add(flashed)
         .add(MaterialInstance::of(*compiled).set(*compiled, "amount", 0.9F));
 
     commands.spawn()
-        .add(Transform{.position = {kWidth * 0.5F, kHeight * 0.12F}})
+        .add(Transform2D{.position = {kWidth * 0.5F, kHeight * 0.12F}})
         .add(TextRenderer{.text = "Game shaders",
                           .font = fonts->load("examples/assets/fonts/orbitron.json"),
                           .size = 48.0F,
@@ -128,7 +128,7 @@ void spawnShips(ecs::ResMut<TextureAssets> textures, ecs::ResMut<ShaderAssets> s
     sparks.desc.speed = {.min = 40.0F, .max = 90.0F};
     sparks.desc.size = {.min = 12.0F, .max = 24.0F};
     commands.spawn()
-        .add(Transform{.position = {kWidth * 0.5F, kHeight * 0.72F}})
+        .add(Transform2D{.position = {kWidth * 0.5F, kHeight * 0.72F}})
         .add(ParticleEmitter{.effect = effects->add("example.sparks", std::move(sparks))})
         .add(MaterialInstance::of(*compiled).set(*compiled, "amount", 0.7F));
 }

@@ -107,6 +107,33 @@ void applyTorque(ecs::ResMut<PhysicsWorld> world, const TorqueArguments& argumen
 void setGravity(ecs::ResMut<PhysicsWorld> world, const GravityArguments& arguments) {
     world->setGravity(arguments.gravity);
 }
+
+Hit3DResult raycast3D(ecs::Res<PhysicsWorld> world, const Raycast3DArguments& arguments) {
+    const std::optional<PhysicsWorld::RayHit3D> hit =
+        world->raycast3D(arguments.origin, arguments.direction, arguments.maxDistance,
+                         filterOf(arguments.mask, arguments.ignore, arguments.includeSensors));
+    if (!hit) {
+        return Hit3DResult{};
+    }
+    return Hit3DResult{
+        .hit = true, .entity = hit->entity, .point = hit->point, .normal = hit->normal, .distance = hit->distance};
+}
+
+void applyForce3D(ecs::ResMut<PhysicsWorld> world, const Push3DArguments& arguments) {
+    world->applyForce3D(arguments.entity, arguments.value);
+}
+
+void applyImpulse3D(ecs::ResMut<PhysicsWorld> world, const Push3DArguments& arguments) {
+    world->applyImpulse3D(arguments.entity, arguments.value);
+}
+
+void applyTorque3D(ecs::ResMut<PhysicsWorld> world, const Push3DArguments& arguments) {
+    world->applyTorque3D(arguments.entity, arguments.value);
+}
+
+void setGravity3D(ecs::ResMut<PhysicsWorld> world, const Gravity3DArguments& arguments) {
+    world->setGravity3D(arguments.gravity);
+}
 }  // namespace
 
 void addPhysicsCalls(ecs::App& app) {
@@ -118,6 +145,11 @@ void addPhysicsCalls(ecs::App& app) {
     app.addCall(std::string{kApplyImpulseCall}, &applyImpulse);
     app.addCall(std::string{kApplyTorqueCall}, &applyTorque);
     app.addCall(std::string{kSetGravityCall}, &setGravity);
+    app.addCall(std::string{kRaycast3DCall}, &raycast3D);
+    app.addCall(std::string{kApplyForce3DCall}, &applyForce3D);
+    app.addCall(std::string{kApplyImpulse3DCall}, &applyImpulse3D);
+    app.addCall(std::string{kApplyTorque3DCall}, &applyTorque3D);
+    app.addCall(std::string{kSetGravity3DCall}, &setGravity3D);
 }
 
 }  // namespace aylo::plugins::physics

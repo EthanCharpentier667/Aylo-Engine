@@ -13,6 +13,7 @@
 #include <cstring>
 #include <filesystem>
 #include <format>
+#include <fstream>
 #include <optional>
 #include <span>
 #include <string>
@@ -34,6 +35,7 @@
 #include "plugins/capsule/Capsule.hpp"
 #include "plugins/capsule/Capsules.hpp"
 #include "plugins/capsule/format/CapsuleText.hpp"
+#include "plugins/shader/MaterialFile.hpp"
 
 namespace aylo::editor::panels {
 
@@ -97,6 +99,9 @@ void folderMenu(EditorState& state, const std::string& folder) {
     }
     if (ImGui::MenuItem("New actor")) {
         request(state, AssetAction::kNewActor, folder, "actor");
+    }
+    if (ImGui::MenuItem("New material")) {
+        request(state, AssetAction::kNewMaterial, folder, "material");
     }
     if (ImGui::MenuItem("New folder")) {
         request(state, AssetAction::kNewFolder, folder, "folder");
@@ -275,6 +280,11 @@ void drawItem(EditorState& state, const std::filesystem::directory_entry& entry,
     const ImVec2 min = ImGui::GetItemRectMin();
     if (ImGui::IsItemClicked()) {
         state.assetSelected = relative;
+        if (kind == AssetKind::kMaterial && state.inspectedMaterial != relative) {
+            state.inspectedMaterial = relative;  // the Inspector shows it, as Unity does
+            state.materialUnsaved = false;
+            state.materialError.clear();
+        }
     }
     if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
         if (isFolder) {
@@ -419,6 +429,20 @@ void runAction(EditorState& state) {
         case AssetAction::kNewFolder:
             std::filesystem::create_directories(state.assets / join(state.assetTarget, text), error);
             break;
+        case AssetAction::kNewMaterial: {
+            const std::string_view extension = plugins::shader::kMaterialExtension;
+            const std::string path =
+                join(state.assetTarget, text.ends_with(extension) ? text : text + std::string{extension});
+            if (std::filesystem::exists(state.assets / path)) {
+                state.status = std::format("{} exists already", path);
+                return;
+            }
+            std::ofstream{state.assets / path} << plugins::shader::MaterialFile{}.write();
+            state.inspectedMaterial = path;
+            state.materialUnsaved = false;
+            state.materialError.clear();
+            return;
+        }
         case AssetAction::kRename: {
             const std::filesystem::path renamed = target.parent_path() / text;
             std::filesystem::rename(target, renamed, error);

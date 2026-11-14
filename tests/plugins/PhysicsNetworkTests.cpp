@@ -53,7 +53,7 @@ using aylo::plugins::physics::SlideSettings;
 using aylo::plugins::physics::Velocity;
 using aylo::plugins::physics::debug::PhysicsDebugPlugin;
 using aylo::plugins::physics::exceptions::PhysicsException;
-using aylo::plugins::transform::Transform;
+using aylo::plugins::transform::Transform2D;
 
 namespace {
 constexpr float kFixedDelta = 1.0F / 60.0F;
@@ -100,10 +100,10 @@ struct PhysicsApp {
     [[nodiscard]] const PhysicsWorld& world() const { return app.getWorld().getResources().require<PhysicsWorld>(); }
     [[nodiscard]] aylo::ecs::Components& components() { return app.getWorld().getComponents(); }
 
-    /// @return A new entity with a Transform and the Collider, and a RigidBody when given.
+    /// @return A new entity with a Transform2D and the Collider, and a RigidBody when given.
     Entity spawn(glm::vec2 position, const Collider& collider, std::optional<RigidBody> body = std::nullopt) {
         const Entity entity = app.getWorld().spawn();
-        components().add(entity, Transform{.position = position});
+        components().add(entity, Transform2D{.position = position});
         components().add(entity, collider);
         if (body) {
             components().add(entity, *body);
@@ -111,8 +111,8 @@ struct PhysicsApp {
         return entity;
     }
 
-    /// @return The entity's Transform position.
-    [[nodiscard]] glm::vec2 position(Entity entity) { return components().get<Transform>(entity)->position; }
+    /// @return The entity's Transform2D position.
+    [[nodiscard]] glm::vec2 position(Entity entity) { return components().get<Transform2D>(entity)->position; }
 };
 
 /// @brief What the server and every client know of a scene: a wall and a ship next to it.
@@ -181,7 +181,7 @@ TEST(PhysicsNetwork, StandaloneSimulatesAsBefore) {
     standalone.tick(30);
     EXPECT_EQ(standalone.world().getStepCount(), 30U);
     EXPECT_GT(standalone.position(ball).y, 10.0F);
-    // Moved by its Velocity, not teleported back to the Transform it had before each step.
+    // Moved by its Velocity, not teleported back to the Transform2D it had before each step.
     EXPECT_NEAR(standalone.position(ship).x, 30.0F, 1.0F);
 }
 
@@ -200,7 +200,7 @@ TEST(PhysicsNetwork, AClientBodyFollowsTheTransformReplicationWrites) {
     PhysicsApp client{RunMode::kClient};
     const Entity ball = client.spawn({0.0F, 0.0F}, Collider{}, RigidBody{});
     client.tick();
-    client.components().getMut<Transform>(ball)->position = {300.0F, 40.0F};  // A snapshot arrived.
+    client.components().getMut<Transform2D>(ball)->position = {300.0F, 40.0F};  // A snapshot arrived.
     client.tick();
     const std::optional<glm::vec2> body = client.world().getBodyPosition(ball);
     ASSERT_TRUE(body);

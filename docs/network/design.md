@@ -919,7 +919,7 @@ function Shoot:run(ctx)
     for entity, transform, input in ctx.query do
         if input:isHeld("fire") then
             local bullet = ctx.call("aylo.capsule.spawn", { capsule = "actors/bullet.actor" })
-            ctx.commands:add(bullet, "aylo.Transform", { position = transform.position })
+            ctx.commands:add(bullet, "aylo.Transform2D", { position = transform.position })
         end
     end
 end

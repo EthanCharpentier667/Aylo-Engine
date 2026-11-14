@@ -26,10 +26,13 @@
 #include "editor/gui/GuiInput.hpp"
 #include "editor/play/PlaySession.hpp"
 #include "editor/process/ClientLauncher.hpp"
+#include "editor/scene/Gizmo.hpp"
 #include "editor/scene/Isolation.hpp"
+#include "editor/scene/SceneCamera.hpp"
 #include "editor/server/ServerPanelState.hpp"
 #include "editor/server/ServerSupervisor.hpp"
 #include "plugins/capsule/Capsule.hpp"
+#include "plugins/transform/Transform.hpp"
 
 namespace aylo::ecs {
 class App;
@@ -40,12 +43,25 @@ namespace aylo::editor {
 
 /// @brief What the Assets panel is asking for, through its popup.
 enum class AssetAction : std::uint8_t {
-    kNone,       ///< Nothing.
-    kNewScene,   ///< A new `.scene` in the target folder.
-    kNewActor,   ///< A new `.actor` in the target folder.
-    kNewFolder,  ///< A new folder in the target folder.
-    kRename,     ///< A new name for the target file or folder.
-    kDelete,     ///< Removing the target file or folder.
+    kNone,         ///< Nothing.
+    kNewScene,     ///< A new `.scene` in the target folder.
+    kNewActor,     ///< A new `.actor` in the target folder.
+    kNewFolder,    ///< A new folder in the target folder.
+    kNewMaterial,  ///< A new `.material` in the target folder.
+    kRename,       ///< A new name for the target file or folder.
+    kDelete,       ///< Removing the target file or folder.
+};
+
+/// @brief A gizmo handle being dragged in the Scene panel.
+struct SceneDrag {
+    ecs::Entity entity;                       ///< The entity moved; its Transform changes as it goes.
+    scene::GizmoHandle handle;                ///< The handle, as it was when the drag began.
+    plugins::transform::Transform3D start3D;  ///< The entity's Transform3D when it began.
+    plugins::transform::Transform2D start2D;  ///< Its Transform2D when it began.
+    bool spatial{true};                       ///< Whether it moves the Transform3D (else the 2D one).
+    float startX{0.0F};                       ///< The mouse when it began, in panel pixels.
+    float startY{0.0F};                       ///< The mouse when it began, in panel pixels.
+    std::optional<std::uint32_t> node;        ///< The node written back when it ends; none: while playing.
 };
 
 /// @brief How the editor is set up: from the `editor` settings, or by a test.
@@ -96,12 +112,16 @@ struct AYLO_EDITOR_API EditorState {
     std::vector<plugins::capsule::CapsuleId> unsaved;       ///< The capsules changed since they were saved or opened.
     ecs::Entity selected;                                   ///< The entity the Inspector shows while playing.
 
-    AssetAction assetAction{AssetAction::kNone};   ///< What the Assets panel's popup asks for.
-    std::string assetTarget;                       ///< The folder or file of assetAction, in the assets.
-    bool openAssetPopup{false};                    ///< Whether the popup opens at the end of the panel.
-    std::string assetFolder;                       ///< The folder the Assets panel shows, in the assets; "": the root.
-    std::string assetSelected;                     ///< The file or folder selected in the Assets panel; "": none.
-    float assetIconSize{64.0F};                    ///< How big the Assets panel draws an icon, in pixels.
+    AssetAction assetAction{AssetAction::kNone};  ///< What the Assets panel's popup asks for.
+    std::string assetTarget;                      ///< The folder or file of assetAction, in the assets.
+    bool openAssetPopup{false};                   ///< Whether the popup opens at the end of the panel.
+    std::string assetFolder;                      ///< The folder the Assets panel shows, in the assets; "": the root.
+    std::string assetSelected;                    ///< The file or folder selected in the Assets panel; "": none.
+    std::string
+        inspectedMaterial;        ///< The `.material` the Inspector shows, in the assets; "": none (a node or entity).
+    bool materialUnsaved{false};  ///< Whether it changed since it was read or saved.
+    std::string materialError;    ///< Why it could not be read; "": it could.
+    float assetIconSize{64.0F};   ///< How big the Assets panel draws an icon, in pixels.
     std::array<char, 256> textField{};             ///< The text the popups and the rename fields edit.
     std::array<char, 64> filter{};                 ///< What the Hierarchy keeps while playing: a component name.
     std::array<char, 64> componentFilter{};        ///< What the Inspector's "Add component" list keeps.
@@ -122,16 +142,21 @@ struct AYLO_EDITOR_API EditorState {
     bool consoleInfo{true};                        ///< Whether the Console shows the other lines.
     bool consoleWarnings{true};                    ///< Whether it shows the warnings.
     bool consoleErrors{true};                      ///< Whether it shows the errors.
-    contract::platform::IPlatform* platform{nullptr};    ///< The window of the frame being built: its clipboard.
-    std::string clipboard;                               ///< The clipboard's text, kept for ImGui until its next read.
-    std::optional<core::asset::AssetId> selectedEffect;  ///< The particle effect the Particles panel edits.
-    ecs::Entity preview;                                 ///< The entity playing that effect for a preview; null: none.
+    contract::platform::IPlatform* platform{nullptr};     ///< The window of the frame being built: its clipboard.
+    std::string clipboard;                                ///< The clipboard's text, kept for ImGui until its next read.
+    std::optional<core::asset::AssetId> selectedEffect;   ///< The particle effect the Particles panel edits.
+    ecs::Entity preview;                                  ///< The entity playing that effect for a preview; null: none.
+    scene::SceneCamera sceneCamera;                       ///< The Scene panel's camera.
+    scene::GizmoTool gizmoTool{scene::GizmoTool::kMove};  ///< The Scene panel's tool (W, E, R).
+    std::optional<SceneDrag> sceneDrag;                   ///< The gizmo handle being dragged; none: none is.
+    bool previewUsed{false};  ///< Whether a panel set the renderer's preview this frame; reset each frame.
 
     double lastTime{0.0};      ///< The platform's time at the previous frame, in seconds.
     bool buildLayout{true};    ///< Whether the first frame docks the panels as by default, if no layout was kept.
     bool dockActor{false};     ///< Whether focusActor's tab is new, so it docks next to the Game panel.
     bool resetLayout{false};   ///< Whether the next frame docks them as by default anyway.
     bool showGame{true};       ///< Whether the Game panel is open.
+    bool showScene{true};      ///< Whether the Scene panel is open.
     bool showHierarchy{true};  ///< Whether the Hierarchy panel is open.
     bool showInspector{true};  ///< Whether the Inspector panel is open.
     bool showAssets{true};     ///< Whether the Assets panel is open.

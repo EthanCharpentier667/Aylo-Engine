@@ -19,10 +19,12 @@
 #include "aylo/contract/platform/IPlatform.hpp"
 #include "aylo/contract/platform/exceptions/PlatformExceptions.hpp"
 #include "aylo/contract/renderer/drawing/Color.hpp"
+#include "aylo/contract/renderer/drawing/Lines3D.hpp"
 #include "aylo/contract/renderer/drawing/Mesh.hpp"
 #include "aylo/contract/renderer/drawing/Overlay.hpp"
 #include "aylo/contract/renderer/drawing/Shape.hpp"
 #include "aylo/contract/renderer/drawing/Sprite.hpp"
+#include "aylo/contract/renderer/drawing/StaticMesh.hpp"
 #include "aylo/contract/renderer/drawing/Text.hpp"
 #include "aylo/contract/renderer/drawing/Texture.hpp"
 #include "aylo/contract/renderer/particle/Particle.hpp"
@@ -31,6 +33,7 @@
 #include "aylo/contract/renderer/stats/FrameStats.hpp"
 #include "aylo/contract/renderer/view/ScenePreview.hpp"
 #include "aylo/contract/renderer/view/View.hpp"
+#include "aylo/contract/renderer/view/View3D.hpp"
 #include "core/Export.hpp"
 
 namespace aylo::contract::renderer {
@@ -104,6 +107,39 @@ class AYLO_HEADER_ONLY_API IRenderer {
 
     /// @brief Shows what was drawn since beginFrame().
     virtual void endFrame() = 0;
+    /// @}
+
+    /// @name The 3D world (docs/3d/design.md)
+    /// @brief Optional: a renderer that does not draw 3D keeps the defaults, and the graphics plugin then skips the 3D
+    /// world with one warning. One that does draws it first in the frame, with a depth buffer, under the 2D world and
+    /// the overlay. Between beginFrame() and endFrame().
+    /// @{
+
+    /// @return Whether the renderer draws the 3D world: setView3D() and the 3D draws do something. Default: false.
+    [[nodiscard]] virtual bool supports3D() const noexcept { return false; }
+
+    /// @brief Sets the view the frame's 3D world is seen through; a frame where it is not called draws no 3D world.
+    /// contract::renderer::CameraView3D computes what it shows. Default: does nothing.
+    virtual void setView3D(const View3D& /*view*/) {}
+
+    /// @brief Draws segments in the 3D world (grids, gizmos, debug shapes), with the depth test. Default: draws
+    /// nothing.
+    virtual void drawLines3D(const Lines3D& /*lines*/) {}
+
+    /// @brief Uploads a 3D model: its vertices, indices and parts, kept until destroyStaticMesh(). Any time after
+    /// init().
+    /// @throws platform::exceptions::UnsupportedFeatureException If supports3D() is false (the default).
+    /// @throws std::invalid_argument If an index or a part goes past the vertices or the indices.
+    [[nodiscard]] virtual StaticMeshId createStaticMesh(const StaticMeshDesc& /*desc*/) {
+        throw platform::exceptions::UnsupportedFeatureException("This renderer does not draw 3D meshes");
+    }
+
+    /// @brief Destroys a mesh of createStaticMesh(); a destroyed or unknown one is ignored. Default: does nothing.
+    virtual void destroyStaticMesh(StaticMeshId /*mesh*/) {}
+
+    /// @brief Draws a mesh in the 3D world, with the depth test, its parts unlit (base colour times texture, times the
+    /// draw's colour). A destroyed mesh is skipped. Default: draws nothing.
+    virtual void drawStaticMesh(const StaticMeshDraw& /*draw*/) {}
     /// @}
 
     /// @name Drawing (between beginFrame() and endFrame())

@@ -42,7 +42,7 @@ AYLO_ECS_COMPONENT(Burning, "Burning", value);
 }  // namespace
 
 TEST(EditorWorldView, ShortensANameToWhatFollowsItsNamespace) {
-    EXPECT_EQ(aylo::editor::panels::shortName("aylo.Transform"), "Transform");
+    EXPECT_EQ(aylo::editor::panels::shortName("aylo.Transform2D"), "Transform2D");
     EXPECT_EQ(aylo::editor::panels::shortName("a.b.Deep"), "Deep");
     EXPECT_EQ(aylo::editor::panels::shortName("Plain"), "Plain");
     EXPECT_EQ(aylo::editor::panels::shortName(""), "");

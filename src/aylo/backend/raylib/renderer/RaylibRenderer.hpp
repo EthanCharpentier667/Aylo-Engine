@@ -17,21 +17,25 @@
 #include "aylo/contract/platform/IPlatform.hpp"
 #include "aylo/contract/renderer/IRenderer.hpp"
 #include "aylo/contract/renderer/drawing/Color.hpp"
+#include "aylo/contract/renderer/drawing/Lines3D.hpp"
 #include "aylo/contract/renderer/drawing/Mesh.hpp"
 #include "aylo/contract/renderer/drawing/Overlay.hpp"
 #include "aylo/contract/renderer/drawing/Shape.hpp"
 #include "aylo/contract/renderer/drawing/Sprite.hpp"
+#include "aylo/contract/renderer/drawing/StaticMesh.hpp"
 #include "aylo/contract/renderer/drawing/Text.hpp"
 #include "aylo/contract/renderer/drawing/Texture.hpp"
 #include "aylo/contract/renderer/particle/Particle.hpp"
 #include "aylo/contract/renderer/particle/ParticleSystemDesc.hpp"
 #include "aylo/contract/renderer/view/View.hpp"
+#include "aylo/contract/renderer/view/View3D.hpp"
 #include "backend/raylib/Export.hpp"
 
 namespace aylo::backend::raylib::renderer {
 
-/// @brief A 2D renderer on raylib, registered as the renderer "raylib": textures, sprites, shapes, MSDF text, particles
-/// simulated by the engine on the CPU, the overlay and tool meshes.
+/// @brief A renderer on raylib, registered as the renderer "raylib": textures, sprites, shapes, MSDF text, particles
+/// simulated by the engine on the CPU, the overlay and tool meshes, and the 3D world (lines and unlit static meshes,
+/// draw/World3D), drawn under the 2D one.
 ///
 /// @details It draws in the window and the OpenGL context of the platform "raylib", the only one it accepts. It only
 /// dispatches: Frame keeps the view and the blend mode, TextureTable the textures, and the functions of draw/ turn each
@@ -76,7 +80,20 @@ class AYLO_BACKEND_RAYLIB_API RaylibRenderer final : public contract::renderer::
 
     void drawMesh(const contract::renderer::Mesh& mesh) override;
 
+    /// @return True: the 3D world is drawn, under the 2D one.
+    [[nodiscard]] bool supports3D() const noexcept override { return true; }
+    void setView3D(const contract::renderer::View3D& view) override;
+    void drawLines3D(const contract::renderer::Lines3D& lines) override;
+    /// @throws std::invalid_argument If an index names no vertex or a part goes past the indices.
+    [[nodiscard]] contract::renderer::StaticMeshId createStaticMesh(
+        const contract::renderer::StaticMeshDesc& desc) override;
+    void destroyStaticMesh(contract::renderer::StaticMeshId mesh) override;
+    void drawStaticMesh(const contract::renderer::StaticMeshDraw& draw) override;
+
   private:
+    /// @brief Draws the 3D world kept so far, before any 2D drawing that follows.
+    void flush3D();
+
     struct Parts;  ///< Frame, textures and text shader: they hold raylib types, kept out of this header.
 
     std::unique_ptr<Parts> _parts;  ///< Never null.

@@ -108,7 +108,7 @@ first and a parent before its children, each with its components written by fiel
 game.Health = { value = 50 }
 
 [node path="LeftTurret" instance="actors/turret.actor"]
-aylo.Transform = { position = (-40, 0) }
+aylo.Transform2D = { position = (-40, 0) }
 
 [node path="Background" side=client]
 aylo.SpriteRenderer = { texture = "sprites/bg.png", layer = -10 }
@@ -204,7 +204,7 @@ engine.ecs.system("game.Waves", {
     calls = { "aylo.capsule.spawn", "aylo.capsule.load" },
     run = function(ctx)
         local bydo = engine.capsule.spawn(ctx, "actors/bydo.actor", {
-            ["aylo.Transform"] = { position = { x = 820, y = 140 } },   -- rotation and scale stay the capsule's
+            ["aylo.Transform2D"] = { position = { x = 820, y = 140 } },   -- rotation and scale stay the capsule's
         })
         -- when the boss is defeated:
         engine.capsule.load(ctx, "scenes/level2.scene")

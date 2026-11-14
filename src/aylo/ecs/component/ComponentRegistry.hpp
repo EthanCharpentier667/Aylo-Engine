@@ -56,8 +56,8 @@ struct KindTraits<ComponentInfo> {
 /// @code
 /// aylo::ecs::ComponentRegistry registry;
 /// const aylo::ecs::ComponentId transform =
-///     registry.registerType<Transform>({.replication = aylo::ecs::ReplicationMode::kEveryChange});
-/// const aylo::ecs::ComponentInfo* info = registry.findByName("aylo.Transform");
+///     registry.registerType<Transform2D>({.replication = aylo::ecs::ReplicationMode::kEveryChange});
+/// const aylo::ecs::ComponentInfo* info = registry.findByName("aylo.Transform2D");
 /// @endcode
 using ComponentRegistry = TypeRegistry<ComponentInfo>;
 }  // namespace aylo::ecs

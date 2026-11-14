@@ -88,7 +88,7 @@ declare class ShieldComponent
     owner: Entity
 end
 
-type ComponentName = "aylo.Transform" | "aylo.SpriteRenderer" | "game.Shield" | "game.Health"
+type ComponentName = "aylo.Transform2D" | "aylo.SpriteRenderer" | "game.Shield" | "game.Health"
 type CapsulePath = "actors/bydo.actor" | "scenes/level1.scene"
 ```
 
@@ -164,7 +164,7 @@ adds run on clients):
 | Json | `aylo.json.encode`, `aylo.json.decode` ([JSON](../../Json.md#from-scripts)) |
 | Audio | `aylo.audio.loadSound`, `aylo.audio.playSound` ([Audio](../../audio/design.md#from-scripts)) |
 | Input | `aylo.input.addAction`, `aylo.input.bind`, `aylo.input.bindAxis`, `aylo.input.bindVector`, `aylo.input.read` ([Input](../../Input.md#from-scripts)) |
-| Physics | `aylo.physics.raycast`, `aylo.physics.shapeCast`, `aylo.physics.overlap`, `aylo.physics.moveAndSlide`, `aylo.physics.applyForce`, `aylo.physics.applyImpulse`, `aylo.physics.applyTorque`, `aylo.physics.setGravity` ([Physics](../../physics/design.md#from-scripts)) |
+| Physics | `aylo.physics.raycast`, `aylo.physics.shapeCast`, `aylo.physics.overlap`, `aylo.physics.moveAndSlide`, `aylo.physics.applyForce`, `aylo.physics.applyImpulse`, `aylo.physics.applyTorque`, `aylo.physics.setGravity`, `aylo.physics.raycast3D`, `aylo.physics.applyForce3D`, `aylo.physics.applyImpulse3D`, `aylo.physics.applyTorque3D`, `aylo.physics.setGravity3D` ([Physics](../../physics/design.md#from-scripts)) |
 | Capsule | `aylo.capsule.spawn`, `aylo.capsule.load`, `aylo.capsule.reload` ([Capsules](18-capsules.md#from-scripts)) |
 | Replication | `aylo.replication.addInput`, `aylo.replication.readInput`, `aylo.replication.localClient` (clients) ([Replication](20-replication.md)) |
 
@@ -207,6 +207,7 @@ engine.input.action("fire", "button", { bind = { "Space", "GamepadSouth" } })
 | `engine.assets.sound(path, {stream})` | `aylo.audio.loadSound` | the sound's `AssetId` |
 | `engine.assets.shader(path)` | `aylo.shader.load` | the shader's `AssetId` |
 | `engine.assets.material({name, shader, values, textures})` | `aylo.shader.addMaterial`, then `aylo.shader.setMaterialValue` and `aylo.shader.setMaterialTexture` | the material's `AssetId` |
+| `engine.assets.material(path)` | `aylo.shader.loadMaterial` (a `.material` file) | the material's `AssetId` |
 | `engine.screenEffects(materials)` | `aylo.shader.setScreenMaterials` (clients; nothing on a server) | nothing |
 | `engine.assets.font(path)` | `aylo.text.loadFont` | the font's `AssetId` |
 | `engine.assets.tilemap(path)` | `aylo.tilemap.load` | the map's `AssetId` |
@@ -274,7 +275,7 @@ manifest checks. On a client run by the `Engine`, a system (`aylo.engine.network
 ```luau
 engine.ecs.system("game.Ships", {
     phase = "FixedUpdate",
-    query = { write = { "aylo.Transform" }, with = { "net.PlayerInput" } },
+    query = { write = { "aylo.Transform2D" }, with = { "net.PlayerInput" } },
     calls = { "aylo.replication.readInput" },
     run = function(ctx)
         for ship, transform in ctx.query do

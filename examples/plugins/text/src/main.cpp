@@ -52,7 +52,7 @@
 using namespace aylo;
 using namespace aylo::plugins::text;
 using aylo::core::asset::AssetId;
-using aylo::plugins::transform::Transform;
+using aylo::plugins::transform::Transform2D;
 
 namespace {
 constexpr glm::vec2 kWindow{1280.0F, 900.0F};
@@ -73,17 +73,17 @@ void spawnTexts(ecs::ResMut<FontAssets> fonts, ecs::Commands& commands) {
     float y = kMargin;
     for (const float size : kSizes) {
         commands.spawn()
-            .add(Transform{.position = {kMargin, y}})
+            .add(Transform2D{.position = {kMargin, y}})
             .add(TextRenderer{.text = std::to_string(static_cast<int>(size)) + " px", .font = font, .size = size});
         y += size * 1.25F;
     }
     commands.spawn()
-        .add(Transform{.position = {kWindow.x * 0.78F, kWindow.y * 0.3F}})
+        .add(Transform2D{.position = {kWindow.x * 0.78F, kWindow.y * 0.3F}})
         .add(TextRenderer{
             .text = "MSDF", .font = font, .size = 48.0F, .color = {1.0F, 0.6F, 0.2F, 1.0F}, .anchor = {0.5F, 0.5F}})
         .add(Zoom{});
     commands.spawn()
-        .add(Transform{.position = {kWindow.x * 0.78F, kWindow.y * 0.6F}})
+        .add(Transform2D{.position = {kWindow.x * 0.78F, kWindow.y * 0.6F}})
         .add(TextRenderer{.text = "Player 1 wins!\nCentred lines\nand UTF-8: \xC3\xA9 \xC3\xA0 \xC3\xBC",
                           .font = font,
                           .size = 28.0F,
@@ -93,7 +93,7 @@ void spawnTexts(ecs::ResMut<FontAssets> fonts, ecs::Commands& commands) {
 }
 
 // Update: zooms the "MSDF" text from 0.25 to 4 times its size, and turns it.
-void zoomText(ecs::Res<ecs::Time> time, ecs::Query<Transform, Zoom> zooms) {
+void zoomText(ecs::Res<ecs::Time> time, ecs::Query<Transform2D, Zoom> zooms) {
     for (auto [entity, transform, zoom] : zooms) {
         zoom->time += time->delta;
         const float t = zoom.get().time;

@@ -34,9 +34,9 @@ double readCount(const core::config::Settings& settings, const std::string_view 
 }  // namespace
 
 PhysicsSettings PhysicsSettings::fromSettings(const core::config::Settings& settings) {
-    settings.checkKeys(
-        {"gravity", "unitsPerMeter", "maxBodies", "maxBodyPairs", "maxContactConstraints", "tempAllocatorBytes"},
-        "physics");
+    settings.checkKeys({"gravity", "gravity3D", "unitsPerMeter", "maxBodies", "maxBodyPairs", "maxContactConstraints",
+                        "tempAllocatorBytes"},
+                       "physics");
     constexpr auto kMaxCount = static_cast<double>(std::numeric_limits<std::uint32_t>::max());
     // Bytes are counted in a double: exact up to 2^53, far more than any allocator needs.
     constexpr double kMaxBytes = 9007199254740992.0;
@@ -48,6 +48,14 @@ PhysicsSettings PhysicsSettings::fromSettings(const core::config::Settings& sett
         throw core::config::exceptions::SettingsException{"Setting 'physics.gravity' must be { x, y }"};
     }
     config.gravity = {static_cast<float>(gravity.at(0)), static_cast<float>(gravity.at(1))};
+    const std::vector<double> gravity3D = settings.getNumberList(
+        "gravity3D", {static_cast<double>(config.gravity3D.x), static_cast<double>(config.gravity3D.y),
+                      static_cast<double>(config.gravity3D.z)});
+    if (gravity3D.size() != 3) {
+        throw core::config::exceptions::SettingsException{"Setting 'physics.gravity3D' must be { x, y, z }"};
+    }
+    config.gravity3D = {static_cast<float>(gravity3D.at(0)), static_cast<float>(gravity3D.at(1)),
+                        static_cast<float>(gravity3D.at(2))};
     const double unitsPerMeter = settings.getNumber("unitsPerMeter", config.unitsPerMeter);
     if (unitsPerMeter <= 0.0) {
         throw core::config::exceptions::SettingsException{"Setting 'physics.unitsPerMeter' must be positive"};

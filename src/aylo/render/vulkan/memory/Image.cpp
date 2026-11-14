@@ -38,14 +38,26 @@ vma::raii::Image createImage(const Allocator& allocator, vk::Extent2D extent, vk
                                      .setInitialLayout(vk::ImageLayout::eUndefined));
 }
 
-/// @return A view of every texel of @p image, color aspect.
+/// @return The aspect a view of an image of @p format sees: depth for the depth formats, color otherwise.
+vk::ImageAspectFlags aspectOf(vk::Format format) {
+    switch (format) {
+        case vk::Format::eD16Unorm:
+        case vk::Format::eD32Sfloat:
+        case vk::Format::eX8D24UnormPack32:
+            return vk::ImageAspectFlagBits::eDepth;
+        default:
+            return vk::ImageAspectFlagBits::eColor;
+    }
+}
+
+/// @return A view of every texel of @p image, of the aspect its format has.
 vk::raii::ImageView createView(const core::Device& device, vk::Image image, vk::Format format) {
-    return vk::raii::ImageView{device.getDevice(), vk::ImageViewCreateInfo{}
-                                                       .setImage(image)
-                                                       .setViewType(vk::ImageViewType::e2D)
-                                                       .setFormat(format)
-                                                       .setSubresourceRange(vk::ImageSubresourceRange{
-                                                           vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1})};
+    return vk::raii::ImageView{device.getDevice(),
+                               vk::ImageViewCreateInfo{}
+                                   .setImage(image)
+                                   .setViewType(vk::ImageViewType::e2D)
+                                   .setFormat(format)
+                                   .setSubresourceRange(vk::ImageSubresourceRange{aspectOf(format), 0, 1, 0, 1})};
 }
 
 }  // namespace

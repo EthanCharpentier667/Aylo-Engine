@@ -52,7 +52,7 @@ using namespace aylo::plugins::graphics;
 using namespace aylo::plugins::sprite;
 using aylo::core::asset::AssetId;
 using namespace aylo::plugins::sprite;
-using aylo::plugins::transform::Transform;
+using aylo::plugins::transform::Transform2D;
 
 namespace {
 constexpr float kWidth = 960.0F;
@@ -72,11 +72,11 @@ void spawnSprites(ecs::ResMut<AtlasAssets> atlases, ecs::Commands& commands) {
     const AssetId fromJson = atlases->load("examples/assets/spritesheet26.json");
 
     commands.spawn()
-        .add(Transform{.position = {kWidth * 0.3F, kHeight / 2.0F}, .scale = kScale})
+        .add(Transform2D{.position = {kWidth * 0.3F, kHeight / 2.0F}, .scale = kScale})
         .add(SpriteRenderer{})
         .add(SpriteAnimator{.atlas = fromGrid, .animation = animationId("fly")});
     commands.spawn()
-        .add(Transform{.position = {kWidth * 0.7F, kHeight / 2.0F}, .scale = kScale})
+        .add(Transform2D{.position = {kWidth * 0.7F, kHeight / 2.0F}, .scale = kScale})
         .add(SpriteRenderer{})
         .add(SpriteAnimator{.atlas = fromJson, .animation = animationId("left")});
 }

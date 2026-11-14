@@ -55,6 +55,15 @@ void saveScene(EditorState& state) {
     state.status = saved != nullptr ? std::format("Saved {}", saved->getPath()) : std::string{"Saved"};
 }
 
+/// @brief Save: the material the Inspector shows if it changed, else the scene.
+void saveShown(EditorState& state) {
+    if (!state.inspectedMaterial.empty() && state.materialUnsaved) {
+        saveMaterial(state);
+        return;
+    }
+    saveScene(state);
+}
+
 /// @brief The choice between playing standalone (both sides in the editor's world) and online (a client of the server).
 void drawModeSelector(const EditorState& state) {
     play::OnlinePlay& online = state.session->online;
@@ -140,6 +149,7 @@ void drawPlayButtons(EditorState& state) {
 /// @brief The items of the View menu: which panels are shown, and the layout.
 void drawViewMenuItems(EditorState& state) {
     ImGui::MenuItem("Game", nullptr, &state.showGame);
+    ImGui::MenuItem("Scene", nullptr, &state.showScene);
     ImGui::MenuItem("Hierarchy", nullptr, &state.showHierarchy);
     ImGui::MenuItem("Inspector", nullptr, &state.showInspector);
     ImGui::MenuItem("Assets", nullptr, &state.showAssets);
@@ -151,15 +161,16 @@ void drawViewMenuItems(EditorState& state) {
     ImGui::Separator();
     if (ImGui::MenuItem("Reset layout")) {
         state.resetLayout = true;
-        state.showGame = state.showHierarchy = state.showInspector = state.showAssets = state.showStats = true;
+        state.showGame = state.showScene = state.showHierarchy = state.showInspector = state.showAssets =
+            state.showStats = true;
         state.showParticles = state.showConsole = state.showPlugins = state.showServer = true;
     }
 }
 
 /// @brief The items of the File menu.
 void drawFileMenuItems(EditorState& state, contract::platform::IPlatform& platform) {
-    if (ImGui::MenuItem("Save", "Ctrl+S", false, state.getEdited().has_value())) {
-        saveScene(state);
+    if (ImGui::MenuItem("Save", "Ctrl+S", false, state.getEdited().has_value() || state.materialUnsaved)) {
+        saveShown(state);
     }
     if (ImGui::MenuItem("Export...", nullptr, false, state.session && state.session->exporter)) {
         state.showExport = true;
@@ -246,7 +257,7 @@ void drawToolbarItems(EditorState& state, contract::platform::IPlatform& platfor
 
 void drawToolbar(EditorState& state, contract::platform::IPlatform& platform) {
     if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_S, ImGuiInputFlags_RouteGlobal)) {
-        saveScene(state);
+        saveShown(state);
     }
     if (gui::beginToolbar("##toolbar")) {
         drawToolbarItems(state, platform);

@@ -40,7 +40,7 @@ namespace aylo::plugins::shape {
 /// @brief Draws an entity as a plain shape, filled and/or outlined: the component a render system turns into a
 /// contract::renderer::Shape (walls, panels, bars, markers).
 ///
-/// @details Only what to draw: where comes from the entity's GlobalTransform. Rectangles, circles and capsules are
+/// @details Only what to draw: where comes from the entity's GlobalTransform2D. Rectangles, circles and capsules are
 /// centred on its position and turn with its rotation; a line runs from its position to `end`, which turns and scales
 /// with it. The sizes are in world units, times the entity's scale: `size` on both axes, the radii, the corner radius
 /// and the outline on X. The ShapePlugin's Render system draws the shapes after the sprites, as IRenderer::draw()
@@ -48,7 +48,7 @@ namespace aylo::plugins::shape {
 /// network): `kind` as its byte (0 rect, 1 circle, 2 capsule, 3 line).
 /// @code
 /// commands.spawn()
-///     .add(aylo::plugins::transform::Transform{.position = {400.0F, 300.0F}})
+///     .add(aylo::plugins::transform::Transform2D{.position = {400.0F, 300.0F}})
 ///     .add(aylo::plugins::shape::ShapeRenderer{.kind = aylo::contract::renderer::ShapeKind::kCircle,
 ///                                                 .radius = 36.0F,
 ///                                                 .fillColor = {0.25F, 0.27F, 0.32F, 1.0F},

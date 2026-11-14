@@ -21,8 +21,8 @@ A capsule is a tree of nodes. Each node becomes one entity when the capsule is s
 - optionally, **another capsule** it spawns instead of a plain entity: a boss's turret node spawns
   `actors/turret.actor`, and the node's own components replace the turret's (its position on the boss).
 
-A level is a capsule whose root has no `aylo.Transform`: its children stay where the level put them. A capsule that
-should move as one gives its root a `aylo.Transform`.
+A level is a capsule whose root has no `aylo.Transform2D`: its children stay where the level put them. A capsule that
+should move as one gives its root a `aylo.Transform2D`.
 
 ## Capsule files
 
@@ -36,13 +36,13 @@ starts, after your scripts, so a file can use the components they declare. A cap
 # The boss, with a turret on each side.
 [node path="."]
 game.Health = { value = 50 }
-aylo.Transform = {}
+aylo.Transform2D = {}
 
 [node path="LeftTurret" instance="actors/turret.actor"]
-aylo.Transform = { position = (-40, 0) }
+aylo.Transform2D = { position = (-40, 0) }
 
 [node path="RightTurret" instance="actors/turret.actor"]
-aylo.Transform = { position = (40, 0) }
+aylo.Transform2D = { position = (40, 0) }
 
 [node path="Shadow" side=client]
 aylo.SpriteRenderer = { texture = "sprites/boss_shadow.png", layer = -1 }
@@ -75,7 +75,7 @@ engine.ecs.system("game.Waves", {
 	calls = { "aylo.capsule.spawn", "aylo.capsule.load" },
 	run = function(ctx)
 		local bydo = engine.capsule.spawn(ctx, "actors/bydo.actor", {
-			["aylo.Transform"] = { position = { x = 820, y = 140 } },
+			["aylo.Transform2D"] = { position = { x = 820, y = 140 } },
 		})
 
 		if bossDefeated then
@@ -115,7 +115,7 @@ The forms are thin: `engine.capsule.spawn(ctx, path, overrides)` is the call fol
 
 ```luau
 local bydo = ctx.call("aylo.capsule.spawn", { capsule = "actors/bydo.actor" })
-ctx.commands:patch(bydo, "aylo.Transform", { position = { x = 820, y = 140 } })
+ctx.commands:patch(bydo, "aylo.Transform2D", { position = { x = 820, y = 140 } })
 ```
 
 ## Sides
@@ -133,7 +133,7 @@ call. Nothing is spawned then. The forms start their errors with their name:
 |---|---|
 | `engine.capsule.spawn: expected the system's ctx first` | The first argument is not the `ctx` of `run` |
 | `engine.capsule.spawn: expected the capsule's path second ("actors/bydo.actor")` | The path is missing, empty or not a string |
-| `engine.capsule.spawn: overrides: 'aylo.Transform' must be a table of fields` | An override is not a table |
+| `engine.capsule.spawn: overrides: 'aylo.Transform2D' must be a table of fields` | An override is not a table |
 | `engine.capsule.spawn: overrides: ...` followed by the field's error | An override names a field the component does not have, or a value that does not fit; the capsule is spawned without it |
 | `engine.capsule.spawn: ...` followed by the call's error | An unknown capsule, or the call missing from the system's `calls` |
 

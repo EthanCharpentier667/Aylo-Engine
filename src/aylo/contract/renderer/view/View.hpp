@@ -24,8 +24,8 @@ struct Orthographic {
 using Projection = std::variant<Orthographic>;
 
 /// @brief The point of view a frame is seen from, set with IRenderer::setView().
-/// @details In an App, the graphics plugin builds it from the Camera component with the highest priority and the
-/// GlobalTransform of its entity.
+/// @details In an App, the graphics plugin builds it from the Camera2D component with the highest priority and the
+/// GlobalTransform2D of its entity.
 struct View {
     glm::vec2 position{0.0F};                ///< World point at the center of the screen.
     float rotation = 0.0F;                   ///< Around the view axis, in radians, clockwise on screen.

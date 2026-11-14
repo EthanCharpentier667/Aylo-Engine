@@ -18,10 +18,10 @@ namespace aylo::plugins::physics {
 /// @details Opt-in: only the entities that have one are synced. Before each step, a Velocity that gameplay changed is
 /// given to the body (a dynamic or kinematic one; a static body ignores it); after the step, a dynamic body writes its
 /// velocity back, so gravity, damping, impulses and collisions show up in it. A kinematic body only reads it: it moves
-/// at its Velocity, except on the ticks gameplay moves its Transform, where it moves to the Transform instead.
+/// at its Velocity, except on the ticks gameplay moves its Transform2D, where it moves to the Transform2D instead.
 /// @code
 /// commands.spawn()
-///     .add(aylo::plugins::transform::Transform{.position = {0.0F, 200.0F}})
+///     .add(aylo::plugins::transform::Transform2D{.position = {0.0F, 200.0F}})
 ///     .add(aylo::plugins::physics::RigidBody{.type = aylo::plugins::physics::BodyType::kKinematic})
 ///     .add(aylo::plugins::physics::Collider{.shape = aylo::plugins::physics::ShapeType::kCircle, .radius = 4.0F})
 ///     .add(aylo::plugins::physics::Velocity{.linear = {300.0F, 0.0F}});

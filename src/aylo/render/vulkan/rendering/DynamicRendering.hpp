@@ -82,6 +82,17 @@ inline constexpr ImageTransition kShaderReadToColorAttachment{
     .dstAccess = vk::AccessFlagBits2::eColorAttachmentRead | vk::AccessFlagBits2::eColorAttachmentWrite,
 };
 
+/// @brief The depth buffer of the 3D world, contents discarded, to depth attachment: waits for the depth tests of the
+/// previous frame that used it.
+inline constexpr ImageTransition kToDepthAttachment{
+    .oldLayout = vk::ImageLayout::eUndefined,
+    .newLayout = vk::ImageLayout::eDepthAttachmentOptimal,
+    .srcStage = vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests,
+    .srcAccess = vk::AccessFlagBits2::eDepthStencilAttachmentWrite,
+    .dstStage = vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests,
+    .dstAccess = vk::AccessFlagBits2::eDepthStencilAttachmentRead | vk::AccessFlagBits2::eDepthStencilAttachmentWrite,
+    .aspect = vk::ImageAspectFlagBits::eDepth,
+};
 /// @brief Color attachment to presentable: after the attachment writes; presentation itself waits on a semaphore.
 inline constexpr ImageTransition kColorAttachmentToPresent{
     .oldLayout = vk::ImageLayout::eColorAttachmentOptimal,

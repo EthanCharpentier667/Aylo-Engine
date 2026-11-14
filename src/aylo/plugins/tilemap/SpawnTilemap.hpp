@@ -28,7 +28,7 @@ struct TilemapPlacement {
 
 /// @brief Spawns one entity per layer of the map @p map, bottom first, to draw it.
 ///
-/// @details Each entity gets a Transform (the map's position plus the layer's offset, scaled), a TilemapLayer (the
+/// @details Each entity gets a Transform2D (the map's position plus the layer's offset, scaled), a TilemapLayer (the
 /// layer, and its draw layer) and a Parallax: the layer's parallax factor and scroll speed, its origin where the camera
 /// sees the map's parallax origin. Hidden layers are spawned too (the plugin skips them), so layer indices and entities
 /// match.

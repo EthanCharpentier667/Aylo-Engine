@@ -7,7 +7,7 @@
 
 // Measures what animated sprites cost the whole frame: 10 000 of them by default, each playing an animation of the same
 // atlas (the six frames of examples/assets/spritesheet26.gif) from its own start, drifting and bouncing off the
-// window's edges, so every frame updates their Transform, advances their animation, sorts them and draws them in one
+// window's edges, so every frame updates their Transform2D, advances their animation, sorts them and draws them in one
 // batch.
 //
 // Each second it prints the frames per second, the mean and the slowest frame time of that second; at the end, the
@@ -73,7 +73,7 @@ using namespace aylo::plugins::graphics;
 using namespace aylo::plugins::sprite;
 using aylo::core::asset::AssetId;
 using namespace aylo::plugins::sprite;
-using aylo::plugins::transform::Transform;
+using aylo::plugins::transform::Transform2D;
 
 namespace {
 constexpr float kWidth = 1280.0F;
@@ -127,7 +127,7 @@ void spawnSprites(ecs::ResMut<AtlasAssets> atlases, ecs::Res<Measure> measure, e
     std::uniform_real_distribution<float> start{0.0F, kFrameDuration * static_cast<float>(kFrames)};
     for (std::uint32_t index = 0; index < measure.get().count; ++index) {
         commands.spawn()
-            .add(Transform{.position = {x(random), y(random)}, .scale = glm::vec2{0.5F}})
+            .add(Transform2D{.position = {x(random), y(random)}, .scale = glm::vec2{0.5F}})
             .add(SpriteRenderer{})
             .add(SpriteAnimator{.atlas = sheet, .animation = animationId("fly"), .time = start(random)})
             .add(Drift{.velocity = {speed(random), speed(random)}});
@@ -135,7 +135,7 @@ void spawnSprites(ecs::ResMut<AtlasAssets> atlases, ecs::Res<Measure> measure, e
 }
 
 // Update: moves the sprites, bouncing off the edges.
-void drift(ecs::Res<ecs::Time> time, ecs::Query<Transform, Drift> sprites) {
+void drift(ecs::Res<ecs::Time> time, ecs::Query<Transform2D, Drift> sprites) {
     for (auto [entity, transform, sprite] : sprites) {
         glm::vec2& position = transform->position;
         glm::vec2& velocity = sprite->velocity;

@@ -10,13 +10,13 @@ reference of what you can write in one. What capsules are, and how a system spaw
 # The boss, with a turret on each side.
 [node path="."]
 game.Health = { value = 50, max = 50 }
-aylo.Transform = {}
+aylo.Transform2D = {}
 
 [node path="LeftTurret" instance="actors/turret.actor"]
-aylo.Transform = { position = (-40, 0) }
+aylo.Transform2D = { position = (-40, 0) }
 
 [node path="LeftTurret/Muzzle"]
-aylo.Transform = { position = (0, -12), rotation = 1.5708 }
+aylo.Transform2D = { position = (0, -12), rotation = 1.5708 }
 
 [node path="Shadow" side=client]
 aylo.SpriteRenderer = { texture = "sprites/boss_shadow.png", layer = -1 }
@@ -73,12 +73,12 @@ what only players see (a shadow, a particle effect), so it is not sent over the 
 After a `[node]` line, each component is its name, `=`, and its fields between braces:
 
 ```
-aylo.Transform = { position = (120, 80), rotation = 0.5 }
+aylo.Transform2D = { position = (120, 80), rotation = 0.5 }
 game.Health = { value = 3 }
 game.Boss = {}
 ```
 
-- The name is the one a script declared (`game.Health`) or the engine's (`aylo.Transform`).
+- The name is the one a script declared (`game.Health`) or the engine's (`aylo.Transform2D`).
 - Fields you leave out keep the component's defaults; `{}` keeps them all, and adds a component that has no fields.
 - A component appears once per node, and a field once per component.
 - `aylo.Parent` and `aylo.Children` cannot be written: the paths make the tree.
@@ -87,7 +87,7 @@ game.Boss = {}
 
 ```
 [node path="LeftTurret" instance="actors/turret.actor"]
-aylo.Transform = { position = (-40, 0) }
+aylo.Transform2D = { position = (-40, 0) }
 
 [node path="LeftTurret/Light" side=client]
 aylo.SpriteRenderer = { texture = "sprites/light.png" }

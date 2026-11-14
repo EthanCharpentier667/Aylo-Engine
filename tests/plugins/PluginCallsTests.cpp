@@ -516,7 +516,7 @@ struct PhysicsCallsApp {
         app.addPlugin(physics::PhysicsPlugin{physics::PhysicsSettings{
             .maxBodies = 16, .maxBodyPairs = 16, .maxContactConstraints = 16, .tempAllocatorBytes = 1024 * 1024}});
         const physics::Collider collider{.size = {20.0F, 200.0F}, .layer = kWallLayer};
-        const aylo::plugins::transform::Transform at{.position = {100.0F, 0.0F}};
+        const aylo::plugins::transform::Transform2D at{.position = {100.0F, 0.0F}};
         wall = app.getWorld().spawn(collider, at);
         static_cast<void>(world()->createBody(wall, collider, nullptr, at));
     }
@@ -593,7 +593,7 @@ TEST(PhysicsCalls, PushesAndGravityReachTheWorld) {
     EXPECT_FLOAT_EQ(physics.world()->getGravity().y, 0.0F);
 
     const physics::Collider collider{.shape = physics::ShapeType::kCircle, .radius = 5.0F};
-    const aylo::plugins::transform::Transform at{.position = {0.0F, 300.0F}};
+    const aylo::plugins::transform::Transform2D at{.position = {0.0F, 300.0F}};
     const aylo::ecs::Entity ball = physics.app.getWorld().spawn(collider, at, physics::RigidBody{});
     const physics::RigidBody body{.linearDamping = 0.0F};
     static_cast<void>(physics.world()->createBody(ball, collider, &body, at));

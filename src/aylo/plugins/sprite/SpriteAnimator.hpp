@@ -21,7 +21,7 @@ namespace aylo::plugins::sprite {
 /// finite number of times stops on its last frame: `playing` turns false and an AnimationFinished event is sent.
 /// @code
 /// commands.spawn()
-///     .add(aylo::plugins::transform::Transform{.position = {100.0F, 300.0F}})
+///     .add(aylo::plugins::transform::Transform2D{.position = {100.0F, 300.0F}})
 ///     .add(aylo::plugins::sprite::SpriteRenderer{.layer = 5})
 ///     .add(aylo::plugins::sprite::SpriteAnimator{.atlas = atlases->load("assets/ship.json"),
 ///                                                 .animation = aylo::plugins::sprite::animationId("idle")});

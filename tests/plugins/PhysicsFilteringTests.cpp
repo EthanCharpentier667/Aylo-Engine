@@ -36,7 +36,7 @@ using aylo::plugins::physics::RigidBody;
 using aylo::plugins::physics::ShapeType;
 using aylo::plugins::physics::Velocity;
 using aylo::plugins::physics::exceptions::PhysicsException;
-using aylo::plugins::transform::Transform;
+using aylo::plugins::transform::Transform2D;
 
 namespace {
 constexpr float kFixedDelta = 1.0F / 60.0F;
@@ -73,13 +73,13 @@ struct PhysicsApp {
     }
 
     [[nodiscard]] aylo::ecs::Components& components() { return app.getWorld().getComponents(); }
-    [[nodiscard]] float xOf(Entity entity) { return components().get<Transform>(entity)->position.x; }
+    [[nodiscard]] float xOf(Entity entity) { return components().get<Transform2D>(entity)->position.x; }
 
     /// @return A circle at the position, in the categories, colliding with the mask; moving at the speed if given,
     /// static otherwise.
     Entity spawn(glm::vec2 position, std::uint32_t layer, std::uint32_t mask, std::optional<float> speed) {
         const Entity entity = app.getWorld().spawn();
-        components().add(entity, Transform{.position = position});
+        components().add(entity, Transform2D{.position = position});
         components().add(entity, Collider{.shape = ShapeType::kCircle, .radius = 16.0F, .layer = layer, .mask = mask});
         if (speed) {
             components().add(entity, kFreeBody);
@@ -91,7 +91,7 @@ struct PhysicsApp {
     /// @return A static wall across the X axis at x = 0, in the categories, colliding with the mask.
     Entity spawnWall(std::uint32_t layer, std::uint32_t mask) {
         const Entity entity = app.getWorld().spawn();
-        components().add(entity, Transform{.position = {0.0F, 0.0F}});
+        components().add(entity, Transform2D{.position = {0.0F, 0.0F}});
         components().add(entity,
                          Collider{.shape = ShapeType::kBox, .size = {32.0F, 400.0F}, .layer = layer, .mask = mask});
         return entity;
@@ -167,7 +167,7 @@ TEST(PhysicsFiltering, InvalidLayersAndMasksAreRejected) {
     PhysicsWorld world{PhysicsSettings{.maxBodies = 4, .maxBodyPairs = 4, .maxContactConstraints = 4}};
     const Entity entity{1, 1};
     const auto create = [&world, entity](std::uint32_t layer, std::uint32_t mask) {
-        static_cast<void>(world.createBody(entity, Collider{.layer = layer, .mask = mask}, nullptr, Transform{}));
+        static_cast<void>(world.createBody(entity, Collider{.layer = layer, .mask = mask}, nullptr, Transform2D{}));
     };
     EXPECT_THROW(create(0U, kAllLayers), PhysicsException);                    // No category.
     EXPECT_THROW(create(1U << 15, kAllLayers), PhysicsException);              // A category beyond the 15.

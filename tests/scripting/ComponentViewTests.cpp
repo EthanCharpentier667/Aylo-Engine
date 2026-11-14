@@ -123,7 +123,7 @@ sc::ComponentDeclaration makeEverything() {
                        {.name = "target", .type = FieldType::kEntity}}};
 }
 
-/// @brief What the C++ plugins reflect: the fields of `aylo.Transform` and a texture.
+/// @brief What the C++ plugins reflect: the fields of `aylo.Transform2D` and a texture.
 sc::ComponentDeclaration makeSpatial() {
     return {.name = "test.Spatial",
             .fields = {{.name = "position", .type = FieldType::kVec2},

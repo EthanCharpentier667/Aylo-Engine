@@ -15,7 +15,7 @@
 
 namespace aylo::plugins::tilemap {
 
-/// @brief Draws one layer of a map (the component "aylo.TilemapLayer"): where comes from the entity's GlobalTransform
+/// @brief Draws one layer of a map (the component "aylo.TilemapLayer"): where comes from the entity's GlobalTransform2D
 /// (the map's origin for this layer, and its scale; a layer is not rotated).
 ///
 /// @details spawnTilemap() spawns one entity per layer of a map. The TilemapPlugin draws a tile layer's chunks that the

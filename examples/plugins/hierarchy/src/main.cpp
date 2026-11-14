@@ -9,8 +9,8 @@
 // - the boss flies to the right; a turret, a static body, is its child, and a barrel is the turret's child: both follow
 //   it, and their Transforms never change, since they are relative to their parent;
 // - a pod is a dynamic child of the boss: the simulation owns where it is, so it stays in place as the boss flies away,
-//   and its Transform changes instead;
-// - after one second the pod is detached in place: it keeps its position, and its Transform becomes a world position;
+//   and its Transform2D changes instead;
+// - after one second the pod is detached in place: it keeps its position, and its Transform2D becomes a world position;
 // - after a second and a half the boss is despawned: the turret and the barrel go with it, the detached pod stays.
 //   xmake f --hierarchy=y && xmake run hierarchy
 
@@ -65,16 +65,16 @@ AYLO_ECS_RESOURCE(Boss, "example.Boss");
 
 // Startup: `add(Parent{...})` links two entities; the World keeps the parent's Children in sync.
 void spawnBoss(ResMut<Boss> scene, Commands& commands) {
-    scene->boss = commands.spawn().add(Transform{.position = {100.0F, 200.0F}}).getEntity();
+    scene->boss = commands.spawn().add(Transform2D{.position = {100.0F, 200.0F}}).getEntity();
     scene->turret = commands.spawn()
-                        .add(Transform{.position = {0.0F, -40.0F}})
+                        .add(Transform2D{.position = {0.0F, -40.0F}})
                         .add(Collider{.shape = ShapeType::kCircle, .radius = 10.0F})
                         .add(Parent{.entity = scene->boss})
                         .getEntity();
     scene->barrel =
-        commands.spawn().add(Transform{.position = {25.0F, 0.0F}}).add(Parent{.entity = scene->turret}).getEntity();
+        commands.spawn().add(Transform2D{.position = {25.0F, 0.0F}}).add(Parent{.entity = scene->turret}).getEntity();
     scene->pod = commands.spawn()
-                     .add(Transform{.position = {0.0F, 60.0F}})
+                     .add(Transform2D{.position = {0.0F, 60.0F}})
                      .add(Collider{.shape = ShapeType::kCircle, .radius = 8.0F})
                      .add(RigidBody{.type = BodyType::kDynamic})
                      .add(Parent{.entity = scene->boss})
@@ -82,7 +82,7 @@ void spawnBoss(ResMut<Boss> scene, Commands& commands) {
 }
 
 // FixedUpdate, between the physics systems: gameplay only moves the root, the parts follow.
-void flyBoss(Res<Boss> scene, Query<Transform> transforms) {
+void flyBoss(Res<Boss> scene, Query<Transform2D> transforms) {
     for (auto [entity, transform] : transforms) {
         if (entity == scene->boss) {
             transform->position.x += kBossSpeed;
@@ -91,7 +91,7 @@ void flyBoss(Res<Boss> scene, Query<Transform> transforms) {
 }
 
 // FixedUpdate: what happens to the boss over time, by tick.
-void script(Res<PhysicsWorld> world, Res<Boss> scene, Commands& commands, Query<const GlobalTransform> globals,
+void script(Res<PhysicsWorld> world, Res<Boss> scene, Commands& commands, Query<const GlobalTransform2D> globals,
             EventWriter<AppExit> exit) {
     const std::uint64_t tick = world->getStepCount();
     if (tick == kDetachTick) {
@@ -112,7 +112,7 @@ void script(Res<PhysicsWorld> world, Res<Boss> scene, Commands& commands, Query<
 }
 
 /// @return A line about @p entity, or an empty string if it is gone.
-std::string describe(std::string_view name, Entity entity, Query<const Transform, const GlobalTransform>& placed) {
+std::string describe(std::string_view name, Entity entity, Query<const Transform2D, const GlobalTransform2D>& placed) {
     for (auto [other, local, global] : placed) {
         if (other == entity) {
             return std::format("  {:<7} local ({:7.1f}, {:7.1f})   world ({:7.1f}, {:7.1f})\n", name, local.position.x,
@@ -123,7 +123,7 @@ std::string describe(std::string_view name, Entity entity, Query<const Transform
 }
 
 // PostUpdate, once the GlobalTransforms are computed: prints the scene.
-void report(Res<PhysicsWorld> world, ResMut<Boss> scene, Query<const Transform, const GlobalTransform> placed) {
+void report(Res<PhysicsWorld> world, ResMut<Boss> scene, Query<const Transform2D, const GlobalTransform2D> placed) {
     const std::uint64_t tick = world->getStepCount();
     if (tick == 0 || tick % kPrintEvery != 0 || tick == scene->printed) {
         return;

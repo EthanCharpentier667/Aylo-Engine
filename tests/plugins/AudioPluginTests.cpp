@@ -65,7 +65,7 @@ class AudioApp {
     /// @return An entity with @p source at @p x.
     aylo::ecs::Entity spawnSource(const aylo::plugins::audio::AudioSource& source, float x = 0.0F) {
         const aylo::ecs::Entity entity = world().spawn();
-        world().getComponents().add(entity, aylo::plugins::transform::Transform{.position = {x, 0.0F}});
+        world().getComponents().add(entity, aylo::plugins::transform::Transform2D{.position = {x, 0.0F}});
         world().getComponents().add(entity, source);
         return entity;
     }
@@ -73,7 +73,7 @@ class AudioApp {
     /// @brief Spawns the listener at @p x.
     void spawnListener(float x) {
         const aylo::ecs::Entity entity = world().spawn();
-        world().getComponents().add(entity, aylo::plugins::transform::Transform{.position = {x, 0.0F}});
+        world().getComponents().add(entity, aylo::plugins::transform::Transform2D{.position = {x, 0.0F}});
         world().getComponents().add(entity, aylo::plugins::audio::AudioListener{});
     }
 
@@ -258,12 +258,12 @@ TEST(AudioPlugin, WaitsForTheWorldPositionOfANewChildBeforePanningIt) {
     AudioApp app;
     app.spawnListener(0.0F);
     const aylo::ecs::Entity parent = app.world().spawn();
-    app.world().getComponents().add(parent, aylo::plugins::transform::Transform{.position = {400.0F, 0.0F}});
+    app.world().getComponents().add(parent, aylo::plugins::transform::Transform2D{.position = {400.0F, 0.0F}});
     const aylo::ecs::Entity child = app.spawnSource({.sound = app.load("engine.ogg"), .loop = true}, -200.0F);
     EXPECT_TRUE(app.world().setParent(child, parent));
     app.app().runFrame();
     ASSERT_EQ(app.state().plays.size(), 1U);
-    EXPECT_FLOAT_EQ(app.state().plays[0].params.pan, 0.0F);  // its Transform alone would say -0.5
+    EXPECT_FLOAT_EQ(app.state().plays[0].params.pan, 0.0F);  // its Transform2D alone would say -0.5
     app.app().runFrame();
     EXPECT_FLOAT_EQ(app.state().pans.at(0), 0.5F);
 }
@@ -273,7 +273,7 @@ TEST(AudioPlugin, FollowsAMovingSource) {
     app.spawnListener(0.0F);
     const aylo::ecs::Entity ship = app.spawnSource({.sound = app.load("engine.ogg"), .loop = true});
     app.app().runFrame();
-    app.world().getComponents().getMut<aylo::plugins::transform::Transform>(ship)->position.x = 400.0F;
+    app.world().getComponents().getMut<aylo::plugins::transform::Transform2D>(ship)->position.x = 400.0F;
     app.world().getComponents().getMut<aylo::plugins::audio::AudioSource>(ship)->volume = 0.2F;
     app.app().runFrame();
     EXPECT_FLOAT_EQ(app.state().pans.at(0), 1.0F);

@@ -79,7 +79,7 @@ using aylo::core::asset::AssetId;
 using aylo::plugins::sprite::SpriteRenderer;
 using aylo::plugins::text::FontAssets;
 using aylo::plugins::text::TextRenderer;
-using aylo::plugins::transform::Transform;
+using aylo::plugins::transform::Transform2D;
 
 namespace {
 constexpr glm::vec2 kWindow{1280.0F, 800.0F};
@@ -130,12 +130,12 @@ std::string describe(contract::renderer::ParticleSimulation simulation) {
 // Spawns the fountain (layer 1, between the panels) and the trail (layer 3, on top), simulated as @p mode says.
 void spawnEmitters(ecs::Commands& commands, const Assets& assets, const Mode& mode, glm::vec2 mouse) {
     commands.spawn()
-        .add(Transform{.position = {kWindow.x * 0.5F, kWindow.y * 0.8F}})
+        .add(Transform2D{.position = {kWindow.x * 0.5F, kWindow.y * 0.8F}})
         .add(ParticleEmitter{
             .effect = assets.fountain, .layer = 1, .overrideSimulation = true, .simulation = mode.simulation})
         .add(Switched{});
     commands.spawn()
-        .add(Transform{.position = mouse})
+        .add(Transform2D{.position = mouse})
         .add(ParticleEmitter{
             .effect = assets.trail, .layer = 3, .overrideSimulation = true, .simulation = mode.simulation})
         .add(Trail{})
@@ -267,7 +267,7 @@ void spawnScene(ecs::ResMut<plugins::graphics::TextureAssets> textures, ecs::Res
         {.size = {kDotSize * kRingFrames, kDotSize}, .filter = contract::renderer::TextureFilter::kLinear});
     // Layer 1, left of the panels: rings animated by a flipbook.
     commands.spawn()
-        .add(Transform{.position = {kWindow.x * 0.15F, kWindow.y * 0.8F}})
+        .add(Transform2D{.position = {kWindow.x * 0.15F, kWindow.y * 0.8F}})
         .add(ParticleEmitter{.effect = effects->add("example.rings", makeRingEffect(rings)), .layer = 1});
     assets->explosion = effects->add("example.explosion", makeExplosion(dot));
     assets->fountain = effects->add("example.fountain", makeFountain(dot));
@@ -275,7 +275,7 @@ void spawnScene(ecs::ResMut<plugins::graphics::TextureAssets> textures, ecs::Res
 
     // Layer 0, under the fountain: a dark panel.
     commands.spawn()
-        .add(Transform{.position = {kWindow.x * 0.5F, kWindow.y * 0.55F}, .scale = {520.0F, 420.0F}})
+        .add(Transform2D{.position = {kWindow.x * 0.5F, kWindow.y * 0.55F}, .scale = {520.0F, 420.0F}})
         .add(SpriteRenderer{.texture = texel,
                             .source = {{0.0F, 0.0F}, {1.0F, 1.0F}},
                             .origin = {0.5F, 0.5F},
@@ -283,7 +283,7 @@ void spawnScene(ecs::ResMut<plugins::graphics::TextureAssets> textures, ecs::Res
                             .layer = 0});
     // Layer 2, over the fountain's right half: a translucent panel.
     commands.spawn()
-        .add(Transform{.position = {kWindow.x * 0.62F, kWindow.y * 0.4F}, .scale = {220.0F, 360.0F}})
+        .add(Transform2D{.position = {kWindow.x * 0.62F, kWindow.y * 0.4F}, .scale = {220.0F, 360.0F}})
         .add(SpriteRenderer{.texture = texel,
                             .source = {{0.0F, 0.0F}, {1.0F, 1.0F}},
                             .origin = {0.5F, 0.5F},
@@ -291,7 +291,7 @@ void spawnScene(ecs::ResMut<plugins::graphics::TextureAssets> textures, ecs::Res
                             .layer = 2});
     spawnEmitters(commands, *assets, *mode, kWindow * 0.5F);
     commands.spawn()
-        .add(Transform{.position = {16.0F, 16.0F}})
+        .add(Transform2D{.position = {16.0F, 16.0F}})
         .add(TextRenderer{.text = describe(mode->simulation), .font = fonts->load(kFont), .size = 24.0F, .layer = 10})
         .add(Hud{});
 }
@@ -299,7 +299,7 @@ void spawnScene(ecs::ResMut<plugins::graphics::TextureAssets> textures, ecs::Res
 // Update: on Space, switches the mode, respawns the fountain and the trail in it, and shows it.
 void switchSimulation(ecs::EventReader<contract::platform::event::KeyPressed> keys, ecs::ResMut<Mode> mode,
                       ecs::Res<Assets> assets, ecs::Res<Mouse> mouse,
-                      ecs::Query<const Transform, ecs::With<Switched>> switched,
+                      ecs::Query<const Transform2D, ecs::With<Switched>> switched,
                       ecs::Query<TextRenderer, ecs::With<Hud>> huds, ecs::Commands& commands) {
     bool pressed = false;
     for (const contract::platform::event::KeyPressed& key : keys) {
@@ -323,7 +323,7 @@ void switchSimulation(ecs::EventReader<contract::platform::event::KeyPressed> ke
 // Update: keeps the mouse position, moves the trail to it, and spawns an explosion where the left button is pressed.
 void followMouse(ecs::EventReader<contract::platform::event::MouseMoved> moves,
                  ecs::EventReader<contract::platform::event::MouseButtonPressed> presses, ecs::ResMut<Mouse> mouse,
-                 ecs::Res<Assets> assets, ecs::Query<Transform, ecs::With<Trail>> trails,
+                 ecs::Res<Assets> assets, ecs::Query<Transform2D, ecs::With<Trail>> trails,
                  ecs::EventWriter<SpawnParticles> spawns) {
     for (const contract::platform::event::MouseMoved& move : moves) {
         mouse->position = move.position;

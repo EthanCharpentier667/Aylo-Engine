@@ -49,7 +49,7 @@ namespace aylo::plugins::physics {
 inline constexpr std::uint32_t kAllLayers = (1U << 15) - 1U;
 
 /// @brief The shape and material an entity collides with: gameplay writes it, the physics plugin builds the shape.
-/// @details Distances are in world units, like Transform. Each shape reads its own fields: size for a box, radius for
+/// @details Distances are in world units, like Transform2D. Each shape reads its own fields: size for a box, radius for
 /// a circle, radius and halfHeight for a capsule. Without a RigidBody, the entity is a static body.
 ///
 /// Collision filtering: two colliders collide (or a sensor detects the other) only when each one's layer is in the
@@ -57,7 +57,7 @@ inline constexpr std::uint32_t kAllLayers = (1U << 15) - 1U;
 /// neither may use a bit beyond kAllLayers.
 /// @code
 /// commands.spawn()
-///     .add(aylo::plugins::transform::Transform{.position = {400.0F, 300.0F}})
+///     .add(aylo::plugins::transform::Transform2D{.position = {400.0F, 300.0F}})
 ///     .add(aylo::plugins::physics::Collider{
 ///         .shape = aylo::plugins::physics::ShapeType::kBox,
 ///         .size = {800.0F, 16.0F},
@@ -68,7 +68,7 @@ struct Collider {
     glm::vec2 size{32.0F, 32.0F};       ///< kBox: full width and height, in world units.
     float radius = 16.0F;               ///< kCircle and kCapsule: radius, in world units.
     float halfHeight = 16.0F;           ///< kCapsule: half the length of the straight part, along Y, in world units.
-    glm::vec2 offset{0.0F, 0.0F};       ///< The shape's center relative to the Transform, in world units, Y down.
+    glm::vec2 offset{0.0F, 0.0F};       ///< The shape's center relative to the Transform2D, in world units, Y down.
     bool sensor = false;                ///< Detects overlaps (triggers) without colliding.
     float friction = 0.2F;              ///< How much the surface resists sliding, usually in [0, 1].
     float restitution = 0.0F;           ///< How bouncy the surface is: 0 absorbs, 1 bounces back fully.

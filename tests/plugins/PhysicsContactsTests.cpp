@@ -43,7 +43,7 @@ using aylo::plugins::physics::ShapeType;
 using aylo::plugins::physics::TriggerEntered;
 using aylo::plugins::physics::TriggerExited;
 using aylo::plugins::physics::Velocity;
-using aylo::plugins::transform::Transform;
+using aylo::plugins::transform::Transform2D;
 
 namespace {
 constexpr float kFixedDelta = 1.0F / 60.0F;
@@ -115,7 +115,7 @@ struct PhysicsApp {
         collider.shape = ShapeType::kCircle;
         collider.radius = 16.0F;
         const Entity entity = app.getWorld().spawn();
-        components().add(entity, Transform{.position = position});
+        components().add(entity, Transform2D{.position = position});
         components().add(entity, collider);
         if (velocity) {
             components().add(entity, RigidBody{.linearDamping = 0.0F, .angularDamping = 0.0F});
@@ -127,7 +127,7 @@ struct PhysicsApp {
     /// @return A static floor whose top is at y = 100.
     Entity spawnFloor() {
         const Entity entity = app.getWorld().spawn();
-        components().add(entity, Transform{.position = {0.0F, 116.0F}});
+        components().add(entity, Transform2D{.position = {0.0F, 116.0F}});
         components().add(entity, Collider{.shape = ShapeType::kBox, .size = {1000.0F, 32.0F}});
         return entity;
     }
@@ -197,7 +197,7 @@ TEST(PhysicsContacts, ASensorSendsEnteredThenExitedWithItselfAsTheTrigger) {
     EXPECT_EQ(fixture.received().exited.front().trigger, zone);
     EXPECT_EQ(fixture.received().exited.front().other, ball);
     EXPECT_TRUE(fixture.received().started.empty());  // A sensor never collides.
-    EXPECT_GT(fixture.components().get<Transform>(ball)->position.x, 150.0F);
+    EXPECT_GT(fixture.components().get<Transform2D>(ball)->position.x, 150.0F);
 }
 
 TEST(PhysicsContacts, DespawningDuringAContactSendsNoEnd) {
