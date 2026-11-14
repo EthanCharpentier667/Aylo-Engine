@@ -37,14 +37,22 @@ xmake project -k compile_commands          # clang-tidy needs compile_commands.j
 `lint.sh` runs `clang-format` and `clang-tidy` on every C and C++ file changed between the base and `HEAD`, in full,
 as CI does. To format only: `clang-format -i <files>`. To lint one file: `clang-tidy -p . <file>`.
 
-## 4. Docs
+## 4. Third-party packages
+
+If the diff touches an `add_requires` or `add_packages`, invoke the `check-libraries` skill. In every case, run
+
+```sh
+xmake check-notices        # every package a shipped binary uses has its notice, or the release fails
+```
+
+## 5. Docs
 
 The `docs/` page of the module you changed is updated; anything a script can use has its `manual/` page, written with
 the `write-manual` skill. Run `git diff --stat <base>`: if the change touches an engine call, a component, an event, a
 setting, a setup form or a plugin and `manual/` is not in the diff, stop and invoke `write-manual`. Check the
 paths your docs, `AGENTS.md` and skills mention exist.
 
-## 5. Report faithfully
+## 6. Report faithfully
 
 - Say which steps you ran and the result of each: pass, fail, or not run, with the reason (tool missing, no GPU,
   platform).

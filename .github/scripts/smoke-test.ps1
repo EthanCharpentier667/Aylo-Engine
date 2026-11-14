@@ -41,10 +41,12 @@ try {
     # --- Layout -------------------------------------------------------------------------------------------------------
     $runtime = Join-Path $root 'runtime\aylo-runtime.exe'
     foreach ($file in 'manifest.json', 'README.md', 'VERSION', 'templates\game\project.luau', 'runtime\licenses\THIRD_PARTY_NOTICES.md',
-                      'runtime\aylo-runtime.exe', 'tools\aylo-sign.exe') {
+                      'runtime\aylo-runtime.exe', 'tools\aylo-sign.exe',
+                      'editor\aylo-editor.exe', 'editor\aylo-runtime.exe', 'editor\licenses\THIRD_PARTY_NOTICES.md',
+                      'editor\licenses\by-library\aylo-editor.exe.md') {
         if (Test-Path -LiteralPath (Join-Path $root $file) -PathType Leaf) { Ok "has $file" } else { Fail "missing $file" }
     }
-    foreach ($folder in 'runtime\plugins', 'runtime\plugins\backends', 'templates\game\scripts', 'templates\game\assets') {
+    foreach ($folder in 'runtime\plugins', 'runtime\plugins\backends', 'editor\plugins', 'editor\plugins\backends', 'templates\game\scripts', 'templates\game\assets') {
         if (Test-Path -LiteralPath (Join-Path $root $folder) -PathType Container) { Ok "has $folder\" } else { Fail "missing $folder\" }
     }
     # The game export keeps the notices of the binaries it keeps: each binary it may keep has its own.
@@ -58,12 +60,24 @@ try {
         }
     }
     if ($unnoticed -eq 0) { Ok "every binary has its notices in runtime\licenses\by-library\" } else { Fail "$unnoticed binaries have no notices" }
+    # The editor is not in runtime\: a game never ships it.
+    if (@(Get-ChildItem -LiteralPath (Join-Path $root 'runtime') -Recurse -Filter 'aylo-editor*').Count -eq 0) {
+        Ok 'runtime\ holds no editor'
+    } else {
+        Fail 'the editor is in runtime\, which a game ships'
+    }
 
     # --- Version ------------------------------------------------------------------------------------------------------
     if (Test-Path -LiteralPath $runtime) {
         $reported = (& $runtime --version | Select-Object -First 1)
         $expected = "aylo-engine " + (Get-Content -LiteralPath (Join-Path $root 'VERSION') -TotalCount 1).Trim()
         if ($reported -eq $expected) { Ok "--version says '$reported'" } else { Fail "--version says '$reported', VERSION says '$expected'" }
+    }
+    $editor = Join-Path $root 'editor\aylo-editor.exe'
+    if (Test-Path -LiteralPath $editor) {
+        $reported = (& $editor --version | Select-Object -First 1)
+        $expected = "aylo-engine " + (Get-Content -LiteralPath (Join-Path $root 'VERSION') -TotalCount 1).Trim()
+        if ($reported -eq $expected) { Ok "the editor's --version says '$reported'" } else { Fail "the editor's --version says '$reported', VERSION says '$expected'" }
     }
 
     # --- Manifest: the hash of every file ----------------------------------------------------------------------------
@@ -90,8 +104,10 @@ try {
         & $check (Join-Path $root 'runtime')
         $runtimeStatus = $LASTEXITCODE
         & $check (Join-Path $root 'tools')
-        if ($runtimeStatus -eq 0 -and $LASTEXITCODE -eq 0) {
-            Ok 'runtime\ and tools\ depend on nothing outside themselves'
+        $toolsStatus = $LASTEXITCODE
+        & $check (Join-Path $root 'editor')
+        if ($runtimeStatus -eq 0 -and $toolsStatus -eq 0 -and $LASTEXITCODE -eq 0) {
+            Ok 'runtime\, tools\ and editor\ depend on nothing outside themselves'
         } else {
             Fail 'something resolves outside the zip (listed above)'
         }

@@ -4,7 +4,8 @@
 #   .github/scripts/smoke-test.sh <aylo-engine-...zip>
 #
 # Checks the layout, the hashes of the manifest, the version the runtime reports, the dependencies of runtime/ (with
-# check-self-contained.sh), a server started on templates/game with a headless client connecting to it, and aylo-sign.
+# check-self-contained.sh), a server started on templates/game with a headless client connecting to it, aylo-sign, and
+# the editor (its layout and its version).
 # Run it on a machine with no toolchain (a bare container) for the answer that counts. Exits 1 if a check fails.
 
 if [ $# -ne 1 ] || [ ! -f "$1" ]; then
@@ -49,13 +50,14 @@ ok "unzipped to one folder: $(basename "$root")"
 
 # --- Layout -----------------------------------------------------------------------------------------------------------
 runtime="$root/runtime/aylo-runtime"
-for file in manifest.json README.md VERSION templates/game/project.luau runtime/licenses/THIRD_PARTY_NOTICES.md; do
+for file in manifest.json README.md VERSION templates/game/project.luau runtime/licenses/THIRD_PARTY_NOTICES.md \
+            editor/licenses/THIRD_PARTY_NOTICES.md; do
     if [ -f "$root/$file" ]; then ok "has $file"; else fail "missing $file"; fi
 done
-for file in runtime/aylo-runtime tools/aylo-sign; do
+for file in runtime/aylo-runtime tools/aylo-sign editor/aylo-editor editor/aylo-runtime; do
     if [ -x "$root/$file" ]; then ok "$file is executable"; else fail "$file is missing or not executable"; fi
 done
-for folder in runtime/lib runtime/plugins runtime/plugins/backends templates/game/scripts templates/game/assets; do
+for folder in runtime/lib runtime/plugins runtime/plugins/backends editor/lib editor/plugins editor/plugins/backends templates/game/scripts templates/game/assets; do
     if [ -d "$root/$folder" ]; then ok "has $folder/"; else fail "missing $folder/"; fi
 done
 # Every library is a real file, once: a link would be another copy to a tool that flattens them, and loaded twice.
@@ -75,11 +77,19 @@ for file in "$runtime" $(find "$root/runtime/plugins" -type f \( -name '*.so' -o
     fi
 done
 if [ "$unnoticed" -eq 0 ]; then ok "every binary has its notices in runtime/licenses/by-library/"; else fail "$unnoticed binaries have no notices"; fi
+# The editor is not in runtime/: a game never ships it. Its folder has the notices of its own binaries, ImGui included.
+if [ -f "$root/editor/licenses/by-library/aylo-editor.md" ]; then ok "the editor has its notices"; else fail "editor/licenses/by-library/aylo-editor.md is missing"; fi
+if find "$root/runtime" -name 'aylo-editor*' | grep -q .; then fail "the editor is in runtime/, which a game ships"; else ok "runtime/ holds no editor"; fi
 if [ -x "$runtime" ]; then
     # --- Version ------------------------------------------------------------------------------------------------------
     reported=$("$runtime" --version | sed -n 1p)
     expected="aylo-engine $(cat "$root/VERSION")"
     if [ "$reported" = "$expected" ]; then ok "--version says '$reported'"; else fail "--version says '$reported', VERSION says '$expected'"; fi
+fi
+if [ -x "$root/editor/aylo-editor" ]; then
+    reported=$("$root/editor/aylo-editor" --version | sed -n 1p)
+    expected="aylo-engine $(cat "$root/VERSION")"
+    if [ "$reported" = "$expected" ]; then ok "the editor's --version says '$reported'"; else fail "the editor's --version says '$reported', VERSION says '$expected'"; fi
 fi
 
 # --- Manifest: the hash of every file ----------------------------------------------------------------------------------

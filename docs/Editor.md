@@ -24,6 +24,9 @@ A program of its own, not a feature of a game and not a mode of the runtime. Gam
 - **A program, like the runtime.** `aylo-editor` links `engine` and `editor` (both static), and the Engine loads the
   plugins and backends from their libraries as in `aylo-runtime`. The editor library links the plugin libraries it uses
   (graphics, capsule, particle) for their types, which the Engine opens again by name: one copy, as the same file.
+- **In the release zip, its own folder.** `editor/` holds `aylo-editor` next to a copy of `runtime/` (the build
+  folder's layout: it loads the plugins next to itself and starts that `aylo-runtime` as its child server), outside
+  `runtime/`, which is what a game ships (`docs/release/package.md`).
 - **Always a debug run.** `EngineConfig::debug` is true, so `engine.isDebug` is true and hot reload defaults on, even in
   a release build. The check of the game plugins' signatures still follows the build type.
 - **Both sides by default.** `RunMode::kStandalone` (both sides in one world, no network: a client alone would not run

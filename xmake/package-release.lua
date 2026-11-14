@@ -40,7 +40,7 @@ task("package-release")
         end
         if not option.get("no-build") then
             -- One target per call: `xmake build` takes a single target.
-            for _, name in ipairs({layout.runtimeProgram, "aylo-sign", "aylo-export"}) do
+            for _, name in ipairs({layout.runtimeProgram, "aylo-sign", "aylo-export", layout.editorProgram}) do
                 os.execv(os.programfile(), {"build", "-y", "-P", rootdir, name})
             end
         end
@@ -51,6 +51,7 @@ task("package-release")
         local packagedir = path.join(path.absolute(config.builddir()), "package")
         local stage = path.join(packagedir, name)
         local runtime = path.join(stage, layout.runtimeFolder)
+        local editordir = path.join(stage, layout.editorFolder)
         local symbols = path.join(packagedir, name .. "-symbols")
         local zipfile = path.join(packagedir, name .. ".zip")
         local symbolszip = path.join(packagedir, name .. "-symbols.zip")
@@ -187,6 +188,8 @@ task("package-release")
             end
         end
 
+        -- macOS: makes a binary of the zip name the bundled libraries by @rpath, without the search paths outside it.
+        local fixMacBinary
         -- macOS has no Vulkan loader with the system: the renderer links Homebrew's (brew install molten-vk
         -- vulkan-loader), which the zip carries in `lib/` with MoltenVK, its driver. The loader looks for drivers in the
         -- resources of the main bundle, which for an executable outside a bundle is its own folder: the manifest of
@@ -219,10 +222,7 @@ task("package-release")
                 ICD = {library_path = "../../lib/libMoltenVK.dylib", api_version = "1.4.0", is_portability_driver = true},
             })
 
-            local binaries = table.join(os.files(path.join(runtime, "**.dylib")),
-                                        {path.join(runtime, layout.runtimeProgram), path.join(stage, layout.toolsFolder, "aylo-sign"),
-                                         path.join(stage, layout.toolsFolder, "aylo-export")})
-            for _, file in ipairs(binaries) do
+            fixMacBinary = function (file)
                 local args = {}
                 -- otool -L: the first line is the file, then one dependency per line (the first of a library is its id).
                 for line in os.iorunv("otool", {"-L", file}):gmatch("[^\n]+") do
@@ -242,27 +242,62 @@ task("package-release")
                     os.vrunv("install_name_tool", args)
                 end
             end
+            local binaries = table.join(os.files(path.join(runtime, "**.dylib")),
+                                        {path.join(runtime, layout.runtimeProgram), path.join(stage, layout.toolsFolder, "aylo-sign"),
+                                         path.join(stage, layout.toolsFolder, "aylo-export")})
+            for _, file in ipairs(binaries) do
+                fixMacBinary(file)
+            end
+        end
+
+        -- The editor: a copy of runtime/ with aylo-editor next to aylo-runtime, the layout of the build folder. It loads
+        -- the plugins next to itself and starts that aylo-runtime as the server of the game it plays; runtime/ stays what
+        -- a game ships, without the editor (docs/release/package.md).
+        os.cp(runtime, editordir)
+        local editorfile = path.join(editordir, layout.editorProgram .. exeext)
+        copyExecutable(path.join(builddir, layout.editorProgram .. exeext), editorfile)
+        if windows then
+            -- No rpath: the plugins it links (graphics, capsule...) sit next to it, as transform and input do next to
+            -- aylo-runtime. A module of the same name is shared, so the copy in plugins/ is the one already loaded.
+            for _, dep in ipairs(project.target(layout.editorProgram):orderdeps()) do
+                if dep:kind() == "shared" then
+                    os.cp(dep:targetfile(), path.join(editordir, path.filename(dep:targetfile())))
+                end
+            end
+        elseif plat == "linux" then
+            local patchelf = find_tool("patchelf")
+            if patchelf then
+                os.vrunv(patchelf.program, {"--set-rpath", "$ORIGIN/" .. layout.libFolder .. ":$ORIGIN/" .. layout.pluginsFolder,
+                                            editorfile})
+            end
+        elseif fixMacBinary then
+            fixMacBinary(editorfile)
         end
 
         -- Licenses of what the runtime carries: the third-party code of each binary in `licenses/by-library/<file>.md`
         -- (what the game export keeps of them), and all of them in THIRD_PARTY_NOTICES.md.
-        local licenses = path.join(runtime, layout.licensesFolder)
-        local bylibrary = path.join(licenses, layout.noticesByLibraryFolder)
-        os.mkdir(bylibrary)
-        local allrows = {}
-        for _, file in ipairs(os.files(path.join(runtime, "**"))) do
-            local filename = path.filename(file)
-            local rows = third_party_notices.rowsOfBundled(filename)
-            if not rows then
-                local target = third_party_notices.targetOf(filename)
-                rows = target and third_party_notices.rowsOfTarget(target)
+        -- The editor gets its own, which name ImGui too.
+        local function writeLicenses(folder)
+            local licenses = path.join(folder, layout.licensesFolder)
+            local bylibrary = path.join(licenses, layout.noticesByLibraryFolder)
+            os.mkdir(bylibrary)
+            local allrows = {}
+            for _, file in ipairs(os.files(path.join(folder, "**"))) do
+                local filename = path.filename(file)
+                local rows = third_party_notices.rowsOfBundled(filename)
+                if not rows then
+                    local target = third_party_notices.targetOf(filename)
+                    rows = target and third_party_notices.rowsOfTarget(target)
+                end
+                if rows then
+                    third_party_notices.writeRows(bylibrary, filename, rows)
+                    table.join2(allrows, rows)
+                end
             end
-            if rows then
-                third_party_notices.writeRows(bylibrary, filename, rows)
-                table.join2(allrows, rows)
-            end
+            third_party_notices.writeNotices(path.join(licenses, layout.noticesFile), allrows)
         end
-        third_party_notices.writeNotices(path.join(licenses, layout.noticesFile), allrows)
+        writeLicenses(runtime)
+        writeLicenses(editordir)
 
         -- The starting game.
         os.cp(path.join(rootdir, "examples", "games", "template", "game"), path.join(stage, "templates", "game"))
@@ -315,6 +350,9 @@ task("package-release")
         end
         for _, file in ipairs(table.join(os.files(path.join(stage, layout.runtimeFolder, "**" .. libext)),
                                           os.files(path.join(runtime, layout.runtimeProgram .. exeext)),
+                                          os.files(path.join(editordir, "**" .. libext)),
+                                          os.files(path.join(editordir, layout.runtimeProgram .. exeext)),
+                                          os.files(editorfile),
                                           os.files(path.join(stage, layout.toolsFolder, "aylo-sign" .. exeext)),
                                           os.files(path.join(stage, layout.toolsFolder, "aylo-export" .. exeext)))) do
             keepSymbols(file)
@@ -337,10 +375,12 @@ task("package-release")
         local checkdir = path.join(rootdir, ".github", "scripts")
         local check = windows and path.join(checkdir, "check-self-contained.ps1") or path.join(checkdir, "check-self-contained.sh")
         if os.isfile(check) then
-            if windows then
-                os.vrunv("powershell", {"-NoProfile", "-ExecutionPolicy", "Bypass", "-File", check, runtime})
-            else
-                os.vrunv("bash", {check, runtime})
+            for _, folder in ipairs({runtime, editordir}) do
+                if windows then
+                    os.vrunv("powershell", {"-NoProfile", "-ExecutionPolicy", "Bypass", "-File", check, folder})
+                else
+                    os.vrunv("bash", {check, folder})
+                end
             end
         else
             cprint("${yellow}warning: %s does not exist: the runtime was not checked for dependencies outside it", path.relative(check, rootdir))
@@ -355,6 +395,10 @@ task("package-release")
         local reported = report:match("^aylo%-engine ([^\r\n]+)")
         if reported ~= version then
             raise("the runtime says it is version %s, the package is %s", tostring(reported), version)
+        end
+        local editorReported = os.iorunv(editorfile, {"--version"}):match("^aylo%-engine ([^\r\n]+)")
+        if editorReported ~= version then
+            raise("the editor says it is version %s, the package is %s", tostring(editorReported), version)
         end
         local files = {}
         for _, file in ipairs(os.files(path.join(stage, "**"))) do

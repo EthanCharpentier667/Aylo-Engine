@@ -7,11 +7,16 @@ change while editing is saved, what you change while playing is lost at Stop.
 
 ## Start it
 
-The editor is its own program, `aylo-editor`. You make your game in it, and you ship it with `aylo-runtime`:
+The editor is its own program, `aylo-editor`. You make your game in it, and you ship it with `aylo-runtime`. It is in
+the `editor/` folder of the [engine zip](shipping.md#download-the-engine), next to `runtime/`:
 
 ```sh
-./aylo-editor path/to/game
+./aylo-engine-0.3.0-linux-x86_64/editor/aylo-editor my_game/game
 ```
+
+(`editor\aylo-editor.exe` on Windows.) Give it the folder with your `project.luau`; with no folder it opens `game/`
+next to where you run it. `editor/` carries its own copy of the engine's plugins, so it runs from the zip as it is; you
+never ship it, and [exporting](shipping.md) takes what your game needs from `runtime/`, not from `editor/`.
 
 Nothing changes in your project. The editor runs both sides of the game in one process, the server's gameplay included,
 with no network, and it is always a debug run: `engine.isDebug` is `true`, even in a release build. Your scenes are

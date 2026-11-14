@@ -231,6 +231,10 @@ jobs:
       - name: Configure xmake
         run: xmake f -y --Tests=y --AllExamples=y
 
+      # A package a shipped binary uses without a notice stops `xmake package-release`: catch it here, not at the release.
+      - name: Check the third-party notices
+        run: xmake check-notices
+
       - name: Generate compile_commands.json
         run: xmake project -k compile_commands
 

@@ -8,7 +8,8 @@ Read the root `AGENTS.md` first, then the `AGENTS.md` of the module you work in.
 
 - `aylo/<module>/` holds one module each, with its own `xmake.lua` (included from the root `xmake.lua`). Sources are
   found by glob in the module's folder, so a new source file needs no build-file change; a new dependency goes through
-  `add_requires` in the module's `xmake.lua` (a package several modules use is declared once in the root).
+  `add_requires` in the module's `xmake.lua` (a package several modules use is declared once in the root). The
+  `check-libraries` skill lists what a new package needs, its release notice first.
 - Inside a module, one folder per feature, created only when a file goes in it.
 - Tests are in `tests/<module>/`, never next to the sources.
 

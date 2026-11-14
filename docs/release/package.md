@@ -17,6 +17,7 @@ aylo-engine-<version>-<os>-<arch>/
 │   ├── plugins/             the plugin libraries, real files; the engine scans this folder
 │   │   └── backends/        the platform, renderer and audio backends, scanned too
 │   └── licenses/            THIRD_PARTY_NOTICES.md, and by-library/<file>.md: the notices of each binary
+├── editor/                  aylo-editor(.exe) next to a copy of runtime/ (its own lib/, plugins/, licenses/)
 ├── tools/aylo-sign(.exe)   aylo-export(.exe): signs the game plugins, exports a game ([`export.md`](export.md))
 ├── templates/game/          a game that runs, from examples/games/template/game/
 ├── manual/                  the manual, built for offline reading
@@ -30,15 +31,21 @@ the zip is a symbolic link: every library is one real file, in the one folder th
 rpath, the DLLs of `lib/` sit next to the executable instead (there is no `lib/` folder in the zip), which is where
 the DLLs of `plugins/` find them. How a binary finds its libraries is in
 [`self-contained.md`](self-contained.md#how-the-build-gets-there).
-The editor will get its own `editor/` folder, outside `runtime/`, so that shipping the runtime never ships it.
+The editor has its own `editor/` folder, outside `runtime/`, so that shipping the runtime never ships it. It is a copy of
+`runtime/` with `aylo-editor` next to `aylo-runtime`: the layout of the build folder, where the editor loads the plugins
+next to itself and starts that `aylo-runtime` as the server of the game it plays, so nothing of the engine changes for
+the zip. On Windows the plugins it links (graphics, capsule, particle, shader and what they need) also sit next to it, as
+transform and input do next to `aylo-runtime`. Its `licenses/` lists ImGui too. The copy costs about the size of
+`runtime/` again; its export (*File > Export...*) takes `../runtime/`, the one a game ships.
 
 The notices are made, not written by hand (`xmake/modules/third_party_notices.lua`). A binary contains the packages of
 its target and those of the static modules it links (`aylo-runtime` holds Luau, Asio and libsodium through `engine`,
 `luau` and `network`); a library `lib/` takes from the system (the Vulkan loader and MoltenVK on macOS, the GCC runtime on
 Linux) has its own entry. `licenses/by-library/<file>.md` holds the rows of one binary, and `THIRD_PARTY_NOTICES.md` all
-of them. A package the table does not know stops the release, so the notices cannot fall behind the build. The game
-export keeps the files of the binaries it keeps ([`export.md`](export.md)); the smoke test checks that every binary it
-may keep has one.
+of them. A package the table does not know stops the release, so the notices cannot fall behind the build;
+`xmake check-notices` makes the same check on every shipped target without a build, and CI runs it on each pull
+request. The game export keeps the files of the binaries it keeps ([`export.md`](export.md)); the smoke test checks
+that every binary it may keep has one.
 
 The names of the layout are written once per language: `src/aylo/core/layout/Layout.hpp` for the engine and its
 tools, `xmake/modules/layout.lua` for the build and this task. The smoke test checks them end to end.

@@ -8,6 +8,7 @@ import("core.project.project")
 -- release: add it here. `with` names the rows of what the package brings in with it.
 local packages = {
     asio = {name = "Asio", use = "networking", license = "BSL-1.0", project = "https://think-async.com"},
+    cgltf = {name = "cgltf", use = "glTF models", license = "MIT", project = "https://github.com/jkuhlmann/cgltf"},
     glfw = {name = "GLFW", use = "windows and input", license = "Zlib", project = "https://www.glfw.org"},
     glm = {name = "GLM", use = "mathematics", license = "MIT", project = "https://github.com/g-truc/glm"},
     glslang = {name = "glslang", use = "shader compiler", license = "BSD-3-Clause, Apache-2.0",
@@ -31,6 +32,8 @@ local packages = {
            project = "https://github.com/nothings/stb"},
     tl_expected = {name = "tl::expected", use = "results", license = "CC0-1.0",
                    project = "https://github.com/TartanLlama/expected"},
+    ufbx = {name = "ufbx", use = "FBX and OBJ models", license = "MIT or public domain",
+            project = "https://github.com/ufbx/ufbx"},
     ["vulkan-headers"] = {name = "Vulkan headers", use = "graphics API", license = "Apache-2.0",
                           project = "https://github.com/KhronosGroup/Vulkan-Headers"},
     ["vulkan-memory-allocator"] = {name = "Vulkan Memory Allocator", use = "GPU memory", license = "MIT",

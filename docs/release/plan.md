@@ -28,7 +28,7 @@ aylo-engine-<version>-<os>-<arch>/
 │   ├── plugins/             the plugin libraries, real files; the engine scans it
 │   │   └── backends/
 │   └── licenses/
-├── editor/                  later, never shipped
+├── editor/                  the editor: a copy of runtime/ with aylo-editor, never shipped
 ├── tools/aylo-sign(.exe)
 ├── templates/game/          a starter game folder
 ├── manual/                  offline copy of the manual
