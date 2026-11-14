@@ -33,6 +33,7 @@
 #include "core/system/CacheDirectory.hpp"
 #include "editor/EditorSession.hpp"
 #include "editor/gui/GuiContext.hpp"
+#include "editor/gui/GuiInput.hpp"
 #include "editor/gui/GuiMesh.hpp"
 #include "editor/panels/Panels.hpp"
 #include "editor/play/OnlinePlay.hpp"
