@@ -36,9 +36,10 @@ The notices are made, not written by hand (`xmake/modules/third_party_notices.lu
 its target and those of the static modules it links (`aylo-runtime` holds Luau, Asio and libsodium through `engine`,
 `luau` and `network`); a library `lib/` takes from the system (the Vulkan loader and MoltenVK on macOS, the GCC runtime on
 Linux) has its own entry. `licenses/by-library/<file>.md` holds the rows of one binary, and `THIRD_PARTY_NOTICES.md` all
-of them. A package the table does not know stops the release, so the notices cannot fall behind the build. The game
-export keeps the files of the binaries it keeps ([`export.md`](export.md)); the smoke test checks that every binary it
-may keep has one.
+of them. A package the table does not know stops the release, so the notices cannot fall behind the build;
+`xmake check-notices` makes the same check on every shipped target without a build, and CI runs it on each pull
+request. The game export keeps the files of the binaries it keeps ([`export.md`](export.md)); the smoke test checks
+that every binary it may keep has one.
 
 The names of the layout are written once per language: `src/aylo/core/layout/Layout.hpp` for the engine and its
 tools, `xmake/modules/layout.lua` for the build and this task. The smoke test checks them end to end.
