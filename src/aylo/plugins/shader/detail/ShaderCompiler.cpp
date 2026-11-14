@@ -81,6 +81,8 @@ std::string_view nameOf(contract::renderer::ShaderTarget target) noexcept {
             return "shape";
         case contract::renderer::ShaderTarget::kScreen:
             return "screen";
+        case contract::renderer::ShaderTarget::kMesh:
+            return "mesh";
         case contract::renderer::ShaderTarget::kSprite:
             break;
     }
@@ -132,9 +134,18 @@ contract::renderer::CompiledShader compileShader(std::string_view source, std::s
     for (const DeclaredValue& declared : parsed.instanceValues) {
         shader.instanceValues.push_back(declared.value);
     }
+    if (parsed.screen && parsed.mesh) {
+        throw exceptions::ShaderException{
+            std::format("Shader '{}': it says both #pragma screen and #pragma mesh; it can be one or the other", name)};
+    }
     if (targets.empty()) {
-        targets = parsed.screen ? std::span<const contract::renderer::ShaderTarget>{kScreenTargets}
-                                : std::span<const contract::renderer::ShaderTarget>{kDrawingTargets};
+        if (parsed.screen) {
+            targets = kScreenTargets;
+        } else if (parsed.mesh) {
+            targets = kMeshTargets;
+        } else {
+            targets = kDrawingTargets;
+        }
     }
     for (const contract::renderer::ShaderTarget target : targets) {
         const auto compile = [&](ShaderStage stage) {

@@ -37,6 +37,7 @@ struct ParsedShader {
     bool hasVertex{false};                                        ///< Whether it defines `void vertex()`.
     bool hasFragment{false};                                      ///< Whether it defines `void fragment()`.
     bool screen{false};  ///< Whether it says `#pragma screen`: a screen effect, drawn over the whole scene.
+    bool mesh{false};    ///< Whether it says `#pragma mesh`: a 3D shader, drawn on static meshes.
     std::string body;    ///< The source, every declaration line left empty, so line numbers stay the game's.
 };
 

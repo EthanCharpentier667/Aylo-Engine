@@ -64,6 +64,12 @@ constexpr auto kScreenVertex = std::to_array<char>({
 constexpr auto kScreenFragment = std::to_array<char>({
 #include "screen.frag.glsl.h"
 });
+constexpr auto kMeshVertex = std::to_array<char>({
+#include "mesh.vert.glsl.h"
+});
+constexpr auto kMeshFragment = std::to_array<char>({
+#include "mesh.frag.glsl.h"
+});
 
 /// @brief Where a template takes the shader's declarations and body, and where its main() takes the instance values
 /// and the shader's call.
@@ -163,6 +169,8 @@ std::string_view vertexTemplate(ShaderTarget target) noexcept {
             return text(kShapeVertex);
         case ShaderTarget::kScreen:
             return text(kScreenVertex);
+        case ShaderTarget::kMesh:
+            return text(kMeshVertex);
         case ShaderTarget::kSprite:
         case ShaderTarget::kGlyph:
             break;
@@ -179,6 +187,8 @@ std::string_view fragmentTemplate(ShaderTarget target) noexcept {
             return text(kShapeFragment);
         case ShaderTarget::kScreen:
             return text(kScreenFragment);
+        case ShaderTarget::kMesh:
+            return text(kMeshFragment);
         case ShaderTarget::kSprite:
         case ShaderTarget::kParticle:
             break;
@@ -246,22 +256,28 @@ std::string blankFunction(std::string_view body, std::string_view name) {
 
 std::string assembleShader(const ParsedShader& shader, ShaderTarget target, ShaderStage stage) {
     const bool particle = target == ShaderTarget::kParticle;
+    const bool mesh = target == ShaderTarget::kMesh;
     const bool vertex = stage == ShaderStage::kVertex;
     std::string glsl{"#version 450\n"};
     if (!shader.instanceValues.empty()) {
         glsl += "#define AYLO_INSTANCE_VALUES\n";
     }
+    if (mesh) {
+        glsl += "#define AYLO_MESH\n";
+    }
     glsl += text(kCommon);
     if (particle) {
         glsl += text(kParticleConstants);
     }
-    const bool screenValues = target == ShaderTarget::kScreen && vertex && !shader.instanceValues.empty();
+    // A screen effect's vertex stage and both stages of a mesh have no drawing to carry instance values: their
+    // defaults are written in.
+    const bool screenValues = ((target == ShaderTarget::kScreen && vertex) || mesh) && !shader.instanceValues.empty();
     if (screenValues) {
         glsl += "vec4 ayloInstance[4];\n";
     }
     if (!vertex) {
         glsl += text(kFragmentCommon);
-        if (!particle) {
+        if (!particle && !mesh) {
             glsl += text(kInstanceInput);
         }
     }

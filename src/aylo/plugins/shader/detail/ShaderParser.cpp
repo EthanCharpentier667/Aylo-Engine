@@ -38,6 +38,7 @@ constexpr std::array<std::string_view, 8> kBuiltins{
 
 /// @brief The line that makes a shader a screen effect (ParsedShader::screen).
 constexpr std::string_view kScreenPragma = "#pragma screen";
+constexpr std::string_view kMeshPragma = "#pragma mesh";
 
 /// @brief What the parser knows of a value type: its GLSL name, its components, its std430 size and alignment.
 struct TypeInfo {
@@ -325,9 +326,9 @@ ParsedShader parseShader(std::string_view source, std::string_view name) {
         ++lineNumber;
         const std::string lineCode = removeComments(line, inComment);
         const std::string_view trimmed = trim(lineCode);
-        if (trimmed == kScreenPragma) {
+        if (trimmed == kScreenPragma || trimmed == kMeshPragma) {
             shader.body += '\n';
-            shader.screen = true;
+            (trimmed == kScreenPragma ? shader.screen : shader.mesh) = true;
             continue;
         }
         if (trimmed.starts_with("uniform ") || trimmed.starts_with("instance ")) {

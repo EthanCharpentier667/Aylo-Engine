@@ -19,14 +19,17 @@
 
 namespace aylo::plugins::shader::detail {
 
-/// @brief The targets of a shader that draws things (not `#pragma screen`): every target but ShaderTarget::kScreen.
-inline constexpr std::array<contract::renderer::ShaderTarget, contract::renderer::kShaderTargetCount - 1>
-    kDrawingTargets{contract::renderer::ShaderTarget::kSprite, contract::renderer::ShaderTarget::kGlyph,
-                    contract::renderer::ShaderTarget::kParticle, contract::renderer::ShaderTarget::kShape};
+/// @brief The targets of a shader that draws 2D things (neither `#pragma screen` nor `#pragma mesh`).
+inline constexpr std::array<contract::renderer::ShaderTarget, 4> kDrawingTargets{
+    contract::renderer::ShaderTarget::kSprite, contract::renderer::ShaderTarget::kGlyph,
+    contract::renderer::ShaderTarget::kParticle, contract::renderer::ShaderTarget::kShape};
 
 /// @brief The target of a screen effect (`#pragma screen`): it draws nothing else.
 inline constexpr std::array<contract::renderer::ShaderTarget, 1> kScreenTargets{
     contract::renderer::ShaderTarget::kScreen};
+
+/// @brief The target of a 3D shader (`#pragma mesh`): static meshes only.
+inline constexpr std::array<contract::renderer::ShaderTarget, 1> kMeshTargets{contract::renderer::ShaderTarget::kMesh};
 
 /// @return The SPIR-V 1.6 (Vulkan semantics: the engine's intermediate format, which every backend uses or translates)
 /// of @p glsl, a complete GLSL 450 @p stage (assembleShader()).
@@ -36,9 +39,9 @@ inline constexpr std::array<contract::renderer::ShaderTarget, 1> kScreenTargets{
                                                                              std::string_view what);
 
 /// @return @p source, a shader in the engine's dialect, compiled for @p targets (empty: kScreenTargets for a shader
-/// that says `#pragma screen`, kDrawingTargets for any other): their SPIR-V, and what the parser found (the material
-/// and instance values with their defaults, the textures). Ready for IRenderer::createShader(): it passes
-/// contract::renderer::validate().
+/// that says `#pragma screen`, kMeshTargets for `#pragma mesh`, kDrawingTargets for any other): their SPIR-V, and what
+/// the parser found (the material and instance values with their defaults, the textures). Ready for
+/// IRenderer::createShader(): it passes contract::renderer::validate().
 /// @details glslang's process-wide state is set up by the first compilation, once, and torn down at exit: glslang
 /// wants it exactly once per process.
 /// @param name Names the shader in messages: its file, or its name.
