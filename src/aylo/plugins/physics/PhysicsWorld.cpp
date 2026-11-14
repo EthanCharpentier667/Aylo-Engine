@@ -567,7 +567,7 @@ std::optional<PhysicsWorld::RayHit> PhysicsWorld::raycast(glm::vec2 origin, glm:
     }
     const JPH::RRayCast ray{detail::toJolt2D(origin / _impl->unitsPerMeter),
                             detail::toJolt2D(*unit * (maxDistance / _impl->unitsPerMeter))};
-    const detail::MaskLayerFilter layerFilter{filter.mask};
+    const detail::MaskLayerFilter layerFilter{filter.mask, false};
     const detail::QueryBodyFilter bodyFilter{_impl->ignoredBody(filter), filter.includeSensors};
     JPH::RayCastResult result;
     if (!_impl->system.GetNarrowPhaseQuery().CastRay(ray, result, {}, layerFilter, bodyFilter)) {
@@ -594,7 +594,7 @@ std::vector<PhysicsWorld::RayHit> PhysicsWorld::raycastAll(glm::vec2 origin, glm
     }
     const JPH::RRayCast ray{detail::toJolt2D(origin / _impl->unitsPerMeter),
                             detail::toJolt2D(*unit * (maxDistance / _impl->unitsPerMeter))};
-    const detail::MaskLayerFilter layerFilter{filter.mask};
+    const detail::MaskLayerFilter layerFilter{filter.mask, false};
     const detail::QueryBodyFilter bodyFilter{_impl->ignoredBody(filter), filter.includeSensors};
     JPH::AllHitCollisionCollector<JPH::CastRayCollector> collector;
     _impl->system.GetNarrowPhaseQuery().CastRay(ray, JPH::RayCastSettings{}, collector, {}, layerFilter, bodyFilter);
@@ -636,7 +636,7 @@ std::optional<PhysicsWorld::RayHit> PhysicsWorld::shapeCast(const Collider& shap
     const JPH::RShapeCast cast = JPH::RShapeCast::sFromWorldTransform(
         joltShape.GetPtr(), JPH::Vec3::sOne(), JPH::RMat44::sTranslation(detail::toJolt2D(from / _impl->unitsPerMeter)),
         detail::toJolt2D(*unit * (maxDistance / _impl->unitsPerMeter)));
-    const detail::MaskLayerFilter layerFilter{filter.mask};
+    const detail::MaskLayerFilter layerFilter{filter.mask, false};
     const detail::QueryBodyFilter bodyFilter{_impl->ignoredBody(filter), filter.includeSensors};
     JPH::ClosestHitCollisionCollector<JPH::CastShapeCollector> collector;
     _impl->system.GetNarrowPhaseQuery().CastShape(cast, JPH::ShapeCastSettings{}, JPH::RVec3::sZero(), collector, {},
@@ -654,7 +654,7 @@ std::vector<ecs::Entity> PhysicsWorld::overlap(const Collider& shape, glm::vec2 
     const JPH::RefConst<JPH::Shape> joltShape = detail::makeShape(shape, _impl->unitsPerMeter);
     const JPH::RMat44 transform =
         JPH::RMat44::sTranslation(detail::toJolt2D(at / _impl->unitsPerMeter) + joltShape->GetCenterOfMass());
-    const detail::MaskLayerFilter layerFilter{filter.mask};
+    const detail::MaskLayerFilter layerFilter{filter.mask, false};
     const detail::QueryBodyFilter bodyFilter{_impl->ignoredBody(filter), filter.includeSensors};
     JPH::AllHitCollisionCollector<JPH::CollideShapeCollector> collector;
     _impl->system.GetNarrowPhaseQuery().CollideShape(joltShape.GetPtr(), JPH::Vec3::sOne(), transform,

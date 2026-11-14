@@ -18,21 +18,24 @@
 
 namespace aylo::plugins::physics::detail {
 
-/// @brief Accepts the bodies whose collision categories are in the query's mask (QueryFilter::mask).
+/// @brief Accepts the bodies of the query's family (2D or 3D) whose collision categories are in its mask
+/// (QueryFilter::mask).
 class AYLO_PLUGIN_PHYSICS_API MaskLayerFilter final : public JPH::ObjectLayerFilter {
   public:
-    explicit MaskLayerFilter(std::uint32_t mask);
+    /// @param spatial Whether the query sees the 3D bodies rather than the 2D ones.
+    MaskLayerFilter(std::uint32_t mask, bool spatial);
     ~MaskLayerFilter() override = default;
     MaskLayerFilter(const MaskLayerFilter& other) = delete;
     MaskLayerFilter& operator=(const MaskLayerFilter& other) = delete;
     MaskLayerFilter(MaskLayerFilter&& other) noexcept = delete;
     MaskLayerFilter& operator=(MaskLayerFilter&& other) noexcept = delete;
 
-    /// @return Whether a body in this object layer is seen: its categories meet the mask (layers::categoriesOf).
+    /// @return Whether a body in this object layer is seen: its family, and categories that meet the mask.
     [[nodiscard]] bool ShouldCollide(JPH::ObjectLayer layer) const override;
 
   private:
     std::uint32_t _mask;  ///< The categories the query sees.
+    bool _spatial;        ///< Whether it sees the 3D bodies.
 };
 
 /// @brief Skips the ignored body (QueryFilter::ignore) and, unless asked, sensors (QueryFilter::includeSensors).
