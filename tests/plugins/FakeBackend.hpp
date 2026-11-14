@@ -60,6 +60,7 @@ struct FakeBackendState {
     int waits{0};                                      ///< waitEvents() calls.
     int beginFrames{0};                                ///< renderer.beginFrame() calls.
     int endFrames{0};                                  ///< renderer.endFrame() calls.
+    std::vector<bool> cursorLocks;                     ///< Every platform.setCursorLocked() call.
     aylo::contract::renderer::Color clearColor{0.0F};  ///< The last clear colour.
     std::vector<glm::uvec2> resizes;                   ///< Every renderer.resize() call.
     std::vector<aylo::contract::renderer::TextureDesc> createdTextures;         ///< Every createTexture() desc.
@@ -124,7 +125,7 @@ class FakePlatform : public aylo::contract::platform::IPlatform {
     }
     [[nodiscard]] bool isOpen() const noexcept override { return _state->open; }
     void close() override { _state->open = false; }
-    void setCursorLocked(bool /*locked*/) override {}
+    void setCursorLocked(bool locked) override { _state->cursorLocks.push_back(locked); }
     [[nodiscard]] double getTime() const override { return 0.0; }
 
   private:

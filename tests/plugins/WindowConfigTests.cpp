@@ -38,3 +38,21 @@ TEST(WindowConfig, RefusesAnUnknownWindowSystem) {
         EXPECT_STREQ(error.what(), R"(Setting 'window.system' must be "auto", "x11" or "wayland", not "mir")");
     }
 }
+
+TEST(WindowConfig, LeavesTheCursorFreeByDefault) {
+    const aylo::core::config::Settings settings;
+    EXPECT_FALSE(WindowConfig::fromSettings(settings).captureCursor);
+}
+
+TEST(WindowConfig, ReadsCaptureCursor) {
+    aylo::core::config::Settings settings;
+    settings.set("captureCursor", true);
+    EXPECT_TRUE(WindowConfig::fromSettings(settings).captureCursor);
+}
+
+TEST(WindowConfig, RefusesACaptureCursorThatIsNotABoolean) {
+    aylo::core::config::Settings settings;
+    settings.set("captureCursor", std::string{"yes"});
+    EXPECT_THROW(static_cast<void>(WindowConfig::fromSettings(settings)),
+                 aylo::core::config::exceptions::SettingsException);
+}
