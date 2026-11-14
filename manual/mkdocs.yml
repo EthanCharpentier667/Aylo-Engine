@@ -24,6 +24,7 @@ nav:
   - Modules and require: modules.md
   - Hot reload: hot-reload.md
   - Components: components.md
+  - 2D and 3D: 3d.md
   - Systems: systems.md
   - States: states.md
   - Engine calls: engine-calls.md

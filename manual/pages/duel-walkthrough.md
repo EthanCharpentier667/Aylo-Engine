@@ -139,7 +139,7 @@ spawns its walls and its rock and replicates them; a client spawns no node of it
 scene names no component of a client's plugin: a dedicated server reads it too, and has none of them.
 
 - **`players.luau`** reads the `game.Join` packets with `engine.net.received` and gives each asking client a free seat:
-  it spawns a ship from its actor (`actors/ship_left.actor` or `ship_right.actor`: `game.Ship`, a `aylo.Transform`, a
+  it spawns a ship from its actor (`actors/ship_left.actor` or `ship_right.actor`: `game.Ship`, a `aylo.Transform2D`, a
   box `aylo.Collider` and a kinematic `aylo.RigidBody`) with `engine.capsule.spawn`, then adds `net.Owner` and
   `net.PlayerInput` with `ctx.commands:add`, as an override only changes what the actor has. It answers every request
   with `game.Seat`, sent to that client only: the seat, or `granted = false` when both are taken. It removes the ship
@@ -173,7 +173,7 @@ scene names no component of a client's plugin: a dedicated server reads it too, 
   it. See
   [Setup forms](setup-forms.md).
 - **`scene.luau`** spawns the camera (`aylo.Camera` and `aylo.AudioListener`) in a `Startup` system, gives each
-  obstacle a `aylo.ShapeRenderer` (and the `aylo.Transform` the server's `game.Obstacle` says, when it came through
+  obstacle a `aylo.ShapeRenderer` (and the `aylo.Transform2D` the server's `game.Obstacle` says, when it came through
   the network) in `PostUpdate`, which also runs while the editor edits the arena, and spawns the space background map
   and the planets that pass.
 - **`sprites.luau`** finds the new `game.Ship` and `game.Laser` entities with `added = {...}` and gives them a

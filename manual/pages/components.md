@@ -44,7 +44,7 @@ declared the same components, and refuses a client that differs, naming the comp
 
 The engine's own components are declared by its plugins and used by name, with the same views as yours:
 `aylo.Name` (`value`, a text: what the editor shows an entity as, given by a [capsule](capsules.md) to each entity it
-spawns), `aylo.Transform`, `aylo.TransformInterpolation` (no fields: draws the entity smoothly between fixed ticks, see
+spawns), `aylo.Transform2D`, `aylo.TransformInterpolation` (no fields: draws the entity smoothly between fixed ticks, see
 [Smooth movement](systems.md#smooth-movement)), `aylo.Camera`, `aylo.SpriteRenderer`, `aylo.TextRenderer`, `aylo.ShapeRenderer`,
 `aylo.AudioListener`, `aylo.Collider`, `aylo.RigidBody`, `aylo.Velocity`, and the network ones `net.Owner` and
 `net.PlayerInput`. Fields are written the same way (`size = { x = 48, y = 48 }`). What exists depends on the plugins
@@ -56,7 +56,7 @@ A field that picks one of a few values takes its name, a string, and a view read
 
 ```luau
 ctx.commands:spawn({
-	["aylo.Transform"] = { position = { x = 400, y = 300 } },
+	["aylo.Transform2D"] = { position = { x = 400, y = 300 } },
 	["aylo.Collider"] = { shape = "circle", radius = 36 },
 	["aylo.RigidBody"] = { type = "kinematic" },
 })
@@ -99,7 +99,7 @@ what is drawn later covers what is drawn before. The engine draws them in this o
 
 ```luau
 ctx.commands:spawn({
-	["aylo.Transform"] = { position = { x = 400, y = 300 } },
+	["aylo.Transform2D"] = { position = { x = 400, y = 300 } },
 	["aylo.SpriteRenderer"] = { texture = "sprites/smoke.png", layer = 2 },  -- over every sprite of layer 1 and below
 })
 ```
