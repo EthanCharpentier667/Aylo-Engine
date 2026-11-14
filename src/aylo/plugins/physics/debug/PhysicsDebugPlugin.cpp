@@ -16,6 +16,7 @@
 #include "aylo/contract/platform/input/Key.hpp"
 #include "aylo/contract/renderer/IRenderer.hpp"
 #include "aylo/contract/renderer/drawing/Color.hpp"
+#include "aylo/contract/renderer/drawing/Lines3D.hpp"
 #include "aylo/contract/renderer/drawing/Shape.hpp"
 #include "aylo/ecs/app/App.hpp"
 #include "aylo/ecs/event/Events.hpp"

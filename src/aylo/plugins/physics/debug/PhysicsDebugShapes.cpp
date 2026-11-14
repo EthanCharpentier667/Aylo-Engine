@@ -8,7 +8,6 @@
 #include "plugins/physics/debug/PhysicsDebugShapes.hpp"
 
 #include <algorithm>
-#include <array>
 #include <cmath>
 #include <glm/ext/scalar_constants.hpp>
 #include <glm/ext/vector_float2.hpp>
@@ -137,7 +136,7 @@ contract::renderer::Lines3D debugCollider3DLines(const Collider3D& collider,
     constexpr glm::vec3 kY{0.0F, 1.0F, 0.0F};
     constexpr glm::vec3 kZ{0.0F, 0.0F, 1.0F};
     constexpr float kTurn = 2.0F * glm::pi<float>();
-    constexpr float kHalfTurn = glm::pi<float>();
+    constexpr auto kHalfTurn = glm::pi<float>();
     contract::renderer::Lines3D lines{
         .color = color,
         .world = transform::toMatrix(
