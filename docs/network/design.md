@@ -712,7 +712,8 @@ takes `rtt = now - sent` and `offset = serverTime + rtt / 2 - now`, and estimate
 the exchange with the smallest `rtt` among the last 8 (`timesync::ClockEstimator`): a delayed packet is never the best
 one. The estimate is forgotten at each `connect()`, so a new connection finds it again. On loopback it is within 5 ms
 of the server clock. The server's RTT per client is the transport's smoothed RTT (`ServerState::rtt()`). Scripts reach
-them with `aylo.net.serverTime` (client) and `aylo.net.rtt` (server).
+them with `aylo.net.serverTime` (the server clock on the server, the estimate on a client: both sides compare
+times on one clock) and `aylo.net.rtt` (server).
 
 ### 7.6 Client prediction and reconciliation
 
