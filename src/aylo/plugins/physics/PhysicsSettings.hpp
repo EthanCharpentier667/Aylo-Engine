@@ -10,6 +10,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <glm/ext/vector_float2.hpp>
+#include <glm/ext/vector_float3.hpp>
 
 #include "aylo/plugins/physics/Export.hpp"
 #include "core/config/Settings.hpp"
@@ -24,14 +25,15 @@ namespace aylo::plugins::physics {
 /// @endcode
 struct PhysicsSettings {
     glm::vec2 gravity{0.0F, 0.0F};               ///< In world units per second squared, Y down. None by default.
+    glm::vec3 gravity3D{0.0F, -9.81F, 0.0F};     ///< The 3D bodies' gravity, in metres per second squared, Y up.
     float unitsPerMeter = 32.0F;                 ///< World units in one of Jolt's meters; must be positive.
     std::uint32_t maxBodies = 4096;              ///< Bodies the world can hold.
     std::uint32_t maxBodyPairs = 4096;           ///< Body pairs the broad phase can report in one step.
     std::uint32_t maxContactConstraints = 2048;  ///< Contacts the solver can handle in one step.
     std::size_t tempAllocatorBytes = static_cast<std::size_t>(10) * 1024 * 1024;  ///< Scratch memory, per world.
 
-    /// @brief Reads the keys `gravity` (`{ x, y }`), `unitsPerMeter`, `maxBodies`, `maxBodyPairs`,
-    /// `maxContactConstraints` and `tempAllocatorBytes`; the missing ones keep their default.
+    /// @brief Reads the keys `gravity` (`{ x, y }`), `gravity3D` (`{ x, y, z }`), `unitsPerMeter`, `maxBodies`,
+    /// `maxBodyPairs`, `maxContactConstraints` and `tempAllocatorBytes`; the missing ones keep their default.
     /// @code{.lua}
     /// engine.settings.physics.gravity = { 0, 981 }
     /// engine.settings.physics.unitsPerMeter = 32
