@@ -164,7 +164,7 @@ adds run on clients):
 | Json | `aylo.json.encode`, `aylo.json.decode` ([JSON](../../Json.md#from-scripts)) |
 | Audio | `aylo.audio.loadSound`, `aylo.audio.playSound` ([Audio](../../audio/design.md#from-scripts)) |
 | Input | `aylo.input.addAction`, `aylo.input.bind`, `aylo.input.bindAxis`, `aylo.input.bindVector`, `aylo.input.read` ([Input](../../Input.md#from-scripts)) |
-| Physics | `aylo.physics.raycast`, `aylo.physics.shapeCast`, `aylo.physics.overlap`, `aylo.physics.moveAndSlide`, `aylo.physics.applyForce`, `aylo.physics.applyImpulse`, `aylo.physics.applyTorque`, `aylo.physics.setGravity` ([Physics](../../physics/design.md#from-scripts)) |
+| Physics | `aylo.physics.raycast`, `aylo.physics.shapeCast`, `aylo.physics.overlap`, `aylo.physics.moveAndSlide`, `aylo.physics.applyForce`, `aylo.physics.applyImpulse`, `aylo.physics.applyTorque`, `aylo.physics.setGravity`, `aylo.physics.raycast3D`, `aylo.physics.applyForce3D`, `aylo.physics.applyImpulse3D`, `aylo.physics.applyTorque3D`, `aylo.physics.setGravity3D` ([Physics](../../physics/design.md#from-scripts)) |
 | Capsule | `aylo.capsule.spawn`, `aylo.capsule.load`, `aylo.capsule.reload` ([Capsules](18-capsules.md#from-scripts)) |
 | Replication | `aylo.replication.addInput`, `aylo.replication.readInput`, `aylo.replication.localClient` (clients) ([Replication](20-replication.md)) |
 

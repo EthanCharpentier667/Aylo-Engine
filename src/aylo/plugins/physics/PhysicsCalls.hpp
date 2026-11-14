@@ -9,6 +9,7 @@
 
 #include <cstdint>
 #include <glm/ext/vector_float2.hpp>
+#include <glm/ext/vector_float3.hpp>
 #include <string_view>
 
 #include "aylo/ecs/app/App.hpp"
@@ -27,6 +28,13 @@ inline constexpr std::string_view kApplyForceCall = "aylo.physics.applyForce";  
 inline constexpr std::string_view kApplyImpulseCall = "aylo.physics.applyImpulse";  ///< PhysicsWorld::applyImpulse().
 inline constexpr std::string_view kApplyTorqueCall = "aylo.physics.applyTorque";    ///< PhysicsWorld::applyTorque().
 inline constexpr std::string_view kSetGravityCall = "aylo.physics.setGravity";      ///< PhysicsWorld::setGravity().
+inline constexpr std::string_view kRaycast3DCall = "aylo.physics.raycast3D";        ///< PhysicsWorld::raycast3D().
+inline constexpr std::string_view kApplyForce3DCall = "aylo.physics.applyForce3D";  ///< PhysicsWorld::applyForce3D().
+inline constexpr std::string_view kApplyImpulse3DCall =
+    "aylo.physics.applyImpulse3D";  ///< PhysicsWorld::applyImpulse3D().
+inline constexpr std::string_view kApplyTorque3DCall =
+    "aylo.physics.applyTorque3D";                                                   ///< PhysicsWorld::applyTorque3D().
+inline constexpr std::string_view kSetGravity3DCall = "aylo.physics.setGravity3D";  ///< PhysicsWorld::setGravity3D().
 
 /// @brief The arguments of `aylo.physics.raycast`: a ray and the QueryFilter of the bodies it sees.
 struct RaycastArguments {
@@ -128,9 +136,45 @@ struct GravityArguments {
 };
 AYLO_ECS_CALL_DATA(GravityArguments, "aylo.physics.GravityArguments", gravity);
 
+/// @brief The arguments of `aylo.physics.raycast3D`: a ray among the 3D bodies and the QueryFilter of those it sees.
+struct Raycast3DArguments {
+    glm::vec3 origin{0.0F};                  ///< Where the ray starts, in metres.
+    glm::vec3 direction{0.0F, 0.0F, -1.0F};  ///< Where it goes; its length does not matter.
+    float maxDistance{0.0F};                 ///< How far it goes, in metres.
+    std::uint32_t mask{kAllLayers};          ///< QueryFilter::mask: the categories it sees.
+    ecs::Entity ignore;                      ///< QueryFilter::ignore: an entity to skip; null skips none.
+    bool includeSensors{false};              ///< QueryFilter::includeSensors.
+};
+AYLO_ECS_CALL_DATA(Raycast3DArguments, "aylo.physics.Raycast3DArguments", origin, direction, maxDistance, mask, ignore,
+                   includeSensors);
+
+/// @brief The result of `aylo.physics.raycast3D`: PhysicsWorld::RayHit3D, and whether there is one.
+struct Hit3DResult {
+    bool hit{false};         ///< Whether something was hit; the other fields are zero when not.
+    ecs::Entity entity;      ///< The hit entity.
+    glm::vec3 point{0.0F};   ///< Where, in metres.
+    glm::vec3 normal{0.0F};  ///< The surface normal there, pointing out of the hit body.
+    float distance{0.0F};    ///< How far the ray went before the hit, in metres.
+};
+AYLO_ECS_CALL_DATA(Hit3DResult, "aylo.physics.Hit3DResult", hit, entity, point, normal, distance);
+
+/// @brief The arguments of `aylo.physics.applyForce3D`, `applyImpulse3D` and `applyTorque3D`.
+struct Push3DArguments {
+    ecs::Entity entity;     ///< The entity, with a dynamic RigidBody and a Collider3D.
+    glm::vec3 value{0.0F};  ///< The force (newtons), impulse (kg m/s) or torque (N m, around the world axes).
+};
+AYLO_ECS_CALL_DATA(Push3DArguments, "aylo.physics.Push3DArguments", entity, value);
+
+/// @brief The arguments of `aylo.physics.setGravity3D`.
+struct Gravity3DArguments {
+    glm::vec3 gravity{0.0F, -9.81F, 0.0F};  ///< The 3D bodies' new gravity, in metres per second squared, Y up.
+};
+AYLO_ECS_CALL_DATA(Gravity3DArguments, "aylo.physics.Gravity3DArguments", gravity);
+
 /// @brief Registers the physics engine calls on @p app, for scripts, on the `aylo.PhysicsWorld` resource: the scene
 /// queries (`raycast`, `shapeCast`, `overlap`), `moveAndSlide`, the body pushes (`applyForce`, `applyImpulse`,
-/// `applyTorque`) and `setGravity`. A body's velocity and position are set by writing its Velocity and Transform2D.
+/// `applyTorque`), `setGravity`, and their 3D counterparts (`raycast3D`, `applyForce3D`, `applyImpulse3D`,
+/// `applyTorque3D`, `setGravity3D`). A body's velocity and position are set by writing its Velocity and Transform2D.
 /// Called by the PhysicsPlugin.
 void addPhysicsCalls(ecs::App& app);
 

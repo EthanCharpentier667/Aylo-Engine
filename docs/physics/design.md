@@ -25,12 +25,12 @@ that plan and where it differs.
 12. [Performance](#12-performance)
 13. [Using it from gameplay](#13-using-it-from-gameplay)
 14. [Differences with the benchmark's plan](#14-differences-with-the-benchmarks-plan)
-15. [Toward 3D](#15-toward-3d)
+15. [3D bodies](#15-3d-bodies)
 
 ## 1. Scope
 
 - **2D first.** Bodies move in the XY plane (Jolt's `EAllowedDOFs::Plane2D`); every shape is a 2D shape extruded
-  in Jolt. 3D is the next milestone (see [Toward 3D](#15-toward-3d)).
+  in Jolt, and 3D bodies in the same world (see [3D bodies](#15-3d-bodies)).
 - **An ECS plugin, nothing else.** Gameplay never sets Jolt up, never sees a Jolt type and never steps a world: it
   writes components, reads events and calls a resource.
 - **The server is authoritative.** Only the server (and a standalone game) simulates. Clients keep query-only bodies
@@ -77,7 +77,7 @@ The API speaks the engine's units; the conversion happens inside `PhysicsWorld` 
 | Speed | world units per second | meters per second |
 
 Jolt's margins and sleep thresholds are tuned for objects about a meter big, hence `unitsPerMeter`: a 32-pixel ship
-is one meter.
+is one meter. The 3D bodies need no conversion: `Transform3D` is in metres, Y up, as Jolt ([section 15](#15-3d-bodies)).
 
 ## 4. Components
 
@@ -89,6 +89,8 @@ All are plain data, reflected with `AYLO_ECS_COMPONENT`, so they can be replicat
 | `RigidBody` | gameplay | every change | `kStatic` / `kKinematic` / `kDynamic`, mass, damping, gravity scale, `fixedRotation`, `continuousCollision` |
 | `Velocity` | gameplay and the plugin | no | linear (units/s) and angular (rad/s) speed; opt-in |
 | `PhysicsHandle` | the plugin | no | the Jolt body id, meaningful in its own world only |
+| `Collider3D` | gameplay | every change | the 3D family's collider: `kBox` size (vec3), `kSphere` radius, `kCapsule` radius + halfHeight, offset (vec3), and the same material and layer fields |
+| `Velocity3D` | gameplay and the plugin | no | linear (m/s) and angular (rad/s around each world axis) vec3; opt-in, as `Velocity` |
 
 - **An entity gets a body when it has a `Collider` and a `Transform`.** Without a `RigidBody` it is static.
 - **`Velocity` is opt-in.** Only entities that have one are synced: a `Velocity` gameplay changed is given to the body
@@ -166,9 +168,12 @@ constexpr std::uint32_t kLaser = 1U << 1;
 Collider{.shape = ShapeType::kBox, .size = {60.0F, 12.0F}, .layer = kLaser, .mask = kObstacle | kEnemyShip};
 ```
 
-Inside Jolt, layer, mask and a static flag are packed in a 32-bit `ObjectLayer` (`detail/Layers`: bits 0–14
-categories, 15–29 mask, 30 static), which is why the package is built with `object_layer_bits = "32"`. The static flag
-picks the broad-phase tree, so static bodies never cost a pair test against each other.
+Inside Jolt, layer, mask, a static flag and a 3D flag are packed in a 32-bit `ObjectLayer` (`detail/Layers`: bits 0–14
+the categories, inverted, 15–29 the mask, 30 static, 31 3D), which is why the package is built with
+`object_layer_bits = "32"`. The categories are inverted so that a layer never has all its bits set, Jolt's invalid
+layer: a body always has a category, so one of bits 0 to 14 is clear. The two flags pick the broad-phase tree, one
+static and one moving tree per family: static bodies never cost a pair test against each other, and a family never
+looks into the other's trees, so a 2D and a 3D body never meet.
 
 ## 8. Contact events
 
@@ -380,10 +385,27 @@ Examples: `examples/plugins/physics` (headless scene: every body type, layers, e
 | Open question: a `physics` target or an exception in `plugins` | Jolt is a private package of `plugins`; no public header includes it |
 | `cross_platform_deterministic` to measure | Not enabled: the server corrects |
 
-## 15. Toward 3D
+## 15. 3D bodies
 
-The 3D milestone keeps the API's shape: `glm::vec3` positions and rotations in `Transform`, 3D shapes in `Collider`,
-`EAllowedDOFs::All`, and the same systems, events and queries. What stays as is: the plugin and its system names, the
-body pass, layers, the contact collector, the network modes and `moveAndSlide`'s algorithm. What changes: the
-conversions in `detail/JoltMath.hpp`, the shape builder in `detail/BodySettings`, and the debug view, which needs 3D
-lines.
+The 3D family lives in the same plugin, the same `PhysicsWorld` and the same Jolt system: `Collider3D` (box, sphere,
+capsule), `Velocity3D`, and the shared `RigidBody` and `PhysicsHandle`. An entity is 2D or 3D by its collider; one with
+both gets a 3D body (the 2D queries of the systems skip an entity with a `Collider3D`).
+
+- **Units and axes.** The 3D API (`createBody3D`, `raycast3D`... the functions ending in `3D`) is in metres, Y up, with
+  `Transform3D`'s quaternions: no `unitsPerMeter`, no flip.
+- **Degrees of freedom.** `EAllowedDOFs::All`, or the three translations with `fixedRotation`.
+- **Gravity.** Jolt has one gravity per system, the 2D one. The 3D bodies are built with a gravity factor of 0, and
+  each step pushes the active dynamic 3D bodies with `gravity3D * mass * gravityScale` (`PhysicsSettings::gravity3D`,
+  `{ 0, -9.81, 0 }` by default, `setGravity3D`). Sleeping bodies get none, as with Jolt's own gravity.
+- **Separation.** The layer's 3D flag (section 7): 2D and 3D bodies never collide, a 2D query never sees a 3D body and
+  `raycast3D` never sees a 2D one. A 2D function of the world called on a 3D body does nothing (and the other way round).
+- **Systems.** The same five systems, with the same names, sync both families. `CollisionStarted` gets `point3D` and
+  `normal3D` for 3D pairs (`point` and `normal` stay zero), the other events need nothing.
+- **Hierarchy.** A 3D body is placed by its own `Transform3D`, as a root: 3D bodies under a parent come later.
+- **Queries.** `raycast3D` and `raycastAll3D`; `shapeCast`, `overlap` and `moveAndSlide` are 2D only for now.
+- **Debug view.** `aylo.PhysicsDebug.Draw` draws 3D colliders (box edges, three great circles for a sphere, the outline
+  of a capsule) and velocity arrows as `Lines3D`, when the renderer draws 3D. The renderer keeps the 3D lines until
+  the frame ends, so the system needs no place among the 3D draws.
+- **From scripts.** `aylo.physics.raycast3D`, `applyForce3D`, `applyImpulse3D`, `applyTorque3D` and `setGravity3D`.
+
+The world's Jolt objects are in `detail/WorldImpl.hpp`, shared by `PhysicsWorld.cpp` (2D) and `PhysicsWorld3D.cpp`.

@@ -164,7 +164,7 @@ end
 | `aylo.Particle`, see [Particles](particles.md) | Particle emitters and effects | client |
 | `aylo.Mesh`, see [2D and 3D](3d.md#models-aylomeshrenderer) | 3D models from glTF files | client |
 | `aylo.audio` | Sounds, music and the listener | client |
-| `aylo.Physics`, see [Physics](physics.md) | 2D physics | both |
+| `aylo.Physics`, see [Physics](physics.md) | 2D and 3D physics | both |
 | `aylo.PhysicsDebug` | Draws the colliders and velocities | client |
 | `aylo.Capsule`, see [Capsules](capsules.md) | Actors and levels from capsule files | both |
 | `aylo.Http`, see [HTTP](http.md) | HTTPS requests to the hosts the game names | server |
@@ -189,8 +189,9 @@ Every key is optional and the values are checked when `aylo.Physics` is listed.
 
 | Key | Meaning |
 |---|---|
-| `gravity` | `{ x, y }`, world units per second squared, Y down |
-| `unitsPerMeter` | world units per meter |
+| `gravity` | `{ x, y }`, world units per second squared, Y down: the 2D bodies' gravity |
+| `gravity3D` | `{ x, y, z }`, metres per second squared, Y up: the 3D bodies' gravity, `{ 0, -9.81, 0 }` by default |
+| `unitsPerMeter` | world units per meter, for the 2D bodies |
 | `maxBodies`, `maxBodyPairs`, `maxContactConstraints`, `tempAllocatorBytes` | positive integers: the simulation's limits |
 
 ### `physicsDebug`

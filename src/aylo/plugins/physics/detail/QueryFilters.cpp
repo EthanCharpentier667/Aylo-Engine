@@ -18,10 +18,10 @@
 
 namespace aylo::plugins::physics::detail {
 
-MaskLayerFilter::MaskLayerFilter(std::uint32_t mask) : _mask{mask} {}
+MaskLayerFilter::MaskLayerFilter(std::uint32_t mask, bool spatial) : _mask{mask}, _spatial{spatial} {}
 
 bool MaskLayerFilter::ShouldCollide(JPH::ObjectLayer layer) const {
-    return (layers::categoriesOf(layer) & _mask) != 0U;
+    return layers::isSpatial(layer) == _spatial && (layers::categoriesOf(layer) & _mask) != 0U;
 }
 
 QueryBodyFilter::QueryBodyFilter(JPH::BodyID ignored, bool includeSensors)

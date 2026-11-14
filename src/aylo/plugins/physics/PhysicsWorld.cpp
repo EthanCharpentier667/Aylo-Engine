@@ -9,9 +9,7 @@
 
 #include <Jolt/Jolt.h>  // IWYU pragma: keep
 #include <Jolt/Core/Core.h>
-#include <Jolt/Core/JobSystemSingleThreaded.h>
 #include <Jolt/Core/Reference.h>
-#include <Jolt/Core/TempAllocator.h>
 #include <Jolt/Math/MathTypes.h>
 #include <Jolt/Math/Real.h>
 #include <Jolt/Math/Vec3.h>
@@ -32,7 +30,6 @@
 #include <Jolt/Physics/Collision/ShapeCast.h>
 #include <Jolt/Physics/EActivation.h>
 #include <Jolt/Physics/EPhysicsUpdateError.h>
-#include <Jolt/Physics/PhysicsSettings.h>
 #include <Jolt/Physics/PhysicsSystem.h>
 
 #include <algorithm>
@@ -59,8 +56,8 @@
 #include "plugins/physics/detail/ContactCollector.hpp"
 #include "plugins/physics/detail/JoltMath.hpp"
 #include "plugins/physics/detail/JoltRuntime.hpp"
-#include "plugins/physics/detail/Layers.hpp"
 #include "plugins/physics/detail/QueryFilters.hpp"
+#include "plugins/physics/detail/WorldImpl.hpp"
 #include "plugins/physics/exceptions/PhysicsExceptions.hpp"
 #include "plugins/transform/Transform.hpp"
 
@@ -90,152 +87,12 @@ std::shared_ptr<const detail::JoltRuntime> acquireRuntime(const PhysicsSettings&
     return detail::JoltRuntime::acquire();
 }
 
-/// @return The entity whose Entity::getBits() gave these bits.
-ecs::Entity entityFromBits(std::uint64_t bits) noexcept {
-    return ecs::Entity{static_cast<std::uint32_t>(bits), static_cast<std::uint32_t>(bits >> 32U)};
-}
-
 /// @return A body's velocity in world units, Y down.
 Velocity fromJoltVelocity(JPH::Vec3Arg linear, JPH::Vec3Arg angular, float unitsPerMeter) noexcept {
     return Velocity{.linear = detail::fromJolt2D(linear) * unitsPerMeter,
                     .angular = detail::fromJoltAngle2D(angular.GetZ())};
 }
 }  // namespace
-
-/// @brief The world's Jolt objects. Destroyed in reverse order: the system first, then what it points to.
-// The member order is what keeps destruction safe, so it is not reordered to save the padding (a few dozen bytes per
-// world): the field order clang-analyzer suggests would destroy the layer filters before the system that uses them.
-// NOLINTNEXTLINE(clang-analyzer-optin.performance.Padding)
-struct PhysicsWorld::Impl {
-    /// @brief What the world knows of an entity's body.
-    struct BodyEntry {
-        JPH::BodyID body;                    ///< The body.
-        bool hasRigidBody = false;           ///< Whether it was built with a RigidBody: catches one added or removed.
-        std::uint64_t seenPass = 0;          ///< The last body pass that saw the entity.
-        glm::vec2 lastPosition{0.0F, 0.0F};  ///< The last position given to the body or read from it, in world units.
-        float lastRotation = 0.0F;           ///< The last rotation given to the body or read from it.
-        std::optional<glm::vec2> lastLocalPosition;  ///< A child's last relative position; nothing if not recorded.
-        float lastLocalRotation = 0.0F;              ///< A child's last relative rotation.
-        std::optional<Velocity>
-            lastVelocity;                     ///< The last velocity given to the body or read from it; none if unknown.
-        std::uint64_t kinematicMoveStep = 0;  ///< The step (as getStepCount() counts it after it) of the last
-                                              ///< moveKinematic(): its pose is the Transform2D's, not written back.
-
-        /// @return Whether this is the last pose given or read. Exact float equality on purpose: the Transform2D holds
-        /// exactly the floats read from the body.
-        [[nodiscard]] bool isAt(glm::vec2 position, float rotation) const noexcept {
-            return lastPosition == position && lastRotation == rotation;
-        }
-        /// @brief Records the pose given to the body or read from it.
-        void remember(glm::vec2 position, float rotation) noexcept {
-            lastPosition = position;
-            lastRotation = rotation;
-        }
-    };
-
-    /// @brief What a push does to a body.
-    enum class PushKind : std::uint8_t {
-        kForce,    ///< JPH::BodyInterface::AddForce.
-        kImpulse,  ///< JPH::BodyInterface::AddImpulse.
-        kTorque,   ///< JPH::BodyInterface::AddTorque.
-    };
-    /// @brief A force, impulse or torque queued for the next step.
-    struct Push {
-        std::uint64_t entity;  ///< Entity::getBits() of the pushed entity.
-        PushKind kind;         ///< What the push does.
-        JPH::Vec3 value;       ///< Already in Jolt's units and axes.
-    };
-
-    explicit Impl(const PhysicsSettings& settings)
-        : unitsPerMeter{settings.unitsPerMeter},
-          tempAllocator{static_cast<JPH::uint>(settings.tempAllocatorBytes)},
-          jobSystem{JPH::cMaxPhysicsJobs} {
-        system.Init(settings.maxBodies, 0, settings.maxBodyPairs, settings.maxContactConstraints, broadPhaseLayers,
-                    objectVsBroadPhaseFilter, objectLayerPairFilter);
-        system.SetContactListener(&contacts);
-        system.SetGravity(detail::toJolt2D(settings.gravity / unitsPerMeter));
-    }
-    ~Impl() = default;
-    Impl(const Impl& other) = delete;
-    Impl& operator=(const Impl& other) = delete;
-    Impl(Impl&& other) noexcept = delete;
-    Impl& operator=(Impl&& other) noexcept = delete;
-
-    float unitsPerMeter;                                        ///< World units in one meter.
-    std::uint64_t steps = 0;                                    ///< Steps done.
-    std::uint64_t pass = 0;                                     ///< The current body pass.
-    bool droppedContacts = false;                               ///< Whether the last step ignored contacts.
-    bool broadPhaseDirty = false;                               ///< Whether bodies came or went since the last release.
-    JPH::TempAllocatorImpl tempAllocator;                       ///< Scratch memory for the steps.
-    JPH::JobSystemSingleThreaded jobSystem;                     ///< Runs Jolt's jobs on the caller's thread.
-    detail::BroadPhaseLayers broadPhaseLayers;                  ///< Object layer to broad phase layer.
-    detail::ObjectVsBroadPhaseFilter objectVsBroadPhaseFilter;  ///< Object layer vs broad phase layer.
-    detail::ObjectLayerPairFilter objectLayerPairFilter;        ///< Object layer vs object layer.
-    detail::ContactCollector contacts;                          ///< Records the contacts during the steps.
-    JPH::PhysicsSystem system;                                  ///< Points to the four above: declared after them.
-    std::unordered_map<std::uint64_t, BodyEntry> bodies;        ///< The bodies by Entity::getBits().
-    std::vector<Push> pushes;                                   ///< Queued for the next step, in call order.
-
-    /// @brief Queues a push for the next step.
-    void queue(ecs::Entity entity, PushKind kind, JPH::Vec3Arg value) {
-        pushes.push_back(Push{.entity = entity.getBits(), .kind = kind, .value = value});
-    }
-
-    /// @brief Applies the queued pushes to the dynamic bodies they name, then forgets them.
-    void applyPushes() {
-        JPH::BodyInterface& bodyInterface = system.GetBodyInterface();
-        for (const Push& push : pushes) {
-            const auto found = bodies.find(push.entity);
-            if (found == bodies.end() || bodyInterface.GetMotionType(found->second.body) != JPH::EMotionType::Dynamic) {
-                continue;
-            }
-            switch (push.kind) {
-                case PushKind::kForce:
-                    bodyInterface.AddForce(found->second.body, push.value);
-                    break;
-                case PushKind::kImpulse:
-                    bodyInterface.AddImpulse(found->second.body, push.value);
-                    break;
-                case PushKind::kTorque:
-                    bodyInterface.AddTorque(found->second.body, push.value);
-                    break;
-            }
-        }
-        pushes.clear();
-    }
-
-    /// @return The body of the entity a query ignores; an invalid id when none is ignored or it has no body.
-    [[nodiscard]] JPH::BodyID ignoredBody(const QueryFilter& filter) const {
-        if (!filter.ignore) {
-            return JPH::BodyID{};
-        }
-        const auto found = bodies.find(filter.ignore->getBits());
-        return found == bodies.end() ? JPH::BodyID{} : found->second.body;
-    }
-
-    /// @return What a query hit, in world units: the entity reads the body's user data, the normal (in meters, unit)
-    /// only flips Y; nothing if the body went away.
-    [[nodiscard]] std::optional<RayHit> makeHit(JPH::BodyID body, JPH::RVec3Arg point, JPH::Vec3Arg normal,
-                                                float distance) const {
-        const JPH::BodyLockRead lock{system.GetBodyLockInterface(), body};
-        if (!lock.Succeeded()) {
-            return std::nullopt;
-        }
-        return RayHit{.entity = entityFromBits(lock.GetBody().GetUserData()),
-                      .point = detail::fromJolt2D(point) * unitsPerMeter,
-                      .normal = detail::fromJolt2D(normal),
-                      .distance = distance};
-    }
-
-    /// @brief Removes a body from the simulation and frees it.
-    void destroy(JPH::BodyID id) {
-        contacts.forget(id);
-        JPH::BodyInterface& bodyInterface = system.GetBodyInterface();
-        bodyInterface.RemoveBody(id);
-        bodyInterface.DestroyBody(id);
-        broadPhaseDirty = true;
-    }
-};
 
 PhysicsWorld::PhysicsWorld(const PhysicsSettings& settings)
     : _runtime{acquireRuntime(settings)}, _impl{std::make_unique<Impl>(settings)} {}
@@ -279,22 +136,22 @@ std::optional<ecs::Entity> PhysicsWorld::findEntity(PhysicsHandle handle) const 
     if (!lock.Succeeded()) {
         return std::nullopt;
     }
-    return entityFromBits(lock.GetBody().GetUserData());
+    return detail::entityFromBits(lock.GetBody().GetUserData());
 }
 
 bool PhysicsWorld::isOutOfSync(ecs::Entity entity, const transform::Transform2D& transform) const {
-    const auto found = _impl->bodies.find(entity.getBits());
+    const auto found = _impl->find(entity, /*spatial=*/false);
     return found != _impl->bodies.end() && !found->second.isAt(transform.position, transform.rotation);
 }
 
 bool PhysicsWorld::isLocalOutOfSync(ecs::Entity entity, const transform::Transform2D& local) const {
-    const auto found = _impl->bodies.find(entity.getBits());
+    const auto found = _impl->find(entity, /*spatial=*/false);
     return found != _impl->bodies.end() && found->second.lastLocalPosition &&
            (*found->second.lastLocalPosition != local.position || found->second.lastLocalRotation != local.rotation);
 }
 
 std::optional<PhysicsWorld::BodyPose> PhysicsWorld::getBodyPose(ecs::Entity entity) const {
-    const auto found = _impl->bodies.find(entity.getBits());
+    const auto found = _impl->find(entity, /*spatial=*/false);
     if (found == _impl->bodies.end()) {
         return std::nullopt;
     }
@@ -306,7 +163,7 @@ std::optional<PhysicsWorld::BodyPose> PhysicsWorld::getBodyPose(ecs::Entity enti
 }
 
 std::optional<glm::vec2> PhysicsWorld::getBodyPosition(ecs::Entity entity) const {
-    const auto found = _impl->bodies.find(entity.getBits());
+    const auto found = _impl->find(entity, /*spatial=*/false);
     if (found == _impl->bodies.end()) {
         return std::nullopt;
     }
@@ -314,7 +171,7 @@ std::optional<glm::vec2> PhysicsWorld::getBodyPosition(ecs::Entity entity) const
 }
 
 std::optional<Velocity> PhysicsWorld::getBodyVelocity(ecs::Entity entity) const {
-    const auto found = _impl->bodies.find(entity.getBits());
+    const auto found = _impl->find(entity, /*spatial=*/false);
     if (found == _impl->bodies.end()) {
         return std::nullopt;
     }
@@ -324,7 +181,7 @@ std::optional<Velocity> PhysicsWorld::getBodyVelocity(ecs::Entity entity) const 
 }
 
 bool PhysicsWorld::isVelocityOutOfSync(ecs::Entity entity, const Velocity& velocity) const {
-    const auto found = _impl->bodies.find(entity.getBits());
+    const auto found = _impl->find(entity, /*spatial=*/false);
     return found != _impl->bodies.end() &&
            _impl->system.GetBodyInterface().GetMotionType(found->second.body) != JPH::EMotionType::Static &&
            found->second.lastVelocity != velocity;
@@ -336,6 +193,7 @@ void PhysicsWorld::setGravity(glm::vec2 gravity) noexcept {
 
 void PhysicsWorld::step(float deltaSeconds) {
     _impl->applyPushes();
+    _impl->applyGravity3D();
     const JPH::EPhysicsUpdateError errors =
         _impl->system.Update(deltaSeconds, kCollisionSteps, &_impl->tempAllocator, &_impl->jobSystem);
     _impl->contacts.settle(_impl->system.GetBodyInterfaceNoLock());
@@ -403,7 +261,7 @@ bool PhysicsWorld::destroyBody(ecs::Entity entity) {
 void PhysicsWorld::beginBodyPass() noexcept { ++_impl->pass; }
 
 bool PhysicsWorld::touchBody(ecs::Entity entity, bool hasRigidBody) noexcept {
-    const auto found = _impl->bodies.find(entity.getBits());
+    const auto found = _impl->find(entity, /*spatial=*/false);
     if (found == _impl->bodies.end() || found->second.hasRigidBody != hasRigidBody) {
         return false;
     }
@@ -419,14 +277,14 @@ std::vector<ecs::Entity> PhysicsWorld::endBodyPass() {
             continue;
         }
         _impl->destroy(entry->second.body);
-        destroyed.push_back(entityFromBits(entry->first));
+        destroyed.push_back(detail::entityFromBits(entry->first));
         entry = _impl->bodies.erase(entry);
     }
     return destroyed;
 }
 
 void PhysicsWorld::moveKinematic(ecs::Entity entity, const transform::Transform2D& transform, float deltaSeconds) {
-    const auto found = _impl->bodies.find(entity.getBits());
+    const auto found = _impl->find(entity, /*spatial=*/false);
     if (found == _impl->bodies.end()) {
         return;
     }
@@ -442,7 +300,7 @@ void PhysicsWorld::moveKinematic(ecs::Entity entity, const transform::Transform2
 }
 
 void PhysicsWorld::teleport(ecs::Entity entity, const transform::Transform2D& transform) {
-    const auto found = _impl->bodies.find(entity.getBits());
+    const auto found = _impl->find(entity, /*spatial=*/false);
     if (found == _impl->bodies.end()) {
         return;
     }
@@ -453,14 +311,14 @@ void PhysicsWorld::teleport(ecs::Entity entity, const transform::Transform2D& tr
 }
 
 void PhysicsWorld::rememberPose(ecs::Entity entity, const transform::Transform2D& pose) {
-    const auto found = _impl->bodies.find(entity.getBits());
+    const auto found = _impl->find(entity, /*spatial=*/false);
     if (found != _impl->bodies.end()) {
         found->second.remember(pose.position, pose.rotation);
     }
 }
 
 void PhysicsWorld::rememberLocal(ecs::Entity entity, const transform::Transform2D& local) {
-    const auto found = _impl->bodies.find(entity.getBits());
+    const auto found = _impl->find(entity, /*spatial=*/false);
     if (found != _impl->bodies.end()) {
         found->second.lastLocalPosition = local.position;
         found->second.lastLocalRotation = local.rotation;
@@ -468,7 +326,7 @@ void PhysicsWorld::rememberLocal(ecs::Entity entity, const transform::Transform2
 }
 
 void PhysicsWorld::setVelocity(ecs::Entity entity, const Velocity& velocity) {
-    const auto found = _impl->bodies.find(entity.getBits());
+    const auto found = _impl->find(entity, /*spatial=*/false);
     if (found == _impl->bodies.end()) {
         return;
     }
@@ -508,7 +366,8 @@ std::vector<PhysicsWorld::BodyPose> PhysicsWorld::collectMovedBodies() {
         }
         const JPH::Body& body = lock.GetBody();
         const auto found = _impl->bodies.find(body.GetUserData());
-        if (found == _impl->bodies.end() || (body.IsKinematic() && found->second.kinematicMoveStep == _impl->steps)) {
+        if (found == _impl->bodies.end() || found->second.spatial ||
+            (body.IsKinematic() && found->second.kinematicMoveStep == _impl->steps)) {
             continue;
         }
         const glm::vec2 position = detail::fromJolt2D(body.GetPosition()) * _impl->unitsPerMeter;
@@ -517,7 +376,8 @@ std::vector<PhysicsWorld::BodyPose> PhysicsWorld::collectMovedBodies() {
             continue;
         }
         found->second.remember(position, rotation);
-        poses.push_back(BodyPose{.entity = entityFromBits(found->first), .position = position, .rotation = rotation});
+        poses.push_back(
+            BodyPose{.entity = detail::entityFromBits(found->first), .position = position, .rotation = rotation});
     }
     return poses;
 }
@@ -537,10 +397,22 @@ std::vector<PhysicsWorld::Contact> PhysicsWorld::takeContacts() {
     std::vector<Contact> contacts;
     contacts.reserve(events.size());
     for (const detail::ContactCollector::ContactEvent& event : events) {
+        const auto body = _impl->bodies.find(event.first);
+        if (body != _impl->bodies.end() && body->second.spatial) {
+            contacts.push_back(Contact{
+                .kind = static_cast<Contact::Kind>(event.kind),
+                .first = detail::entityFromBits(event.first),
+                .second = detail::entityFromBits(event.second),
+                .spatial = true,
+                .point3D = detail::fromJolt(event.point),
+                .normal3D = detail::fromJolt(event.normal),
+            });
+            continue;
+        }
         contacts.push_back(Contact{
             .kind = static_cast<Contact::Kind>(event.kind),
-            .first = entityFromBits(event.first),
-            .second = entityFromBits(event.second),
+            .first = detail::entityFromBits(event.first),
+            .second = detail::entityFromBits(event.second),
             .point = detail::fromJolt2D(event.point) * _impl->unitsPerMeter,
             .normal = detail::fromJolt2D(event.normal),
         });
@@ -567,7 +439,7 @@ std::optional<PhysicsWorld::RayHit> PhysicsWorld::raycast(glm::vec2 origin, glm:
     }
     const JPH::RRayCast ray{detail::toJolt2D(origin / _impl->unitsPerMeter),
                             detail::toJolt2D(*unit * (maxDistance / _impl->unitsPerMeter))};
-    const detail::MaskLayerFilter layerFilter{filter.mask};
+    const detail::MaskLayerFilter layerFilter{filter.mask, false};
     const detail::QueryBodyFilter bodyFilter{_impl->ignoredBody(filter), filter.includeSensors};
     JPH::RayCastResult result;
     if (!_impl->system.GetNarrowPhaseQuery().CastRay(ray, result, {}, layerFilter, bodyFilter)) {
@@ -594,7 +466,7 @@ std::vector<PhysicsWorld::RayHit> PhysicsWorld::raycastAll(glm::vec2 origin, glm
     }
     const JPH::RRayCast ray{detail::toJolt2D(origin / _impl->unitsPerMeter),
                             detail::toJolt2D(*unit * (maxDistance / _impl->unitsPerMeter))};
-    const detail::MaskLayerFilter layerFilter{filter.mask};
+    const detail::MaskLayerFilter layerFilter{filter.mask, false};
     const detail::QueryBodyFilter bodyFilter{_impl->ignoredBody(filter), filter.includeSensors};
     JPH::AllHitCollisionCollector<JPH::CastRayCollector> collector;
     _impl->system.GetNarrowPhaseQuery().CastRay(ray, JPH::RayCastSettings{}, collector, {}, layerFilter, bodyFilter);
@@ -636,7 +508,7 @@ std::optional<PhysicsWorld::RayHit> PhysicsWorld::shapeCast(const Collider& shap
     const JPH::RShapeCast cast = JPH::RShapeCast::sFromWorldTransform(
         joltShape.GetPtr(), JPH::Vec3::sOne(), JPH::RMat44::sTranslation(detail::toJolt2D(from / _impl->unitsPerMeter)),
         detail::toJolt2D(*unit * (maxDistance / _impl->unitsPerMeter)));
-    const detail::MaskLayerFilter layerFilter{filter.mask};
+    const detail::MaskLayerFilter layerFilter{filter.mask, false};
     const detail::QueryBodyFilter bodyFilter{_impl->ignoredBody(filter), filter.includeSensors};
     JPH::ClosestHitCollisionCollector<JPH::CastShapeCollector> collector;
     _impl->system.GetNarrowPhaseQuery().CastShape(cast, JPH::ShapeCastSettings{}, JPH::RVec3::sZero(), collector, {},
@@ -654,7 +526,7 @@ std::vector<ecs::Entity> PhysicsWorld::overlap(const Collider& shape, glm::vec2 
     const JPH::RefConst<JPH::Shape> joltShape = detail::makeShape(shape, _impl->unitsPerMeter);
     const JPH::RMat44 transform =
         JPH::RMat44::sTranslation(detail::toJolt2D(at / _impl->unitsPerMeter) + joltShape->GetCenterOfMass());
-    const detail::MaskLayerFilter layerFilter{filter.mask};
+    const detail::MaskLayerFilter layerFilter{filter.mask, false};
     const detail::QueryBodyFilter bodyFilter{_impl->ignoredBody(filter), filter.includeSensors};
     JPH::AllHitCollisionCollector<JPH::CollideShapeCollector> collector;
     _impl->system.GetNarrowPhaseQuery().CollideShape(joltShape.GetPtr(), JPH::Vec3::sOne(), transform,
@@ -684,7 +556,7 @@ std::vector<PhysicsWorld::BodyVelocity> PhysicsWorld::collectChangedVelocities()
         }
         const JPH::Body& body = lock.GetBody();
         const auto found = _impl->bodies.find(body.GetUserData());
-        if (found == _impl->bodies.end()) {
+        if (found == _impl->bodies.end() || found->second.spatial) {
             continue;
         }
         const Velocity velocity =
@@ -693,7 +565,7 @@ std::vector<PhysicsWorld::BodyVelocity> PhysicsWorld::collectChangedVelocities()
             continue;
         }
         found->second.lastVelocity = velocity;
-        velocities.push_back(BodyVelocity{.entity = entityFromBits(found->first), .velocity = velocity});
+        velocities.push_back(BodyVelocity{.entity = detail::entityFromBits(found->first), .velocity = velocity});
     }
     return velocities;
 }

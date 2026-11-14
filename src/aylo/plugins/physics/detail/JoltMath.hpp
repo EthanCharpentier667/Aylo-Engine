@@ -16,6 +16,7 @@
 #include <glm/ext/quaternion_float.hpp>
 #include <glm/ext/vector_float2.hpp>
 #include <glm/ext/vector_float3.hpp>
+#include <glm/ext/vector_float4.hpp>
 #include <type_traits>
 
 /// @file
@@ -74,6 +75,19 @@ static_assert(std::is_same_v<JPH::RVec3, JPH::Vec3>, "Jolt's double precision ne
 /// @return The angle in [-pi, pi]. Any rotation off the Z axis is ignored.
 [[nodiscard]] inline float fromJoltRotation2D(JPH::QuatArg value) noexcept {
     return fromJoltAngle2D(value.GetRotationAngle(JPH::Vec3::sAxisZ()));
+}
+
+/// @brief Converts a Transform3D rotation (a quaternion stored as x, y, z, w) to Jolt's, normalized.
+/// @return The identity for a quaternion of zero length.
+[[nodiscard]] inline JPH::Quat toJoltRotation3D(const glm::vec4& value) noexcept {
+    const JPH::Quat rotation{value.x, value.y, value.z, value.w};
+    const float length = rotation.Length();
+    return length > 0.0F ? rotation / length : JPH::Quat::sIdentity();
+}
+
+/// @brief Converts a Jolt rotation to a Transform3D rotation (x, y, z, w).
+[[nodiscard]] inline glm::vec4 fromJoltRotation3D(JPH::QuatArg value) noexcept {
+    return {value.GetX(), value.GetY(), value.GetZ(), value.GetW()};
 }
 
 }  // namespace aylo::plugins::physics::detail

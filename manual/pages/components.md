@@ -46,7 +46,8 @@ The engine's own components are declared by its plugins and used by name, with t
 `aylo.Name` (`value`, a text: what the editor shows an entity as, given by a [capsule](capsules.md) to each entity it
 spawns), `aylo.Transform2D` and `aylo.Transform3D` (see [2D and 3D](3d.md)), `aylo.TransformInterpolation` (no fields: draws the entity smoothly between fixed ticks, see
 [Smooth movement](systems.md#smooth-movement)), `aylo.Camera2D`, `aylo.SpriteRenderer`, `aylo.TextRenderer`, `aylo.ShapeRenderer`,
-`aylo.AudioListener`, `aylo.Collider`, `aylo.RigidBody`, `aylo.Velocity`, and the network ones `net.Owner` and
+`aylo.AudioListener`, `aylo.Collider`, `aylo.Collider3D`, `aylo.RigidBody`, `aylo.Velocity`, `aylo.Velocity3D` (see
+[Physics](physics.md)), and the network ones `net.Owner` and
 `net.PlayerInput`. Fields are written the same way (`size = { x = 48, y = 48 }`). What exists depends on the plugins
 the program and `project.luau` add: a server has no sprites.
 
@@ -71,6 +72,7 @@ end
 | Component | Field | Names (the first is the default, unless said) |
 |---|---|---|
 | `aylo.Collider` | `shape` | `"box"`, `"circle"`, `"capsule"` |
+| `aylo.Collider3D` | `shape` | `"box"`, `"sphere"`, `"capsule"` |
 | `aylo.RigidBody` | `type` | `"static"`, `"kinematic"`, `"dynamic"` (default `"dynamic"`) |
 | `aylo.SpriteRenderer`, `aylo.ShapeRenderer`, `aylo.TextRenderer` | `blend` | `"alpha"`, `"additive"`, `"cutout"` (cutout: sprites only) |
 | `aylo.ShapeRenderer` | `kind` | `"rect"`, `"circle"`, `"capsule"`, `"line"` |

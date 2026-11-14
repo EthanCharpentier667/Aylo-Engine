@@ -23,11 +23,13 @@ namespace aylo::plugins::physics {
 /// @brief Physics for an App: registers the physics components, inserts the PhysicsWorld resource and steps it once per
 /// fixed tick.
 ///
-/// @details Registers RigidBody, Collider and Velocity, so they can be found by name (Luau, replication) before any
-/// entity has them, and adds the TransformPlugin. Collider and RigidBody are replicated (ComponentOptions.hpp), through
-/// ECS options only: the physics knows nothing of the network. The server simulates; clients receive the Transforms
-/// and keep bodies that never step, only for scene queries (moveAndSlide() for prediction) and the debug view. In
-/// standalone, everything runs as on the server. Each fixed tick, in this order:
+/// @details Bodies come in two families that never touch: 2D (Collider, Transform2D, Velocity) and 3D (Collider3D,
+/// Transform3D, Velocity3D), sharing RigidBody; the systems below sync both, a 3D body as a root (no hierarchy).
+/// Registers RigidBody, Collider, Velocity, Collider3D and Velocity3D, so they can be found by name (Luau, replication)
+/// before any entity has them, and adds the TransformPlugin. Collider and RigidBody are replicated
+/// (ComponentOptions.hpp), through ECS options only: the physics knows nothing of the network. The server simulates;
+/// clients receive the Transforms and keep bodies that never step, only for scene queries (moveAndSlide() for
+/// prediction) and the debug view. In standalone, everything runs as on the server. Each fixed tick, in this order:
 /// - "aylo.Physics.SyncBodies", on every side, keeps one body per entity with a Collider and a Transform2D (a RigidBody
 ///   makes it move; without one it is static), rebuilt when its Collider or RigidBody changes, destroyed when the
 ///   entity is despawned or loses either, and linked to the entity by a PhysicsHandle;
