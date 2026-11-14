@@ -366,10 +366,26 @@ with `SoundDesc{.stream = true}`.
 
 ### From scripts
 
-The plugin registers two [engine calls](../ecs/features/19-luau-bridge.md#engine-calls): `aylo.audio.loadSound { path,
-stream }` returns the sound's id, and `aylo.audio.playSound { sound, bus, volume, pitch, position }` sends a
-`PlaySound`, which scripts cannot send through `ctx.events` because its `position` is optional (a `position` left out
-plays centred). `PlayMusic` and `StopMusic` are plain data: scripts send them as events.
+The plugin registers these [engine calls](../ecs/features/19-luau-bridge.md#engine-calls): `aylo.audio.loadSound {
+path, stream }` returns the sound's id, and `aylo.audio.playSound { sound, bus, volume, pitch, position, loop, startAt,
+lowpass }` sends a `PlaySound` and returns the voice's id, which scripts cannot send through `ctx.events` because its
+`position` is optional (a `position` left out plays centred). `aylo.audio.getTime` reads the audio clock;
+`aylo.audio.setVolume { voice, volume }`, `setFilter { voice, lowpass }` and `stopVoice { voice, fadeOut }` send a
+`ControlVoice`. `PlayMusic` and `StopMusic` are plain data: scripts send them as events.
+
+**The audio clock and `startAt`.** `IAudioDevice::getTime()` is the number of frames the output has mixed divided by its
+sample rate (miniaudio: `ma_engine_get_time_in_pcm_frames`), so it follows the samples, not the frame rate.
+`PlayParams::startAt` is a time on that clock: miniaudio converts it to a frame (`ma_sound_set_start_time_in_pcm_frames`),
+so voices given the same time start on the same sample; a time already past starts the voice at once. The `null` backend
+uses the wall time since it was made.
+
+**Voice ids for scripts.** A call cannot wait for the device to play (the sound may still be loading), so
+`aylo.audio.playSound` takes an id from the `Audio` resource at once and `PlaySound::voice` carries it; the play system
+maps it to the device's `VoiceId` (`Audio::scripted`). A `ControlVoice` for an id that never played (sound not loaded),
+ended or was stopped does nothing; ended ids are forgotten by `aylo.audio.update`.
+
+**The low-pass** is a miniaudio `ma_lpf_node` (order 2) put between the voice and its bus the first time a cutoff is
+given; a cutoff of 0 reopens it above the audible range rather than removing the node.
 
 ### Systems
 

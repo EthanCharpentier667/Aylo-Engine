@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <unordered_map>
@@ -45,8 +46,10 @@ struct Audio {
     std::unique_ptr<contract::audiodevice::IAudioDevice> device;  ///< The backend the config names.
     float panDistance{400.0F};                                    ///< From AudioConfig.
     std::unordered_map<ecs::Entity, SourceVoice> sources;         ///< The voice of each AudioSource that started.
-    contract::audiodevice::VoiceId music;                         ///< The current music track.
-    std::optional<PlayMusic> pendingMusic;                        ///< A PlayMusic waiting for its sound to load.
+    std::unordered_map<std::uint32_t, contract::audiodevice::VoiceId> scripted;  ///< Script voice id -> its voice.
+    std::uint32_t nextVoice{1};                                                  ///< The script id of the next voice.
+    contract::audiodevice::VoiceId music;                                        ///< The current music track.
+    std::optional<PlayMusic> pendingMusic;                       ///< A PlayMusic waiting for its sound to load.
     std::optional<plugins::audio::AudioVolumes> appliedVolumes;  ///< The volumes the device has; none before the first.
 };
 AYLO_ECS_RESOURCE(Audio, "aylo.Audio");

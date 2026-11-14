@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
@@ -22,7 +23,8 @@ namespace aylo::plugins::audio {
 /// @brief The silent backend, registered as "null" by every AudioRegistry: plays nothing, but keeps the state of its
 /// sounds and voices, so the audio plugin runs the same with it (tests, CI, a machine without an output, sound off).
 /// @details A looping voice plays until stopped; a one-shot voice ends at the next update(), as if it were one frame
-/// long. Nothing is read or decoded: every sound loads.
+/// long, once the clock reached its `startAt`. The clock is the time since the device was made. Nothing is read or
+/// decoded: every sound loads.
 class AYLO_PLUGIN_AUDIO_API NullAudioDevice : public contract::audiodevice::IAudioDevice {
   public:
     /// @param maxVoices Voices playing at once; play() returns a stale id beyond that.
@@ -46,7 +48,9 @@ class AYLO_PLUGIN_AUDIO_API NullAudioDevice : public contract::audiodevice::IAud
     void setVolume(contract::audiodevice::VoiceId voice, float volume) override;
     void setPitch(contract::audiodevice::VoiceId voice, float pitch) override;
     void setPan(contract::audiodevice::VoiceId voice, float pan) override;
+    void setLowpass(contract::audiodevice::VoiceId voice, float cutoff) override;
     [[nodiscard]] bool isPlaying(contract::audiodevice::VoiceId voice) const override;
+    [[nodiscard]] double getTime() const override;
 
     void setMasterVolume(float volume) override;
     void setBusVolume(contract::audiodevice::Bus bus, float volume) override;
@@ -61,6 +65,7 @@ class AYLO_PLUGIN_AUDIO_API NullAudioDevice : public contract::audiodevice::IAud
         bool playing{false};                   ///< False once it ended or was stopped: the slot is free.
         bool loop{false};                      ///< Plays until stopped.
         bool paused{false};                    ///< Does not end while paused.
+        double startAt{0.0};                   ///< Does not end before the clock reaches it.
     };
 
     /// @return The voice @p voice names, or nullptr if it is stale.
@@ -69,7 +74,8 @@ class AYLO_PLUGIN_AUDIO_API NullAudioDevice : public contract::audiodevice::IAud
     /// @return The voice @p voice names, or nullptr if it is stale.
     [[nodiscard]] const Voice* find(contract::audiodevice::VoiceId voice) const;
 
-    std::uint32_t _maxVoices;                   ///< Size limit of _voices.
+    std::chrono::steady_clock::time_point _opened{std::chrono::steady_clock::now()};  ///< The clock's zero.
+    std::uint32_t _maxVoices;                                                         ///< Size limit of _voices.
     std::uint32_t _nextSound{1};                ///< The id of the next sound created.
     std::unordered_set<std::uint32_t> _sounds;  ///< The ids of the sounds alive.
     std::vector<Voice> _voices;                 ///< The voice table, indexed by VoiceId::index.
