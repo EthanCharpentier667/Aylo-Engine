@@ -210,3 +210,38 @@ TEST(ScriptPhysics, AServerScriptSpawnsAShipForEachClientAndReadsItsInput) {
                          "tostring(probe.seenOwner))"),
               "");
 }
+
+TEST(ScriptPhysics, AScriptNamesTheShapeAndTheBodyType) {
+    ServerScripts server;
+    ASSERT_EQ(server.run(R"(
+        local spawned = false
+        engine.ecs.system("game.Spawn", {
+            phase = "Update",
+            run = function(ctx)
+                if spawned then return end
+                spawned = true
+                ctx.commands:spawn({
+                    ["aylo.Transform"] = { position = { x = 0, y = 0 } },
+                    ["aylo.Collider"] = { shape = "circle", radius = 8 },
+                    ["aylo.RigidBody"] = { type = "kinematic" },
+                })
+            end,
+        })
+        engine.ecs.system("game.Read", {
+            phase = "PostUpdate",
+            query = { read = { "aylo.Collider", "aylo.RigidBody" } },
+            run = function(ctx)
+                for _, collider, body in ctx.query do
+                    probe.shape = collider.shape
+                    probe.type = body.type
+                end
+            end,
+        })
+    )"),
+              "");
+
+    server.runFrames();
+
+    EXPECT_EQ(server.run(R"(assert(probe.shape == "circle" and probe.type == "kinematic", tostring(probe.shape)))"),
+              "");
+}
