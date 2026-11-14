@@ -116,6 +116,7 @@ How you write a value depends on the type of the field (see [Components](compone
 | `vec2`, `vec3`, `vec4` | `(x, y)`, `(x, y, z)`, `(x, y, z, w)` | parentheses, exactly that many numbers |
 | `assetId` | `"sprites/ship.png"` | the asset's path from `assets/` |
 | `string` | `"Player one"` | at most 255 bytes |
+| an enum field (`shape`, `type`, `blend`...) | `"circle"`, `1` | the name of its value, quoted, as in [Enum fields](components.md#enum-fields); its number also works |
 | a list | `[1, 2, 3]`, `[]` | any number of values, replacing the whole list |
 | `entity` | | cannot be written in a file yet |
 
@@ -147,7 +148,7 @@ the hot reload line in the log carries the message.
 | `unknown component 'x'` | a typo, a component no script declares, or one of a plugin `project.luau` does not list |
 | `component 'x' has no field 'f'` | a typo in a field name |
 | `component 'x' is set twice on this node` / `field 'f' is set twice` | |
-| `field 'f' of 'x' takes ..., not ...` | a value of the wrong kind: a number out of range, a vector of the wrong size, a string too long |
+| `field 'f' of 'x' takes ..., not ...` | a value of the wrong kind: a number out of range, a vector of the wrong size, a string too long, a name the enum field does not have (`takes one of "box", "circle", "capsule", not "round"`) |
 
 ## Reading and writing
 

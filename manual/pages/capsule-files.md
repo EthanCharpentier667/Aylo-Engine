@@ -101,6 +101,7 @@ game.Sprite = { texture = "sprites/boss_shadow.png", layer = -1 }
 | Fields | **only those that differ** from the component's defaults, or, on an instance node, from the instanced capsule's values: above, `max = 100` and `scale = (1, 1)` are the defaults, and `rotation = 1.5` is already the turret's; `{}` when none differs |
 | Numbers | in their shortest exact form: `2.50` becomes `2.5`, `0.0` becomes `0` |
 | Assets and instances | by their path, tidied: `./actors/turret.actor` becomes `actors/turret.actor` |
+| Enum fields | by the name of their value, quoted: `shape = 1` becomes `shape = "circle"` (see [Enum fields](components.md#enum-fields)) |
 | Comments and blank lines | **dropped** |
 
 So a file the engine saves loses its comments. Keep the notes you care about somewhere else, or keep hand-written files

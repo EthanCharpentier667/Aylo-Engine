@@ -144,7 +144,7 @@ local ship = ctx.commands:spawn({
 	["game.Ship"] = { position = position, player = 0 },
 	["aylo.Transform"] = { position = position },
 })
-ctx.commands:add(ship, "aylo.RigidBody", { type = 1 })
+ctx.commands:add(ship, "aylo.RigidBody", { type = "kinematic" })
 ctx.commands:patch(ship, "game.Ship", { player = 1 })
 ctx.commands:setParent(child, parent)
 ctx.commands:removeParent(child)

@@ -47,9 +47,43 @@ The engine's own components are declared by its plugins and used by name, with t
 spawns), `aylo.Transform`, `aylo.TransformInterpolation` (no fields: draws the entity smoothly between fixed ticks, see
 [Smooth movement](systems.md#smooth-movement)), `aylo.Camera`, `aylo.SpriteRenderer`, `aylo.TextRenderer`, `aylo.ShapeRenderer`,
 `aylo.AudioListener`, `aylo.Collider`, `aylo.RigidBody`, `aylo.Velocity`, and the network ones `net.Owner` and
-`net.PlayerInput`. Fields are written the same way (`size = { x = 48, y = 48 }`). Enum-like fields are numbers; for
-example the physics `shape` is `0` box, `1` circle, `2` capsule. What exists depends on the plugins the program and
-`project.luau` add: a server has no sprites.
+`net.PlayerInput`. Fields are written the same way (`size = { x = 48, y = 48 }`). What exists depends on the plugins
+the program and `project.luau` add: a server has no sprites.
+
+### Enum fields
+
+A field that picks one of a few values takes its name, a string, and a view reads the name back:
+
+```luau
+ctx.commands:spawn({
+	["aylo.Transform"] = { position = { x = 400, y = 300 } },
+	["aylo.Collider"] = { shape = "circle", radius = 36 },
+	["aylo.RigidBody"] = { type = "kinematic" },
+})
+
+for _, collider in ctx.query do
+	if collider.shape == "circle" then
+		-- ...
+	end
+end
+```
+
+| Component | Field | Names (the first is the default, unless said) |
+|---|---|---|
+| `aylo.Collider` | `shape` | `"box"`, `"circle"`, `"capsule"` |
+| `aylo.RigidBody` | `type` | `"static"`, `"kinematic"`, `"dynamic"` (default `"dynamic"`) |
+| `aylo.SpriteRenderer`, `aylo.ShapeRenderer`, `aylo.TextRenderer` | `blend` | `"alpha"`, `"additive"`, `"cutout"` (cutout: sprites only) |
+| `aylo.ShapeRenderer` | `kind` | `"rect"`, `"circle"`, `"capsule"`, `"line"` |
+| `aylo.TextRenderer`, `aylo.UiText` | `align` | `"left"`, `"center"`, `"right"` |
+| `aylo.AudioSource` | `bus` | `"music"`, `"effects"` (default `"effects"`) |
+| `aylo.ParticleEmitter` | `simulation` | `"auto"`, `"gpu"`, `"cpu"` |
+
+The layout fields of `aylo.UiNode` take the names of the [UI styles](ui.md#layout) (`"row-reverse"`,
+`"space-between"`...).
+
+A number is still accepted on write (`shape = 1` is a circle), but a script that compares a read value with a number
+no longer matches: compare with the name. A name the field does not have is an error that lists the ones it takes:
+`... 'round' is not one of box, circle, capsule`. [Capsule files](capsule-files.md) write the same names, quoted.
 
 ### Draw order
 
@@ -57,8 +91,8 @@ Sprites (`aylo.SpriteRenderer`), texts (`aylo.TextRenderer`) and particle emitte
 what is drawn later covers what is drawn before. The engine draws them in this order, every frame the same:
 
 1. **By `layer`**, lowest first: a higher layer is always on top.
-2. **In one layer, by blend**: the cutout ones first (`blend = 2`), then the alpha-blended ones (`blend = 0`, the
-   default), then the additive ones (`blend = 1`).
+2. **In one layer, by blend**: the cutout ones first (`blend = "cutout"`), then the alpha-blended ones
+   (`blend = "alpha"`, the default), then the additive ones (`blend = "additive"`).
 3. **Among cutout or alpha ones of the same layer, by entity**: the order does not change from one frame to the next,
    even when other entities are spawned or despawned. Additive ones need no order (adding light gives the same picture
    in any order), so the engine groups them to draw them faster.
