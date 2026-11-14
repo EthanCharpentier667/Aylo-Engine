@@ -17,6 +17,7 @@
 #include <format>
 #include <glm/common.hpp>
 #include <glm/ext/vector_float2.hpp>
+#include <glm/ext/vector_float4.hpp>
 #include <glm/ext/vector_uint2.hpp>
 #include <iostream>
 #include <limits>
@@ -36,6 +37,7 @@
 #include "aylo/contract/platform/IPlatform.hpp"
 #include "aylo/contract/platform/exceptions/PlatformExceptions.hpp"
 #include "aylo/contract/renderer/drawing/Color.hpp"
+#include "aylo/contract/renderer/drawing/Lines3D.hpp"
 #include "aylo/contract/renderer/drawing/Mesh.hpp"
 #include "aylo/contract/renderer/drawing/Overlay.hpp"
 #include "aylo/contract/renderer/drawing/Shape.hpp"
@@ -47,7 +49,9 @@
 #include "aylo/contract/renderer/particle/ParticleSystemDesc.hpp"
 #include "aylo/contract/renderer/shaders/CompiledShader.hpp"
 #include "aylo/contract/renderer/view/CameraView.hpp"
+#include "aylo/contract/renderer/view/CameraView3D.hpp"
 #include "aylo/contract/renderer/view/View.hpp"
+#include "aylo/contract/renderer/view/View3D.hpp"
 #include "command/CommandLabel.hpp"
 #include "core/DebugMessenger.hpp"
 #include "core/Instance.hpp"
@@ -100,6 +104,8 @@ constexpr vk::Format kDataTextureFormat = vk::Format::eR8G8B8A8Unorm;
 /// Every pass that draws the world renders into it, the window's format only comes with the copy of the frame
 /// (postprocess::ScreenPass) and the meshes.
 constexpr vk::Format kSceneFormat = vk::Format::eR16G16B16A16Sfloat;
+/// The format of the 3D world's depth buffer: supported as a depth attachment by every desktop GPU.
+constexpr vk::Format kDepthFormat = vk::Format::eD32Sfloat;
 
 /// @brief Texture sets per descriptor pool: a new pool is added each time this many textures are alive.
 constexpr std::uint32_t kTextureSetsPerPool = 64;
@@ -263,6 +269,7 @@ void VulkanRenderer::init(contract::platform::IPlatform& platform) {
     _overlayGlobals = std::make_unique<frame::FrameGlobals>(*_device, *_allocator, kFramesInFlight);
     _meshGlobals = std::make_unique<frame::FrameGlobals>(*_device, *_allocator, kFramesInFlight);
     _previewGlobals = std::make_unique<frame::FrameGlobals>(*_device, *_allocator, kFramesInFlight);
+    _globals3D = std::make_unique<frame::FrameGlobals>(*_device, *_allocator, kFramesInFlight);
     _device->setName(*_pipelineCache->getCache(), "Pipeline cache");
     _samplers = std::make_unique<texture::SamplerCache>(*_device, *_physicalDevice);
     _textureSetLayout = std::make_unique<descriptor::DescriptorSetLayout>(
@@ -363,6 +370,9 @@ void VulkanRenderer::createPasses() {
     auto meshPass =
         std::make_unique<rendering::MeshPass>(*_device, *_allocator, *_shaders, *_layout, _swapchain->getFormat(),
                                               &_pipelineCache->getCache(), kFramesInFlight);
+    auto lines3DPass =
+        std::make_unique<rendering::Lines3DPass>(*_device, *_allocator, *_shaders, *_layout, kSceneFormat, kDepthFormat,
+                                                 &_pipelineCache->getCache(), kFramesInFlight);
     auto screenPass = std::make_unique<postprocess::ScreenPass>(
         *_device, *_shaders, *_textureSetLayout, *_samplers->get(contract::renderer::TextureFilter::kLinear, false),
         kSceneFormat, _swapchain->getFormat(), &_pipelineCache->getCache());
@@ -393,6 +403,11 @@ void VulkanRenderer::createPasses() {
         _deletionQueue.defer(frameIndex, std::exchange(_shapePass, std::move(shapePass)));
     } else {
         _shapePass = std::move(shapePass);
+    }
+    if (_lines3DPass) {
+        _deletionQueue.defer(frameIndex, std::exchange(_lines3DPass, std::move(lines3DPass)));
+    } else {
+        _lines3DPass = std::move(lines3DPass);
     }
     if (_meshPass) {
         _deletionQueue.defer(frameIndex, std::exchange(_meshPass, std::move(meshPass)));
@@ -468,6 +483,8 @@ void VulkanRenderer::beginFrame(const contract::renderer::Color& clearColor) {
         throw std::logic_error("VulkanRenderer::beginFrame() called twice without endFrame()");
     }
     _view.reset();
+    _view3D.reset();
+    _lines3D.clear();
     _sprites.clear();
     _particleInstances.clear();
     _particleRanges.clear();
@@ -629,8 +646,11 @@ vk::DescriptorSet VulkanRenderer::recordScene(const vk::raii::CommandBuffer& com
     {
         const command::CommandLabel label{*_device, commandBuffer, "Scene"};
         rendering::transitionImage(commandBuffer, *sceneImage.getImage(), rendering::kSceneToColorAttachment);
+        // The 3D world first, in a scope of its own (its pipelines have a depth attachment), then the 2D world over it.
+        recordWorld3D(commandBuffer, frameIndex, *sceneImage.getImageView(), extent, viewSize, framebufferSize);
         const vk::RenderingAttachmentInfo sceneColor =
-            rendering::colorAttachment(*sceneImage.getImageView(), toClearColor(_clearColor));
+            _view3D ? rendering::loadedColorAttachment(*sceneImage.getImageView())
+                    : rendering::colorAttachment(*sceneImage.getImageView(), toClearColor(_clearColor));
         commandBuffer.beginRendering(rendering::renderingInfo(extent, {&sceneColor, 1}));
         recordWorld(commandBuffer, frameIndex, view, *_globals);
         commandBuffer.endRendering();
@@ -661,6 +681,64 @@ vk::DescriptorSet VulkanRenderer::recordScene(const vk::raii::CommandBuffer& com
 glm::vec2 VulkanRenderer::getViewSize() const { return glm::vec2{_config.virtualResolution}; }
 
 void VulkanRenderer::setView(const contract::renderer::View& view) { _view = view; }
+
+bool VulkanRenderer::supports3D() const noexcept { return true; }
+
+void VulkanRenderer::setView3D(const contract::renderer::View3D& view) { _view3D = view; }
+
+void VulkanRenderer::drawLines3D(const contract::renderer::Lines3D& lines) {
+    if (!_acquiredImage) {
+        return;
+    }
+    const std::size_t count = lines.points.size() - (lines.points.size() % 2);
+    _lines3D.reserve(_lines3D.size() + count);
+    for (std::size_t index = 0; index < count; ++index) {
+        const glm::vec4 world = lines.world * glm::vec4{lines.points.at(index), 1.0F};
+        _lines3D.push_back(rendering::LineVertex3D{.position = glm::vec3{world}, .color = lines.color});
+    }
+}
+
+const memory::Image& VulkanRenderer::acquireDepth(std::size_t frameIndex, vk::Extent2D extent) {
+    if (_sceneDepth) {
+        const vk::Extent2D current = _sceneDepth->getExtent();
+        if (current.width == extent.width && current.height == extent.height) {
+            return *_sceneDepth;
+        }
+        // The previous frames may still test against it: it goes when they are done.
+        _deletionQueue.defer(frameIndex, std::move(_sceneDepth));
+    }
+    _sceneDepth = std::make_unique<memory::Image>(*_device, *_allocator, extent, kDepthFormat,
+                                                  vk::ImageUsageFlagBits::eDepthStencilAttachment);
+    _device->setName(*_sceneDepth->getImage(), "Scene depth");
+    return *_sceneDepth;
+}
+
+void VulkanRenderer::recordWorld3D(const vk::raii::CommandBuffer& commandBuffer, std::size_t frameIndex,
+                                   vk::ImageView color, vk::Extent2D extent, glm::vec2 viewSize,
+                                   glm::uvec2 framebufferSize) {
+    if (!_view3D) {
+        return;
+    }
+    const command::CommandLabel label{*_device, commandBuffer, "World 3D"};
+    const contract::renderer::CameraView3D view{*_view3D, viewSize, framebufferSize};
+    rendering::FrameUniforms uniforms = makeFrameUniforms(
+        contract::renderer::CameraView{contract::renderer::View{}, viewSize, framebufferSize}, extent);
+    uniforms.viewProjection = view.getViewProjection();
+    _globals3D->update(frameIndex, uniforms);
+    const memory::Image& depth = acquireDepth(frameIndex, extent);
+    rendering::transitionImage(commandBuffer, *depth.getImage(), rendering::kToDepthAttachment);
+    const vk::RenderingAttachmentInfo colorAttachment = rendering::colorAttachment(color, toClearColor(_clearColor));
+    const vk::RenderingAttachmentInfo depthAttachment = rendering::depthAttachment(*depth.getImageView(), 1.0F);
+    commandBuffer.beginRendering(rendering::renderingInfo(extent, {&colorAttachment, 1}, &depthAttachment));
+    _globals3D->bind(commandBuffer, *_layout, frameIndex);
+    const contract::renderer::Viewport& area = view.getViewport();
+    const vk::Viewport viewport{area.position.x, area.position.y, area.size.x, area.size.y, 0.0F, 1.0F};
+    const vk::Rect2D scissor{
+        vk::Offset2D{static_cast<std::int32_t>(area.position.x), static_cast<std::int32_t>(area.position.y)},
+        vk::Extent2D{static_cast<std::uint32_t>(area.size.x), static_cast<std::uint32_t>(area.size.y)}};
+    _lines3DPass->record(commandBuffer, frameIndex, viewport, scissor);
+    commandBuffer.endRendering();
+}
 
 void VulkanRenderer::draw(const contract::renderer::Sprite& sprite) {
     if (_acquiredImage) {
@@ -751,6 +829,7 @@ void VulkanRenderer::uploadWorld(std::size_t frameIndex) {
     _spritePass->upload(frameIndex, _sprites);
     _particlePass->upload(frameIndex, _particleInstances);
     _shapePass->upload(frameIndex, _shapes);
+    _lines3DPass->upload(frameIndex, _lines3D);
 }
 
 void VulkanRenderer::recordWorld(const vk::raii::CommandBuffer& commandBuffer, std::size_t frameIndex,

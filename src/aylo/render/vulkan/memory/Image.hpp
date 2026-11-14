@@ -18,8 +18,9 @@ namespace aylo::render::vulkan::memory {
 
 /// @brief A 2D image, its memory and a view of it, allocated by the Allocator: textures, render targets...
 ///
-/// @details One mip level, one layer, the color aspect, in device local memory (MemoryAccess::kGpuOnly). It starts in
-/// the UNDEFINED layout: fill a texture with Uploader::upload(), which leaves it ready to be sampled.
+/// @details One mip level, one layer, the color aspect (the depth aspect for a depth format, a depth buffer), in device
+/// local memory (MemoryAccess::kGpuOnly). It starts in the UNDEFINED layout: fill a texture with Uploader::upload(),
+/// which leaves it ready to be sampled.
 /// @warning Destroy it before the Allocator and the Device, and only once the GPU is done with it (see
 /// core::DeletionQueue).
 class AYLO_RENDER_VULKAN_API Image {
