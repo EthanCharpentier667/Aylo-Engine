@@ -10,6 +10,7 @@ add_requires("joltphysics 5.6.x", {alias = "joltphysics", configs = {object_laye
 add_requires("nlohmann_json 3.12.x", {alias = "nlohmann_json"})
 add_requires("yoga 3.2.x", {alias = "yoga"})
 add_requires("cgltf v1.15", {alias = "cgltf"})
+add_requires("ufbx v0.23.0", {alias = "ufbx"})
 -- HTTPS for the http plugin: Schannel on Windows, OpenSSL 3 elsewhere (the package picks it). Never the system's, nor
 -- its OpenSSL: xmake builds both, static, as the system's (apt's libcurl4 and libssl3, Homebrew's openssl@4) are shared
 -- libraries the release does not hold (docs/release/self-contained.md).
@@ -108,8 +109,9 @@ plugin("mesh", {"plugin-graphics", "plugin-shader", "plugin-transform"})
     add_files("mesh/**.cpp")
     add_files("mesh/MeshForms.luau")
     add_headerfiles("mesh/**.hpp|detail/**.hpp")
-    -- Reads glTF files. Private: only mesh/detail/GltfLoader.cpp includes it.
-    add_packages("cgltf")
+    -- Read the model files. Private: cgltf (glTF) only in mesh/detail/GltfLoader.cpp, ufbx (FBX, OBJ) only in
+    -- mesh/detail/UfbxLoader.cpp.
+    add_packages("cgltf", "ufbx")
 
 plugin("audio", {"contract-audiodevice", "plugin-transform"})
     add_files("audio/**.cpp")
