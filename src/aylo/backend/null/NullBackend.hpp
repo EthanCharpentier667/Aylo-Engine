@@ -20,6 +20,7 @@
 #include "aylo/contract/platform/event/Event.hpp"
 #include "aylo/contract/renderer/IRenderer.hpp"
 #include "aylo/contract/renderer/drawing/Color.hpp"
+#include "aylo/contract/renderer/drawing/Lines3D.hpp"
 #include "aylo/contract/renderer/drawing/Shape.hpp"
 #include "aylo/contract/renderer/drawing/Sprite.hpp"
 #include "aylo/contract/renderer/drawing/Text.hpp"
@@ -27,6 +28,7 @@
 #include "aylo/contract/renderer/particle/Particle.hpp"
 #include "aylo/contract/renderer/particle/ParticleSystemDesc.hpp"
 #include "aylo/contract/renderer/view/View.hpp"
+#include "aylo/contract/renderer/view/View3D.hpp"
 #include "backend/null/Export.hpp"
 
 namespace aylo::backend::null {
@@ -68,6 +70,10 @@ class AYLO_BACKEND_NULL_API NullRenderer final : public contract::renderer::IRen
     void beginFrame(const contract::renderer::Color& /*clearColor*/) override {}
     void endFrame() override {}
     void setView(const contract::renderer::View& /*view*/) override {}
+    /// @return True: the 3D world is accepted, and drawn nowhere, as the rest.
+    [[nodiscard]] bool supports3D() const noexcept override { return true; }
+    void setView3D(const contract::renderer::View3D& /*view*/) override {}
+    void drawLines3D(const contract::renderer::Lines3D& /*lines*/) override {}
     void draw(const contract::renderer::Sprite& /*sprite*/) override {}
     void draw(const contract::renderer::Shape& /*shape*/) override {}
     void draw(const contract::renderer::Text& /*text*/) override {}
