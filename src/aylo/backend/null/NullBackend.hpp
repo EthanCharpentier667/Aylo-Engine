@@ -23,6 +23,7 @@
 #include "aylo/contract/renderer/drawing/Lines3D.hpp"
 #include "aylo/contract/renderer/drawing/Shape.hpp"
 #include "aylo/contract/renderer/drawing/Sprite.hpp"
+#include "aylo/contract/renderer/drawing/StaticMesh.hpp"
 #include "aylo/contract/renderer/drawing/Text.hpp"
 #include "aylo/contract/renderer/drawing/Texture.hpp"
 #include "aylo/contract/renderer/particle/Particle.hpp"
@@ -74,6 +75,13 @@ class AYLO_BACKEND_NULL_API NullRenderer final : public contract::renderer::IRen
     [[nodiscard]] bool supports3D() const noexcept override { return true; }
     void setView3D(const contract::renderer::View3D& /*view*/) override {}
     void drawLines3D(const contract::renderer::Lines3D& /*lines*/) override {}
+    /// @return A new id each time: the mesh exists nowhere.
+    [[nodiscard]] contract::renderer::StaticMeshId createStaticMesh(
+        const contract::renderer::StaticMeshDesc& /*desc*/) override {
+        return contract::renderer::StaticMeshId{.index = m_nextStaticMesh++, .generation = 1};
+    }
+    void destroyStaticMesh(contract::renderer::StaticMeshId /*mesh*/) override {}
+    void drawStaticMesh(const contract::renderer::StaticMeshDraw& /*draw*/) override {}
     void draw(const contract::renderer::Sprite& /*sprite*/) override {}
     void draw(const contract::renderer::Shape& /*shape*/) override {}
     void draw(const contract::renderer::Text& /*text*/) override {}
@@ -88,6 +96,7 @@ class AYLO_BACKEND_NULL_API NullRenderer final : public contract::renderer::IRen
   private:
     std::uint32_t m_nextTexture{1};
     std::uint32_t m_nextParticleSystem{1};
+    std::uint32_t m_nextStaticMesh{1};
 };
 
 }  // namespace aylo::backend::null
