@@ -161,8 +161,8 @@ architecture rules, and this file keeps the detail, which changes with every fea
       such as the physics) and `Reparent.hpp` (`detachInPlace`, `attachInPlace`). The `Engine` adds it, and the plugins that use it
       require it.
     - `plugins/physics/` (`aylo::plugins::physics`) — `PhysicsPlugin`: 2D physics on Jolt (`Collider`, `RigidBody`,
-      `Velocity`, the `PhysicsWorld` resource, collision events, scene queries, `moveAndSlide`), simulated on the server
-      side, with query-only bodies on clients. Jolt is a private package: only `.cpp` files and `detail/` include it.
+      `Velocity`, the `PhysicsWorld` resource, collision events, scene queries, `moveAndSlide` and the 3D character
+      controller `moveAndSlide3D`), simulated on the server side, with query-only bodies on clients. Jolt is a private package: only `.cpp` files and `detail/` include it.
       The debug view is in `physics/debug/` (`aylo::plugins::physics::debug`), its own library `plugin-physics-debug`, the engine calls in `PhysicsCalls.hpp`. Design in
       `docs/physics/design.md`.
     - `plugins/audio/` (`aylo::plugins::audio`) — `AudioPlugin`: `AudioRegistry` (starts the device the settings name,

@@ -402,10 +402,28 @@ both gets a 3D body (the 2D queries of the systems skip an entity with a `Collid
 - **Systems.** The same five systems, with the same names, sync both families. `CollisionStarted` gets `point3D` and
   `normal3D` for 3D pairs (`point` and `normal` stay zero), the other events need nothing.
 - **Hierarchy.** A 3D body is placed by its own `Transform3D`, as a root: 3D bodies under a parent come later.
-- **Queries.** `raycast3D` and `raycastAll3D`; `shapeCast`, `overlap` and `moveAndSlide` are 2D only for now.
+- **Queries.** `raycast3D` and `raycastAll3D`, `shapeCast3D` (a `Collider3D` shape swept with a rotation, as a quaternion
+  x, y, z, w: `RShapeCast::sFromWorldTransform`) and `overlap3D` (`CollideShape`, placed by the shape's centre of mass),
+  in `PhysicsWorld3D.cpp`.
+- **Character controller.** `moveAndSlide3D()` (`MoveAndSlide.cpp`) moves a `Collider3D` upright by a delta without
+  stepping the world, like `moveAndSlide`, and returns a `Slide3DResult` (`position`, `grounded`, `groundNormal`,
+  `ground`). It is built on `shapeCast3D` alone, not Jolt's `CharacterVirtual`, so it keeps no state and gives the same
+  result on every side, as the 2D one. One move is three passes:
+  1. **Across** (the delta less its Y): each cast stops the shape a skin away and slides the rest along the surface. A
+     surface whose normal's Y is below `cos(maxSlope)` is a wall: when sliding along it would gain height, the rest
+     slides along its level normal instead, so a wall or a steep slope is never climbed.
+  2. **Step**, only when a wall stopped the move and `stepHeight` is above 0: up by the step height (a ceiling stops it),
+     across again, then down onto ground no steeper than `maxSlope`. It is kept only if it lands on ground and goes
+     further across than the plain move.
+  3. **Vertical** (the delta's Y): walkable ground stops it (a fall lands and does not drift down a gentle slope);
+     a steeper surface slides it down.
+
+  A cast down of twice the skin then tells whether it is grounded, on what, and the ground's normal. The game adds the
+  gravity to the delta: the function keeps no velocity.
 - **Debug view.** `aylo.PhysicsDebug.Draw` draws 3D colliders (box edges, three great circles for a sphere, the outline
   of a capsule) and velocity arrows as `Lines3D`, when the renderer draws 3D. The renderer keeps the 3D lines until
   the frame ends, so the system needs no place among the 3D draws.
-- **From scripts.** `aylo.physics.raycast3D`, `applyForce3D`, `applyImpulse3D`, `applyTorque3D` and `setGravity3D`.
+- **From scripts.** `aylo.physics.raycast3D`, `shapeCast3D`, `overlap3D`, `moveAndSlide3D`, `applyForce3D`,
+  `applyImpulse3D`, `applyTorque3D` and `setGravity3D`.
 
 The world's Jolt objects are in `detail/WorldImpl.hpp`, shared by `PhysicsWorld.cpp` (2D) and `PhysicsWorld3D.cpp`.
