@@ -9,11 +9,11 @@
 
 #include <algorithm>
 #include <cmath>
+#include <glm/ext/quaternion_common.hpp>
 #include <glm/ext/quaternion_float.hpp>
 #include <glm/ext/quaternion_geometric.hpp>
 #include <glm/ext/vector_float3.hpp>
 #include <glm/geometric.hpp>
-#include <glm/gtc/quaternion.hpp>
 
 namespace aylo::plugins::audio {
 namespace {

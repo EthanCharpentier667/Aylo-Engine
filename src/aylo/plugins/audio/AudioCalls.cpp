@@ -22,6 +22,7 @@
 #include "plugins/audio/AudioAssets.hpp"
 #include "plugins/audio/AudioEvents.hpp"
 #include "plugins/audio/AudioResources.hpp"
+#include "plugins/audio/Spatial3D.hpp"
 #include "plugins/audio/exceptions/AudioCallException.hpp"
 
 namespace aylo::plugins::audio {

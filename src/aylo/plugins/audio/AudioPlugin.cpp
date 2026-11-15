@@ -180,6 +180,58 @@ void startPendingMusic(Audio& audio, const AudioAssets& sounds) {
     }
 }
 
+/// @brief Plays one PlaySound whose sound is loaded: panned in 2D from @p listener, or for a 3D one, panned and
+/// attenuated for @p listener3D and followed by aylo.audio.placed.
+void playOne(Audio& audio, contract::audiodevice::SoundId sound, const PlaySound& event,
+             const std::optional<glm::vec2>& listener, const std::optional<ListenerPose3D>& listener3D) {
+    float pan = panOf(event.position, listener, audio.panDistance);
+    float volume = event.volume;
+    if (event.place3D) {
+        const Spatial3D heard = hear(*event.place3D, listener3D);
+        pan = heard.pan;
+        volume *= heard.gain;
+    }
+    const contract::audiodevice::VoiceId voice =
+        audio.device->play(sound, contract::audiodevice::PlayParams{.bus = event.bus,
+                                                                    .volume = volume,
+                                                                    .pitch = event.pitch,
+                                                                    .pan = pan,
+                                                                    .loop = event.loop,
+                                                                    .startAt = event.startAt,
+                                                                    .lowpass = event.lowpass});
+    if (event.voice != 0) {
+        audio.scripted.insert_or_assign(event.voice, voice);
+    }
+    if (event.place3D) {
+        audio.placed.push_back(
+            PlacedVoice{.voice = voice, .script = event.voice, .place = *event.place3D, .volume = event.volume});
+    }
+}
+
+/// @brief Applies a ControlVoice to the voice a script started, if it still plays.
+void control(Audio& audio, const ControlVoice& event) {
+    const auto found = audio.scripted.find(event.voice);
+    if (found == audio.scripted.end()) {
+        return;
+    }
+    if (const std::optional<float> volume = event.volume) {
+        audio.device->setVolume(found->second, *volume);
+        // A 3D voice keeps it as its volume before the distance: aylo.audio.placed applies both this frame.
+        for (PlacedVoice& placed : audio.placed) {
+            if (placed.script == event.voice) {
+                placed.volume = *volume;
+            }
+        }
+    }
+    if (const std::optional<float> lowpass = event.lowpass) {
+        audio.device->setLowpass(found->second, *lowpass);
+    }
+    if (event.stop) {
+        audio.device->stop(found->second, event.fadeOut);
+        audio.scripted.erase(found);
+    }
+}
+
 /// @brief PostUpdate: plays the one-shot sounds, then the music events.
 void playEvents(ecs::NonSendMut<Audio> audio, ecs::Res<AudioAssets> sounds, ecs::EventReader<PlaySound> playSounds,
                 ecs::EventReader<ControlVoice> controls, ecs::EventReader<StopMusic> stopMusics,
@@ -191,51 +243,11 @@ void playEvents(ecs::NonSendMut<Audio> audio, ecs::Res<AudioAssets> sounds, ecs:
     const std::optional<ListenerPose3D> listener3D = findListener3D(*audio, listeners3D);
     for (const PlaySound& event : playSounds) {
         if (const std::optional<contract::audiodevice::SoundId> sound = sounds->getSound(event.sound)) {
-            float pan = panOf(event.position, listener, audio->panDistance);
-            float volume = event.volume;
-            if (event.place3D) {
-                const Spatial3D heard = hear(*event.place3D, listener3D);
-                pan = heard.pan;
-                volume *= heard.gain;
-            }
-            const contract::audiodevice::VoiceId voice =
-                audio->device->play(*sound, contract::audiodevice::PlayParams{.bus = event.bus,
-                                                                              .volume = volume,
-                                                                              .pitch = event.pitch,
-                                                                              .pan = pan,
-                                                                              .loop = event.loop,
-                                                                              .startAt = event.startAt,
-                                                                              .lowpass = event.lowpass});
-            if (event.voice != 0) {
-                audio->scripted.insert_or_assign(event.voice, voice);
-            }
-            if (event.place3D) {
-                audio->placed.push_back(PlacedVoice{
-                    .voice = voice, .script = event.voice, .place = *event.place3D, .volume = event.volume});
-            }
+            playOne(*audio, *sound, event, listener, listener3D);
         }
     }
     for (const ControlVoice& event : controls) {
-        const auto found = audio->scripted.find(event.voice);
-        if (found == audio->scripted.end()) {
-            continue;
-        }
-        if (event.volume) {
-            audio->device->setVolume(found->second, *event.volume);
-            // A 3D voice keeps it as its volume before the distance: aylo.audio.placed applies both this frame.
-            for (PlacedVoice& placed : audio->placed) {
-                if (placed.script == event.voice) {
-                    placed.volume = *event.volume;
-                }
-            }
-        }
-        if (event.lowpass) {
-            audio->device->setLowpass(found->second, *event.lowpass);
-        }
-        if (event.stop) {
-            audio->device->stop(found->second, event.fadeOut);
-            audio->scripted.erase(found);
-        }
+        control(*audio, event);
     }
     for (const StopMusic& event : stopMusics) {
         stopMusic(*audio, event.fadeOut);
