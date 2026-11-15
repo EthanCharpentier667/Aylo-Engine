@@ -102,6 +102,63 @@ List the ones you use under `calls` and make them with `ctx.call`.
 
 A null `ignore` (the default) skips no entity.
 
+## Forms
+
+`engine.physics` gives each call above as a plain function, to use in a system's `run`. A form takes `ctx` first and
+its arguments in order, checks them, and gives back something easy to test: a query returns the hit, or `nil` when it
+hit nothing. It makes the same engine call, so list that call in the system's `calls`, as for `ctx.call`.
+
+```luau
+engine.ecs.system("game.Move", {
+	phase = "FixedUpdate",
+	query = { read = { "aylo.Collider" }, write = { "aylo.Transform2D" }, with = { "game.Ship" } },
+	calls = { "aylo.physics.moveAndSlide", "aylo.physics.raycast", "aylo.physics.shapeCast" },
+	after = { "aylo.Physics.SyncBodies" },
+	before = { "aylo.Physics.SyncToPhysics" },
+	run = function(ctx)
+		for entity, collider, transform in ctx.query do
+			transform.position = engine.physics.moveAndSlide(ctx, entity, transform.position, { x = 50, y = 0 })
+			local wall = engine.physics.raycast(ctx, transform.position, { x = 1, y = 0 }, 500, { ignore = entity })
+			if wall then
+				print("a wall", wall.distance, "away")
+			end
+			-- the ship's own collider, swept forward
+			local ahead = engine.physics.shapeCast(ctx, collider, transform.position, { x = 1, y = 0 }, 200, { ignore = entity })
+		end
+	end,
+})
+```
+
+| Form | Makes | Returns |
+|---|---|---|
+| `engine.physics.raycast(ctx, origin, direction, maxDistance, options)` | `aylo.physics.raycast` | the hit `{ hit, entity, point, normal, distance }`, or `nil` |
+| `engine.physics.shapeCast(ctx, shape, from, direction, maxDistance, options)` | `aylo.physics.shapeCast` | as `raycast` |
+| `engine.physics.overlap(ctx, shape, at, options)` | `aylo.physics.overlap` | two values: how many entities the shape covers, and one of them (`nil` for none) |
+| `engine.physics.moveAndSlide(ctx, entity, from, delta, options)` | `aylo.physics.moveAndSlide` | the position it ends at |
+| `engine.physics.applyForce(ctx, entity, force)`, `applyImpulse(ctx, entity, impulse)` | `aylo.physics.applyForce`, `applyImpulse` | nothing |
+| `engine.physics.applyTorque(ctx, entity, torque)` | `aylo.physics.applyTorque` | nothing |
+| `engine.physics.setGravity(ctx, gravity)` | `aylo.physics.setGravity` | nothing |
+| `engine.physics.raycast3D(ctx, origin, direction, maxDistance, options)` | `aylo.physics.raycast3D` | the 3D hit, or `nil` |
+| `engine.physics.shapeCast3D(ctx, shape, from, direction, maxDistance, options)` | `aylo.physics.shapeCast3D` | as `raycast3D` |
+| `engine.physics.overlap3D(ctx, shape, at, options)` | `aylo.physics.overlap3D` | as `overlap` |
+| `engine.physics.moveAndSlide3D(ctx, entity, from, delta, options)` | `aylo.physics.moveAndSlide3D` | `{ position, grounded, groundNormal, ground }` |
+| `engine.physics.applyForce3D`, `applyImpulse3D`, `applyTorque3D(ctx, entity, value)` | the call of the same name | nothing |
+| `engine.physics.setGravity3D(ctx, gravity)` | `aylo.physics.setGravity3D` | nothing |
+
+- **Vectors.** A 2D one is a table `{ x, y }`; a 3D one is a Luau `vector` (`vector.create(0, 1, 0)`) or a table
+  `{ x, y, z }`.
+- **`shape`** is a table of the shape fields of an `aylo.Collider` (2D) or an `aylo.Collider3D` (3D): `shape`, `size`,
+  `radius`, `halfHeight`, `offset`, such as `{ shape = "sphere", radius = 0.5 }`. It can also be an entity's collider
+  itself, read from your query, as in the example. A misspelled field is an error, not a field left out.
+- **`options`** (a table, or nothing) holds the filter: `mask`, `ignore`, `includeSensors`. `shapeCast3D` and `overlap3D`
+  also take `rotation`, a quaternion (`engine.math.quat`). The slides take `skin` and `maxSlides`, and `moveAndSlide3D`
+  also `stepHeight` and `maxSlope`, with the defaults of the calls.
+
+An error says which form and which argument: `engine.physics.raycast: 'origin' must be a table { x, y }`,
+`engine.physics.raycast: expected the system's ctx first`, `engine.physics.shapeCast3D: the shape:
+unexpected 'raduis', expected 'shape', 'size', ...`. An error of the call keeps its message after the form's name (`engine.physics.moveAndSlide3D: ... entity 7
+has no Collider3D`). As any error in a system, it is printed and the game goes on.
+
 ## Ordering your systems
 
 The physics runs in `FixedUpdate`. Order the systems that touch bodies around its steps:

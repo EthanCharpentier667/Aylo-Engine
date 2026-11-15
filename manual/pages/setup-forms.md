@@ -116,5 +116,6 @@ Some forms work on the world, so they take what a system's `run` receives:
 |---|---|
 | `engine.capsule.spawn(ctx, path, overrides)`, `engine.capsule.load(ctx, path, overrides)`, `engine.capsule.reload(ctx, root)` | [Capsules](capsules.md#spawning-switching-levels-reloading) |
 | `engine.ui.spawn(ctx.commands, spec, parent)` | [User interface](ui.md) |
+| `engine.physics.raycast(ctx, ...)`, `moveAndSlide`, `shapeCast`, `overlap`... one per physics call, 2D and 3D | [Physics](physics.md#forms) |
 
 A form that makes an engine call needs that call in the system's `calls`, as `ctx.call` does.
