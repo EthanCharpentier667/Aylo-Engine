@@ -11,6 +11,7 @@
 #include <memory>
 #include <optional>
 #include <unordered_map>
+#include <vector>
 
 #include "aylo/contract/audiodevice/AudioTypes.hpp"
 #include "aylo/contract/audiodevice/IAudioDevice.hpp"
@@ -23,12 +24,21 @@
 #include "plugins/audio/AudioReflection.hpp"  // IWYU pragma: keep
 #include "plugins/audio/AudioRegistry.hpp"
 #include "plugins/audio/AudioVolumes.hpp"
+#include "plugins/audio/Spatial3D.hpp"
 
 namespace aylo::plugins::audio {
 /// @brief The voice an AudioSource plays, kept by the audio plugin.
 struct SourceVoice {
     contract::audiodevice::VoiceId voice;  ///< Stale once a one-shot source ended.
     core::asset::AssetId sound;            ///< The sound it was started with: another one restarts the voice.
+};
+
+/// @brief A voice that plays from a place in 3D: its pan and volume follow the 3D listener every frame.
+struct PlacedVoice {
+    contract::audiodevice::VoiceId voice;  ///< Stale once it ended: then forgotten.
+    std::uint32_t script{0};               ///< The script's id of the voice (`aylo.audio.playSound3D`).
+    SoundPlace3D place;                    ///< Where it plays from.
+    float volume{1.0F};                    ///< Its volume before the distance: the call's, then setVolume's.
 };
 
 /// @brief The started audio device and what the audio plugin plays on it, as the main-thread resource "aylo.Audio":
@@ -51,6 +61,9 @@ struct Audio {
     contract::audiodevice::VoiceId music;                                        ///< The current music track.
     std::optional<PlayMusic> pendingMusic;                       ///< A PlayMusic waiting for its sound to load.
     std::optional<plugins::audio::AudioVolumes> appliedVolumes;  ///< The volumes the device has; none before the first.
+    std::vector<PlacedVoice> placed;                             ///< The 3D voices still playing.
+    std::optional<ListenerPose3D>
+        listener3D;  ///< Set by `aylo.audio.setListener3D`: wins over an AudioListener entity.
 };
 AYLO_ECS_RESOURCE(Audio, "aylo.Audio");
 

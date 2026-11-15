@@ -7,6 +7,8 @@
 
 #include <gtest/gtest.h>
 
+#include <cmath>
+#include <cstdint>
 #include <glm/ext/vector_float2.hpp>
 #include <memory>
 #include <string>
@@ -27,6 +29,7 @@
 #include "plugins/audio/AudioResources.hpp"
 #include "plugins/audio/AudioSource.hpp"
 #include "plugins/audio/AudioVolumes.hpp"
+#include "plugins/audio/Spatial3D.hpp"
 #include "plugins/transform/Transform.hpp"
 #include "plugins/transform/TransformPlugin.hpp"
 
@@ -389,4 +392,93 @@ TEST(AudioPlugin, IgnoresAControlForAVoiceThatIsUnknownOrEnded) {
     app.app().runFrame();
     EXPECT_TRUE(app.state().volumes.empty());
     EXPECT_EQ(app.state().stopCalls, 0);
+}
+
+namespace {
+/// @brief Spawns a 3D listener at the origin, facing -Z, turned @p yaw radians to its left.
+aylo::ecs::Entity spawnListener3D(AudioApp& app, float yaw = 0.0F) {
+    const aylo::ecs::Entity entity = app.world().spawn();
+    app.world().getComponents().add(entity, aylo::plugins::transform::Transform3D{
+                                                .rotation = {0.0F, std::sin(yaw / 2.0F), 0.0F, std::cos(yaw / 2.0F)}});
+    app.world().getComponents().add(entity, aylo::plugins::audio::AudioListener{});
+    return entity;
+}
+
+/// @return A PlaySound placed at @p position in 3D, 2 m to 40 m.
+aylo::plugins::audio::PlaySound placed(aylo::core::asset::AssetId sound, glm::vec3 position, float volume = 1.0F,
+                                       std::uint32_t voice = 0) {
+    return aylo::plugins::audio::PlaySound{
+        .sound = sound,
+        .volume = volume,
+        .place3D = aylo::plugins::audio::SoundPlace3D{.position = position, .minDistance = 2.0F, .maxDistance = 40.0F},
+        .voice = voice};
+}
+}  // namespace
+
+TEST(AudioPlugin, PansAndAttenuatesA3DSoundForThe3DListener) {
+    AudioApp app;
+    spawnListener3D(app);
+    const aylo::core::asset::AssetId shot = app.load("shot.wav");
+    app.send(placed(shot, {4.0F, 0.0F, 0.0F}, 0.8F));  // 4 m on its right
+    app.send(placed(shot, {0.0F, 0.0F, -1.0F}));       // 1 m in front
+    app.app().runFrame();
+    ASSERT_EQ(app.state().plays.size(), 2U);
+    EXPECT_NEAR(app.state().plays[0].params.pan, 1.0F, 1e-4F);
+    EXPECT_NEAR(app.state().plays[0].params.volume, 0.4F, 1e-4F);  // 0.8, halved at twice the minimum distance
+    EXPECT_NEAR(app.state().plays[1].params.pan, 0.0F, 1e-4F);
+    EXPECT_NEAR(app.state().plays[1].params.volume, 1.0F, 1e-4F);
+}
+
+TEST(AudioPlugin, Keeps3DVoicesPannedAsTheListenerTurns) {
+    AudioApp app;
+    const aylo::ecs::Entity listener = spawnListener3D(app);
+    app.send(placed(app.load("drone.wav"), {0.0F, 0.0F, -4.0F}));  // in front
+    app.app().runFrame();
+    EXPECT_NEAR(app.state().plays[0].params.pan, 0.0F, 1e-4F);
+    // A quarter turn to the left: the sound is now on its right.
+    app.world().getComponents().getMut<aylo::plugins::transform::Transform3D>(listener)->rotation = {
+        0.0F, std::sin(0.785398F), 0.0F, std::cos(0.785398F)};
+    app.app().runFrame();
+    EXPECT_NEAR(app.state().pans.at(0), 1.0F, 1e-4F);
+    EXPECT_NEAR(app.state().volumes.at(0), 0.5F, 1e-4F);
+}
+
+TEST(AudioPlugin, TheListenerTheScriptSetsWinsOverTheEntity) {
+    AudioApp app;
+    spawnListener3D(app);  // would hear the sound in front
+    app.world().getResources().getMut<aylo::plugins::audio::Audio>()->listener3D = aylo::plugins::audio::ListenerPose3D{
+        .position = {0.0F, 0.0F, -4.0F}, .rotation = {0.0F, std::sin(0.785398F), 0.0F, std::cos(0.785398F)}};
+    app.send(placed(app.load("shot.wav"), {0.0F, 0.0F, -8.0F}));  // 4 m in front of the set pose, which faces -X
+    app.app().runFrame();
+    EXPECT_NEAR(app.state().plays[0].params.pan, 1.0F, 1e-4F);
+    EXPECT_NEAR(app.state().plays[0].params.volume, 0.5F, 1e-4F);
+}
+
+TEST(AudioPlugin, PlaysA3DSoundCentredAndFullWithoutA3DListener) {
+    AudioApp app;
+    app.spawnListener(0.0F);  // a 2D listener does not hear in 3D
+    app.send(placed(app.load("shot.wav"), {30.0F, 0.0F, 0.0F}, 0.7F));
+    app.app().runFrame();
+    EXPECT_FLOAT_EQ(app.state().plays[0].params.pan, 0.0F);
+    EXPECT_FLOAT_EQ(app.state().plays[0].params.volume, 0.7F);
+}
+
+TEST(AudioPlugin, AScriptVolumeOfA3DVoiceIsAttenuatedToo) {
+    AudioApp app;
+    spawnListener3D(app);
+    app.send(placed(app.load("shot.wav"), {4.0F, 0.0F, 0.0F}, 1.0F, 7));
+    app.app().runFrame();
+    app.send(aylo::plugins::audio::ControlVoice{.voice = 7, .volume = 0.6F});
+    app.app().runFrame();
+    EXPECT_NEAR(app.state().volumes.at(0), 0.3F, 1e-4F);  // its new volume, halved by the distance
+}
+
+TEST(AudioPlugin, ForgetsA3DVoiceThatEnded) {
+    AudioApp app;
+    spawnListener3D(app);
+    app.send(placed(app.load("shot.wav"), {4.0F, 0.0F, 0.0F}));
+    app.app().runFrame();
+    app.state().playing.clear();  // it ended
+    app.app().runFrame();
+    EXPECT_TRUE(app.world().getResources().get<aylo::plugins::audio::Audio>()->placed.empty());
 }

@@ -71,13 +71,17 @@ ctx.commands:spawn({
 | Call | Arguments | Result |
 |---|---|---|
 | `aylo.audio.loadSound` | `path`, `stream` (decode while playing, for music) | the sound id |
-| `aylo.audio.playSound` | `sound`, `bus` (`"effects"` or `"music"`, default `"effects"`), `volume` (1), `pitch` (1), `position`, `loop` (false), `startAt` (0, seconds), `lowpass` (0, Hz) | the voice id (a number, never 0) |
+| `aylo.audio.playSound` | `sound`, `bus` (`"effects"` or `"music"`, default `"effects"`), `volume` (1), `pitch` (1), `position` (a 2D table `{ x, y }`, in world units), `loop` (false), `startAt` (0, seconds), `lowpass` (0, Hz) | the voice id (a number, never 0) |
+| `aylo.audio.playSound3D` | `sound`, `bus`, `volume`, `pitch`, `position` (a 3D point, in metres), `minDistance` (1), `maxDistance` (50), `loop`, `startAt`, `lowpass`, the defaults of `playSound` | the voice id |
+| `aylo.audio.setListener3D` | `position` (a 3D point), `rotation` (a quaternion, none by default) | nothing |
 | `aylo.audio.getTime` | none | the audio clock, in seconds |
 | `aylo.audio.setVolume` | `voice`, `volume` (linear gain, 1 = unchanged) | nothing |
 | `aylo.audio.setFilter` | `voice`, `lowpass` (cutoff in Hz, 0 removes the filter) | nothing |
 | `aylo.audio.stopVoice` | `voice`, `fadeOut` (seconds, 0 = at once) | nothing |
 
-All audio calls run on the client only. A `position` left out plays the sound centred. An unknown `bus` raises
+All audio calls run on the client only. `playSound`'s `position` is a 2D point `{ x, y }` in world units, panned left
+or right from the `aylo.AudioListener` entity's `Transform2D` (see `audio.panDistance` in
+[Project settings](project-settings.md)); left out, the sound plays centred. For a 3D game, use `playSound3D` (below). An unknown `bus` raises
 `Unknown bus 'x' (expected 'effects' or 'music')`. Music is started by sending the `aylo.PlayMusic` event
 (`{ sound, crossfade }`), and stopped with `aylo.StopMusic`.
 
@@ -118,6 +122,60 @@ To stop it, call `aylo.audio.stopVoice` (declare it in `calls`) with `{ voice = 
   nothing and raise no error.
 - A sound starts at the end of the frame, so call `loadSound` early (at the top level of a file), not just before
   `playSound`.
+
+#### Sound in 3D
+
+In a 3D game, a sound plays from a place in the world: `aylo.audio.playSound3D` takes a 3D `position` (a Luau `vector`
+or a table `{ x, y, z }`, in metres, Y up). The player hears it from the **3D listener**: on the left or the right, and
+quieter the further it is.
+
+The 3D listener is your camera. Give the camera entity an `aylo.AudioListener` next to its `aylo.Transform3D`, and it
+hears from where it is and where it faces, with nothing else to do:
+
+```luau
+ctx.commands:spawn({
+	["aylo.Transform3D"] = { position = vector.create(0, 1.7, 0) },
+	["aylo.Camera3D"] = {},
+	["aylo.AudioListener"] = {},
+})
+```
+
+Or set it yourself, every frame, with `aylo.audio.setListener3D`. Once called, it wins over the entity: use one or the
+other.
+
+```luau
+local hit = engine.call("aylo.audio.loadSound", { path = "sounds/hit.wav" })
+
+engine.ecs.system("game.Ears", {
+	phase = "Update",
+	side = "client",
+	query = { read = { "aylo.Transform3D" }, with = { "aylo.Camera3D" } },
+	calls = { "aylo.audio.setListener3D", "aylo.audio.playSound3D" },
+	run = function(ctx)
+		for _, eye in ctx.query do
+			ctx.call("aylo.audio.setListener3D", { position = eye.position, rotation = eye.rotation })
+		end
+		-- a hit 4 m to the right of the world's origin, heard from the camera
+		ctx.call("aylo.audio.playSound3D", {
+			sound = hit, position = vector.create(4, 0, 0), minDistance = 2, maxDistance = 40,
+		})
+	end,
+})
+```
+
+- **Pan.** A sound on the listener's right plays in the right ear, on its left in the left ear, in front of or behind
+  it in both. The listener looks along -Z with +X on its right, as a camera.
+- **Distance.** Closer than `minDistance`, the sound plays at its `volume`. Further, its volume is divided by the
+  distance: twice `minDistance` away, it is at half; four times, a quarter. It stops getting quieter at `maxDistance`.
+  With `minDistance = 2` and `maxDistance = 40`, a sound 40 m away (or more) plays at 5% of its volume.
+- **It follows the listener.** While the sound plays, its pan and volume are worked out again every frame, so it stays
+  at its place in the world when the player turns or walks. The sound itself does not move.
+- **Without a 3D listener** (no call, and no `aylo.AudioListener` with a `Transform3D`), a 3D sound plays centred at its
+  full volume. A 2D `aylo.AudioListener` (with a `Transform2D`) only hears `playSound`.
+- `setVolume`, `setFilter` and `stopVoice` work on its voice id as on `playSound`'s; `setVolume` sets its volume before
+  the distance.
+- `playSound3D` raises `aylo.audio.playSound3D: the distances must be 0 < minDistance <= maxDistance` for distances that
+  cannot be.
 
 ### Input
 

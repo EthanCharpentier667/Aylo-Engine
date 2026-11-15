@@ -22,6 +22,7 @@
 #include "plugins/audio/AudioAssets.hpp"
 #include "plugins/audio/AudioEvents.hpp"
 #include "plugins/audio/AudioResources.hpp"
+#include "plugins/audio/Spatial3D.hpp"
 #include "plugins/audio/exceptions/AudioCallException.hpp"
 
 namespace aylo::plugins::audio {
@@ -62,6 +63,34 @@ VoiceResult playSound(ecs::NonSendMut<Audio> audio, ecs::EventWriter<PlaySound> 
     return VoiceResult{.voice = sound.voice};
 }
 
+VoiceResult playSound3D(ecs::NonSendMut<Audio> audio, ecs::EventWriter<PlaySound> sounds,
+                        const PlaySound3DArguments& arguments) {
+    if (!(arguments.minDistance > 0.0F) || !(arguments.maxDistance >= arguments.minDistance)) {
+        throw exceptions::AudioCallException{
+            std::format("{}: the distances must be 0 < minDistance <= maxDistance, got {} and {}", kPlaySound3DCall,
+                        arguments.minDistance, arguments.maxDistance)};
+    }
+    const PlaySound sound{
+        .sound = arguments.sound,
+        .bus = requireBus(arguments.bus),
+        .volume = arguments.volume,
+        .pitch = arguments.pitch,
+        .place3D = SoundPlace3D{.position = arguments.position,
+                                .minDistance = arguments.minDistance,
+                                .maxDistance = arguments.maxDistance},
+        .loop = arguments.loop,
+        .startAt = arguments.startAt,
+        .lowpass = arguments.lowpass,
+        .voice = audio->nextVoice++,
+    };
+    sounds.send(sound);
+    return VoiceResult{.voice = sound.voice};
+}
+
+void setListener3D(ecs::NonSendMut<Audio> audio, const SetListener3DArguments& arguments) {
+    audio->listener3D = ListenerPose3D{.position = arguments.position, .rotation = arguments.rotation};
+}
+
 TimeResult getTime(ecs::NonSend<Audio> audio) {
     return TimeResult{.time = audio->device ? audio->device->getTime() : 0.0};
 }
@@ -91,6 +120,8 @@ void addAudioCalls(ecs::App& app) {
     addAudioForms(app.getPluginRegistry());
     app.addCall(std::string{kLoadSoundCall}, &loadSound);
     app.addCall(std::string{kPlaySoundCall}, &playSound);
+    app.addCall(std::string{kPlaySound3DCall}, &playSound3D);
+    app.addCall(std::string{kSetListener3DCall}, &setListener3D);
     app.addCall(std::string{kGetTimeCall}, &getTime);
     app.addCall(std::string{kSetVolumeCall}, &setVolume);
     app.addCall(std::string{kSetFilterCall}, &setFilter);
