@@ -150,8 +150,19 @@ TEST_F(MiniaudioDeviceTest, TwoVoicesScheduledOnTheSameTimeStartTogether) {
         }
         std::this_thread::yield();
     }
-    ASSERT_TRUE(firstEnded) << "the first voice never ended";
-    ASSERT_TRUE(secondEnded) << "the second voice never ended";
+    if (!firstEnded || !secondEnded) {
+        // Not ended: a bug only if the audio clock went past their end. A machine whose output is not real time (a CI
+        // runner with no sound card) may not get there in 5 s: that says nothing about scheduling, so it is skipped.
+        const double clock = _device->getTime();
+        const double end = startAt + 0.05;
+        if (clock < end) {
+            _device->destroySound(sound);
+            GTEST_SKIP() << "the audio output is not real time here: its clock reached " << clock << " s in 5 s, the "
+                         << "voices end at " << end << " s";
+        }
+    }
+    ASSERT_TRUE(firstEnded) << "the first voice never ended, though the audio clock passed its end";
+    ASSERT_TRUE(secondEnded) << "the second voice never ended, though the audio clock passed its end";
     // Started in the same audio frame, they end in the same callback: seen at once, far less than a period apart
     // (10 ms), where a voice started a period late would end.
     const auto gap = *firstEnded > *secondEnded ? *firstEnded - *secondEnded : *secondEnded - *firstEnded;
