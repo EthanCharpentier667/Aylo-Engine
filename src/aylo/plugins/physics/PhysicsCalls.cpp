@@ -7,13 +7,16 @@
 
 #include "plugins/physics/PhysicsCalls.hpp"
 
+#include <array>
 #include <cstdint>
 #include <format>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/app/PluginRegistry.hpp"
 #include "aylo/ecs/entity/Entity.hpp"
 #include "aylo/ecs/query/Query.hpp"
 #include "aylo/ecs/system/ResourceParam.hpp"
@@ -188,7 +191,16 @@ void setGravity3D(ecs::ResMut<PhysicsWorld> world, const Gravity3DArguments& arg
 }
 }  // namespace
 
+void addPhysicsForms(ecs::PluginRegistry& registry) {
+    static constexpr auto kForms = std::to_array<char>({
+#include "PhysicsForms.luau.h"
+    });
+    // bin2c ends the bytes with a null terminator, which is not part of the source.
+    registry.addScriptForms("addPhysicsForms", std::string_view{kForms.data(), kForms.size() - 1});
+}
+
 void addPhysicsCalls(ecs::App& app) {
+    addPhysicsForms(app.getPluginRegistry());
     app.addCall(std::string{kRaycastCall}, &raycast);
     app.addCall(std::string{kShapeCastCall}, &shapeCast);
     app.addCall(std::string{kOverlapCall}, &overlap);
