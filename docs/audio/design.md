@@ -31,7 +31,8 @@ added later without touching gameplay code.
 
 - **What a 2D game needs:** one music track with crossfades, a few dozen short sound effects at once, volume per bus
   (music, effects), and left/right panning from where the sound happens on screen. The engine makes every kind of
-  game: sound in 3D (a listener in space, distance attenuation) comes with 3D.
+  game: sound in 3D (a listener in space, distance attenuation) is there for 3D games, `aylo.audio.playSound3D` and
+  the 3D listener (see [Systems](#systems)).
 - **Gameplay never sees a backend.** It loads sounds by path into `AssetId`s, sends events and adds components, as it
   does for sprites. No miniaudio or FMOD type leaves its backend module.
 - **Client only.** The server simulates and replicates; each client decides what to play from what it receives.
@@ -373,6 +374,13 @@ lowpass }` sends a `PlaySound` and returns the voice's id, which scripts cannot 
 `aylo.audio.setVolume { voice, volume }`, `setFilter { voice, lowpass }` and `stopVoice { voice, fadeOut }` send a
 `ControlVoice`. `PlayMusic` and `StopMusic` are plain data: scripts send them as events.
 
+**3D.** `aylo.audio.playSound3D { sound, bus, volume, pitch, position, minDistance, maxDistance, loop, startAt,
+lowpass }` sends a `PlaySound` whose `place3D` (`SoundPlace3D`: a vec3 position in metres and the two distances) is set,
+and returns its voice id; it refuses distances that are not `0 < minDistance <= maxDistance`. `playSound`'s `position`
+stays a 2D point: a `vec3` field of a call refuses a `{ x, y }` table, so making it 3D would have broken every 2D game,
+and the engine names its 3D variants apart (`raycast3D`, `Collider3D`). `aylo.audio.setListener3D { position, rotation }`
+sets `Audio::listener3D`, which wins over an `AudioListener` entity from then on.
+
 **The audio clock and `startAt`.** `IAudioDevice::getTime()` is the number of frames the output has mixed divided by its
 sample rate (miniaudio: `ma_engine_get_time_in_pcm_frames`), so it follows the samples, not the frame rate.
 `PlayParams::startAt` is a time on that clock: miniaudio converts it to a frame (`ma_sound_set_start_time_in_pcm_frames`),
@@ -397,6 +405,7 @@ All are client systems (`setSide(ecs::Side::kClient)`), as the graphics plugin's
 | PostUpdate | `aylo.audio.sounds` | `updateSounds()`: loads the queued sounds, destroys the unloaded ones |
 | PostUpdate | `aylo.audio.play` | plays `PlaySound`, then `StopMusic`, then `PlayMusic` (a play sent with a stop wins); after `aylo.audio.sounds` |
 | PostUpdate | `aylo.audio.sources` | starts new `AudioSource`s, stops removed ones, updates pan and volume; after `aylo.Transform.Propagate` |
+| PostUpdate | `aylo.audio.placed` | forgets the 3D voices that ended, then pans and attenuates the others for where the 3D listener is now; after `aylo.audio.sources` |
 | PostUpdate | `aylo.audio.update` | applies `AudioVolumes` if changed, then `IAudioDevice::update()`; last |
 
 Running in PostUpdate, after the transform propagation, means a sound asked for during this frame's Update is heard in
@@ -408,8 +417,20 @@ instead, for the source and for the listener.
 the plugin keeps the last values it applied, so only a real change reaches the backend.
 
 **Panning**, for a spatial source or a `PlaySound` with a position: `pan = clamp(dx / panDistance, -1, 1)` with `dx`
-the source's x minus the listener's, in world units. Distance attenuation is left out for now: in a 2D game, what is
+the source's x minus the listener's, in world units. Distance attenuation is left out in 2D: in a 2D game, what is
 heard is on screen.
+
+**In 3D** (`Spatial3D.hpp`, `spatialize()`), for a `PlaySound` with a `place3D`: the 3D listener is
+`Audio::listener3D` if a script set it, else the first `AudioListener` entity with a `GlobalTransform3D` (or a
+`Transform3D` and no parent, the frame it spawns). The offset to the sound is turned into the listener's axes (it looks
+along -Z, +X on its right): `pan = local.x / distance`, the sine of the angle from its front, so a sound behind or in
+front is centred. The gain is `minDistance / clamp(distance, minDistance, maxDistance)` (inverse distance, clamped, as
+OpenAL's default model), multiplied with the voice's volume. Without a 3D listener the sound plays centred at full
+volume. A 3D voice is kept in `Audio::placed` with its place and its volume before the distance (`ControlVoice`'s
+volume replaces it), and `aylo.audio.placed` applies both again every frame, so a sound stays where it is in the
+world while the player turns. Computing it in the plugin, like the 2D pan, keeps every backend sounding the same with
+no contract change; `ISpatialAudio` below stays the way to use a backend's own spatialization (HRTF, Doppler) later.
+`AudioSource` is still panned in 2D only.
 
 **A sound not loaded yet** when `PlaySound` arrives (asked for and played in the same frame, file still loading) is
 played once loaded if that happens within the frame, else dropped with no error: a late shot sound is worse than a
