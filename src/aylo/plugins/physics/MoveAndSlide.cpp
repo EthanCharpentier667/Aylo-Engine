@@ -87,11 +87,11 @@ struct Pass3D {
 
 /// @brief The shape, the bodies and the settings of one moveAndSlide3D().
 struct Mover3D {
-    const PhysicsWorld& world;
-    const Collider3D& shape;
-    const QueryFilter& filter;
-    const Slide3DSettings& settings;
-    float minGroundY;  ///< The smallest Y of a normal the shape can stand on: cos(maxSlope).
+    const PhysicsWorld* world;        ///< The bodies that block the shape.
+    const Collider3D* shape;          ///< The shape that moves.
+    const QueryFilter* filter;        ///< Which bodies block it.
+    const Slide3DSettings* settings;  ///< The skin, the slides, the step and the slope.
+    float minGroundY;                 ///< The smallest Y of a normal the shape can stand on: cos(maxSlope).
 
     /// @return Whether a surface of this normal is ground, not a wall.
     [[nodiscard]] bool isGround(const glm::vec3& normal) const noexcept { return normal.y >= minGroundY; }
@@ -102,25 +102,25 @@ struct Mover3D {
     [[nodiscard]] Pass3D slide(glm::vec3 position, const glm::vec3& motion, bool stopOnGround) const {
         Pass3D pass{.position = position};
         glm::vec3 remaining = motion;
-        for (std::uint32_t slide = 0; slide <= settings.maxSlides; ++slide) {
+        for (std::uint32_t slide = 0; slide <= settings->maxSlides; ++slide) {
             const float distance = glm::length(remaining);
             if (distance <= kMinMove) {
                 break;
             }
             const glm::vec3 direction = remaining / distance;
             const std::optional<PhysicsWorld::RayHit3D> hit =
-                world.shapeCast3D(shape, pass.position, kUpright, direction, distance + settings.skin, filter);
+                world->shapeCast3D(*shape, pass.position, kUpright, direction, distance + settings->skin, *filter);
             if (!hit) {
                 pass.position += remaining;
                 break;
             }
             const float facing = -glm::dot(direction, hit->normal);
-            const float backOff = facing > kMinFacing ? settings.skin / facing : settings.skin;
+            const float backOff = facing > kMinFacing ? settings->skin / facing : settings->skin;
             const float travel = std::clamp(hit->distance - backOff, 0.0F, distance);
             pass.position += direction * travel;
             const bool ground = isGround(hit->normal);
             pass.hitWall = pass.hitWall || !ground;
-            if (glm::length(hit->normal) <= kMinMove || slide == settings.maxSlides || (stopOnGround && ground)) {
+            if (glm::length(hit->normal) <= kMinMove || slide == settings->maxSlides || (stopOnGround && ground)) {
                 break;
             }
             const glm::vec3 left = direction * (distance - travel);
@@ -138,15 +138,15 @@ struct Mover3D {
     /// ground. @return Where the step lands, or nothing if it goes no further or lands on no ground.
     [[nodiscard]] std::optional<glm::vec3> step(const glm::vec3& from, const glm::vec3& across,
                                                 const glm::vec3& blocked) const {
-        const Pass3D up = slide(from, kUp * settings.stepHeight, false);
+        const Pass3D up = slide(from, kUp * settings->stepHeight, false);
         const Pass3D side = slide(up.position, across, false);
         const float raised = up.position.y - from.y;
         const std::optional<PhysicsWorld::RayHit3D> below =
-            world.shapeCast3D(shape, side.position, kUpright, -kUp, raised + settings.skin, filter);
+            world->shapeCast3D(*shape, side.position, kUpright, -kUp, raised + settings->skin, *filter);
         if (!below || !isGround(below->normal)) {
             return std::nullopt;  // the step is a ledge over nothing, or a slope too steep
         }
-        const glm::vec3 landed = side.position - (kUp * std::max(below->distance - settings.skin, 0.0F));
+        const glm::vec3 landed = side.position - (kUp * std::max(below->distance - settings->skin, 0.0F));
         const auto level = [&from](const glm::vec3& at) {
             return glm::length(glm::vec2{at.x - from.x, at.z - from.z});
         };
@@ -165,14 +165,14 @@ Slide3DResult moveAndSlide3D(const PhysicsWorld& world, const Collider3D& shape,
             std::format("moveAndSlide3D: the skin and the step height must not be negative, got {} and {}",
                         settings.skin, settings.stepHeight)};
     }
-    if (!(settings.maxSlope >= 0.0F && settings.maxSlope < 90.0F)) {
+    if (!(settings.maxSlope >= 0.0F) || !(settings.maxSlope < 90.0F)) {
         throw exceptions::PhysicsException{
             std::format("moveAndSlide3D: the slope must be in [0, 90) degrees, got {}", settings.maxSlope)};
     }
-    const Mover3D mover{.world = world,
-                        .shape = shape,
-                        .filter = filter,
-                        .settings = settings,
+    const Mover3D mover{.world = &world,
+                        .shape = &shape,
+                        .filter = &filter,
+                        .settings = &settings,
                         .minGroundY = std::cos(glm::radians(settings.maxSlope))};
     const glm::vec3 vertical = kUp * glm::dot(delta, kUp);
     const glm::vec3 across = delta - vertical;
