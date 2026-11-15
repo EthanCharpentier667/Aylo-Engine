@@ -14,6 +14,7 @@
 #include <string_view>
 
 #include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/app/PluginRegistry.hpp"
 #include "aylo/ecs/call/CallTraits.hpp"
 #include "aylo/ecs/entity/Entity.hpp"
 #include "plugins/GlmReflection.hpp"  // IWYU pragma: keep
@@ -241,5 +242,10 @@ AYLO_ECS_CALL_DATA(MoveAndSlide3DResult, "aylo.physics.MoveAndSlide3DResult", po
 /// `applyTorque3D`, `setGravity3D`, `shapeCast3D`, `overlap3D`, `moveAndSlide3D`). A body's velocity and position are
 /// set by writing its Velocity and Transform2D. Called by the PhysicsPlugin.
 void addPhysicsCalls(ecs::App& app);
+
+/// @brief Registers the plugin's forms on @p registry: `engine.physics`, one form per call above, for a system's `run`
+/// (PhysicsForms.luau). Its library does it on every side, and so does building the plugin, for a program without
+/// libraries.
+void addPhysicsForms(ecs::PluginRegistry& registry);
 
 }  // namespace aylo::plugins::physics

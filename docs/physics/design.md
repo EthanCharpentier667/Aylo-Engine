@@ -258,6 +258,13 @@ engine.ecs.system("game.Ships", {
 })
 ```
 
+`engine.physics` (`PhysicsForms.luau`, registered by `addPhysicsForms()` from the library and the plugin's build, as
+the other plugins' forms) gives each call as a form for a system's `run`: `engine.physics.raycast(ctx, origin,
+direction, maxDistance, options)` and so on, 2D and 3D. A form checks its arguments (the shape's keys too, so a
+misspelled field fails), takes a collider read from a query as its shape, makes the call through `ctx.call` (so it is
+listed in `calls` as the call is), prefixes the call's errors with its name, and returns `nil` for a query that hit
+nothing and two values (count, first) for an overlap. See `manual/pages/physics.md#forms`.
+
 ## 10. Network modes and prediction
 
 ```

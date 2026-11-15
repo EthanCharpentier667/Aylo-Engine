@@ -8,6 +8,7 @@
 #include <gtest/gtest.h>
 
 #include <chrono>
+#include <format>
 #include <memory>
 #include <string>
 #include <utility>
@@ -460,4 +461,334 @@ TEST(ScriptPhysics, TheManualsCharacterWalksUpAStepAndStopsAtAWall) {
     // A sphere from x = 0 touches the wall's face (x = 3.5) after 3 m; the box at x = 2 covers the floor and the step.
     EXPECT_EQ(server.run("assert(math.abs(probe.wallDistance - 3) < 0.01, tostring(probe.wallDistance))"), "");
     EXPECT_EQ(server.run("assert(probe.under == 2, tostring(probe.under))"), "");
+}
+
+TEST(ScriptPhysics, TheFormsMoveAShipAndQueryThe2DWorld) {
+    ServerScripts server;
+    ASSERT_EQ(server.run(R"(
+        engine.ecs.component("game.Ship", { fields = {} })
+        local spawned = false
+        engine.ecs.system("game.Spawn", {
+            phase = "Update",
+            run = function(ctx)
+                if spawned then return end
+                spawned = true
+                ctx.commands:spawn({
+                    ["aylo.Transform2D"] = { position = { x = 100, y = 0 } },
+                    ["aylo.Collider"] = { size = { x = 20, y = 200 } },
+                })
+                ctx.commands:spawn({
+                    ["game.Ship"] = {},
+                    ["aylo.Transform2D"] = { position = { x = 0, y = 0 } },
+                    ["aylo.Collider"] = { shape = "circle", radius = 10 },
+                })
+            end,
+        })
+        engine.ecs.system("game.Move", {
+            phase = "FixedUpdate",
+            query = { read = { "aylo.Collider" }, write = { "aylo.Transform2D" }, with = { "game.Ship" } },
+            calls = { "aylo.physics.moveAndSlide", "aylo.physics.raycast", "aylo.physics.shapeCast", "aylo.physics.overlap" },
+            after = { "aylo.Physics.SyncBodies" },
+            before = { "aylo.Physics.SyncToPhysics" },
+            run = function(ctx)
+                for entity, collider, transform in ctx.query do
+                    transform.position = engine.physics.moveAndSlide(ctx, entity, transform.position, { x = 50, y = 0 })
+                    local wall = engine.physics.raycast(ctx, transform.position, { x = 1, y = 0 }, 500, { ignore = entity })
+                    local cast = engine.physics.shapeCast(ctx, collider, { x = 0, y = 0 }, { x = 1, y = 0 }, 500, { ignore = entity })
+                    local missed = engine.physics.raycast(ctx, transform.position, { x = -1, y = 0 }, 500, { ignore = entity })
+                    local count, first = engine.physics.overlap(ctx, { shape = "box", size = { x = 40, y = 40 } }, { x = 100, y = 0 })
+                    probe.shipX = transform.position.x
+                    probe.wallDistance = wall.distance
+                    probe.castDistance = cast.distance
+                    probe.missed = missed == nil
+                    probe.overlapCount = count
+                    probe.overlapFirst = first ~= nil
+                end
+            end,
+        })
+    )"),
+              "");
+
+    server.runFrames();
+
+    // As the calls: stopped a skin (0.5) from the wall's face at x = 90, which the ray hits 10.5 further.
+    EXPECT_EQ(server.run("assert(math.abs(probe.shipX - 79.5) < 0.1, tostring(probe.shipX))"), "");
+    EXPECT_EQ(server.run("assert(math.abs(probe.wallDistance - 10.5) < 0.1, tostring(probe.wallDistance))"), "");
+    // The ship's own collider, swept from x = 0, touches the face after 80.
+    EXPECT_EQ(server.run("assert(math.abs(probe.castDistance - 80) < 0.1, tostring(probe.castDistance))"), "");
+    EXPECT_EQ(server.run("assert(probe.missed, 'a ray that hits nothing gives nil')"), "");
+    // The 40 x 40 box at x = 100 covers the wall and the ship, stopped against it.
+    EXPECT_EQ(server.run("assert(probe.overlapCount == 2 and probe.overlapFirst, tostring(probe.overlapCount))"), "");
+}
+
+TEST(ScriptPhysics, TheFormsMoveACharacterAndQueryThe3DWorld) {
+    ServerScripts server;
+    ASSERT_EQ(server.run(R"(
+        engine.ecs.component("game.Walker", { fields = {} })
+        local spawned = false
+        engine.ecs.system("game.Spawn", {
+            phase = "Update",
+            run = function(ctx)
+                if spawned then return end
+                spawned = true
+                ctx.commands:spawn({
+                    ["aylo.Transform3D"] = { position = vector.create(0, -0.5, 0) },
+                    ["aylo.Collider3D"] = { shape = "box", size = vector.create(20, 1, 20) },
+                })
+                ctx.commands:spawn({
+                    ["aylo.Transform3D"] = { position = vector.create(4, 2, 0) },
+                    ["aylo.Collider3D"] = { shape = "box", size = vector.create(1, 4, 20) },
+                })
+                ctx.commands:spawn({
+                    ["game.Walker"] = {},
+                    ["aylo.Transform3D"] = { position = vector.create(0, 1, 0) },
+                    ["aylo.Collider3D"] = { shape = "capsule", radius = 0.3, halfHeight = 0.6 },
+                    ["aylo.RigidBody"] = { type = "kinematic" },
+                })
+            end,
+        })
+        engine.ecs.system("game.Walk", {
+            phase = "FixedUpdate",
+            query = { read = { "aylo.Collider3D" }, write = { "aylo.Transform3D" }, with = { "game.Walker" } },
+            calls = {
+                "aylo.physics.moveAndSlide3D", "aylo.physics.raycast3D", "aylo.physics.shapeCast3D",
+                "aylo.physics.overlap3D",
+            },
+            after = { "aylo.Physics.SyncBodies" },
+            before = { "aylo.Physics.SyncToPhysics" },
+            run = function(ctx)
+                for entity, collider, transform in ctx.query do
+                    local moved = engine.physics.moveAndSlide3D(ctx, entity, transform.position,
+                        vector.create(0.2, -0.1, 0), { stepHeight = 0.3 })
+                    transform.position = moved.position
+                    local ground = engine.physics.raycast3D(ctx, transform.position, vector.create(0, -1, 0), 5, { ignore = entity })
+                    local cast = engine.physics.shapeCast3D(ctx, collider, vector.create(0, 2, 0), vector.create(1, 0, 0), 10,
+                        { ignore = entity, rotation = engine.math.quat.identity() })
+                    local count = engine.physics.overlap3D(ctx, { shape = "sphere", radius = 0.5 }, vector.create(4, 2, 0))
+                    probe.x = transform.position.x
+                    probe.grounded = moved.grounded
+                    probe.groundDistance = ground.distance
+                    probe.castDistance = cast.distance
+                    probe.overlapCount = count
+                end
+            end,
+        })
+    )"),
+              "");
+
+    for (int frame = 0; frame < 40; ++frame) {
+        server.app.runFrame();
+    }
+
+    // Walked to the wall (its face at x = 3.5), a skin and the radius from it, standing on the floor.
+    EXPECT_EQ(server.run("assert(math.abs(probe.x - 3.18) < 0.02, tostring(probe.x))"), "");
+    EXPECT_EQ(server.run("assert(probe.grounded, 'not grounded')"), "");
+    EXPECT_EQ(server.run("assert(math.abs(probe.groundDistance - 0.92) < 0.02, tostring(probe.groundDistance))"), "");
+    // The capsule (radius 0.3), swept from x = 0, touches the face after 3.2 m.
+    EXPECT_EQ(server.run("assert(math.abs(probe.castDistance - 3.2) < 0.02, tostring(probe.castDistance))"), "");
+    EXPECT_EQ(server.run("assert(probe.overlapCount == 1, tostring(probe.overlapCount))"), "");
+}
+
+TEST(ScriptPhysics, TheFormsSayWhatIsWrongWithTheirArguments) {
+    ServerScripts server;
+    ASSERT_EQ(server.run(R"(
+        engine.ecs.system("game.Misuse", {
+            phase = "Update",
+            calls = { "aylo.physics.raycast", "aylo.physics.shapeCast3D", "aylo.physics.moveAndSlide3D" },
+            run = function(ctx)
+                local function message(f)
+                    local done, err = pcall(f)
+                    return if done then "no error" else tostring(err)
+                end
+                probe.noContext = message(function() engine.physics.raycast(nil, { x = 0, y = 0 }, { x = 1, y = 0 }, 10) end)
+                probe.badVector = message(function() engine.physics.raycast(ctx, 3, { x = 1, y = 0 }, 10) end)
+                probe.badOption = message(function() engine.physics.raycast(ctx, { x = 0, y = 0 }, { x = 1, y = 0 }, 10, { ignor = 1 }) end)
+                probe.misspelled = message(function()
+                    engine.physics.shapeCast3D(ctx, { shape = "sphere", raduis = 1 }, vector.zero, vector.one, 10)
+                end)
+                probe.badRotation = message(function()
+                    engine.physics.shapeCast3D(ctx, { shape = "sphere" }, vector.zero, vector.one, 10, { rotation = 1 })
+                end)
+                probe.noCollider = message(function()
+                    engine.physics.moveAndSlide3D(ctx, ctx.commands:spawn({}), vector.zero, vector.one)
+                end)
+                probe.notListed = message(function() engine.physics.overlap(ctx, { shape = "circle" }, { x = 0, y = 0 }) end)
+            end,
+        })
+    )"),
+              "");
+
+    server.app.runFrame();
+
+    const auto says = [&server](const std::string& field, const std::string& text) {
+        return server.run(std::format("assert(string.find(probe.{}, {}, 1, true), probe.{})", field,
+                                      std::format("\"{}\"", text), field));
+    };
+    EXPECT_EQ(says("noContext", "engine.physics.raycast: expected the system's ctx first"), "");
+    EXPECT_EQ(says("badVector", "engine.physics.raycast: 'origin' must be a table { x, y }"), "");
+    EXPECT_EQ(says("badOption", "engine.physics.raycast: the options"), "");
+    EXPECT_EQ(says("misspelled", "engine.physics.shapeCast3D: the shape"), "");
+    EXPECT_EQ(says("misspelled", "raduis"), "");
+    EXPECT_EQ(says("badRotation", "'rotation' must be a quaternion"), "");
+    EXPECT_EQ(says("noCollider", "engine.physics.moveAndSlide3D: "), "");
+    EXPECT_EQ(says("noCollider", "has no Collider3D"), "");
+    EXPECT_EQ(says("notListed", "engine.physics.overlap: "), "");
+}
+
+TEST(ScriptPhysics, TheFormsPushBodiesAndSetTheGravity) {
+    ServerScripts server;
+    ASSERT_EQ(server.run(R"(
+        engine.ecs.component("game.Ball", { fields = {} })
+        engine.ecs.component("game.Puck", { fields = {} })
+        local spawned, pushed = false, false
+        engine.ecs.system("game.Spawn", {
+            phase = "Update",
+            run = function(ctx)
+                if spawned then return end
+                spawned = true
+                ctx.commands:spawn({
+                    ["game.Ball"] = {},
+                    ["aylo.Transform3D"] = { position = vector.create(0, 5, 0) },
+                    ["aylo.Collider3D"] = { shape = "sphere", radius = 0.5 },
+                    ["aylo.RigidBody"] = {},
+                })
+                ctx.commands:spawn({
+                    ["game.Puck"] = {},
+                    ["aylo.Transform2D"] = { position = { x = 0, y = 0 } },
+                    ["aylo.Collider"] = { shape = "circle", radius = 10 },
+                    ["aylo.RigidBody"] = {},
+                })
+            end,
+        })
+        engine.ecs.system("game.Push", {
+            phase = "FixedUpdate",
+            query = { read = { "game.Ball" } },
+            calls = {
+                "aylo.physics.setGravity3D", "aylo.physics.setGravity", "aylo.physics.applyImpulse3D",
+                "aylo.physics.applyForce3D", "aylo.physics.applyTorque3D",
+            },
+            after = { "aylo.Physics.SyncBodies" },
+            before = { "aylo.Physics.SyncToPhysics" },
+            run = function(ctx)
+                for ball in ctx.query do
+                    if not pushed then
+                        pushed = true
+                        engine.physics.setGravity3D(ctx, vector.zero) -- it floats
+                        engine.physics.setGravity(ctx, { x = 0, y = 0 })
+                        engine.physics.applyImpulse3D(ctx, ball, vector.create(2, 0, 0))
+                        engine.physics.applyForce3D(ctx, ball, { x = 0, y = 0, z = 0 })
+                        engine.physics.applyTorque3D(ctx, ball, vector.create(0, 1, 0))
+                    end
+                end
+            end,
+        })
+        engine.ecs.system("game.Puck", {
+            phase = "FixedUpdate",
+            query = { read = { "game.Puck" } },
+            calls = { "aylo.physics.applyImpulse", "aylo.physics.applyForce", "aylo.physics.applyTorque" },
+            after = { "aylo.Physics.SyncBodies", "game.Push" },
+            before = { "aylo.Physics.SyncToPhysics" },
+            run = function(ctx)
+                for puck in ctx.query do
+                    engine.physics.applyImpulse(ctx, puck, { x = 50, y = 0 })
+                    engine.physics.applyForce(ctx, puck, { x = 0, y = 0 })
+                    engine.physics.applyTorque(ctx, puck, 0)
+                end
+            end,
+        })
+        engine.ecs.system("game.Look", {
+            phase = "FixedUpdate",
+            after = { "aylo.Physics.Events" },
+            query = { read = { "aylo.Transform3D" }, with = { "game.Ball" } },
+            run = function(ctx)
+                for _, transform in ctx.query do
+                    probe.ballX = transform.position.x
+                    probe.ballY = transform.position.y
+                end
+            end,
+        })
+        engine.ecs.system("game.LookPuck", {
+            phase = "FixedUpdate",
+            after = { "aylo.Physics.Events" },
+            query = { read = { "aylo.Transform2D" }, with = { "game.Puck" } },
+            run = function(ctx)
+                for _, transform in ctx.query do
+                    probe.puckX = transform.position.x
+                end
+            end,
+        })
+    )"),
+              "");
+
+    server.runFrames();
+
+    // No gravity: the ball keeps its height and goes the way it was pushed; the puck too.
+    EXPECT_EQ(server.run("assert(math.abs(probe.ballY - 5) < 0.05, tostring(probe.ballY))"), "");
+    EXPECT_EQ(server.run("assert(probe.ballX > 0.05, tostring(probe.ballX))"), "");
+    EXPECT_EQ(server.run("assert(probe.puckX > 1, tostring(probe.puckX))"), "");
+}
+
+// The example of the manual's forms (physics.md, "Forms"), as it is written there.
+constexpr const char* kManualForms = R"(
+engine.ecs.system("game.Move", {
+	phase = "FixedUpdate",
+	query = { read = { "aylo.Collider" }, write = { "aylo.Transform2D" }, with = { "game.Ship" } },
+	calls = { "aylo.physics.moveAndSlide", "aylo.physics.raycast", "aylo.physics.shapeCast" },
+	after = { "aylo.Physics.SyncBodies" },
+	before = { "aylo.Physics.SyncToPhysics" },
+	run = function(ctx)
+		for entity, collider, transform in ctx.query do
+			transform.position = engine.physics.moveAndSlide(ctx, entity, transform.position, { x = 50, y = 0 })
+			local wall = engine.physics.raycast(ctx, transform.position, { x = 1, y = 0 }, 500, { ignore = entity })
+			if wall then
+				print("a wall", wall.distance, "away")
+			end
+			-- the ship's own collider, swept forward
+			local ahead = engine.physics.shapeCast(ctx, collider, transform.position, { x = 1, y = 0 }, 200, { ignore = entity })
+		end
+	end,
+})
+)";
+
+TEST(ScriptPhysics, TheManualsFormsExampleMovesTheShip) {
+    ServerScripts server;
+    ASSERT_EQ(server.run(R"(
+        engine.ecs.component("game.Ship", { fields = {} })
+        local spawned = false
+        engine.ecs.system("game.Spawn", {
+            phase = "Update",
+            run = function(ctx)
+                if spawned then return end
+                spawned = true
+                ctx.commands:spawn({
+                    ["aylo.Transform2D"] = { position = { x = 100, y = 0 } },
+                    ["aylo.Collider"] = { size = { x = 20, y = 200 } },
+                })
+                ctx.commands:spawn({
+                    ["game.Ship"] = {},
+                    ["aylo.Transform2D"] = { position = { x = 0, y = 0 } },
+                    ["aylo.Collider"] = { shape = "circle", radius = 10 },
+                })
+            end,
+        })
+        engine.ecs.system("game.Look", {
+            phase = "FixedUpdate",
+            after = { "aylo.Physics.Events" },
+            query = { read = { "aylo.Transform2D" }, with = { "game.Ship" } },
+            run = function(ctx)
+                for _, transform in ctx.query do
+                    probe.shipX = transform.position.x
+                end
+            end,
+        })
+    )"),
+              "");
+    ASSERT_EQ(server.run(kManualForms), "");
+
+    testing::internal::CaptureStderr();
+    server.runFrames();
+    const std::string errors = testing::internal::GetCapturedStderr();
+
+    EXPECT_EQ(errors, "");
+    EXPECT_EQ(server.run("assert(math.abs(probe.shipX - 79.5) < 0.1, tostring(probe.shipX))"), "");
 }

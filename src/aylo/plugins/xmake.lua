@@ -120,6 +120,7 @@ plugin("audio", {"contract-audiodevice", "plugin-transform"})
 
 plugin("physics", {"plugin-transform"})
     add_files("physics/**.cpp|debug/**.cpp")
+    add_files("physics/PhysicsForms.luau")
     add_headerfiles("physics/**.hpp|debug/**.hpp", "physics/**.tpp")
     -- The physics engine. Private: only physics .cpp files and physics/detail/ include Jolt.
     add_packages("joltphysics")
