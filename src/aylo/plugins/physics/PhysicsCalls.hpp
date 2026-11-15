@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <glm/ext/vector_float2.hpp>
 #include <glm/ext/vector_float3.hpp>
+#include <glm/ext/vector_float4.hpp>
 #include <string_view>
 
 #include "aylo/ecs/app/App.hpp"
@@ -17,6 +18,7 @@
 #include "aylo/ecs/entity/Entity.hpp"
 #include "plugins/GlmReflection.hpp"  // IWYU pragma: keep
 #include "plugins/physics/Collider.hpp"
+#include "plugins/physics/Collider3D.hpp"
 
 namespace aylo::plugins::physics {
 
@@ -35,6 +37,10 @@ inline constexpr std::string_view kApplyImpulse3DCall =
 inline constexpr std::string_view kApplyTorque3DCall =
     "aylo.physics.applyTorque3D";                                                   ///< PhysicsWorld::applyTorque3D().
 inline constexpr std::string_view kSetGravity3DCall = "aylo.physics.setGravity3D";  ///< PhysicsWorld::setGravity3D().
+inline constexpr std::string_view kShapeCast3DCall = "aylo.physics.shapeCast3D";    ///< PhysicsWorld::shapeCast3D().
+inline constexpr std::string_view kOverlap3DCall = "aylo.physics.overlap3D";        ///< PhysicsWorld::overlap3D().
+inline constexpr std::string_view kMoveAndSlide3DCall =
+    "aylo.physics.moveAndSlide3D";  ///< moveAndSlide3D() an entity: a character controller.
 
 /// @brief The arguments of `aylo.physics.raycast`: a ray and the QueryFilter of the bodies it sees.
 struct RaycastArguments {
@@ -171,11 +177,69 @@ struct Gravity3DArguments {
 };
 AYLO_ECS_CALL_DATA(Gravity3DArguments, "aylo.physics.Gravity3DArguments", gravity);
 
+/// @brief The arguments of `aylo.physics.shapeCast3D`: a 3D shape (the shape fields of a Collider3D), where it starts,
+/// how it is turned, where it goes, and the QueryFilter of the bodies it sees.
+struct ShapeCast3DArguments {
+    Shape3DType shape{Shape3DType::kBox};        ///< Collider3D::shape.
+    glm::vec3 size{1.0F};                        ///< Collider3D::size.
+    float radius{0.5F};                          ///< Collider3D::radius.
+    float halfHeight{0.5F};                      ///< Collider3D::halfHeight.
+    glm::vec3 offset{0.0F};                      ///< Collider3D::offset.
+    glm::vec3 from{0.0F};                        ///< Where the shape starts, in metres.
+    glm::vec4 rotation{0.0F, 0.0F, 0.0F, 1.0F};  ///< How it is turned, a quaternion x, y, z, w: none by default.
+    glm::vec3 direction{0.0F, 0.0F, -1.0F};      ///< Where it goes; its length does not matter.
+    float maxDistance{0.0F};                     ///< How far it goes, in metres.
+    std::uint32_t mask{kAllLayers};              ///< QueryFilter::mask.
+    ecs::Entity ignore;                          ///< QueryFilter::ignore; null skips none.
+    bool includeSensors{false};                  ///< QueryFilter::includeSensors.
+};
+AYLO_ECS_CALL_DATA(ShapeCast3DArguments, "aylo.physics.ShapeCast3DArguments", shape, size, radius, halfHeight, offset,
+                   from, rotation, direction, maxDistance, mask, ignore, includeSensors);
+
+/// @brief The arguments of `aylo.physics.overlap3D`: a 3D shape placed somewhere and the QueryFilter of the bodies it
+/// sees. The result is an OverlapResult.
+struct Overlap3DArguments {
+    Shape3DType shape{Shape3DType::kBox};        ///< Collider3D::shape.
+    glm::vec3 size{1.0F};                        ///< Collider3D::size.
+    float radius{0.5F};                          ///< Collider3D::radius.
+    float halfHeight{0.5F};                      ///< Collider3D::halfHeight.
+    glm::vec3 offset{0.0F};                      ///< Collider3D::offset.
+    glm::vec3 at{0.0F};                          ///< Where the shape is, in metres.
+    glm::vec4 rotation{0.0F, 0.0F, 0.0F, 1.0F};  ///< How it is turned, a quaternion x, y, z, w: none by default.
+    std::uint32_t mask{kAllLayers};              ///< QueryFilter::mask.
+    ecs::Entity ignore;                          ///< QueryFilter::ignore; null skips none.
+    bool includeSensors{false};                  ///< QueryFilter::includeSensors.
+};
+AYLO_ECS_CALL_DATA(Overlap3DArguments, "aylo.physics.Overlap3DArguments", shape, size, radius, halfHeight, offset, at,
+                   rotation, mask, ignore, includeSensors);
+
+/// @brief The arguments of `aylo.physics.moveAndSlide3D`: the entity whose Collider3D moves, and Slide3DSettings.
+struct MoveAndSlide3DArguments {
+    ecs::Entity entity;           ///< The entity that moves: its Collider3D is the shape and its mask the filter.
+    glm::vec3 from{0.0F};         ///< Where it starts (its Transform3D's position), in metres.
+    glm::vec3 delta{0.0F};        ///< How far it would move without obstacles, in metres, the gravity included.
+    float skin{0.02F};            ///< Slide3DSettings::skin.
+    std::uint32_t maxSlides{4U};  ///< Slide3DSettings::maxSlides.
+    float stepHeight{0.0F};       ///< Slide3DSettings::stepHeight.
+    float maxSlope{45.0F};        ///< Slide3DSettings::maxSlope, in degrees.
+};
+AYLO_ECS_CALL_DATA(MoveAndSlide3DArguments, "aylo.physics.MoveAndSlide3DArguments", entity, from, delta, skin,
+                   maxSlides, stepHeight, maxSlope);
+
+/// @brief The result of `aylo.physics.moveAndSlide3D`: Slide3DResult.
+struct MoveAndSlide3DResult {
+    glm::vec3 position{0.0F};      ///< Where the entity ends, in metres.
+    bool grounded{false};          ///< Whether it stands on ground no steeper than maxSlope.
+    glm::vec3 groundNormal{0.0F};  ///< That ground's normal; zero when not grounded.
+    ecs::Entity ground;            ///< The entity it stands on; null when not grounded.
+};
+AYLO_ECS_CALL_DATA(MoveAndSlide3DResult, "aylo.physics.MoveAndSlide3DResult", position, grounded, groundNormal, ground);
+
 /// @brief Registers the physics engine calls on @p app, for scripts, on the `aylo.PhysicsWorld` resource: the scene
 /// queries (`raycast`, `shapeCast`, `overlap`), `moveAndSlide`, the body pushes (`applyForce`, `applyImpulse`,
 /// `applyTorque`), `setGravity`, and their 3D counterparts (`raycast3D`, `applyForce3D`, `applyImpulse3D`,
-/// `applyTorque3D`, `setGravity3D`). A body's velocity and position are set by writing its Velocity and Transform2D.
-/// Called by the PhysicsPlugin.
+/// `applyTorque3D`, `setGravity3D`, `shapeCast3D`, `overlap3D`, `moveAndSlide3D`). A body's velocity and position are
+/// set by writing its Velocity and Transform2D. Called by the PhysicsPlugin.
 void addPhysicsCalls(ecs::App& app);
 
 }  // namespace aylo::plugins::physics
