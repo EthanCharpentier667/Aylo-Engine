@@ -45,6 +45,7 @@
 #include "plugins/audio/AudioResources.hpp"
 #include "plugins/audio/AudioSource.hpp"
 #include "plugins/audio/AudioVolumes.hpp"
+#include "plugins/audio/Spatial3D.hpp"
 #include "plugins/transform/Transform.hpp"
 #include "plugins/transform/TransformPlugin.hpp"
 
@@ -77,6 +78,33 @@ using Listeners =
         }
     }
     return std::nullopt;
+}
+
+/// @brief The entities that hear in 3D: the first one placed is the 3D listener.
+using Listeners3D =
+    ecs::Query<ecs::Optional<const transform::GlobalTransform3D>, ecs::Optional<const transform::Transform3D>,
+               ecs::Optional<const ecs::Parent>, ecs::With<AudioListener>>;
+
+/// @return Where the 3D listener is and faces: the pose `aylo.audio.setListener3D` gave, else the first entity with an
+/// AudioListener and a GlobalTransform3D (or a Transform3D and no parent, the frame it spawns); nothing without one.
+[[nodiscard]] std::optional<ListenerPose3D> findListener3D(const Audio& audio, Listeners3D& listeners) {
+    if (audio.listener3D) {
+        return audio.listener3D;
+    }
+    for (auto [entity, global, local, parent] : listeners) {
+        if (global != nullptr) {
+            return ListenerPose3D{.position = global->position, .rotation = global->rotation};
+        }
+        if (local != nullptr && parent == nullptr) {
+            return ListenerPose3D{.position = local->position, .rotation = local->rotation};
+        }
+    }
+    return std::nullopt;
+}
+
+/// @return How the 3D listener hears a sound at @p place: centred at full volume without a listener.
+[[nodiscard]] Spatial3D hear(const SoundPlace3D& place, const std::optional<ListenerPose3D>& listener) noexcept {
+    return listener ? spatialize(place, *listener) : Spatial3D{};
 }
 
 /// @return The pan of a sound at @p position for a listener at @p listener: -1 left, 0 centre, 1 right; 0 when either
@@ -155,23 +183,35 @@ void startPendingMusic(Audio& audio, const AudioAssets& sounds) {
 /// @brief PostUpdate: plays the one-shot sounds, then the music events.
 void playEvents(ecs::NonSendMut<Audio> audio, ecs::Res<AudioAssets> sounds, ecs::EventReader<PlaySound> playSounds,
                 ecs::EventReader<ControlVoice> controls, ecs::EventReader<StopMusic> stopMusics,
-                ecs::EventReader<PlayMusic> playMusics, Listeners listeners) {
+                ecs::EventReader<PlayMusic> playMusics, Listeners listeners, Listeners3D listeners3D) {
     if (!audio->device) {
         return;
     }
     const std::optional<glm::vec2> listener = findListener(listeners);
+    const std::optional<ListenerPose3D> listener3D = findListener3D(*audio, listeners3D);
     for (const PlaySound& event : playSounds) {
         if (const std::optional<contract::audiodevice::SoundId> sound = sounds->getSound(event.sound)) {
-            const contract::audiodevice::VoiceId voice = audio->device->play(
-                *sound, contract::audiodevice::PlayParams{.bus = event.bus,
-                                                          .volume = event.volume,
-                                                          .pitch = event.pitch,
-                                                          .pan = panOf(event.position, listener, audio->panDistance),
-                                                          .loop = event.loop,
-                                                          .startAt = event.startAt,
-                                                          .lowpass = event.lowpass});
+            float pan = panOf(event.position, listener, audio->panDistance);
+            float volume = event.volume;
+            if (event.place3D) {
+                const Spatial3D heard = hear(*event.place3D, listener3D);
+                pan = heard.pan;
+                volume *= heard.gain;
+            }
+            const contract::audiodevice::VoiceId voice =
+                audio->device->play(*sound, contract::audiodevice::PlayParams{.bus = event.bus,
+                                                                              .volume = volume,
+                                                                              .pitch = event.pitch,
+                                                                              .pan = pan,
+                                                                              .loop = event.loop,
+                                                                              .startAt = event.startAt,
+                                                                              .lowpass = event.lowpass});
             if (event.voice != 0) {
                 audio->scripted.insert_or_assign(event.voice, voice);
+            }
+            if (event.place3D) {
+                audio->placed.push_back(PlacedVoice{
+                    .voice = voice, .script = event.voice, .place = *event.place3D, .volume = event.volume});
             }
         }
     }
@@ -182,6 +222,12 @@ void playEvents(ecs::NonSendMut<Audio> audio, ecs::Res<AudioAssets> sounds, ecs:
         }
         if (event.volume) {
             audio->device->setVolume(found->second, *event.volume);
+            // A 3D voice keeps it as its volume before the distance: aylo.audio.placed applies both this frame.
+            for (PlacedVoice& placed : audio->placed) {
+                if (placed.script == event.voice) {
+                    placed.volume = *event.volume;
+                }
+            }
         }
         if (event.lowpass) {
             audio->device->setLowpass(found->second, *event.lowpass);
@@ -245,6 +291,21 @@ void followSources(ecs::NonSendMut<Audio> audio, ecs::Res<AudioAssets> sounds,
     audio->sources = std::move(kept);
 }
 
+/// @brief PostUpdate: pans and attenuates each 3D voice for where the 3D listener is now, and forgets those that ended.
+void followPlaced(ecs::NonSendMut<Audio> audio, Listeners3D listeners3D) {
+    if (!audio->device) {
+        return;
+    }
+    contract::audiodevice::IAudioDevice& device = *audio->device;
+    std::erase_if(audio->placed, [&device](const PlacedVoice& placed) { return !device.isPlaying(placed.voice); });
+    const std::optional<ListenerPose3D> listener3D = findListener3D(*audio, listeners3D);
+    for (const PlacedVoice& placed : audio->placed) {
+        const Spatial3D heard = hear(placed.place, listener3D);
+        device.setPan(placed.voice, heard.pan);
+        device.setVolume(placed.voice, placed.volume * heard.gain);
+    }
+}
+
 /// @brief PostUpdate: applies the volumes that changed, then lets the backend reclaim its voices.
 void updateDevice(ecs::NonSendMut<Audio> audio, ecs::Res<plugins::audio::AudioVolumes> volumes) {
     if (!audio->device) {
@@ -292,8 +353,11 @@ void AudioPlugin::build(ecs::App& app) {
     app.addSystem(ecs::Phase::kPostUpdate, std::string{kSourcesSystem}, &followSources)
         .after(std::string{kPlaySystem})
         .setSide(ecs::Side::kClient);
-    app.addSystem(ecs::Phase::kPostUpdate, std::string{kUpdateSystem}, &updateDevice)
+    app.addSystem(ecs::Phase::kPostUpdate, std::string{kPlacedSystem}, &followPlaced)
         .after(std::string{kSourcesSystem})
+        .setSide(ecs::Side::kClient);
+    app.addSystem(ecs::Phase::kPostUpdate, std::string{kUpdateSystem}, &updateDevice)
+        .after(std::string{kPlacedSystem})
         .setSide(ecs::Side::kClient);
 }
 }  // namespace aylo::plugins::audio

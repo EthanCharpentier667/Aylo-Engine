@@ -11,7 +11,9 @@
 
 namespace aylo::plugins::audio {
 /// @brief Where the player hears from: sounds are panned relative to the GlobalTransform2D of the entity with this
-/// component (usually the camera). Without one, nothing is panned; with several, the first one found wins.
+/// component (usually the camera); with a GlobalTransform3D, it is the 3D listener the 3D sounds are panned and
+/// attenuated for (unless `aylo.audio.setListener3D` set one). Without one, nothing is panned; with several, the first
+/// one found wins.
 struct AudioListener {};
 AYLO_ECS_COMPONENT(AudioListener, "aylo.AudioListener");
 }  // namespace aylo::plugins::audio

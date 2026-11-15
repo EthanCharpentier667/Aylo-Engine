@@ -39,8 +39,10 @@ namespace aylo::plugins::audio {
 ///
 /// Panning: pan = (x - listener x) / panDistance, clamped to [-1, 1], from the GlobalTransforms of the source and of
 /// the AudioListener (their Transform2D in the frame they spawn, before they get a GlobalTransform2D); no listener, no
-/// panning. It also inserts the AudioAssets and AudioVolumes resources (unless the game did), registers
-/// AudioSource, AudioListener and the events, and adds the TransformPlugin (nothing happens if it was added first).
+/// panning. 3D sounds (PlaySound::place3D) are panned and attenuated by spatialize() for the 3D listener, at play
+/// time and again every frame by "aylo.audio.placed". It also inserts the AudioAssets and AudioVolumes resources
+/// (unless the game did), registers AudioSource, AudioListener and the events, and adds the TransformPlugin (nothing
+/// happens if it was added first).
 /// @code
 /// auto audio = std::make_unique<aylo::plugins::audio::AudioRegistry>();
 /// aylo::audio::miniaudio::registerAudio(audio->devices);
@@ -53,6 +55,7 @@ class AYLO_PLUGIN_AUDIO_API AudioPlugin : public ecs::Plugin {
     static constexpr std::string_view kSoundsSystem = "aylo.audio.sounds";    ///< PostUpdate: loads the sounds.
     static constexpr std::string_view kPlaySystem = "aylo.audio.play";        ///< PostUpdate: plays the events.
     static constexpr std::string_view kSourcesSystem = "aylo.audio.sources";  ///< PostUpdate: follows the sources.
+    static constexpr std::string_view kPlacedSystem = "aylo.audio.placed";    ///< PostUpdate: follows the 3D voices.
     static constexpr std::string_view kUpdateSystem = "aylo.audio.update";    ///< PostUpdate: updates the device.
 
     /// @param registry The audio backends, registered by the executable.
