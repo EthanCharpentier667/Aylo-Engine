@@ -323,6 +323,28 @@ class AYLO_PLUGIN_PHYSICS_API PhysicsWorld {
     /// @brief Casts a ray among the 3D bodies and returns every body it hits, closest first: one hit per body.
     [[nodiscard]] std::vector<RayHit3D> raycastAll3D(const glm::vec3& origin, const glm::vec3& direction,
                                                      float maxDistance, const QueryFilter& filter = {}) const;
+    /// @brief Sweeps a 3D shape along a direction among the 3D bodies and returns the first it would touch, as
+    /// shapeCast(). The shape keeps its rotation along the sweep.
+    /// @param shape The shape to sweep: only its shape fields are read (shape, size, radius, halfHeight, offset).
+    /// @param from Where the shape starts (its Transform3D's position), in metres.
+    /// @param rotation How it is turned, a quaternion x, y, z, w (normalized here; zero is the identity).
+    /// @param direction Where it goes; normalized here, so its length does not matter.
+    /// @param maxDistance How far it goes, in metres.
+    /// @param filter Which bodies it sees.
+    /// @return The first hit, its distance being how far the shape travels before touching (0 if it starts inside a
+    /// body); or nothing.
+    /// @throws exceptions::PhysicsException When the shape is invalid (as for a Collider3D).
+    [[nodiscard]] std::optional<RayHit3D> shapeCast3D(const Collider3D& shape, const glm::vec3& from,
+                                                      const glm::vec4& rotation, const glm::vec3& direction,
+                                                      float maxDistance, const QueryFilter& filter = {}) const;
+    /// @brief Lists the entities whose 3D bodies overlap a 3D shape placed somewhere, as overlap(): one per entity.
+    /// @param shape The shape: only its shape fields are read.
+    /// @param at Where it is (its Transform3D's position), in metres.
+    /// @param rotation How it is turned, a quaternion x, y, z, w (normalized here; zero is the identity).
+    /// @param filter Which bodies it sees.
+    /// @throws exceptions::PhysicsException When the shape is invalid (as for a Collider3D).
+    [[nodiscard]] std::vector<ecs::Entity> overlap3D(const Collider3D& shape, const glm::vec3& at,
+                                                     const glm::vec4& rotation, const QueryFilter& filter = {}) const;
     /// @}
 
   private:

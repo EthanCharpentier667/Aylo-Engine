@@ -358,3 +358,106 @@ TEST(ScriptPhysics, TheManualsHopperPushesA3DBallUp) {
     // An impulse of 4 on 1 kg is 4 m/s up: well above the resting height (0.5) within a few ticks.
     EXPECT_EQ(server.run("assert(probe.highest > 0.6, tostring(probe.highest))"), "");
 }
+
+// The character of the manual (physics.md, "A character in 3D"), as it is written there.
+constexpr const char* kManualCharacter = R"(
+-- Your input system writes wish: where the player wants to go, length 0 to 1, and jump.
+engine.ecs.component("game.Player", { fields = { wish = "vec3", jump = "bool", fall = "f32", grounded = "bool" } })
+
+local speed = 5 -- metres per second
+local gravity = -20 -- metres per second squared
+local jumpSpeed = 7 -- metres per second, up
+
+engine.ecs.system("game.Walk", {
+	phase = "FixedUpdate",
+	query = { write = { "aylo.Transform3D", "game.Player" } },
+	calls = { "aylo.physics.moveAndSlide3D" },
+	after = { "aylo.Physics.SyncBodies" },
+	before = { "aylo.Physics.SyncToPhysics" },
+	run = function(ctx)
+		local dt = ctx.fixedDelta
+		for entity, transform, player in ctx.query do
+			if player.grounded then
+				player.fall = if player.jump then jumpSpeed else 0
+			end
+			player.fall += gravity * dt
+			local moved = ctx.call("aylo.physics.moveAndSlide3D", {
+				entity = entity,
+				from = transform.position,
+				delta = player.wish * (speed * dt) + vector.create(0, player.fall * dt, 0),
+				stepHeight = 0.3,
+			})
+			transform.position = moved.position
+			player.grounded = moved.grounded
+		end
+	end,
+})
+)";
+
+TEST(ScriptPhysics, TheManualsCharacterWalksUpAStepAndStopsAtAWall) {
+    ServerScripts server;
+    ASSERT_EQ(server.run(kManualCharacter), "");
+    ASSERT_EQ(server.run(R"(
+        local spawned = false
+        engine.ecs.system("game.Level", {
+            phase = "Update",
+            run = function(ctx)
+                if spawned then return end
+                spawned = true
+                -- the floor (top at y = 0), a step 0.25 m high from x = 1, a wall whose face is at x = 3.5
+                ctx.commands:spawn({
+                    ["aylo.Transform3D"] = { position = vector.create(0, -0.5, 0) },
+                    ["aylo.Collider3D"] = { shape = "box", size = vector.create(20, 1, 20) },
+                })
+                ctx.commands:spawn({
+                    ["aylo.Transform3D"] = { position = vector.create(2.5, 0.125, 0) },
+                    ["aylo.Collider3D"] = { shape = "box", size = vector.create(3, 0.25, 20) },
+                })
+                ctx.commands:spawn({
+                    ["aylo.Transform3D"] = { position = vector.create(4, 2, 0) },
+                    ["aylo.Collider3D"] = { shape = "box", size = vector.create(1, 4, 20) },
+                })
+                ctx.commands:spawn({
+                    ["game.Player"] = { wish = vector.create(1, 0, 0) },
+                    ["aylo.Transform3D"] = { position = vector.create(0, 1, 0) },
+                    ["aylo.Collider3D"] = { shape = "capsule", radius = 0.3, halfHeight = 0.6 },
+                    ["aylo.RigidBody"] = { type = "kinematic" },
+                })
+            end,
+        })
+        engine.ecs.system("game.Look", {
+            phase = "FixedUpdate",
+            after = { "aylo.Physics.Events" },  -- after the step, so after game.Walk too
+            query = { read = { "aylo.Transform3D", "game.Player" } },
+            calls = { "aylo.physics.shapeCast3D", "aylo.physics.overlap3D" },
+            run = function(ctx)
+                for entity, transform, player in ctx.query do
+                    probe.x = transform.position.x
+                    probe.y = transform.position.y
+                    probe.grounded = player.grounded
+                    local hit = ctx.call("aylo.physics.shapeCast3D", {
+                        shape = "sphere", radius = 0.5, from = vector.create(0, 2, 0),
+                        direction = vector.create(1, 0, 0), maxDistance = 10, ignore = entity,
+                    })
+                    probe.wallDistance = if hit.hit then hit.distance else -1
+                    probe.under = ctx.call("aylo.physics.overlap3D", {
+                        shape = "box", size = vector.create(0.5, 0.5, 0.5), at = vector.create(2, 0, 0), ignore = entity,
+                    }).count
+                end
+            end,
+        })
+    )"),
+              "");
+
+    for (int frame = 0; frame < 60; ++frame) {
+        server.app.runFrame();
+    }
+
+    // Walked 6 m worth: up the step (its top at 0.25) and to the wall, a skin and its radius from the face.
+    EXPECT_EQ(server.run("assert(math.abs(probe.x - 3.18) < 0.02, tostring(probe.x))"), "");
+    EXPECT_EQ(server.run("assert(math.abs(probe.y - 1.17) < 0.02, tostring(probe.y))"), "");
+    EXPECT_EQ(server.run("assert(probe.grounded, 'not grounded')"), "");
+    // A sphere from x = 0 touches the wall's face (x = 3.5) after 3 m; the box at x = 2 covers the floor and the step.
+    EXPECT_EQ(server.run("assert(math.abs(probe.wallDistance - 3) < 0.01, tostring(probe.wallDistance))"), "");
+    EXPECT_EQ(server.run("assert(probe.under == 2, tostring(probe.under))"), "");
+}

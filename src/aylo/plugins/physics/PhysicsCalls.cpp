@@ -18,6 +18,7 @@
 #include "aylo/ecs/query/Query.hpp"
 #include "aylo/ecs/system/ResourceParam.hpp"
 #include "plugins/physics/Collider.hpp"
+#include "plugins/physics/Collider3D.hpp"
 #include "plugins/physics/MoveAndSlide.hpp"
 #include "plugins/physics/PhysicsWorld.hpp"
 #include "plugins/physics/QueryFilter.hpp"
@@ -119,6 +120,57 @@ Hit3DResult raycast3D(ecs::Res<PhysicsWorld> world, const Raycast3DArguments& ar
         .hit = true, .entity = hit->entity, .point = hit->point, .normal = hit->normal, .distance = hit->distance};
 }
 
+/// @return A Collider3D with the shape fields of call arguments, the others left at their defaults.
+template <typename Arguments>
+[[nodiscard]] Collider3D shape3DOf(const Arguments& arguments) {
+    return Collider3D{
+        .shape = arguments.shape,
+        .size = arguments.size,
+        .radius = arguments.radius,
+        .halfHeight = arguments.halfHeight,
+        .offset = arguments.offset,
+    };
+}
+
+Hit3DResult shapeCast3D(ecs::Res<PhysicsWorld> world, const ShapeCast3DArguments& arguments) {
+    const std::optional<PhysicsWorld::RayHit3D> hit =
+        world->shapeCast3D(shape3DOf(arguments), arguments.from, arguments.rotation, arguments.direction,
+                           arguments.maxDistance, filterOf(arguments.mask, arguments.ignore, arguments.includeSensors));
+    if (!hit) {
+        return Hit3DResult{};
+    }
+    return Hit3DResult{
+        .hit = true, .entity = hit->entity, .point = hit->point, .normal = hit->normal, .distance = hit->distance};
+}
+
+OverlapResult overlap3D(ecs::Res<PhysicsWorld> world, const Overlap3DArguments& arguments) {
+    const std::vector<ecs::Entity> entities =
+        world->overlap3D(shape3DOf(arguments), arguments.at, arguments.rotation,
+                         filterOf(arguments.mask, arguments.ignore, arguments.includeSensors));
+    if (entities.empty()) {
+        return OverlapResult{};
+    }
+    return OverlapResult{.count = static_cast<std::uint32_t>(entities.size()), .first = entities.front()};
+}
+
+MoveAndSlide3DResult slide3D(ecs::Res<PhysicsWorld> world, ecs::Query<const Collider3D> colliders,
+                             const MoveAndSlide3DArguments& arguments) {
+    if (const auto found = colliders.get(arguments.entity)) {
+        const auto& [entity, collider] = *found;
+        const Slide3DResult result = physics::moveAndSlide3D(*world, entity, collider, arguments.from, arguments.delta,
+                                                             Slide3DSettings{.skin = arguments.skin,
+                                                                             .maxSlides = arguments.maxSlides,
+                                                                             .stepHeight = arguments.stepHeight,
+                                                                             .maxSlope = arguments.maxSlope});
+        return MoveAndSlide3DResult{.position = result.position,
+                                    .grounded = result.grounded,
+                                    .groundNormal = result.groundNormal,
+                                    .ground = result.ground};
+    }
+    throw exceptions::PhysicsException{
+        std::format("{}: entity {} has no Collider3D", kMoveAndSlide3DCall, arguments.entity.getIndex())};
+}
+
 void applyForce3D(ecs::ResMut<PhysicsWorld> world, const Push3DArguments& arguments) {
     world->applyForce3D(arguments.entity, arguments.value);
 }
@@ -150,6 +202,9 @@ void addPhysicsCalls(ecs::App& app) {
     app.addCall(std::string{kApplyImpulse3DCall}, &applyImpulse3D);
     app.addCall(std::string{kApplyTorque3DCall}, &applyTorque3D);
     app.addCall(std::string{kSetGravity3DCall}, &setGravity3D);
+    app.addCall(std::string{kShapeCast3DCall}, &shapeCast3D);
+    app.addCall(std::string{kOverlap3DCall}, &overlap3D);
+    app.addCall(std::string{kMoveAndSlide3DCall}, &slide3D);
 }
 
 }  // namespace aylo::plugins::physics

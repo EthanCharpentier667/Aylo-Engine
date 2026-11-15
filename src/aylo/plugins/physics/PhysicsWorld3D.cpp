@@ -6,7 +6,9 @@
 */
 
 #include <Jolt/Jolt.h>  // IWYU pragma: keep
+#include <Jolt/Core/Reference.h>
 #include <Jolt/Math/MathTypes.h>
+#include <Jolt/Math/Quat.h>
 #include <Jolt/Math/Real.h>
 #include <Jolt/Math/Vec3.h>
 #include <Jolt/Physics/Body/Body.h>
@@ -18,13 +20,16 @@
 #include <Jolt/Physics/Body/BodyType.h>
 #include <Jolt/Physics/Body/MotionType.h>
 #include <Jolt/Physics/Collision/CastResult.h>
+#include <Jolt/Physics/Collision/CollideShape.h>
 #include <Jolt/Physics/Collision/CollisionCollectorImpl.h>
 #include <Jolt/Physics/Collision/NarrowPhaseQuery.h>
 #include <Jolt/Physics/Collision/RayCast.h>
 #include <Jolt/Physics/Collision/Shape/Shape.h>
+#include <Jolt/Physics/Collision/ShapeCast.h>
 #include <Jolt/Physics/EActivation.h>
 
 #include <algorithm>
+#include <cmath>
 #include <glm/ext/vector_float3.hpp>
 #include <glm/ext/vector_float4.hpp>
 #include <glm/geometric.hpp>
@@ -60,6 +65,21 @@ std::optional<JPH::RRayCast> rayOf(const glm::vec3& origin, const glm::vec3& dir
         return std::nullopt;
     }
     return JPH::RRayCast{detail::toJolt(origin), detail::toJolt(direction * (maxDistance / length))};
+}
+
+/// @return The rotation of a 3D query: @p rotation normalized, the identity when it has no length.
+JPH::Quat rotationOf(const glm::vec4& rotation) noexcept {
+    const float length = glm::length(rotation);
+    if (!(length > 0.0F) || !std::isfinite(length)) {
+        return JPH::Quat::sIdentity();
+    }
+    const glm::vec4 unit = rotation / length;
+    return JPH::Quat{unit.x, unit.y, unit.z, unit.w};
+}
+
+/// @return Where a 3D query's shape is: at @p position, turned by @p rotation.
+JPH::RMat44 placementOf(const glm::vec3& position, const glm::vec4& rotation) noexcept {
+    return JPH::RMat44::sRotationTranslation(rotationOf(rotation), detail::toJolt(position));
 }
 }  // namespace
 
@@ -326,6 +346,60 @@ std::vector<PhysicsWorld::RayHit3D> PhysicsWorld::raycastAll3D(const glm::vec3& 
         }
     }
     return hits;
+}
+
+std::optional<PhysicsWorld::RayHit3D> PhysicsWorld::shapeCast3D(const Collider3D& shape, const glm::vec3& from,
+                                                                const glm::vec4& rotation, const glm::vec3& direction,
+                                                                float maxDistance, const QueryFilter& filter) const {
+    const float length = glm::length(direction);
+    if (!(length > 0.0F) || !(maxDistance > 0.0F)) {
+        return std::nullopt;
+    }
+    const JPH::RefConst<JPH::Shape> joltShape = detail::makeShape3D(shape);
+    const JPH::RShapeCast cast =
+        JPH::RShapeCast::sFromWorldTransform(joltShape.GetPtr(), JPH::Vec3::sOne(), placementOf(from, rotation),
+                                             detail::toJolt(direction * (maxDistance / length)));
+    const detail::MaskLayerFilter layerFilter{filter.mask, /*spatial=*/true};
+    const detail::QueryBodyFilter bodyFilter{_impl->ignoredBody(filter), filter.includeSensors};
+    JPH::ClosestHitCollisionCollector<JPH::CastShapeCollector> collector;
+    _impl->system.GetNarrowPhaseQuery().CastShape(cast, JPH::ShapeCastSettings{}, JPH::RVec3::sZero(), collector, {},
+                                                  layerFilter, bodyFilter);
+    if (!collector.HadHit()) {
+        return std::nullopt;
+    }
+    const JPH::ShapeCastResult& result = collector.mHit;
+    const std::optional<ecs::Entity> entity = entityOf(_impl->system.GetBodyLockInterface(), result.mBodyID2);
+    if (!entity) {
+        return std::nullopt;
+    }
+    const JPH::Vec3 normal =
+        result.mPenetrationAxis.IsNearZero() ? JPH::Vec3::sZero() : -result.mPenetrationAxis.Normalized();
+    return RayHit3D{.entity = *entity,
+                    .point = detail::fromJolt(JPH::Vec3{result.mContactPointOn2}),
+                    .normal = detail::fromJolt(normal),
+                    .distance = result.mFraction * maxDistance};
+}
+
+std::vector<ecs::Entity> PhysicsWorld::overlap3D(const Collider3D& shape, const glm::vec3& at,
+                                                 const glm::vec4& rotation, const QueryFilter& filter) const {
+    const JPH::RefConst<JPH::Shape> joltShape = detail::makeShape3D(shape);
+    // CollideShape places the shape by its centre of mass.
+    const JPH::RMat44 transform = placementOf(at, rotation).PreTranslated(joltShape->GetCenterOfMass());
+    const detail::MaskLayerFilter layerFilter{filter.mask, /*spatial=*/true};
+    const detail::QueryBodyFilter bodyFilter{_impl->ignoredBody(filter), filter.includeSensors};
+    JPH::AllHitCollisionCollector<JPH::CollideShapeCollector> collector;
+    _impl->system.GetNarrowPhaseQuery().CollideShape(joltShape.GetPtr(), JPH::Vec3::sOne(), transform,
+                                                     JPH::CollideShapeSettings{}, JPH::RVec3::sZero(), collector, {},
+                                                     layerFilter, bodyFilter);
+    std::vector<ecs::Entity> entities;
+    const JPH::BodyLockInterface& locks = _impl->system.GetBodyLockInterface();
+    for (const JPH::CollideShapeResult& result : collector.mHits) {
+        const std::optional<ecs::Entity> entity = entityOf(locks, result.mBodyID2);
+        if (entity && std::ranges::find(entities, *entity) == entities.end()) {
+            entities.push_back(*entity);
+        }
+    }
+    return entities;
 }
 
 }  // namespace aylo::plugins::physics

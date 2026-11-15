@@ -96,6 +96,9 @@ List the ones you use under `calls` and make them with `ctx.call`.
 | `aylo.physics.raycast3D` | `origin`, `direction` (default `(0, 0, -1)`), `maxDistance`, `mask`, `ignore`, `includeSensors` | `{ hit, entity, point, normal, distance }`, in 3D |
 | `aylo.physics.applyForce3D`, `applyImpulse3D`, `applyTorque3D` | `entity`, `value` (a vec3) | nothing |
 | `aylo.physics.setGravity3D` | `gravity` (a vec3) | nothing |
+| `aylo.physics.shapeCast3D` | the shape fields of a `Collider3D`, `from`, `rotation` (a quaternion, none by default), `direction` (default `(0, 0, -1)`), `maxDistance`, the filter | as `raycast3D`; `distance` is how far the shape travels before it touches, `0` if it starts inside a body |
+| `aylo.physics.overlap3D` | the shape fields of a `Collider3D`, `at`, `rotation`, the filter | `{ count, first }` |
+| `aylo.physics.moveAndSlide3D` | `entity` (its `Collider3D` is the shape, its mask the filter), `from`, `delta`, `skin` (`0.02`), `maxSlides` (`4`), `stepHeight` (`0`), `maxSlope` (`45`) | `{ position, grounded, groundNormal, ground }`, see [A character in 3D](#a-character-in-3d) |
 
 A null `ignore` (the default) skips no entity.
 
@@ -194,7 +197,108 @@ engine.ecs.system("game.Hop", {
     `Collider3D` is used.
 
 A 3D body is placed by its own `Transform3D`, even under a parent: a 3D body with a parent is placed as if it had none.
-`shapeCast`, `overlap` and `moveAndSlide` are 2D only for now.
+
+### Ask what a 3D shape would touch
+
+`aylo.physics.shapeCast3D` sweeps a shape (a box, a sphere or a capsule, with the fields of a `Collider3D`) from a point
+along a direction, and tells you the first body it would touch: a thick ray, for a melee swing or a fat bullet.
+`aylo.physics.overlap3D` tells you which bodies a shape covers where it stands: an explosion, a trigger you test once.
+Both take a `rotation` (a quaternion built with `engine.math.quat`, none by default), so a box can be turned.
+
+```luau
+-- the first body a 1 m box, swung 2 m forward from the player, would touch
+local hit = ctx.call("aylo.physics.shapeCast3D", {
+	shape = "box", size = vector.create(1, 1, 1),
+	from = transform.position, rotation = transform.rotation,
+	direction = vector.create(0, 0, -1), maxDistance = 2, ignore = entity,
+})
+-- how many bodies a sphere of 3 m around the blast covers
+local blast = ctx.call("aylo.physics.overlap3D", { shape = "sphere", radius = 3, at = transform.position })
+```
+
+### A character in 3D
+
+A first-person or third-person player is a capsule you move yourself: `aylo.physics.moveAndSlide3D` moves an entity's
+`Collider3D` by a `delta` and handles what it meets.
+
+- It stops a `skin` away from what it hits and **slides** along it, so the player runs along a wall instead of sticking.
+- Ground no steeper than `maxSlope` (in degrees) is **walked on**, up and down. A steeper surface is a **wall**: the
+  player slides along it but never climbs it, and slides down it if it lands there.
+- With a `stepHeight` above `0`, it **steps up** what stops it if it is no higher than that (a stair, a kerb) and has
+  ground on top.
+- It tells you if the player is **`grounded`**, on what (`ground`, an entity) and the ground's `groundNormal`.
+
+It keeps no speed: you add the gravity to the `delta` yourself, every tick. Give the player an
+`aylo.RigidBody` of type `"kinematic"`, so its body follows the `Transform3D` you write and pushes the dynamic bodies it
+walks into, and move it in `FixedUpdate` between `aylo.Physics.SyncBodies` and `aylo.Physics.SyncToPhysics`. Its own
+body never blocks it.
+
+```luau
+-- Your input system writes wish: where the player wants to go, length 0 to 1, and jump.
+engine.ecs.component("game.Player", { fields = { wish = "vec3", jump = "bool", fall = "f32", grounded = "bool" } })
+
+local speed = 5 -- metres per second
+local gravity = -20 -- metres per second squared
+local jumpSpeed = 7 -- metres per second, up
+
+engine.ecs.system("game.Walk", {
+	phase = "FixedUpdate",
+	query = { write = { "aylo.Transform3D", "game.Player" } },
+	calls = { "aylo.physics.moveAndSlide3D" },
+	after = { "aylo.Physics.SyncBodies" },
+	before = { "aylo.Physics.SyncToPhysics" },
+	run = function(ctx)
+		local dt = ctx.fixedDelta
+		for entity, transform, player in ctx.query do
+			if player.grounded then
+				player.fall = if player.jump then jumpSpeed else 0
+			end
+			player.fall += gravity * dt
+			local moved = ctx.call("aylo.physics.moveAndSlide3D", {
+				entity = entity,
+				from = transform.position,
+				delta = player.wish * (speed * dt) + vector.create(0, player.fall * dt, 0),
+				stepHeight = 0.3,
+			})
+			transform.position = moved.position
+			player.grounded = moved.grounded
+		end
+	end,
+})
+```
+
+Spawn the player as a capsule standing on its centre:
+
+```luau
+ctx.commands:spawn({
+	["game.Player"] = {},
+	["aylo.Transform3D"] = { position = vector.create(0, 1, 0) },
+	["aylo.Collider3D"] = { shape = "capsule", radius = 0.3, halfHeight = 0.6 }, -- 1.8 m tall
+	["aylo.RigidBody"] = { type = "kinematic" },
+})
+```
+
+| Argument | Default | Meaning |
+|---|---|---|
+| `entity` | | the entity that moves: its `Collider3D` is the shape (without rotation: a capsule stands along Y), its `mask` says what blocks it |
+| `from` | `(0, 0, 0)` | where it starts: its `Transform3D` position |
+| `delta` | `(0, 0, 0)` | how far it would move with nothing in the way, in metres, the gravity included |
+| `skin` | `0.02` | the gap, in metres, kept between it and what it touches |
+| `maxSlides` | `4` | how many surfaces one move slides along before it stops |
+| `stepHeight` | `0` | the highest step it climbs, in metres; `0` climbs none |
+| `maxSlope` | `45` | the steepest ground it walks on, in degrees, from `0` to below `90` |
+
+| Result | Meaning |
+|---|---|
+| `position` | where it ends: write it to its `Transform3D` |
+| `grounded` | whether it stands on walkable ground (within twice the `skin` below it) |
+| `groundNormal` | that ground's normal, pointing up out of it; `(0, 0, 0)` when not grounded |
+| `ground` | the entity it stands on (a moving platform you can follow); null when not grounded |
+
+The call fails with `aylo.physics.moveAndSlide3D: entity <n> has no Collider3D` for an entity without one, and when
+`skin` or `stepHeight` is negative or `maxSlope` is not from `0` to below `90`. Like everything physics does, it gives
+the same result on the server and on a client that predicts its player from the same bodies (see
+[Networking](networking.md)).
 
 ## The debug view
 
