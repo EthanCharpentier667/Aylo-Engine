@@ -87,6 +87,12 @@ struct ListAccess {
 };
 
 /// @brief One reflected field of a component or a resource.
+/// @brief One unit of a value stored with its unit (FieldUnits): how a script writes it.
+struct FieldUnit {
+    std::string_view name;  ///< A suffix written after the number ("%", "px"), or the whole value for a keyword.
+    bool keyword{false};    ///< The value is the name alone, with no number ("auto"); its number is 0.
+};
+
 struct FieldInfo {
     std::string name;                  ///< Field name, unique within its type.
     FieldType type{FieldType::kBool};  ///< Type of each value.
@@ -96,5 +102,9 @@ struct FieldInfo {
     /// The names of the values of an enum field, which is reflected as its integer: value `i` is `enumNames[i]`
     /// (FieldEnumNames). Empty for any other field. Scripts, capsule files and the editor show and take the names.
     std::span<const std::string_view> enumNames;
+    /// The units of a `vec2` field holding a number and the index of its unit (FieldUnits): a script reads and writes
+    /// it as `120`, `"50%"` or `"auto"`, as a style does. Empty for any other field.
+    std::span<const FieldUnit> units;
+    std::uint8_t bareUnit{0};  ///< With units: the unit of a plain number (`120`).
 };
 }  // namespace aylo::ecs
