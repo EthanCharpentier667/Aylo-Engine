@@ -127,7 +127,15 @@ class LogAudioDevice : public IAudioDevice {
         }
     }
 
+    void setLowpass(VoiceId voice, float cutoff) override {
+        std::cout << std::format("  [device] setLowpass(voice {}, {} Hz)\n", voice.index, cutoff);
+    }
+
     [[nodiscard]] bool isPlaying(VoiceId /*voice*/) const override { return true; }
+
+    [[nodiscard]] double getTime() const override { return 0.0; }  // A log plays nothing: its clock never moves.
+
+    [[nodiscard]] double getOutputLatency() const override { return 0.0; }
 
     void setMasterVolume(float volume) override {
         std::cout << std::format("  [device] setMasterVolume({:.2f})\n", volume);

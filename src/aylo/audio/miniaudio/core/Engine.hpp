@@ -41,6 +41,10 @@ class AYLO_AUDIO_MINIAUDIO_API Engine {
     /// @return Frames the output has mixed so far: the audio clock, which only the audio thread advances.
     [[nodiscard]] std::uint64_t timeInFrames() const noexcept;
 
+    /// @return The playback buffer of the device, in seconds (its period size times its periods, at its own sample
+    /// rate): how long a mixed frame waits before it is heard. 0 when the engine has no device.
+    [[nodiscard]] double outputLatency() const noexcept;
+
     /// @brief Sets the master volume of the engine, affecting all groups and sounds attached to it.
     /// @param volume The volume, 0.0 (silence) to 1.0 (full volume); values above 1.0 are allowed, but may distort.
     void setVolume(float volume);

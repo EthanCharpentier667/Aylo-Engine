@@ -38,6 +38,17 @@ std::uint32_t Engine::sampleRate() const noexcept { return ma_engine_get_sample_
 
 std::uint64_t Engine::timeInFrames() const noexcept { return ma_engine_get_time_in_pcm_frames(&_engine); }
 
+double Engine::outputLatency() const noexcept {
+    // ma_engine_get_device() takes a non-const engine but only reads it.
+    const ma_device* device = ma_engine_get_device(const_cast<ma_engine*>(&_engine));  // NOLINT(*-const-cast)
+    if (device == nullptr || device->playback.internalSampleRate == 0) {
+        return 0.0;
+    }
+    const double frames = static_cast<double>(device->playback.internalPeriodSizeInFrames) *
+                          static_cast<double>(device->playback.internalPeriods);
+    return frames / static_cast<double>(device->playback.internalSampleRate);
+}
+
 void Engine::setVolume(float volume) { ma_engine_set_volume(&_engine, volume); }
 
 }  // namespace aylo::audio::miniaudio::core

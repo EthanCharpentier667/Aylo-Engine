@@ -90,6 +90,8 @@ double NullAudioDevice::getTime() const {
     return std::chrono::duration<double>(std::chrono::steady_clock::now() - _opened).count();
 }
 
+double NullAudioDevice::getOutputLatency() const { return 0.0; }
+
 bool NullAudioDevice::isPlaying(contract::audiodevice::VoiceId voice) const { return find(voice) != nullptr; }
 
 void NullAudioDevice::setMasterVolume(float /*volume*/) {}
