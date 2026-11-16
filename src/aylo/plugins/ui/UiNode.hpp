@@ -171,6 +171,14 @@ static_assert(sizeof(aylo::plugins::ui::UiOverflow) == 1, "UiOverflow must match
 template <>
 struct aylo::ecs::FieldTypeOf<aylo::plugins::ui::UiLength>
     : std::integral_constant<aylo::ecs::FieldType, aylo::ecs::FieldType::kVec2> {};
+/// @brief A UiLength field reads and takes in a script what a style does: `120` (pixels), `"50%"`, `"auto"`; its unit
+/// index is the UiUnit.
+template <>
+struct aylo::ecs::FieldUnits<aylo::plugins::ui::UiLength> {
+    static constexpr std::array<aylo::ecs::FieldUnit, 3> kUnits{
+        {{.name = "auto", .keyword = true}, {.name = "px"}, {.name = "%"}}};
+    static constexpr std::uint8_t kBareNumber = static_cast<std::uint8_t>(aylo::plugins::ui::UiUnit::kPixels);
+};
 static_assert(sizeof(aylo::plugins::ui::UiLength) == 8 && alignof(aylo::plugins::ui::UiLength) == 4,
               "UiLength must match FieldType::kVec2");
 

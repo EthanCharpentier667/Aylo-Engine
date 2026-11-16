@@ -145,6 +145,73 @@ Two resources help the gameplay get out of the UI's way; read them with `resourc
 The UI blocks nothing by itself. A game that shoots on a click checks `overUi` first, and ignores the keyboard while
 `typing` is `true`.
 
+## Moving nodes from a system
+
+A HUD changes every frame: a bar fills, a marker slides along a lane. Spawn the node once with `engine.ui.spawn`, then
+write its `aylo.UiNode` from a client system, as any component. A length field takes what a style takes, and reads back
+the same way:
+
+| You write | It means | It reads back as |
+|---|---|---|
+| `120` | 120 pixels | `120` |
+| `"10%"` | 10% of the parent's size | `"10%"` |
+| `"auto"` | left to the layout | `"auto"` |
+| `"8px"` | 8 pixels | `8` |
+
+The length fields are `width`, `height`, `basis`, `minWidth`, `minHeight`, `maxWidth`, `maxHeight`, `left`, `top`,
+`right`, `bottom`, and the four sides of `margin...` and `padding...` (`marginLeft`, `paddingTop`...). The shorthands
+of a style (`margin`, `padding`, `gap`...) are not fields: write each side. The other fields of a style keep their
+names (`position = "absolute"`, `direction = "row"`), and `grow`, `shrink`, `rowGap`, `columnGap` and `zIndex` are
+numbers.
+
+The style's `background` is the `aylo.UiBackground` component, whose fields are `color` (`{ x, y, z, w }`, red,
+green, blue, alpha), `cornerRadius` (the style's `radius`), `borderColor` and `borderWidth`, in pixels.
+
+```luau
+engine.ecs.component("game.Marker", { fields = { speed = "f32" } })
+
+local spawned = false
+engine.ecs.system("game.SpawnMarker", {
+	phase = "Update",
+	side = "client",
+	run = function(ctx)
+		if spawned then
+			return
+		end
+		spawned = true
+		local marker = engine.ui.spawn(ctx.commands, {
+			style = { position = "absolute", left = 0, top = 20, width = 40, height = 12 },
+			background = { color = { 1, 0.8, 0.2, 1 }, radius = 2 },
+		})
+		ctx.commands:add(marker, "game.Marker", { speed = 60 })
+	end,
+})
+
+engine.ecs.system("game.MoveMarker", {
+	phase = "Update",
+	side = "client",
+	query = { read = { "game.Marker" }, write = { "aylo.UiNode", "aylo.UiBackground" } },
+	after = { "game.SpawnMarker" },
+	run = function(ctx)
+		for _, marker, node, background in ctx.query do
+			node.left = node.left + marker.speed * ctx.delta -- pixels per second
+			node.width = "10%"
+			background.cornerRadius = 6
+		end
+	end,
+})
+```
+
+- **Views come in a fixed order.** `for entity, a, b, c in ctx.query` gives the `read` components first, then the
+  `write` ones, each in the order you listed them, whatever order `query` lists `read` and `write` in (see
+  [Systems](systems.md)). Above, `marker` is the `read` one, `node` and `background` the `write` ones.
+- **Where it ends up.** The nodes are laid out at the end of the frame. A node moved in `Update` is drawn at its new
+  place in the same frame, and its `aylo.UiComputed` (`position` and `size` in pixels, read only) holds the result from
+  the next frame on.
+- A length that is not a number, `"auto"`, `"<number>px"` or `"<number>%"` is an error naming the field, such as
+  `'tall' is not a number, "auto", "<number>px" or "<number>%"`. The `{ x = value, y = unit }` table a length is stored
+  as (unit 0 auto, 1 pixels, 2 percent) is still accepted.
+
 ## Keyboard and gamepad
 
 Every widget works with the pointer, the keyboard and a gamepad.

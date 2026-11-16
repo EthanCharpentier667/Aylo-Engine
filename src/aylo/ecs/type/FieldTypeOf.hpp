@@ -91,6 +91,29 @@ concept HasEnumNames = requires {
     { std::span<const std::string_view>{FieldEnumNames<T>::kNames} };
 };
 
+/// @brief The units of a type stored as a `vec2` of a number and the index of its unit, in `kUnits`: unit `i` is
+/// `kUnits[i]`, and a plain number is in unit `kBareNumber`. Empty for other types.
+///
+/// @details Specialize it next to the type's FieldTypeOf (which must be FieldType::kVec2): a field of the type then
+/// reads in a script as a number (in the bare unit), `"<number><suffix>"` or a keyword, and takes the same, or the
+/// `{ x = value, y = unit }` table it is stored as. Serialization and replication keep the two floats.
+/// @code
+/// template <>
+/// struct aylo::ecs::FieldUnits<aylo::plugins::ui::UiLength> {
+///     static constexpr std::array<aylo::ecs::FieldUnit, 3> kUnits{{{"auto", true}, {"px"}, {"%"}}};
+///     static constexpr std::uint8_t kBareNumber = 1;
+/// };
+/// @endcode
+template <typename T>
+struct FieldUnits {};
+
+/// @brief True when a FieldUnits specialization names the units of `T`.
+template <typename T>
+concept HasFieldUnits = requires {
+    { std::span<const FieldUnit>{FieldUnits<T>::kUnits} };
+    { FieldUnits<T>::kBareNumber } -> std::convertible_to<std::uint8_t>;
+};
+
 namespace detail {
 /// @brief A `std::array` field: `std::array<float, 4>` is 4 values of `float`. C arrays are not supported.
 template <typename T, std::size_t N>

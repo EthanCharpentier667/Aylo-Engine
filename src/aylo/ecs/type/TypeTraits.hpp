@@ -38,6 +38,8 @@ struct FieldDescription {
     std::uint32_t count{1};                       ///< Number of values: 1, or N for an array.
     const ListAccess* list{nullptr};              ///< How to reach the values of a list field; null otherwise.
     std::span<const std::string_view> enumNames;  ///< The names of an enum field's values (FieldEnumNames); else empty.
+    std::span<const FieldUnit> units;             ///< The units of a value with a unit (FieldUnits); else empty.
+    std::uint8_t bareUnit{0};                     ///< With units: the unit of a plain number.
 };
 
 /// @brief What a declaring macro records about a type: its name, its kind and its fields.

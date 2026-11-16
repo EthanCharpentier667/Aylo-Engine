@@ -26,12 +26,24 @@ constexpr FieldDescription describeField(std::string_view name, std::size_t offs
         if constexpr (HasEnumNames<Element>) {
             enumNames = FieldEnumNames<Element>::kNames;
         }
+        std::span<const FieldUnit> units;
+        std::uint8_t bareUnit = 0;
+        if constexpr (HasFieldUnits<Element>) {
+            static_assert(FieldTypeOf<Element>::value == FieldType::kVec2,
+                          "AYLO_ECS: a type with FieldUnits must be reflected as FieldType::kVec2 (a value, a unit)");
+            static_assert(FieldUnits<Element>::kBareNumber < FieldUnits<Element>::kUnits.size(),
+                          "AYLO_ECS: FieldUnits::kBareNumber must be one of its units");
+            units = FieldUnits<Element>::kUnits;
+            bareUnit = FieldUnits<Element>::kBareNumber;
+        }
         return FieldDescription{.name = name,
                                 .type = FieldTypeOf<Element>::value,
                                 .offset = static_cast<std::uint32_t>(offset),
                                 .count = FieldElement<Member>::kCount,
                                 .list = FieldElement<Member>::kList,
-                                .enumNames = enumNames};
+                                .enumNames = enumNames,
+                                .units = units,
+                                .bareUnit = bareUnit};
     } else {
         return FieldDescription{};  // Not reached: the static_assert above already failed; avoids a second error.
     }
@@ -49,7 +61,9 @@ TypeInfo TypeTraits<T>::makeTypeInfo() {
                                         .offset = field.offset,
                                         .count = field.count,
                                         .list = field.list,
-                                        .enumNames = field.enumNames});
+                                        .enumNames = field.enumNames,
+                                        .units = field.units,
+                                        .bareUnit = field.bareUnit});
     }
     return info;
 }
