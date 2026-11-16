@@ -370,7 +370,8 @@ with `SoundDesc{.stream = true}`.
 The plugin registers these [engine calls](../ecs/features/19-luau-bridge.md#engine-calls): `aylo.audio.loadSound {
 path, stream }` returns the sound's id, and `aylo.audio.playSound { sound, bus, volume, pitch, position, loop, startAt,
 lowpass }` sends a `PlaySound` and returns the voice's id, which scripts cannot send through `ctx.events` because its
-`position` is optional (a `position` left out plays centred). `aylo.audio.getTime` reads the audio clock;
+`position` is optional (a `position` left out plays centred). `aylo.audio.getTime` reads the audio clock, and
+`aylo.audio.getOutputLatency` the time from it to the speaker;
 `aylo.audio.setVolume { voice, volume }`, `setFilter { voice, lowpass }` and `stopVoice { voice, fadeOut }` send a
 `ControlVoice`. `PlayMusic` and `StopMusic` are plain data: scripts send them as events.
 
@@ -386,6 +387,13 @@ sample rate (miniaudio: `ma_engine_get_time_in_pcm_frames`), so it follows the s
 `PlayParams::startAt` is a time on that clock: miniaudio converts it to a frame (`ma_sound_set_start_time_in_pcm_frames`),
 so voices given the same time start on the same sample; a time already past starts the voice at once. The `null` backend
 uses the wall time since it was made.
+
+**The output latency.** A frame the clock has counted is not heard yet: it waits in the device's buffer.
+`IAudioDevice::getOutputLatency()` estimates that wait, in seconds. miniaudio gives the playback buffer of its device,
+`playback.internalPeriodSizeInFrames * internalPeriods / internalSampleRate` (`core::Engine::outputLatency()`), read
+on each call, since the backend may reopen the output on another default device; the OS mixer's own delay is not
+counted. The `null` backend says 0, as nothing is heard. Scripts read it with `aylo.audio.getOutputLatency`, and
+schedule a sound to be heard at a moment `t` seconds away with `startAt = getTime() + t - latency`.
 
 **Voice ids for scripts.** A call cannot wait for the device to play (the sound may still be loading), so
 `aylo.audio.playSound` takes an id from the `Audio` resource at once and `PlaySound::voice` carries it; the play system
