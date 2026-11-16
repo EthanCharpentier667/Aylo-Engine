@@ -82,7 +82,8 @@ end
 | `aylo.Camera3D` | `projection` | `"perspective"`, `"orthographic"` (see [2D and 3D](3d.md#seeing-the-3d-world)) |
 
 The layout fields of `aylo.UiNode` take the names of the [UI styles](ui.md#layout) (`"row-reverse"`,
-`"space-between"`...).
+`"space-between"`...), and its lengths (`left`, `width`...) a number of pixels, `"50%"` or `"auto"`, which they also
+read back as: see [Moving nodes from a system](ui.md#moving-nodes-from-a-system).
 
 A number is still accepted on write (`shape = 1` is a circle), but a script that compares a read value with a number
 no longer matches: compare with the name. A name the field does not have is an error that lists the ones it takes:
