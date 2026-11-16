@@ -27,8 +27,31 @@
 #include "core/asset/AssetId.hpp"
 #include "core/vfs/DirectorySource.hpp"
 #include "core/vfs/FileSource.hpp"
+#include "plugins/audio/SoundProbe.hpp"
 
 namespace aylo::plugins::audio {
+namespace {
+/// @brief Reads the header of @p entry's bytes, or of its file in @p source, into Entry::probed, unless it was read
+/// already.
+void probeEntry(const core::vfs::FileSource& source, AudioAssets::Entry& entry) {
+    if (entry.probed) {
+        return;
+    }
+    if (entry.encoded.empty() && !source.exists(entry.path)) {
+        entry.probed = SoundProbe{.error = std::format("file not found: {}", entry.path)};
+        return;
+    }
+    try {
+        entry.probed =
+            entry.encoded.empty() ? probeSound(core::vfs::readBytes(source, entry.path)) : probeSound(entry.encoded);
+        if (!entry.probed->info) {
+            entry.probed->error = std::format("{}: {}", entry.path, entry.probed->error);
+        }
+    } catch (const std::exception& error) {
+        entry.probed = SoundProbe{.error = error.what()};
+    }
+}
+}  // namespace
 
 void AudioAssets::setDirectory(std::filesystem::path directory) {
     _source = std::make_shared<core::vfs::DirectorySource>(std::move(directory));
@@ -62,6 +85,19 @@ std::optional<contract::audiodevice::SoundId> AudioAssets::getSound(core::asset:
     return entry != nullptr && entry->state == SoundState::kLoaded ? std::optional{entry->sound} : std::nullopt;
 }
 
+std::optional<SoundProbe> AudioAssets::probe(core::asset::AssetId id) {
+    const auto found = _entries.find(id);
+    if (found == _entries.end()) {
+        return std::nullopt;
+    }
+    Entry& entry = found->second;
+    if (entry.state == SoundState::kFailed) {
+        return SoundProbe{.error = entry.error};
+    }
+    probeEntry(*_source, entry);
+    return entry.probed;
+}
+
 bool AudioAssets::unload(core::asset::AssetId id) {
     const auto found = _entries.find(id);
     if (found == _entries.end()) {
@@ -79,6 +115,9 @@ const std::vector<core::asset::AssetId>& AudioAssets::getQueued() const noexcept
 
 void AudioAssets::setLoaded(core::asset::AssetId id, contract::audiodevice::SoundId sound) {
     if (Entry* entry = dequeue(id)) {
+        if (!entry->encoded.empty()) {
+            probeEntry(*_source, *entry);  // while its bytes are in memory: they are freed below
+        }
         entry->state = SoundState::kLoaded;
         entry->sound = sound;
         entry->encoded = {};
