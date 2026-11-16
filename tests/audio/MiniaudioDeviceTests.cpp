@@ -187,3 +187,10 @@ TEST_F(MiniaudioDeviceTest, ALoopingVoiceKeepsPlayingUntilStoppedAndTakesVolumeA
     _device->setLowpass(voice, 300.0F);  // stale: nothing happens
     _device->destroySound(sound);
 }
+
+TEST_F(MiniaudioDeviceTest, ReportsAnOutputLatencyOfAFewBuffers) {
+    // The device's buffer: some milliseconds, never negative, and never close to a second.
+    const double latency = _device->getOutputLatency();
+    EXPECT_GE(latency, 0.0);
+    EXPECT_LT(latency, 1.0);
+}

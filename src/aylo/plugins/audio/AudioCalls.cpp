@@ -95,6 +95,10 @@ TimeResult getTime(ecs::NonSend<Audio> audio) {
     return TimeResult{.time = audio->device ? audio->device->getTime() : 0.0};
 }
 
+LatencyResult getOutputLatency(ecs::NonSend<Audio> audio) {
+    return LatencyResult{.latency = audio->device ? audio->device->getOutputLatency() : 0.0};
+}
+
 void setVolume(ecs::EventWriter<ControlVoice> controls, const SetVolumeArguments& arguments) {
     controls.send(ControlVoice{.voice = arguments.voice, .volume = arguments.volume});
 }
@@ -123,6 +127,7 @@ void addAudioCalls(ecs::App& app) {
     app.addCall(std::string{kPlaySound3DCall}, &playSound3D);
     app.addCall(std::string{kSetListener3DCall}, &setListener3D);
     app.addCall(std::string{kGetTimeCall}, &getTime);
+    app.addCall(std::string{kGetOutputLatencyCall}, &getOutputLatency);
     app.addCall(std::string{kSetVolumeCall}, &setVolume);
     app.addCall(std::string{kSetFilterCall}, &setFilter);
     app.addCall(std::string{kStopVoiceCall}, &stopVoice);

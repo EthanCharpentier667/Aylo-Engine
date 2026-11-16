@@ -75,6 +75,7 @@ ctx.commands:spawn({
 | `aylo.audio.playSound3D` | `sound`, `bus`, `volume`, `pitch`, `position` (a 3D point, in metres), `minDistance` (1), `maxDistance` (50), `loop`, `startAt`, `lowpass`, the defaults of `playSound` | the voice id |
 | `aylo.audio.setListener3D` | `position` (a 3D point), `rotation` (a quaternion, none by default) | nothing |
 | `aylo.audio.getTime` | none | the audio clock, in seconds |
+| `aylo.audio.getOutputLatency` | none | how long a sound takes from that clock to the speaker, in seconds (`0` on the `"null"` backend and on a server) |
 | `aylo.audio.setVolume` | `voice`, `volume` (linear gain, 1 = unchanged) | nothing |
 | `aylo.audio.setFilter` | `voice`, `lowpass` (cutoff in Hz, 0 removes the filter) | nothing |
 | `aylo.audio.stopVoice` | `voice`, `fadeOut` (seconds, 0 = at once) | nothing |
@@ -118,6 +119,36 @@ To stop it, call `aylo.audio.stopVoice` (declare it in `calls`) with `{ voice = 
 - `loop = true` plays until you call `stopVoice`.
 - The clock is the local audio device's, in seconds. It is 0 before the first frame. It is not the server's clock:
   mapping the two is up to the game.
+- A sound scheduled at a time on that clock is **heard a little later**: the audio device fills a buffer before the
+  speaker plays it, often 10 to 40 ms depending on the system. `aylo.audio.getOutputLatency` gives that delay, in
+  seconds. To have a sound heard at a moment you know on another clock (a beat on the screen, the server's time),
+  schedule it that much earlier:
+
+  ```luau
+  local music = engine.call("aylo.audio.loadSound", { path = "music/track.ogg", stream = true })
+  local started = false
+
+  engine.ecs.system("game.StartMusic", {
+  	phase = "Update",
+  	side = "client",
+  	query = {},
+  	calls = { "aylo.audio.getTime", "aylo.audio.getOutputLatency", "aylo.audio.playSound" },
+  	run = function(ctx)
+  		if started then
+  			return
+  		end
+  		started = true
+  		local due = 2 -- heard 2 seconds from now
+  		local now = ctx.call("aylo.audio.getTime", {})
+  		local latency = ctx.call("aylo.audio.getOutputLatency", {})
+  		ctx.call("aylo.audio.playSound", { sound = music, bus = "music", startAt = now + due - latency })
+  	end,
+  })
+  ```
+
+  It is an estimate of the device's buffer, not exact to the sample: a constant offset is what it corrects. It can
+  change when the system switches to another output (headphones plugged in), so read it each time you schedule,
+  not once at start. It is `0` where nothing is heard (the `"null"` backend, a server).
 - `setVolume`, `setFilter` and `stopVoice` on a voice that ended, was stopped, or whose sound was not loaded do
   nothing and raise no error.
 - A sound starts at the end of the frame, so call `loadSound` early (at the top level of a file), not just before

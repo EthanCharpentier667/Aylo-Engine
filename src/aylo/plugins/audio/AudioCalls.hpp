@@ -29,9 +29,11 @@ inline constexpr std::string_view kPlaySoundCall = "aylo.audio.playSound";      
 inline constexpr std::string_view kPlaySound3DCall = "aylo.audio.playSound3D";      ///< A PlaySound placed in 3D.
 inline constexpr std::string_view kSetListener3DCall = "aylo.audio.setListener3D";  ///< Audio::listener3D.
 inline constexpr std::string_view kGetTimeCall = "aylo.audio.getTime";              ///< The audio clock.
-inline constexpr std::string_view kSetVolumeCall = "aylo.audio.setVolume";          ///< Sends a ControlVoice.
-inline constexpr std::string_view kSetFilterCall = "aylo.audio.setFilter";          ///< Sends a ControlVoice.
-inline constexpr std::string_view kStopVoiceCall = "aylo.audio.stopVoice";          ///< Sends a ControlVoice.
+inline constexpr std::string_view kGetOutputLatencyCall =
+    "aylo.audio.getOutputLatency";                                          ///< IAudioDevice::getOutputLatency().
+inline constexpr std::string_view kSetVolumeCall = "aylo.audio.setVolume";  ///< Sends a ControlVoice.
+inline constexpr std::string_view kSetFilterCall = "aylo.audio.setFilter";  ///< Sends a ControlVoice.
+inline constexpr std::string_view kStopVoiceCall = "aylo.audio.stopVoice";  ///< Sends a ControlVoice.
 
 /// @brief The arguments of `aylo.audio.loadSound`: asks for a sound file.
 struct LoadSoundArguments {
@@ -99,6 +101,12 @@ struct TimeResult {
 };
 AYLO_ECS_CALL_DATA(TimeResult, "aylo.audio.TimeResult", time);
 
+/// @brief The result of `aylo.audio.getOutputLatency`.
+struct LatencyResult {
+    double latency{0.0};  ///< Seconds from the audio clock to the speaker; 0 without a device (a server) or output.
+};
+AYLO_ECS_CALL_DATA(LatencyResult, "aylo.audio.LatencyResult", latency);
+
 /// @brief The arguments of `aylo.audio.setVolume`.
 struct SetVolumeArguments {
     std::uint32_t voice{0};  ///< From `aylo.audio.playSound`.
@@ -122,7 +130,8 @@ AYLO_ECS_CALL_DATA(StopVoiceArguments, "aylo.audio.StopVoiceArguments", voice, f
 
 /// @brief Registers the audio engine calls on @p app, for scripts: `aylo.audio.loadSound`, on the
 /// `aylo.AudioAssets` resource, and `aylo.audio.playSound`, which sends a PlaySound and returns the voice's id (an
-/// unknown bus throws an AudioCallException), `aylo.audio.getTime` (the audio clock), and `setVolume`, `setFilter` and
+/// unknown bus throws an AudioCallException), `aylo.audio.getTime` (the audio clock),
+/// `aylo.audio.getOutputLatency` (from that clock to the speaker), and `setVolume`, `setFilter` and
 /// `stopVoice`, which send a ControlVoice for that id. Called by the AudioPlugin.
 void addAudioCalls(ecs::App& app);
 

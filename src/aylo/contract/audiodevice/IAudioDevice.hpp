@@ -56,6 +56,12 @@ class AYLO_HEADER_ONLY_API IAudioDevice {
     /// from 0 when the device opens. The time PlayParams::startAt is read against.
     [[nodiscard]] virtual double getTime() const = 0;
 
+    /// @brief How long a sample takes from the audio clock (getTime()) to the speaker, in seconds: the output's buffer,
+    /// an estimate, not exact to the sample. A sound scheduled at `getTime() + t - getOutputLatency()` is heard `t`
+    /// seconds from now. 0 when there is no output to wait for. May change when the backend reopens the output (another
+    /// default device), so read it when it is needed rather than once.
+    [[nodiscard]] virtual double getOutputLatency() const = 0;
+
     /// @name Mixing
     /// @{
     virtual void setMasterVolume(float volume) = 0;

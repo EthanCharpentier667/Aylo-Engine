@@ -146,6 +146,8 @@ double MiniaudioDevice::getTime() const {
     return static_cast<double>(_engine.timeInFrames()) / static_cast<double>(_engine.sampleRate());
 }
 
+double MiniaudioDevice::getOutputLatency() const { return _engine.outputLatency(); }
+
 bool MiniaudioDevice::isPlaying(contract::audiodevice::VoiceId voice) const { return _voices.isPlaying(voice); }
 
 void MiniaudioDevice::setMasterVolume(float volume) { _engine.setVolume(volume); }
