@@ -19,6 +19,7 @@
 #include <glm/ext/vector_float3.hpp>
 #include <iterator>
 #include <limits>
+#include <memory>
 #include <optional>
 #include <span>
 #include <string>
@@ -324,7 +325,7 @@ bool hasUnits(const ecs::FieldInfo& field) { return !field.units.empty() && fiel
 std::string unitChoices(const ecs::FieldInfo& field) {
     std::string choices = "a number";
     for (std::size_t index = 0; index < field.units.size(); ++index) {
-        const ecs::FieldUnit& unit = field.units[index];
+        const ecs::FieldUnit& unit = field.units.subspan(index, 1).front();
         choices += index + 1 == field.units.size() ? " or " : ", ";
         choices += unit.keyword ? std::format("\"{}\"", unit.name) : std::format("\"<number>{}\"", unit.name);
     }
@@ -346,7 +347,7 @@ Result<luau::Value> readWithUnit(const std::string_view component, const ecs::Fi
     if (index == field.bareUnit) {
         return luau::Value{static_cast<double>(stored.at(0))};
     }
-    const ecs::FieldUnit& unit = field.units[index];
+    const ecs::FieldUnit& unit = field.units.subspan(index, 1).front();
     if (unit.keyword) {
         return luau::Value{std::string{unit.name}};
     }
@@ -370,7 +371,7 @@ Result<void> writeWithUnit(const std::string_view component, const ecs::FieldInf
     }
     if (const auto* text = value.tryAs<std::string>()) {
         for (std::size_t index = 0; index < field.units.size(); ++index) {
-            const ecs::FieldUnit& unit = field.units[index];
+            const ecs::FieldUnit& unit = field.units.subspan(index, 1).front();
             if (unit.keyword) {
                 if (*text == unit.name) {
                     return store2(0.0, index);
@@ -380,8 +381,9 @@ Result<void> writeWithUnit(const std::string_view component, const ecs::FieldInf
             if (text->size() > unit.name.size() && text->ends_with(unit.name)) {
                 const std::string_view digits{text->data(), text->size() - unit.name.size()};
                 double parsed = 0.0;
-                const auto [end, error] = std::from_chars(digits.data(), digits.data() + digits.size(), parsed);
-                if (error == std::errc{} && end == digits.data() + digits.size()) {
+                const char* const last = std::to_address(digits.end());
+                const auto [end, error] = std::from_chars(std::to_address(digits.begin()), last, parsed);
+                if (error == std::errc{} && end == last) {
                     return store2(parsed, index);
                 }
             }
