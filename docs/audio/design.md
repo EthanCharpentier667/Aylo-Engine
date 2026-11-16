@@ -303,6 +303,12 @@ void spawnShip(aylo::ecs::Commands& commands, aylo::ecs::ResMut<aylo::plugins::a
 - Each frame, `updateSounds(assets, device)` creates the queued sounds and destroys the unloaded ones. An entry is
   `kQueued`, `kLoaded` (with its `SoundId`) or `kFailed` (with the reason, printed): a missing sound does not stop the
   game, as a missing texture does not.
+- `probe(id)` tells what the sound's file holds, without the device: its `SoundInfo` (sample rate, channels, length in
+  frames) or why it has none (`file not found: <path>`, data the engine cannot decode, the device's reason once
+  `updateSounds()` marked it `kFailed`). It reads the file's header the first time (`probeSound()`,
+  `SoundProbe.hpp`) and keeps the answer in the entry; a sound given in memory is probed before its bytes are freed.
+  Since a script asks right after `loadSound`, at the top level of a file, before the Startup system opened the device,
+  the device cannot answer, and the silent backend could not anyway.
 - Sounds known by `AssetId` are what gameplay, Luau and the network exchange; `SoundId` and `VoiceId` never leave the
   process.
 
@@ -372,6 +378,8 @@ path, stream }` returns the sound's id, and `aylo.audio.playSound { sound, bus, 
 lowpass }` sends a `PlaySound` and returns the voice's id, which scripts cannot send through `ctx.events` because its
 `position` is optional (a `position` left out plays centred). `aylo.audio.getTime` reads the audio clock, and
 `aylo.audio.getOutputLatency` the time from it to the speaker;
+`aylo.audio.soundInfo { sound }` returns `{ ok, error, sampleRate, channels, frames, seconds }` from
+`AudioAssets::probe()` (below);
 `aylo.audio.setVolume { voice, volume }`, `setFilter { voice, lowpass }` and `stopVoice { voice, fadeOut }` send a
 `ControlVoice`. `PlayMusic` and `StopMusic` are plain data: scripts send them as events.
 
@@ -381,6 +389,16 @@ and returns its voice id; it refuses distances that are not `0 < minDistance <= 
 stays a 2D point: a `vec3` field of a call refuses a `{ x, y }` table, so making it 3D would have broken every 2D game,
 and the engine names its 3D variants apart (`raycast3D`, `Collider3D`). `aylo.audio.setListener3D { position, rotation }`
 sets `Audio::listener3D`, which wins over an `AudioListener` entity from then on.
+
+**Sound info without a decoder.** The plugin may not include miniaudio (a library stays in the backend that wraps
+it), and the length must be known before any device opens, so `probeSound()` parses the headers itself, with no
+library: the WAV `fmt ` and `data` chunks, the FLAC STREAMINFO, the last granule position of an Ogg page (Vorbis or
+FLAC), and for MP3 the frame headers, less the Xing/Info frame and the encoder delay and padding of its LAME tag. It
+counts as miniaudio's decoders (dr_wav, dr_flac, stb_vorbis, dr_mp3) count, so the length is the one played: dr_wav
+ignores a WAV's `fact` chunk and counts ADPCM by blocks, and so does the probe. Checked against miniaudio 0.11.25 on
+WAV (PCM 16/24 bits, float, MS and IMA ADPCM), FLAC, Ogg Vorbis, Ogg FLAC, MP3 with and without a LAME tag, and MP2:
+the same sample rate, channels and frames for each. Only a truncated file may differ, where miniaudio's own length and
+what it decodes differ too. Opus, which miniaudio does not decode without libopus, is reported as not decoded.
 
 **The audio clock and `startAt`.** `IAudioDevice::getTime()` is the number of frames the output has mixed divided by its
 sample rate (miniaudio: `ma_engine_get_time_in_pcm_frames`), so it follows the samples, not the frame rate.
