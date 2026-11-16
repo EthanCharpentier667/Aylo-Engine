@@ -338,19 +338,33 @@ TEST(ClientPlugin, DropsAStateItDoesNotKnow) {
 }
 
 namespace {
-/// @brief Runs frames until the client has a full window of exchanges with the server.
+/// @brief Runs a frame of each side with a pause after each, so a ping waits as long to be answered as its pong waits
+/// to be read. The estimate assumes both halves of a round trip are equal: with one pause per pair, it would run ahead
+/// by half a pause, about 8 ms on Windows, where a 1 ms sleep can last a whole timer tick.
+void runSymmetricFrame(Server& server, Client& client) {
+    server.app().runFrame();
+    std::this_thread::sleep_for(1ms);
+    client.app().runFrame();
+    std::this_thread::sleep_for(1ms);
+}
+
+/// @brief Runs frames until the client has a first exchange with the server.
 bool runUntilSynced(Server& server, Client& client) {
-    return runUntil(server, client,
-                    [&] { return client.state().rtt() > 0.0 && client.state().serverTime().has_value(); });
+    const auto deadline = network::Clock::now() + 2s;
+    while (network::Clock::now() < deadline) {
+        runSymmetricFrame(server, client);
+        if (client.state().rtt() > 0.0 && client.state().serverTime().has_value()) {
+            return true;
+        }
+    }
+    return false;
 }
 
 /// @brief Runs frames for @p duration of real time.
 void runFor(Server& server, Client& client, const std::chrono::milliseconds duration) {
     const auto end = network::Clock::now() + duration;
     while (network::Clock::now() < end) {
-        server.app().runFrame();
-        client.app().runFrame();
-        std::this_thread::sleep_for(1ms);
+        runSymmetricFrame(server, client);
     }
 }
 
