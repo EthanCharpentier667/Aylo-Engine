@@ -56,7 +56,11 @@ hexadecimal `#404040`.
 
 ## Layout
 
-`UiNode` holds every flexbox property of Yoga. Lengths are a number of pixels, `"50%"` or `"auto"`.
+`UiNode` holds every flexbox property of Yoga. Lengths are a number of pixels, `"50%"` or `"auto"`. A `UiLength` is
+stored as `{value, unit}` (`UiUnit`: 0 auto, 1 pixels, 2 percent) and opts into `ecs::FieldUnits`, so a script reads
+and writes the length fields of a `UiNode` view with the same values as a style (`node.left = 120`, `node.width =
+"10%"`; see `docs/ecs/features/15-reflection-and-serialization.md#fields-with-units`). The style's `background.radius`
+is `UiBackground::cornerRadius` on a view.
 
 | Style | Values |
 |---|---|

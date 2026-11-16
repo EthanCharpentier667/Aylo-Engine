@@ -143,6 +143,29 @@ Every enum of the engine's components has its names, the same words its manual p
 physics `ShapeType` and `BodyType`, `BlendMode`, `ShapeKind`, the audio `Bus`, `TextAlign`, `ParticleSimulation`
 and the UI layout enums (`"row-reverse"`, `"space-between"`...).
 
+### Fields with units
+
+A type stored as a `vec2` of a number and the index of its unit (the UI's `UiLength`: a value and pixels, percent or
+auto) gets its units from a `FieldUnits<T>` specialization, next to its `FieldTypeOf` (`ecs/type/FieldTypeOf.hpp`).
+`kUnits[i]` is unit `i`, an `ecs::FieldUnit`: a suffix written after the number (`"px"`, `"%"`), or a keyword that is
+the whole value (`"auto"`, `keyword = true`, number 0). `kBareNumber` is the unit of a plain number. The type must be
+reflected as `kVec2` (a `static_assert` says so).
+
+```c++
+template <>
+struct aylo::ecs::FieldUnits<aylo::plugins::ui::UiLength> {
+    static constexpr std::array<aylo::ecs::FieldUnit, 3> kUnits{
+        {{.name = "auto", .keyword = true}, {.name = "px"}, {.name = "%"}}};
+    static constexpr std::uint8_t kBareNumber = 1;  // UiUnit::kPixels
+};
+```
+
+The units reach `FieldInfo::units` and `FieldInfo::bareUnit`, and, as the names of an enum, change nothing in the
+bytes, the wire or the layout hash. **Scripts** (`scripting/view/FieldAccess`) read such a field as a style writes it:
+a number in the bare unit (`120`), a keyword (`"auto"`) or the number and its suffix (`"50%"`); a write, `spawn`,
+`add` and `patch` take the same, or the `{ x = value, y = unit }` table it is stored as. Anything else fails with
+`'tall' is not a number, "auto", "<number>px" or "<number>%"`. Capsule files and the editor still see the `vec2`.
+
 A type with a list has a size and offsets that depend on the standard library, so client and server compare a hash of
 its name and fields instead of its layout hash (`computeManifestHash()`). A value that does not fit in a message is not
 sent: messages hold 1000 bytes.
