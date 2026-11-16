@@ -16,7 +16,9 @@
 #include "aylo/ecs/app/App.hpp"
 #include "aylo/ecs/schedule/RunMode.hpp"
 #include "aylo/scripting/ScriptHost.hpp"
+#include "core/config/Settings.hpp"
 #include "plugins/audio/AudioPlugin.hpp"
+#include "plugins/audio/AudioRegistry.hpp"
 #include "plugins/graphics/Camera.hpp"
 #include "plugins/transform/Transform.hpp"
 #include "plugins/transform/TransformPlugin.hpp"
@@ -177,4 +179,59 @@ TEST(ScriptAudio, PlaySound3DRefusesDistancesThatCannotBe) {
     EXPECT_NE(error.find("aylo.audio.playSound3D: the distances must be 0 < minDistance <= maxDistance"),
               std::string::npos)
         << error;
+}
+
+// The music of the manual (engine-calls.md, "Scheduled playback"), scheduled ahead by the output latency, as written.
+constexpr const char* kManualLatency = R"(
+local music = engine.call("aylo.audio.loadSound", { path = "music/track.ogg", stream = true })
+local started = false
+
+engine.ecs.system("game.StartMusic", {
+	phase = "Update",
+	side = "client",
+	query = {},
+	calls = { "aylo.audio.getTime", "aylo.audio.getOutputLatency", "aylo.audio.playSound" },
+	run = function(ctx)
+		if started then
+			return
+		end
+		started = true
+		local due = 2 -- heard 2 seconds from now
+		local now = ctx.call("aylo.audio.getTime", {})
+		local latency = ctx.call("aylo.audio.getOutputLatency", {})
+		ctx.call("aylo.audio.playSound", { sound = music, bus = "music", startAt = now + due - latency })
+	end,
+})
+)";
+
+TEST(ScriptAudio, TheManualsMusicIsScheduledAheadByTheOutputLatency) {
+    ScriptAudio script;
+    script.app.runFrame();  // the device is created at startup
+    script.state->time = 10.0;
+    script.state->outputLatency = 0.025;
+    ASSERT_EQ(script.run(kManualLatency), "");
+
+    script.app.runFrame();  // asks for the sound and schedules it
+    script.app.runFrame();  // plays it once loaded
+
+    ASSERT_EQ(script.state->plays.size(), 1U);
+    // Heard 2 s from now: started 25 ms earlier on the audio clock.
+    EXPECT_NEAR(script.state->plays.at(0).params.startAt, 10.0 + 2.0 - 0.025, 1e-9);
+}
+
+TEST(ScriptAudio, TheOutputLatencyIsZeroOnTheNullBackend) {
+    aylo::ecs::App app{aylo::ecs::RunMode::kClient};
+    aylo::core::config::Settings settings;
+    settings.set("audio.backend", "null");
+    app.addPlugin(aylo::plugins::transform::TransformPlugin{});
+    app.addPlugin(aylo::plugins::audio::AudioPlugin{std::make_unique<aylo::plugins::audio::AudioRegistry>(), settings});
+    auto host = aylo::scripting::ScriptHost::create(app, {});
+    ASSERT_TRUE(host) << host.error().message();
+    app.runFrame();  // opens the null device
+
+    const auto ran = (*host)->run("latency-test", R"(
+        local latency = engine.call("aylo.audio.getOutputLatency", {})
+        assert(latency == 0, tostring(latency))
+    )");
+    EXPECT_TRUE(ran) << ran.error().message();
 }

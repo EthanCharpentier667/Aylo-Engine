@@ -99,3 +99,8 @@ TEST(NullAudioDevice, StopsTheVoicesOfADestroyedSound) {
     EXPECT_FALSE(device.isPlaying(voice));
     EXPECT_FALSE(device.isPlaying(device.play(sound, {})));
 }
+
+TEST(NullAudioDevice, HasNoOutputLatency) {
+    const aylo::plugins::audio::NullAudioDevice device;
+    EXPECT_EQ(device.getOutputLatency(), 0.0);  // nothing is heard: nothing to wait for
+}
