@@ -338,14 +338,23 @@ TEST(ClientPlugin, DropsAStateItDoesNotKnow) {
 }
 
 namespace {
+/// @brief Waits 1 ms, yielding instead of sleeping: on Windows a sleep lasts up to a timer tick (about 15 ms), and two
+/// sleeps of different lengths make the halves of a round trip unequal again.
+void pauseOneMillisecond() {
+    const auto end = network::Clock::now() + 1ms;
+    while (network::Clock::now() < end) {
+        std::this_thread::yield();
+    }
+}
+
 /// @brief Runs a frame of each side with a pause after each, so a ping waits as long to be answered as its pong waits
 /// to be read. The estimate assumes both halves of a round trip are equal: with one pause per pair, it would run ahead
-/// by half a pause, about 8 ms on Windows, where a 1 ms sleep can last a whole timer tick.
+/// by half a pause.
 void runSymmetricFrame(Server& server, Client& client) {
     server.app().runFrame();
-    std::this_thread::sleep_for(1ms);
+    pauseOneMillisecond();
     client.app().runFrame();
-    std::this_thread::sleep_for(1ms);
+    pauseOneMillisecond();
 }
 
 /// @brief Runs frames until the client has a first exchange with the server.
