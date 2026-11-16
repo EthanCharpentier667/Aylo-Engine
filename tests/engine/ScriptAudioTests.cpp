@@ -8,15 +8,21 @@
 #include <gtest/gtest.h>
 
 #include <cmath>
+#include <cstddef>
+#include <filesystem>
+#include <fstream>
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "FakeAudioDevice.hpp"
+#include "SoundFiles.hpp"
 #include "aylo/ecs/app/App.hpp"
 #include "aylo/ecs/schedule/RunMode.hpp"
 #include "aylo/scripting/ScriptHost.hpp"
 #include "core/config/Settings.hpp"
+#include "plugins/audio/AudioAssets.hpp"
 #include "plugins/audio/AudioPlugin.hpp"
 #include "plugins/audio/AudioRegistry.hpp"
 #include "plugins/graphics/Camera.hpp"
@@ -234,4 +240,67 @@ TEST(ScriptAudio, TheOutputLatencyIsZeroOnTheNullBackend) {
         assert(latency == 0, tostring(latency))
     )");
     EXPECT_TRUE(ran) << ran.error().message();
+}
+
+// The check of the manual (engine-calls.md, "Is the sound there?"), as written there.
+constexpr const char* kManualSoundInfo = R"(
+local kick = engine.call("aylo.audio.loadSound", { path = "music/kick_loop.wav" })
+local info = engine.call("aylo.audio.soundInfo", { sound = kick })
+if not info.ok then
+	print(`[music] kick_loop cannot play: {info.error}`)
+elseif info.sampleRate ~= 44100 or info.frames ~= 705600 then
+	print(`[music] kick_loop is {info.frames} frames at {info.sampleRate} Hz, not 705600 at 44100 Hz`)
+end
+)";
+
+TEST(ScriptAudio, AScriptReadsTheLengthOfASoundAndWhyAnotherIsMissingOnTheNullBackend) {
+    const std::filesystem::path folder = std::filesystem::temp_directory_path() / "aylo-script-sound-info";
+    std::filesystem::create_directories(folder / "music");
+    {
+        const std::vector<std::byte> wav = aylo::test::plugins::pcmWav(705600, 1, 44100);
+        std::ofstream file{folder / "music" / "kick_loop.wav", std::ios::binary};
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+        file.write(reinterpret_cast<const char*>(wav.data()), static_cast<std::streamsize>(wav.size()));
+    }
+    aylo::ecs::App app{aylo::ecs::RunMode::kClient};
+    aylo::core::config::Settings settings;
+    settings.set("audio.backend", "null");
+    app.addPlugin(aylo::plugins::transform::TransformPlugin{});
+    app.addPlugin(aylo::plugins::audio::AudioPlugin{std::make_unique<aylo::plugins::audio::AudioRegistry>(), settings});
+    app.getWorld().getResources().getMut<aylo::plugins::audio::AudioAssets>()->setDirectory(folder);
+    auto host = aylo::scripting::ScriptHost::create(app, {});
+    ASSERT_TRUE(host) << host.error().message();
+
+    // At the top level of a file, before the first frame: no device is open yet.
+    const auto manual = (*host)->run("manual-test", kManualSoundInfo);
+    EXPECT_TRUE(manual) << manual.error().message();
+    const auto ran = (*host)->run("sound-info-test", R"(
+        local kick = engine.call("aylo.audio.loadSound", { path = "music/kick_loop.wav" })
+        local info = engine.call("aylo.audio.soundInfo", { sound = kick })
+        assert(info.ok, info.error)
+        assert(info.error == "", info.error)
+        assert(info.sampleRate == 44100, tostring(info.sampleRate))
+        assert(info.channels == 1, tostring(info.channels))
+        assert(info.frames == 705600, tostring(info.frames))
+        assert(info.seconds == 16, tostring(info.seconds))
+
+        local snare = engine.call("aylo.audio.loadSound", { path = "music/snare_loop.wav", stream = true })
+        local missing = engine.call("aylo.audio.soundInfo", { sound = snare })
+        assert(not missing.ok)
+        assert(missing.error == "file not found: music/snare_loop.wav", missing.error)
+        assert(missing.frames == 0 and missing.sampleRate == 0 and missing.seconds == 0)
+
+        local never = engine.call("aylo.audio.soundInfo", { sound = "music/never_loaded.wav" })
+        assert(not never.ok)
+        assert(never.error == "unknown sound: load it with aylo.audio.loadSound first", never.error)
+    )");
+    EXPECT_TRUE(ran) << ran.error().message();
+
+    app.runFrame();  // opens the null device and loads the sounds: the answers stay
+    const auto after = (*host)->run("sound-info-after-test", R"(
+        local kick = engine.call("aylo.audio.loadSound", { path = "music/kick_loop.wav" })
+        assert(engine.call("aylo.audio.soundInfo", { sound = kick }).frames == 705600)
+    )");
+    EXPECT_TRUE(after) << after.error().message();
+    std::filesystem::remove_all(folder);
 }

@@ -11,6 +11,7 @@
 #include <cmath>
 #include <filesystem>
 #include <format>
+#include <optional>
 #include <string>
 #include <string_view>
 
@@ -22,6 +23,7 @@
 #include "plugins/audio/AudioAssets.hpp"
 #include "plugins/audio/AudioEvents.hpp"
 #include "plugins/audio/AudioResources.hpp"
+#include "plugins/audio/SoundProbe.hpp"
 #include "plugins/audio/Spatial3D.hpp"
 #include "plugins/audio/exceptions/AudioCallException.hpp"
 
@@ -42,6 +44,22 @@ namespace {
 SoundResult loadSound(ecs::ResMut<AudioAssets> sounds, const LoadSoundArguments& arguments) {
     const contract::audiodevice::SoundDesc desc{.stream = arguments.stream};
     return SoundResult{.sound = sounds->load(std::filesystem::path{arguments.path.view()}, desc)};
+}
+
+SoundInfoResult soundInfo(ecs::ResMut<AudioAssets> sounds, const SoundInfoArguments& arguments) {
+    const std::optional<SoundProbe> probed = sounds->probe(arguments.sound);
+    if (!probed) {
+        return SoundInfoResult{.error = std::format("unknown sound: load it with {} first", kLoadSoundCall)};
+    }
+    if (!probed->info) {
+        return SoundInfoResult{.error = probed->error};
+    }
+    const SoundInfo& info = *probed->info;
+    return SoundInfoResult{.ok = true,
+                           .sampleRate = info.sampleRate,
+                           .channels = info.channels,
+                           .frames = info.frames,
+                           .seconds = static_cast<double>(info.frames) / info.sampleRate};
 }
 
 VoiceResult playSound(ecs::NonSendMut<Audio> audio, ecs::EventWriter<PlaySound> sounds,
@@ -123,6 +141,7 @@ void addAudioForms(ecs::PluginRegistry& registry) {
 void addAudioCalls(ecs::App& app) {
     addAudioForms(app.getPluginRegistry());
     app.addCall(std::string{kLoadSoundCall}, &loadSound);
+    app.addCall(std::string{kSoundInfoCall}, &soundInfo);
     app.addCall(std::string{kPlaySoundCall}, &playSound);
     app.addCall(std::string{kPlaySound3DCall}, &playSound3D);
     app.addCall(std::string{kSetListener3DCall}, &setListener3D);

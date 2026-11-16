@@ -24,6 +24,7 @@
 #include "core/vfs/DirectorySource.hpp"
 #include "core/vfs/FileSource.hpp"
 #include "plugins/audio/Export.hpp"
+#include "plugins/audio/SoundProbe.hpp"
 
 namespace aylo::plugins::audio {
 /// @brief Where a sound is in its loading.
@@ -58,6 +59,7 @@ class AYLO_PLUGIN_AUDIO_API AudioAssets {
         contract::audiodevice::SoundId sound;   ///< The device's id, once loaded.
         std::vector<std::byte> encoded;         ///< The file's bytes, for a sound given in memory; freed once loaded.
         std::string error;                      ///< Why it failed to load.
+        std::optional<SoundProbe> probed;       ///< Its file's header, once probe() read it.
     };
 
     AudioAssets() = default;
@@ -99,6 +101,12 @@ class AYLO_PLUGIN_AUDIO_API AudioAssets {
 
     /// @return The device's id of the sound @p id names, or nothing if it is not loaded (yet).
     [[nodiscard]] std::optional<contract::audiodevice::SoundId> getSound(core::asset::AssetId id) const;
+
+    /// @brief Tells what the file of the sound @p id holds, without the audio device: works before it opens, and with
+    /// the silent backend. Reads the file's header (probeSound()) the first time, then keeps the answer.
+    /// @return Its SoundInfo, or why it has none: the device's reason once it failed to load the sound, "file not
+    /// found: <path>" for a missing file, or what is wrong with its data; nothing if no sound has this id.
+    [[nodiscard]] std::optional<SoundProbe> probe(core::asset::AssetId id);
 
     /// @brief Forgets the sound @p id names; if it was loaded, the next updateSounds() destroys it, which stops its
     /// voices.

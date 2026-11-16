@@ -71,6 +71,7 @@ ctx.commands:spawn({
 | Call | Arguments | Result |
 |---|---|---|
 | `aylo.audio.loadSound` | `path`, `stream` (decode while playing, for music) | the sound id |
+| `aylo.audio.soundInfo` | `sound` (an id from `loadSound`, or its path) | `{ ok, error, sampleRate, channels, frames, seconds }`: whether the file is there and plays, and how long it is (see [below](#is-the-sound-there)) |
 | `aylo.audio.playSound` | `sound`, `bus` (`"effects"` or `"music"`, default `"effects"`), `volume` (1), `pitch` (1), `position` (a 2D table `{ x, y }`, in world units), `loop` (false), `startAt` (0, seconds), `lowpass` (0, Hz) | the voice id (a number, never 0) |
 | `aylo.audio.playSound3D` | `sound`, `bus`, `volume`, `pitch`, `position` (a 3D point, in metres), `minDistance` (1), `maxDistance` (50), `loop`, `startAt`, `lowpass`, the defaults of `playSound` | the voice id |
 | `aylo.audio.setListener3D` | `position` (a 3D point), `rotation` (a quaternion, none by default) | nothing |
@@ -85,6 +86,46 @@ or right from the `aylo.AudioListener` entity's `Transform2D` (see `audio.panDis
 [Project settings](project-settings.md)); left out, the sound plays centred. For a 3D game, use `playSound3D` (below). An unknown `bus` raises
 `Unknown bus 'x' (expected 'effects' or 'music')`. Music is started by sending the `aylo.PlayMusic` event
 (`{ sound, crossfade }`), and stopped with `aylo.StopMusic`.
+
+#### Is the sound there?
+
+`loadSound` always returns an id, even for a file that is missing: the sound is then silent, and nothing else tells
+you. `aylo.audio.soundInfo` tells you. It reads the file's header (it does not wait for the sound to load, and does not
+need a sound card), so you can call it right after `loadSound`, at the top level of a file:
+
+```luau
+local kick = engine.call("aylo.audio.loadSound", { path = "music/kick_loop.wav" })
+local info = engine.call("aylo.audio.soundInfo", { sound = kick })
+if not info.ok then
+	print(`[music] kick_loop cannot play: {info.error}`)
+elseif info.sampleRate ~= 44100 or info.frames ~= 705600 then
+	print(`[music] kick_loop is {info.frames} frames at {info.sampleRate} Hz, not 705600 at 44100 Hz`)
+end
+```
+
+| Field | Type | What it is |
+|---|---|---|
+| `ok` | boolean | `true` if the file is there and is a sound the engine plays |
+| `error` | string | why not, when `ok` is `false`; `""` otherwise |
+| `sampleRate` | number | the file's frames per second (44100, 48000...) |
+| `channels` | number | 1 for mono, 2 for stereo |
+| `frames` | number | the file's length in frames (samples per channel): the exact count, to compare with one you stored |
+| `seconds` | number | `frames / sampleRate` |
+
+When `ok` is `false`, the four numbers are `0`. The `error` is one of:
+
+- `file not found: music/kick_loop.wav` for a missing file;
+- the file's path and what is wrong with it, for a file the engine cannot play, such as
+  `notes.txt: not a sound file the engine decodes (WAV, OGG Vorbis, MP3, FLAC)` or
+  `music/theme.ogg: an Ogg Opus file, which the engine does not decode (use Ogg Vorbis)`;
+- the audio device's own reason, once it tried to load the sound and failed;
+- `unknown sound: load it with aylo.audio.loadSound first` for a sound never loaded.
+
+The numbers are the file's own, before the sound card converts it: a 44100 Hz file says 44100 even on a 48000 Hz
+output. They are the length the engine plays: for an MP3, the silence the encoder adds at the start and the end is not
+counted when the file says how long it is (a LAME tag, which most encoders write). Where every sample counts (music
+cut in loops), prefer WAV, OGG Vorbis or FLAC, whose length is exact. A file cut short (a broken download) gives a
+length that may be a little off. The answer is read once, then kept: a file changed on disk later is not read again.
 
 #### Scheduled playback
 

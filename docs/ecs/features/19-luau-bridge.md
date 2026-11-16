@@ -162,7 +162,7 @@ adds run on clients):
 | Particle | `aylo.particle.beginEffect`, `aylo.particle.addBurst`, `aylo.particle.addColorKey`, `aylo.particle.addCurveKey`, `aylo.particle.addEffect` (clients) ([Particles](../../particles/design.md#12-luau)) |
 | Http | `aylo.http.request`, `aylo.http.cancel` ([HTTP](../../Http.md#from-scripts)) |
 | Json | `aylo.json.encode`, `aylo.json.decode` ([JSON](../../Json.md#from-scripts)) |
-| Audio | `aylo.audio.loadSound`, `aylo.audio.playSound`, `aylo.audio.playSound3D`, `aylo.audio.setListener3D`, `aylo.audio.getOutputLatency` ([Audio](../../audio/design.md#from-scripts)) |
+| Audio | `aylo.audio.loadSound`, `aylo.audio.soundInfo`, `aylo.audio.playSound`, `aylo.audio.playSound3D`, `aylo.audio.setListener3D`, `aylo.audio.getOutputLatency` ([Audio](../../audio/design.md#from-scripts)) |
 | Input | `aylo.input.addAction`, `aylo.input.bind`, `aylo.input.bindAxis`, `aylo.input.bindVector`, `aylo.input.read` ([Input](../../Input.md#from-scripts)) |
 | Physics | `aylo.physics.raycast`, `aylo.physics.shapeCast`, `aylo.physics.overlap`, `aylo.physics.moveAndSlide`, `aylo.physics.applyForce`, `aylo.physics.applyImpulse`, `aylo.physics.applyTorque`, `aylo.physics.setGravity`, `aylo.physics.raycast3D`, `aylo.physics.applyForce3D`, `aylo.physics.applyImpulse3D`, `aylo.physics.applyTorque3D`, `aylo.physics.setGravity3D`, `aylo.physics.shapeCast3D`, `aylo.physics.overlap3D`, `aylo.physics.moveAndSlide3D` ([Physics](../../physics/design.md#from-scripts)) |
 | Capsule | `aylo.capsule.spawn`, `aylo.capsule.load`, `aylo.capsule.reload` ([Capsules](18-capsules.md#from-scripts)) |

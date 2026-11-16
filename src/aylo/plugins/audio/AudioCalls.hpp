@@ -12,6 +12,7 @@
 #include <glm/ext/vector_float3.hpp>
 #include <glm/ext/vector_float4.hpp>
 #include <limits>
+#include <string>
 #include <string_view>
 
 #include "aylo/ecs/app/App.hpp"
@@ -25,6 +26,7 @@
 namespace aylo::plugins::audio {
 
 inline constexpr std::string_view kLoadSoundCall = "aylo.audio.loadSound";          ///< AudioAssets::load().
+inline constexpr std::string_view kSoundInfoCall = "aylo.audio.soundInfo";          ///< AudioAssets::probe().
 inline constexpr std::string_view kPlaySoundCall = "aylo.audio.playSound";          ///< Sends a PlaySound.
 inline constexpr std::string_view kPlaySound3DCall = "aylo.audio.playSound3D";      ///< A PlaySound placed in 3D.
 inline constexpr std::string_view kSetListener3DCall = "aylo.audio.setListener3D";  ///< Audio::listener3D.
@@ -47,6 +49,23 @@ struct SoundResult {
     core::asset::AssetId sound;  ///< The sound's id, for `aylo.audio.playSound`, PlayMusic and AudioSource.
 };
 AYLO_ECS_CALL_DATA(SoundResult, "aylo.audio.SoundResult", sound);
+
+/// @brief The arguments of `aylo.audio.soundInfo`.
+struct SoundInfoArguments {
+    core::asset::AssetId sound;  ///< The sound, from `aylo.audio.loadSound` (or its path).
+};
+AYLO_ECS_CALL_DATA(SoundInfoArguments, "aylo.audio.SoundInfoArguments", sound);
+
+/// @brief The result of `aylo.audio.soundInfo`: what the sound's file holds, or why it does not play.
+struct SoundInfoResult {
+    bool ok{false};               ///< The file is there and the engine decodes it; false: `error` says why.
+    std::string error;            ///< Why not, when `ok` is false; empty otherwise.
+    std::uint32_t sampleRate{0};  ///< The file's frames per second, before the device resamples it; 0 if not ok.
+    std::uint32_t channels{0};    ///< The file's channels; 0 if not ok.
+    std::uint64_t frames{0};      ///< The file's length, in frames (samples per channel); 0 if not ok.
+    double seconds{0.0};          ///< frames / sampleRate; 0 if not ok.
+};
+AYLO_ECS_CALL_DATA(SoundInfoResult, "aylo.audio.SoundInfoResult", ok, error, sampleRate, channels, frames, seconds);
 
 /// @brief The arguments of `aylo.audio.playSound`: a PlaySound, which scripts cannot send as an event (its position
 /// is optional).
@@ -129,7 +148,8 @@ struct StopVoiceArguments {
 AYLO_ECS_CALL_DATA(StopVoiceArguments, "aylo.audio.StopVoiceArguments", voice, fadeOut);
 
 /// @brief Registers the audio engine calls on @p app, for scripts: `aylo.audio.loadSound`, on the
-/// `aylo.AudioAssets` resource, and `aylo.audio.playSound`, which sends a PlaySound and returns the voice's id (an
+/// `aylo.AudioAssets` resource, `aylo.audio.soundInfo` (what its file holds, AudioAssets::probe()), and
+/// `aylo.audio.playSound`, which sends a PlaySound and returns the voice's id (an
 /// unknown bus throws an AudioCallException), `aylo.audio.getTime` (the audio clock),
 /// `aylo.audio.getOutputLatency` (from that clock to the speaker), and `setVolume`, `setFilter` and
 /// `stopVoice`, which send a ControlVoice for that id. Called by the AudioPlugin.
