@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <array>
+#include <charconv>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -22,6 +23,7 @@
 #include <span>
 #include <string>
 #include <string_view>
+#include <system_error>
 #include <tl/expected.hpp>
 #include <utility>
 #include <vector>
@@ -315,6 +317,83 @@ double loadPlainNumber(const std::span<const std::byte> bytes, const ecs::FieldI
     }
 }
 
+/// @return Whether @p field holds a value with its unit (ecs::FieldUnits): a `vec2` of the number and the unit's index.
+bool hasUnits(const ecs::FieldInfo& field) { return !field.units.empty() && field.type == ecs::FieldType::kVec2; }
+
+/// @return The values a field with units takes, for the messages: `a number, "auto", "<number>px" or "<number>%"`.
+std::string unitChoices(const ecs::FieldInfo& field) {
+    std::string choices = "a number";
+    for (std::size_t index = 0; index < field.units.size(); ++index) {
+        const ecs::FieldUnit& unit = field.units[index];
+        choices += index + 1 == field.units.size() ? " or " : ", ";
+        choices += unit.keyword ? std::format("\"{}\"", unit.name) : std::format("\"<number>{}\"", unit.name);
+    }
+    return choices;
+}
+
+/// @return A field with units as a style writes it: a number in the bare unit, a keyword, or the number and its suffix
+/// (`120`, `"auto"`, `"50%"`); the `{ x, y }` table it is stored as for a unit it does not know.
+Result<luau::Value> readWithUnit(const std::string_view component, const ecs::FieldInfo& field,
+                                 const std::span<const std::byte> bytes, const FieldReadContext& context) {
+    std::array<float, 2> stored{};
+    std::memcpy(stored.data(), bytes.subspan(field.offset, sizeof(stored)).data(), sizeof(stored));
+    const float unitNumber = stored.at(1);
+    if (!(unitNumber >= 0.0F) || unitNumber >= static_cast<float>(field.units.size()) ||
+        unitNumber != std::floor(unitNumber)) {
+        return readVector(component, field, bytes, context);
+    }
+    const auto index = static_cast<std::size_t>(unitNumber);
+    if (index == field.bareUnit) {
+        return luau::Value{static_cast<double>(stored.at(0))};
+    }
+    const ecs::FieldUnit& unit = field.units[index];
+    if (unit.keyword) {
+        return luau::Value{std::string{unit.name}};
+    }
+    return luau::Value{std::format("{}{}", stored.at(0), unit.name)};
+}
+
+/// @brief Writes a field with units from what a style takes: a number (the bare unit), a keyword, `"<number><suffix>"`,
+/// or the `{ x = value, y = unit }` table it is stored as.
+Result<void> writeWithUnit(const std::string_view component, const ecs::FieldInfo& field,
+                           const std::span<std::byte> bytes, const luau::Value& value) {
+    const auto store2 = [&](const double number, const std::size_t unit) -> Result<void> {
+        if (!std::isfinite(number) || !fitsFloat(number)) {
+            return tl::unexpected{fieldError(component, field, "the number is out of range")};
+        }
+        const std::array<float, 2> stored{static_cast<float>(number), static_cast<float>(unit)};
+        std::memcpy(bytes.subspan(field.offset, sizeof(stored)).data(), stored.data(), sizeof(stored));
+        return {};
+    };
+    if (const auto* number = value.tryAs<double>()) {
+        return store2(*number, field.bareUnit);
+    }
+    if (const auto* text = value.tryAs<std::string>()) {
+        for (std::size_t index = 0; index < field.units.size(); ++index) {
+            const ecs::FieldUnit& unit = field.units[index];
+            if (unit.keyword) {
+                if (*text == unit.name) {
+                    return store2(0.0, index);
+                }
+                continue;
+            }
+            if (text->size() > unit.name.size() && text->ends_with(unit.name)) {
+                const std::string_view digits{text->data(), text->size() - unit.name.size()};
+                double parsed = 0.0;
+                const auto [end, error] = std::from_chars(digits.data(), digits.data() + digits.size(), parsed);
+                if (error == std::errc{} && end == digits.data() + digits.size()) {
+                    return store2(parsed, index);
+                }
+            }
+        }
+        return tl::unexpected{fieldError(component, field, std::format("'{}' is not {}", *text, unitChoices(field)))};
+    }
+    if (value.tryAs<luau::Table>() != nullptr) {
+        return writeVector(component, field, bytes, value);
+    }
+    return tl::unexpected{fieldError(component, field, std::format("expected {}", unitChoices(field)))};
+}
+
 /// @return Whether @p field is an enum: an integer whose values have names (ecs::FieldEnumNames).
 bool isEnum(const ecs::FieldInfo& field) { return !field.enumNames.empty() && isPlainNumber(field.type); }
 
@@ -401,6 +480,9 @@ Result<luau::Value> readScalar(const std::string_view component, const ecs::Fiel
     if (isEnum(field)) {
         return readEnum(bytes, field);
     }
+    if (hasUnits(field)) {
+        return readWithUnit(component, field, bytes, context);
+    }
     switch (field.type) {
         case ecs::FieldType::kBool:
             return luau::Value{load<std::uint8_t>(bytes, field) != 0};
@@ -476,6 +558,9 @@ Result<void> writeScalar(const std::string_view component, const ecs::FieldInfo&
         store<ecs::Entity>(bytes, field, *entity);
         return {};
     }
+    if (hasUnits(field)) {
+        return writeWithUnit(component, field, bytes, value);
+    }
     if (field.type == ecs::FieldType::kVec2 || field.type == ecs::FieldType::kVec3 ||
         field.type == ecs::FieldType::kVec4) {
         return writeVector(component, field, bytes, value);
@@ -505,7 +590,11 @@ Result<void> writeScalar(const std::string_view component, const ecs::FieldInfo&
 
 /// @return The field of one value of the list @p field, at the start of its bytes.
 ecs::FieldInfo elementOf(const ecs::FieldInfo& field) {
-    return ecs::FieldInfo{.name = field.name, .type = field.type, .enumNames = field.enumNames};
+    return ecs::FieldInfo{.name = field.name,
+                          .type = field.type,
+                          .enumNames = field.enumNames,
+                          .units = field.units,
+                          .bareUnit = field.bareUnit};
 }
 
 /// @return Nothing when @p bytes hold the vector of a list field, or the error saying why not.
@@ -607,7 +696,7 @@ Result<void> pushField(const std::string_view component, const ecs::FieldInfo& f
     // a table or a userdata held through the registry first.
     // An enum gives its name, a string: the general way.
     const bool fast =
-        field.list == nullptr && !isEnum(field) &&
+        field.list == nullptr && !isEnum(field) && !hasUnits(field) &&
         (isPlainNumber(field.type) || field.type == ecs::FieldType::kBool || field.type == ecs::FieldType::kVec2 ||
          field.type == ecs::FieldType::kVec4 || field.type == ecs::FieldType::kEntity);
     if (!fast) {
