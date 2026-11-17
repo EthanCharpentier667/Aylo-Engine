@@ -785,6 +785,9 @@ the same world and with no socket, so a networked game written once runs unchang
 (`src/aylo/replication/standalone/`) adds the `ReplicationPlugin` (the whole vocabulary: components, events, calls,
 the `engine.net` forms) and a `LocalSession` resource, and these systems:
 
+- `net.start` (Startup, the name of the server's) does nothing, since there is no socket to open: it is there so a
+  server system ordered `after = { "net.start" }` (one reading `aylo.net.serverTime` at startup) runs in standalone
+  too, instead of failing the schedule.
 - `net.receive` (PreUpdate) raises `net.ClientConnected { client = 1 }` once, so the server side spawns the player as
   for a real client, and delivers the packets sent since the last frame.
 - `net.applyInputs` (FixedUpdate, the name of the server's) writes the local input in the `PlayerInput` of the entities
