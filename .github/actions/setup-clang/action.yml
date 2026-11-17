@@ -41,14 +41,27 @@ runs:
         LIBSTDCXX_PPA: ${{ inputs.libstdcxx-ppa }}
         PACKAGES: ${{ inputs.packages }}
       run: |
+        # A mirror (the PPA above all) answers 503 now and then: apt retries each download, and each command is run
+        # again after a pause, so a short outage does not fail the job.
+        echo 'Acquire::Retries "5";' | sudo tee /etc/apt/apt.conf.d/80-retries > /dev/null
+        retry() {
+          local attempt
+          for attempt in 1 2 3 4; do
+            "$@" && return 0
+            echo "::warning::'$*' failed (attempt ${attempt}), retrying in $((attempt * 30))s"
+            sleep $((attempt * 30))
+          done
+          "$@"
+        }
+
         if [[ "$LIBSTDCXX_PPA" == "true" ]]; then
-          sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
+          retry sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
         fi
         wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc > /dev/null
         codename="$(lsb_release -cs)"
         echo "deb http://apt.llvm.org/${codename}/ llvm-toolchain-${codename}-${LLVM_VERSION} main" \
           | sudo tee /etc/apt/sources.list.d/llvm.list
-        sudo apt-get update
+        retry sudo apt-get update
 
         install=()
         [[ "$LIBSTDCXX_PPA" == "true" ]] && install+=("g++-13")
@@ -58,7 +71,7 @@ runs:
         # shellcheck disable=SC2206
         install+=($PACKAGES)
         if (( ${#install[@]} > 0 )); then
-          sudo apt-get install -y "${install[@]}"
+          retry sudo apt-get install -y "${install[@]}"
         fi
 
     - name: Select clang ${{ inputs.version }}
