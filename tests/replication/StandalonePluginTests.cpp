@@ -14,7 +14,10 @@
 
 #include "aylo/ecs/app/App.hpp"
 #include "aylo/ecs/event/EventCursor.hpp"
+#include "aylo/ecs/schedule/Phase.hpp"
 #include "aylo/ecs/schedule/RunMode.hpp"
+#include "aylo/ecs/system/ResourceParam.hpp"
+#include "aylo/ecs/system/Side.hpp"
 #include "aylo/ecs/time/FixedTimestep.hpp"
 #include "aylo/ecs/time/TimePlugin.hpp"
 #include "aylo/replication/component/Owner.hpp"
@@ -48,6 +51,15 @@ std::unique_ptr<App> makeApp() {
     app->addPlugin(StandalonePlugin{});
     app->getWorld().getResources().getMut<InputLayout>()->add("fire", InputKind::kButton);
     return app;
+}
+
+constexpr std::uint32_t kStartedMark = 42;
+
+/// @brief A game's Startup system: leaves a mark in the session's input, a resource the test can read.
+void markStarted(aylo::ecs::ResMut<LocalSession> session) {
+    PlayerInput input;
+    input.sequence = kStartedMark;
+    session->setInput(input);
 }
 
 /// @brief Gives the local player's input: "fire" held or not.
@@ -119,4 +131,15 @@ TEST(StandalonePlugin, GivesTheLocalInputToTheEntityOfClientOneWithEdges) {
     app.runFrame();
     EXPECT_FALSE(fire(mine));
     EXPECT_TRUE(released());
+}
+
+TEST(StandalonePlugin, RunsAServerSystemOrderedAfterNetStart) {
+    const std::unique_ptr<App> holder = makeApp();
+    App& app = *holder;
+    app.addSystem(aylo::ecs::Phase::kStartup, "game.spawnClock", &markStarted)
+        .setSide(aylo::ecs::Side::kServer)
+        .after("net.start");  // the server's socket: nothing to wait for here, but the order must resolve
+
+    ASSERT_NO_THROW(app.runFrame());
+    EXPECT_EQ(app.getWorld().getResources().get<LocalSession>()->input().sequence, kStartedMark);
 }
