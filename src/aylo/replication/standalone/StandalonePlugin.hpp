@@ -25,6 +25,7 @@ namespace aylo::replication::standalone {
 ///
 /// | Phase       | System             | What it does                                                           |
 /// |-------------|--------------------|------------------------------------------------------------------------|
+/// | Startup     | `net.start`        | nothing: there is no socket; a system ordered after the server's runs  |
 /// | PreUpdate   | `net.receive`      | raises `net.ClientConnected` for client 1 once; delivers the packets   |
 /// | FixedUpdate | `net.applyInputs` | writes the local input in the PlayerInput of the entity client 1 owns  |
 ///
@@ -36,6 +37,7 @@ namespace aylo::replication::standalone {
 class AYLO_REPLICATION_API StandalonePlugin : public ecs::Plugin {
   public:
     static constexpr std::string_view kName = "aylo.replication.standalone";   ///< The plugin's name.
+    static constexpr std::string_view kStartSystem = "net.start";              ///< Startup: does nothing.
     static constexpr std::string_view kReceiveSystem = "net.receive";          ///< PreUpdate.
     static constexpr std::string_view kApplyInputsSystem = "net.applyInputs";  ///< FixedUpdate.
 

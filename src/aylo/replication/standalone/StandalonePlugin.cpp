@@ -28,6 +28,10 @@
 
 namespace aylo::replication::standalone {
 namespace {
+/// @brief Startup: the server's `net.start` opens the socket; standalone has none, but a game system ordered after
+/// `net.start` (one reading `aylo.net.serverTime`) must still find it.
+void start() {}
+
 /// @brief `aylo.replication.localClient`: the local client is always connected.
 client::LocalClient localClient() { return client::LocalClient{.connected = true, .client = LocalSession::kClient}; }
 
@@ -83,6 +87,7 @@ void StandalonePlugin::build(ecs::App& app) {
     app.insertResource(LocalSession{});
     app.addPlugin(ReplicationPlugin{});
     app.addCall(std::string{client::kLocalClientCall}, &localClient);
+    app.addSystem(ecs::Phase::kStartup, std::string{kStartSystem}, &start);
     app.addSystem(ecs::Phase::kPreUpdate, std::string{kReceiveSystem}, &receive);
     app.addSystem(ecs::Phase::kFixedUpdate, std::string{kApplyInputsSystem}, &applyInputs);
 }

@@ -345,6 +345,9 @@ sides. A networked game runs there **unchanged**; the engine plays the server wi
   sent to the clients, and a `side = "client"` system never sees one sent to the server. A system with `side = "both"`
   gets every packet; tell them apart with `sender` (`0` is from the server). Over the network this is already the case,
   since a process only has its own side's packets.
+- The engine's system names you can order against are the same as on a server. A `Startup` server system with
+  `after = { "net.start" }` (where the server opens its socket) runs in the editor too; there, `net.start` has
+  nothing to open and does nothing.
 - A client system and a server system that use the same data run in one world: the server's goes first, so the client
   draws what the server did this frame. There is no disconnect event: the player stays until the game stops.
 
