@@ -137,5 +137,5 @@ flowchart LR
 
 ## Not in this plan
 
-Lighting and materials, shadows, skeletal animation, transparency sorting in 3D, 3D audio panning beyond what the
+Lighting and materials, shadows (planned in `docs/3d/rendering.md`, epic #93), skeletal animation, transparency sorting in 3D, 3D audio panning beyond what the
 listener's position gives, sprites placed in the 3D world (billboards), level of detail, instancing.
