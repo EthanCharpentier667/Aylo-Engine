@@ -271,3 +271,47 @@ TEST(ScriptScreenEffects, AServerIgnoresThePasses) {
     )"),
               "");
 }
+
+TEST(ScriptScreenEffects, AnEffectIncludesAGameFileAndTheEnginesLibraries) {
+    // manual/pages/shader-libraries.md, "A first include".
+    const std::filesystem::path assets =
+        std::filesystem::temp_directory_path() / std::format("aylo_include_script_{:08x}", std::random_device{}());
+    std::filesystem::create_directories(assets / "shaders/lib");
+    std::ofstream{assets / "shaders/lib/palette.glsl"} << R"(// Our game's colours.
+uniform vec3 ink = vec3(0.1, 0.05, 0.2);
+vec3 inked(vec3 color, float amount) { return mix(color, ink, amount); }
+)";
+    std::ofstream{assets / "shaders/smoke.glsl"} << R"(#pragma screen
+#include "@aylo/noise.glsl"
+#include "@aylo/color.glsl"
+#include "lib/palette.glsl"
+uniform float strength = 0.6;
+void fragment() {
+    float smoke = fbm(vec3(SCREEN_UV * 6.0, TIME * 0.2), 5, 0.5, 2.0) * 0.5 + 0.5;
+    COLOR.rgb = blendSoftLight(COLOR.rgb, vec3(smoke), strength);
+    COLOR.rgb = inked(COLOR.rgb, (1.0 - luminance(COLOR.rgb)) * 0.3);
+}
+)";
+    std::ofstream{assets / "shaders/typo.glsl"} << "#pragma screen\n#include \"lib/pallete.glsl\"\n"
+                                                   "void fragment() {}\n";
+    {
+        Scripts client{aylo::ecs::RunMode::kClient, assets};
+        ASSERT_EQ(client.run(R"(
+            local smoke = engine.assets.material({ name = "smoke", shader = engine.assets.shader("shaders/smoke.glsl"),
+                                                   values = { strength = 0.4, ink = { x = 0.2, y = 0.0, z = 0.1 } } })
+            engine.screenEffects({ smoke })
+            engine.assets.shader("shaders/typo.glsl")
+        )"),
+                  "");
+        client.app.runFrame();
+        ASSERT_EQ(client.state->createdShaders.size(), 1U);
+        // The values in the order they are declared, the included file at its #include.
+        const auto& values = client.state->createdShaders.front().materialValues;
+        ASSERT_EQ(values.size(), 2U);
+        EXPECT_EQ(values.front().name, "ink");
+        EXPECT_EQ(values.back().name, "strength");
+        ASSERT_FALSE(client.state->screenMaterials.empty());
+        EXPECT_EQ(client.state->screenMaterials.back().size(), 1U);
+    }
+    std::filesystem::remove_all(assets);
+}
