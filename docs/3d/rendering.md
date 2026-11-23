@@ -64,6 +64,24 @@ flowchart LR
 
 R3D-01, R3D-03, R3D-05, R3D-09, R3D-10 and R3D-11 can start at once.
 
+## Lights (R3D-05)
+
+`aylo.Light3D` and `aylo.Environment3D` are components of the graphics plugin (a component, not a resource, so a script
+can spawn one). The Render system `aylo.graphics.lights3D`, after the 3D camera, turns the enabled lights into
+`contract::renderer::Light3D` in the world's space (direction: the entity's -Z, the area's width: its X; `power` for
+point, spot and area lights, `intensity` for directional ones) and calls `setLights3D()` with the ambient of the
+environment with the highest priority. A game with neither calls nothing. A renderer whose `supportsLights3D()` is
+false gets nothing and the plugin says so once.
+
+Vulkan packs them (`rendering::packLights()`) into a storage buffer per frame in flight at **set 3, binding 1**, next
+to the draws: only the mesh pipelines are lit, and they all have set 3, so set 0 (shared by every 2D pass and the
+compute shaders) stays as it is. The buffer is the header (`ambient`, `count`) then `AyloLight`s of 80 bytes: position
+and range, direction and kind, colour and intensity, the cone's cosines and the area's half size, the area's axis and
+the shadow flag, the layout a clustered pass (`Charles-Mahoudeau/rtype#64`) would read. Past `kMaxLights3D` (64), the
+directional lights are kept, then the nearest to the scene's camera. The editor draws each light with `Lines3D` in
+the Scene tab (`editor/scene/LightGizmos`). The lights of a glTF file (`KHR_lights_punctual`) are not read: the mesh
+plugin flattens a file into one mesh and spawns no node to carry them.
+
 ## Transparency: sorting, not order-independent transparency (R3D-03)
 
 Blended 3D draws are drawn after the opaque ones, sorted back to front by the centre of their box, per picture. This is
