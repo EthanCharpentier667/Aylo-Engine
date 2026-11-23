@@ -14,6 +14,7 @@
 
 #include "FakeBackend.hpp"
 #include "TestModels.hpp"
+#include "aylo/contract/renderer/shaders/CompiledShader.hpp"
 #include "aylo/ecs/app/App.hpp"
 #include "aylo/ecs/schedule/RunMode.hpp"
 #include "aylo/ecs/time/TimePlugin.hpp"
@@ -209,4 +210,42 @@ TEST(ScriptMesh, TheManualsFlashRecipeRuns) {
     }
     const std::string log = testing::internal::GetCapturedStderr();
     EXPECT_EQ(log.find("setInstanceValue"), std::string::npos) << log;
+}
+
+TEST(ScriptMesh, AScriptDrawsAModelWithARimShaderAndAVarying) {
+    // manual/pages/materials.md, "3D materials" and "From vertex() to fragment()".
+    ClientScripts client;
+    client.state->shaders = true;
+    client.assets.write("models/rim.glsl",
+                        "#pragma mesh\n"
+                        "varying vec3 objectPosition;\n"
+                        "void vertex() { objectPosition = VERTEX; }\n"
+                        "void fragment() {\n"
+                        "    float rim = 1.0 - max(dot(NORMAL, VIEW_DIR), 0.0);\n"
+                        "    COLOR.rgb += pow(rim, 3.0) * vec3(0.3, 0.6, 1.0) * (FRONT_FACING ? 1.0 : 0.0);\n"
+                        "    COLOR.rgb *= 0.5 + 0.5 * fract(objectPosition.y * 4.0);\n"
+                        "}\n");
+    ASSERT_EQ(client.run(R"(
+        local triangle = engine.assets.mesh("models/tri.gltf")
+        local rim = engine.assets.material({ name = "rim", shader = engine.assets.shader("models/rim.glsl") })
+        engine.ecs.system("game.Setup", {
+            phase = "Startup",
+            side = "client",
+            run = function(ctx)
+                ctx.commands:spawn({
+                    ["aylo.Transform3D"] = {},
+                    ["aylo.MeshRenderer"] = { mesh = triangle, material = rim },
+                })
+            end,
+        })
+    )"),
+              "");
+    testing::internal::CaptureStderr();
+    for (int frame = 0; frame < 4; ++frame) {
+        client.app.runFrame();
+    }
+    const std::string log = testing::internal::GetCapturedStderr();
+    EXPECT_EQ(log.find("rim.glsl"), std::string::npos) << log;
+    ASSERT_FALSE(client.state->staticMeshDraws.empty());
+    EXPECT_NE(client.state->staticMeshDraws.back().material, aylo::contract::renderer::MaterialId{});
 }
