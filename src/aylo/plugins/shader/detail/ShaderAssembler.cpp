@@ -94,7 +94,7 @@ std::string replaceMarker(std::string glsl, std::string_view marker, std::string
 /// @return Whether @p shader adds nothing to the prelude: the default shader.
 bool isEmpty(const ParsedShader& shader) noexcept {
     return shader.materialValues.empty() && shader.instanceValues.empty() && shader.textures.empty() &&
-           !shader.hasVertex && !shader.hasFragment && shader.body.empty();
+           shader.varyings.empty() && !shader.hasVertex && !shader.hasFragment && shader.body.empty();
 }
 
 /// @return The GLSL type of @p type.
@@ -156,6 +156,34 @@ std::string declareValues(const ParsedShader& shader) {
     }
     for (const DeclaredValue& declared : shader.instanceValues) {
         glsl += std::format("{} {};\n", glslType(declared.value.type), declared.value.name);
+    }
+    return glsl;
+}
+
+/// @return The first location @p target leaves to the shader's varyings: after the template's own outputs.
+std::uint32_t firstVaryingLocation(ShaderTarget target) noexcept {
+    switch (target) {
+        case ShaderTarget::kShape:
+            return 11;  // the shape's own end at 10
+        case ShaderTarget::kMesh:
+            return 8;  // the normal is at 7, the world and local positions at 3 and 4
+        case ShaderTarget::kSprite:
+        case ShaderTarget::kGlyph:
+        case ShaderTarget::kParticle:
+        case ShaderTarget::kScreen:
+            break;
+    }
+    return 7;  // the instance values take 3 to 6
+}
+
+/// @return The shader's varyings, `out` in the vertex stage and `in` in the fragment stage, each at its location from
+/// firstVaryingLocation(); an `int` is flat, as GLSL wants.
+std::string declareVaryings(const ParsedShader& shader, ShaderTarget target, bool vertex) {
+    std::string glsl;
+    std::uint32_t location = firstVaryingLocation(target);
+    for (const DeclaredVarying& varying : shader.varyings) {
+        glsl += std::format("layout(location = {}) {}{} {} {};\n", location++, varying.type == "int" ? "flat " : "",
+                            vertex ? "out" : "in", varying.type, varying.name);
     }
     return glsl;
 }
@@ -298,10 +326,11 @@ std::string assembleShader(const ParsedShader& shader, ShaderTarget target, Shad
         }
     }
     const std::string_view stageTemplate = vertex ? vertexTemplate(target) : fragmentTemplate(target);
-    const std::string shaderCode = isEmpty(shader)
-                                       ? std::string{}
-                                       : std::format("{}\n#line 1\n{}\n", declareValues(shader),
-                                                     blankFunction(shader.body, vertex ? "fragment" : "vertex"));
+    const std::string shaderCode =
+        isEmpty(shader)
+            ? std::string{}
+            : std::format("{}{}\n#line 1\n{}\n", declareValues(shader), declareVaryings(shader, target, vertex),
+                          blankFunction(shader.body, vertex ? "fragment" : "vertex"));
     const bool calls = vertex ? shader.hasVertex : shader.hasFragment;
     const std::string_view call = vertex ? "    vertex();" : "    fragment();";
     const std::string mainCode =

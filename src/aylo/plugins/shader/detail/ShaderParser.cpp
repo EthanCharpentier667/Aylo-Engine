@@ -33,7 +33,7 @@ namespace {
 using contract::renderer::ShaderValueType;
 
 /// @brief Names a shader cannot declare: the engine's built-ins (docs/Shaders.md).
-constexpr std::array<std::string_view, 14> kBuiltins{"VERTEX",
+constexpr std::array<std::string_view, 24> kBuiltins{"VERTEX",
                                                      "UV",
                                                      "COLOR",
                                                      "TEXTURE",
@@ -46,7 +46,20 @@ constexpr std::array<std::string_view, 14> kBuiltins{"VERTEX",
                                                      "INV_MODEL_MATRIX",
                                                      "NORMAL_MATRIX",
                                                      "AABB_MIN",
-                                                     "AABB_MAX"};
+                                                     "AABB_MAX",
+                                                     "WORLD_POSITION",
+                                                     "LOCAL_POSITION",
+                                                     "VIEW_DIR",
+                                                     "CAMERA_POSITION",
+                                                     "VIEW_MATRIX",
+                                                     "PROJECTION_MATRIX",
+                                                     "INV_VIEW_MATRIX",
+                                                     "INV_PROJECTION_MATRIX",
+                                                     "FRONT_FACING",
+                                                     "FRAGCOORD"};
+
+/// @brief The types a varying may have.
+constexpr std::array<std::string_view, 5> kVaryingTypes{"float", "vec2", "vec3", "vec4", "int"};
 
 /// @brief The line that makes a shader a screen effect (ParsedShader::screen).
 constexpr std::string_view kScreenPragma = "#pragma screen";
@@ -303,17 +316,51 @@ struct Parser {
         }
     }
 
+    /// @brief Reads the varying declared on @p code, line @p line: `varying <type> <name>;`.
+    void addVarying(std::string_view code, std::uint32_t line) {
+        const auto semicolon = code.find(';');
+        if (semicolon == std::string_view::npos || !trim(code.substr(semicolon + 1)).empty()) {
+            fail(shader.name, line, "a declaration ends with ';' and is alone on its line");
+        }
+        std::vector<std::string> words;
+        std::istringstream stream{std::string{code.substr(0, semicolon)}};
+        for (std::string word; stream >> word;) {
+            words.push_back(std::move(word));
+        }
+        if (words.size() != 3) {
+            fail(shader.name, line, "expected 'varying <type> <name>;'");
+        }
+        const std::string& type = words.at(1);
+        const std::string& name = words.at(2);
+        if (std::ranges::find(kVaryingTypes, type) == kVaryingTypes.end()) {
+            fail(shader.name, line, std::format("a varying is a float, vec2, vec3, vec4 or int, not '{}'", type));
+        }
+        if (!isIdentifier(name)) {
+            fail(shader.name, line, std::format("'{}' is not a name (arrays are not supported)", name));
+        }
+        checkName(name, line);
+        if (shader.varyings.size() == kShaderMaxVaryings) {
+            fail(shader.name, line, std::format("more than {} varyings", kShaderMaxVaryings));
+        }
+        shader.varyings.push_back(DeclaredVarying{.type = type, .name = name, .line = line});
+    }
+
+    /// @brief Checks @p name, declared on @p line, is neither reserved nor declared already, and records it.
+    void checkName(const std::string& name, std::uint32_t line) {
+        if (std::ranges::find(kBuiltins, name) != kBuiltins.end() || name.starts_with("aylo") ||
+            name.starts_with("gl_")) {
+            fail(shader.name, line, std::format("'{}' is reserved by the engine", name));
+        }
+        if (std::ranges::find(names, name) != names.end()) {
+            fail(shader.name, line, std::format("'{}' is declared twice", name));
+        }
+        names.push_back(name);
+    }
+
     /// @brief Reads the declaration on @p code, line @p line.
     void addDeclaration(std::string_view code, std::uint32_t line) {
         const Declaration declaration = readDeclaration(code, shader.name, line);
-        if (std::ranges::find(kBuiltins, declaration.name) != kBuiltins.end() || declaration.name.starts_with("aylo") ||
-            declaration.name.starts_with("gl_")) {
-            fail(shader.name, line, std::format("'{}' is reserved by the engine", declaration.name));
-        }
-        if (std::ranges::find(names, declaration.name) != names.end()) {
-            fail(shader.name, line, std::format("'{}' is declared twice", declaration.name));
-        }
-        names.push_back(declaration.name);
+        checkName(declaration.name, line);
         if (declaration.type == "sampler2D") {
             addTexture(declaration, line);
         } else {
@@ -341,6 +388,11 @@ ParsedShader parseShader(std::string_view source, std::string_view name) {
         if (trimmed == kScreenPragma || trimmed == kMeshPragma) {
             shader.body += '\n';
             (trimmed == kScreenPragma ? shader.screen : shader.mesh) = true;
+            continue;
+        }
+        if (trimmed.starts_with("varying ")) {
+            shader.body += '\n';
+            parser.addVarying(trimmed, lineNumber);
             continue;
         }
         if (trimmed.starts_with("uniform ") || trimmed.starts_with("instance ")) {

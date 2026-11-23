@@ -24,6 +24,18 @@ struct DeclaredValue {
     std::uint32_t line{0};                  ///< Line of the declaration in the shader, from 1.
 };
 
+/// @brief Most `varying`s a shader declares: the locations every device has left after the engine's own, on every
+/// target (a shape uses 11 of the 16 a device must offer).
+inline constexpr std::size_t kShaderMaxVaryings = 5;
+
+/// @brief A value a shader passes from vertex() to fragment(), interpolated (`varying vec3 position;`), or flat for an
+/// `int`.
+struct DeclaredVarying {
+    std::string type;       ///< Its GLSL type: float, vec2, vec3, vec4 or int.
+    std::string name;       ///< As declared.
+    std::uint32_t line{0};  ///< Line of the declaration in the shader, from 1.
+};
+
 /// @brief A shader's source once its declarations are read: what the engine generates around it, and the GLSL the
 /// game wrote, the declarations blanked out.
 struct ParsedShader {
@@ -34,6 +46,7 @@ struct ParsedShader {
     std::vector<DeclaredValue> instanceValues;                    ///< `instance uniform` values, in declaration order.
     contract::renderer::ShaderInstanceValues instanceDefaults{};  ///< The instance values' defaults.
     std::vector<contract::renderer::ShaderTexture> textures;      ///< `uniform sampler2D`, slots in declaration order.
+    std::vector<DeclaredVarying> varyings;                        ///< `varying` values, in declaration order.
     bool hasVertex{false};                                        ///< Whether it defines `void vertex()`.
     bool hasFragment{false};                                      ///< Whether it defines `void fragment()`.
     bool screen{false};  ///< Whether it says `#pragma screen`: a screen effect, drawn over the whole scene.
@@ -46,6 +59,7 @@ struct ParsedShader {
 /// uniform vec4 tint = vec4(1.0, 0.5, 0.5, 1.0);  // in the material, shared by the drawings that use it
 /// instance uniform float flash = 0.0;            // in each drawing, kShaderInstanceBytes for all of them
 /// uniform sampler2D noise;                       // an extra texture of the material, kShaderMaxTextures at most
+/// varying vec3 position;                         // written in vertex(), read in fragment(), kShaderMaxVaryings
 /// void fragment() { COLOR.rgb = mix(COLOR.rgb, tint.rgb, flash); }
 /// @endcode
 /// Values are float, vec2, vec3, vec4 or int, laid out as std140 and std430 lay them out (the same for these types),
@@ -53,7 +67,8 @@ struct ParsedShader {
 /// @param name Names the shader in messages.
 /// @throws exceptions::ShaderException Naming the shader and the line: an unknown type, a declaration it cannot read
 /// (an array, a block, several on a line), a name declared twice or reserved by the engine, a default it cannot read,
-/// instance values past kShaderInstanceBytes, too many textures, or neither vertex() nor fragment().
+/// instance values past kShaderInstanceBytes, too many textures or varyings, a varying of another type, or neither
+/// vertex() nor fragment().
 [[nodiscard]] AYLO_PLUGIN_SHADER_API ParsedShader parseShader(std::string_view source, std::string_view name);
 
 }  // namespace aylo::plugins::shader::detail
