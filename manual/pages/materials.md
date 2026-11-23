@@ -281,7 +281,69 @@ A name it does not know is an error: `Material '...': render state 'cull' is "ba
 error too: 2D drawings have their own blend modes.
 
 The Inspector edits a 3D material as a 2D one, and shows its **Render state**: each part is the shader's until you
-pick another. A shader cannot say both `#pragma screen` and `#pragma mesh`.
+pick another.
+
+### Several materials on one model
+
+A model is made of **parts**: a glTF primitive, or the faces of one FBX or OBJ material (a car's body, its windows,
+its lights). `material` draws every part; `materials` gives some of them their own, in the order of the file, the first
+part at `[1]`. A part you leave out, or give no material, keeps `material`:
+
+```luau
+local car = engine.assets.mesh("models/car.glb")
+local paint = engine.assets.material("materials/paint.material")
+local glass = engine.assets.material("materials/glass.material")
+local spawned = false
+
+engine.ecs.system("game.SpawnCar", {
+	phase = "Update",
+	side = "client",
+	query = {},
+	calls = { "aylo.mesh.findPart" },
+	run = function(ctx)
+		-- the part whose material the file names "Glass"; 0 until the file is read
+		local windows = ctx.call("aylo.mesh.findPart", { mesh = car, name = "Glass" })
+		if windows == 0 or spawned then
+			return
+		end
+		spawned = true
+		local materials = {}
+		for part = 1, windows do
+			materials[part] = paint
+		end
+		materials[windows] = glass
+		ctx.commands:spawn({
+			["aylo.Transform3D"] = {},
+			["aylo.MeshRenderer"] = { mesh = car, material = paint, materials = materials },
+		})
+	end,
+})
+```
+
+`aylo.mesh.findPart` gives the index of the part whose material has that name in the file (as Blender names it), from
+1, or 0 when no part has that name or the file is not read yet (a model loads over its first frames). When you know the
+order of the parts, write the list directly: `materials = { paint, glass }`.
+
+### Passes
+
+A material can name a **next pass**: another material drawn right after it, on the same parts of the same model,
+wherever the model goes. It is how an outline, a highlight of the selected unit or a shield goes on every model that
+uses the material, without a second entity:
+
+```json
+{ "shader": "shaders/painted.glsl", "nextPass": "materials/outline.material" }
+```
+
+```luau
+local outline = engine.assets.material("materials/outline.material")
+local selected = engine.assets.material({ name = "selected", shader = painted, nextPass = outline })
+```
+
+The next pass can have a next pass of its own: a part draws 8 materials at most, its own and 7 passes. A longer
+chain is cut, and the output says `[Mesh] A material's next passes chain more than 8 materials` (two materials that name
+each other loop forever otherwise). A `.material` file whose next passes come back to it is refused when it is read:
+`Material 'materials/a.material': its next passes loop back to 'materials/a.material'`. A material cannot be its own
+next pass. The passes only apply to models, and the Inspector sets one when you drop a `.material` on **Next pass**. A shader cannot say both `#pragma screen` and `#pragma mesh`.
 
 !!! warning "A 2D material on a model"
     A model given a material whose shader is a 2D one (no `#pragma mesh`) is drawn with the built-in shader, and the
