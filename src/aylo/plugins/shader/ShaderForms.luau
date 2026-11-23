@@ -88,27 +88,65 @@ engine.assets.material = function(...)
 	return material
 end
 
--- engine.screenEffects({ material, ... }): the screen effects, materials of `#pragma screen` shaders run in this order
--- over the whole scene (aylo.shader.setScreenMaterials), replacing the previous ones; {} removes them. A list of tables
--- { material, input, inputs, output, scale, size, lowPrecision } is passes (aylo.shader.addScreenEffect). Where there is no
--- screen to draw (a server), it does nothing, so a script shared by both sides can call it.
+-- The entries of engine.screenEffects as passes: a material id is a pass of its own, a string the material of that shader
+-- with its defaults, a table with a `material` a pass, and a list of passes (an engine.effects result) is spliced in.
+local function passesOf(name, list)
+	local passes = {}
+	for _, entry in list do
+		if type(entry) == "string" then
+			local shader = engine.assets.shader(entry)
+			table.insert(passes, { material = engine.assets.material({ name = "@aylo/effects/" .. entry, shader = shader }) })
+		elseif type(entry) == "table" and entry.material == nil and type(entry[1]) == "table" then
+			for _, pass in entry do
+				table.insert(passes, pass)
+			end
+		elseif type(entry) == "table" then
+			table.insert(passes, entry)
+		else
+			table.insert(passes, { material = entry })
+		end
+	end
+	return passes
+end
+
+-- Whether every pass is only a material: the effects are then a plain chain (aylo.shader.setScreenMaterials).
+local function isChain(passes)
+	for _, pass in passes do
+		for key in pass do
+			if key ~= "material" then
+				return false
+			end
+		end
+	end
+	return true
+end
+
+-- engine.screenEffects({ effect, ... }): the screen effects, in this order over the whole scene, replacing the previous
+-- ones; {} removes them. An effect is a material of a `#pragma screen` shader, a shader's name ("@aylo/vignette.glsl"),
+-- a pass { material, input, inputs, output, scale, size, lowPrecision } (aylo.shader.addScreenEffect), or what an
+-- engine.effects function returns. Where there is no screen to draw (a server), it does nothing, so a script shared by
+-- both sides can call it.
 engine.screenEffects = function(...)
 	local name = "engine.screenEffects"
 	forms.arguments(name, 1, ...)
-	local materials = (...)
-	if type(materials) ~= "table" then
+	local list = (...)
+	if type(list) ~= "table" then
 		forms.fail(name, "expected a list of materials")
 	end
 	if not engine.hasCall("aylo.shader.setScreenMaterials") then
 		return
 	end
-	-- A list of materials is a chain at full size; a list of tables is passes, each written as one call.
-	if #materials == 0 or type(materials[1]) ~= "table" then
+	local passes = passesOf(name, list)
+	if isChain(passes) then
+		local materials = {}
+		for _, pass in passes do
+			table.insert(materials, pass.material)
+		end
 		forms.call(name, "aylo.shader.setScreenMaterials", { materials = materials })
 		return
 	end
 	forms.call(name, "aylo.shader.setScreenMaterials", { materials = {} })
-	for index, pass in materials do
+	for index, pass in passes do
 		local context = name .. ": pass " .. index
 		forms.table(context, pass, { "material", "input", "inputs", "output", "scale", "size", "lowPrecision" })
 		if pass.material == nil then
@@ -137,4 +175,144 @@ engine.screenEffects = function(...)
 		end
 	end
 	forms.call(name, "aylo.shader.checkScreenEffects", {})
+end
+
+-- engine.effects: the engine's standard screen effects. Each function takes the effect's values (all optional) and
+-- returns its passes, for engine.screenEffects: engine.screenEffects({ engine.effects.bloom({ threshold = 0.8 }) }).
+-- Each call makes materials and targets of its own, so an effect may appear twice with different values.
+engine.effects = {}
+local effectCount = 0
+
+-- A new material of the engine's shader `@aylo/<shader>.glsl` with `values`.
+local function effectMaterial(effect, shader, values)
+	effectCount += 1
+	return engine.assets.material({
+		name = "@aylo/effects/" .. effect .. "/" .. effectCount,
+		shader = engine.assets.shader("@aylo/" .. shader .. ".glsl"),
+		values = values,
+	})
+end
+
+-- The values given to engine.effects.<effect>, checked against `keys`.
+local function effectValues(effect, keys, ...)
+	local context = "engine.effects." .. effect
+	forms.arguments(context, 1, ...)
+	local values = (...)
+	if values == nil then
+		return {}, context
+	end
+	return forms.table(context, values, keys), context
+end
+
+-- A prefix for the targets of one call, so two calls do not share them.
+local function targetPrefix(effect)
+	effectCount += 1
+	return "@aylo/" .. effect .. effectCount .. "/"
+end
+
+-- The effects of one pass: their values are their shader's.
+local singleEffects = {
+	sharpen = { shader = "sharpen", keys = { "amount", "mode" } },
+	chromaticAberration = { shader = "chromatic_aberration", keys = { "strength", "offset" } },
+	filmGrain = { shader = "film_grain", keys = { "luminanceNoise", "chromaNoise", "size", "speed" } },
+	vignette = { shader = "vignette", keys = { "intensity", "radius", "softness", "color" } },
+	fxaa = { shader = "fxaa", keys = { "spanMax", "reduceMul" } },
+	fog = { shader = "fog", keys = { "color", "density", "start", "height", "heightFalloff" } },
+	tonemap = { shader = "tonemap", keys = { "exposure", "mode" } },
+}
+for effect, spec in singleEffects do
+	engine.effects[effect] = function(...)
+		local values = effectValues(effect, spec.keys, ...)
+		return { { material = effectMaterial(effect, spec.shader, values) } }
+	end
+end
+
+-- A bloom on a chain of smaller and smaller images, down then back up: wide glows for little cost. Its values are
+-- those of @aylo/bloom.glsl; `radius` (pixels) chooses how many halvings it makes.
+engine.effects.bloom = function(...)
+	local values, context = effectValues("bloom", { "threshold", "softKnee", "intensity", "radius" }, ...)
+	local radius = forms.number(context, values, "radius") or 24
+	local levels = math.clamp(math.ceil(math.log(math.max(radius, 2) / 2, 2)), 1, 8)
+	local prefix = targetPrefix("bloom")
+	local prefilter =
+		effectMaterial("bloom", "bloom_prefilter", { threshold = values.threshold, softKnee = values.softKnee })
+	local down = effectMaterial("bloom", "bloom_down")
+	local up = effectMaterial("bloom", "bloom_up")
+	local composite = effectMaterial("bloom", "bloom_composite", { intensity = values.intensity, levels = levels })
+	local passes = { { material = prefilter, output = prefix .. "0", scale = 0.5 } }
+	for level = 1, levels - 1 do
+		table.insert(passes, {
+			material = down,
+			input = prefix .. (level - 1),
+			output = prefix .. level,
+			scale = 0.5 ^ (level + 1),
+		})
+	end
+	local current = prefix .. (levels - 1)
+	for level = levels - 2, 0, -1 do
+		local output = prefix .. "up" .. level
+		table.insert(passes, {
+			material = up,
+			input = current,
+			inputs = { level = prefix .. level },
+			output = output,
+			scale = 0.5 ^ (level + 1),
+		})
+		current = output
+	end
+	table.insert(passes, { material = composite, inputs = { bloom = current } })
+	return passes
+end
+
+-- The Kuwahara filter, a painterly look: the classic one in one pass, or with `anisotropic = true` the one that follows
+-- the picture's strokes (four passes).
+engine.effects.kuwahara = function(...)
+	local values, context = effectValues(
+		"kuwahara",
+		{ "radius", "anisotropic", "sharpness", "eccentricity", "uniformity" },
+		...
+	)
+	if not forms.boolean(context, values, "anisotropic") then
+		return { { material = effectMaterial("kuwahara", "kuwahara", { radius = values.radius }) } }
+	end
+	local prefix = targetPrefix("kuwahara")
+	local sigma = forms.number(context, values, "uniformity") or 2
+	local tensor = effectMaterial("kuwahara", "kuwahara_tensor")
+	local across = effectMaterial("kuwahara", "blur", { direction = { x = 1, y = 0 }, sigma = sigma })
+	local down = effectMaterial("kuwahara", "blur", { direction = { x = 0, y = 1 }, sigma = sigma })
+	local filter = effectMaterial("kuwahara", "kuwahara_anisotropic", {
+		radius = values.radius,
+		sharpness = values.sharpness,
+		eccentricity = values.eccentricity,
+	})
+	return {
+		{ material = tensor, output = prefix .. "tensor" },
+		{ material = across, input = prefix .. "tensor", output = prefix .. "across" },
+		{ material = down, input = prefix .. "across", output = prefix .. "smooth" },
+		{ material = filter, inputs = { tensor = prefix .. "smooth" } },
+	}
+end
+
+-- Screen-space ambient occlusion: the 3D world darkened in its creases and corners, at half size, blurred, then laid
+-- over the picture (four passes).
+engine.effects.ssao = function(...)
+	local values, context =
+		effectValues("ssao", { "radius", "intensity", "bias", "samples", "blur", "shadow" }, ...)
+	local prefix = targetPrefix("ssao")
+	local sigma = forms.number(context, values, "blur") or 2
+	local occlusion = effectMaterial("ssao", "ssao", {
+		radius = values.radius,
+		intensity = values.intensity,
+		bias = values.bias,
+		samples = values.samples,
+	})
+	local across = effectMaterial("ssao", "blur", { direction = { x = 1, y = 0 }, sigma = sigma })
+	local down = effectMaterial("ssao", "blur", { direction = { x = 0, y = 1 }, sigma = sigma })
+	local apply = effectMaterial("ssao", "ssao_apply", { shadow = values.shadow })
+	return {
+		{ material = occlusion, output = prefix .. "occlusion", scale = 0.5, lowPrecision = true },
+		{ material = across, input = prefix .. "occlusion", output = prefix .. "across", scale = 0.5, lowPrecision = true },
+		{ material = down, input = prefix .. "across", output = prefix .. "smooth", scale = 0.5, lowPrecision = true },
+		{ material = apply, inputs = { occlusion = prefix .. "smooth" } },
+	}
 end
