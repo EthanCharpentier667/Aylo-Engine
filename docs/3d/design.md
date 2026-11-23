@@ -81,9 +81,9 @@ metres, Y up. FBX and OBJ count V from the bottom of a texture, so V is turned t
 files a model names (an OBJ's `.mtl`) are read only through the game's `FileSource`, never from the disk at large; a
 missing `.mtl` leaves the model white instead of failing it. A texture named by an absolute path (the artist's machine)
 is looked for by its name next to the model. Assimp was set aside: one library for some forty formats, but heavy to
-build, and weaker than these two on glTF materials, skins and animations. The first version is unlit:
-each primitive is drawn with its base colour factor and base colour texture; the nodes of the file are flattened into
-one mesh, their transforms baked in. Lighting, materials, skins and animations come later.
+build, and weaker than these two on glTF materials, skins and animations. The nodes of the file are
+flattened into one mesh, their transforms baked in. Each part keeps its file's material, drawn unlit or lit
+(`docs/3d/rendering.md`, R3D-06 and R3D-07); skins and animations come later.
 
 ## Physics
 

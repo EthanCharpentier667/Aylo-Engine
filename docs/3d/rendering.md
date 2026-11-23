@@ -108,6 +108,25 @@ There is no multiple-scattering compensation: very rough metals are slightly dar
 The reference scene of the issue (a grid of spheres compared against another renderer) is not automated: there is no
 GPU in CI to draw it.
 
+## Model materials and vertex data (R3D-07)
+
+`StaticMeshPart` carries glTF's metallic-roughness material: factors, the metallic-roughness, normal, occlusion and
+emissive textures (data textures created linear, colour ones sRGB), the alpha mode and cutoff, `doubleSided`, and the
+base colour's `KHR_texture_transform` applied to every map. `StaticMeshDesc` gains optional per-vertex `tangents`,
+`colors` and `uv2`, each in a vertex buffer of its own (bindings 1 to 3): a mesh without one binds the pass's default
+data (one buffer of tangents along X, white and zero UVs, grown for the largest mesh, its old versions kept until the
+pass goes since frames in flight may read them), so a model pays only for what it has. Tangents come from the file, or
+MikkTSpace (`mesh/detail/Tangents`, private) for the vertices without one, and only for a model with a normal map.
+
+Set 1 of the static mesh layout holds a part's five textures (`MeshPartTextures`, per part and frame in flight,
+rewritten when a texture changes or goes, as a material's set 2); a game mesh shader still reads only the first, as
+`TEXTURE`. The push constants (`StaticMeshConstants`, 80 bytes) carry the factors, the maps the part has and its alpha
+mode. The built-in pipelines are one per lighting, side and blending (8 at most, built when first used): an opaque part
+ignores its alpha, a mask part is cut out at its cutoff, a blend part is blended and sorted with the others, and a part
+not double sided culls its back faces. A lit shader on a model starts from the same surface. A part made in code keeps
+`doubleSided` true and is opaque: an alpha below 1 on it is no longer blended. ufbx gives FBX and OBJ files the same
+material values, but no tangents, vertex colours or second UVs from the file yet, and keeps both sides.
+
 ## Transparency: sorting, not order-independent transparency (R3D-03)
 
 Blended 3D draws are drawn after the opaque ones, sorted back to front by the centre of their box, per picture. This is

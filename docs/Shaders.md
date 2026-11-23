@@ -48,7 +48,7 @@ One declaration per line, outside any function:
 - `varying <type> <name>;`: a value `vertex()` writes and `fragment()` reads, interpolated (`float`, `vec2` to `vec4`;
   an `int` is `flat`). At most 5 (`kShaderMaxVaryings`). The assembler declares each `out` in the vertex stage and `in`
   in the fragment stage, from the first location the target leaves free (`firstVaryingLocation()`: 7 for sprites,
-  glyphs, particles and the screen, 8 for meshes, 11 for shapes), so the last one is at most 15: the 16 locations
+  glyphs, particles and the screen, 9 for meshes, 11 for shapes), so the last one is at most 15: the 16 locations
   every device offers.
 
 The types are `float`, `vec2`, `vec3`, `vec4` and `int`. A default is a number or a `vecN(...)` of numbers (one number
