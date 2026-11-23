@@ -89,6 +89,12 @@ alpha is below it is discarded, the others are opaque. The assembler compiles th
 when the shader names it, since a `discard` can cost the early depth test. The built-in mesh shader keeps its own state
 (no culling, premultiplied blending, depth written) until R3D-07 reads glTF's `doubleSided`.
 
+A material's next pass (`Material::nextPass`, a `.material` file's `nextPass`, the call
+`aylo.shader.setMaterialNextPass`) is drawn after it on the same parts of a model. `loadMaterialFile()` reads the next
+passes of a file as files of their own and refuses a chain that loops or holds more than `kMaxMaterialPasses` (8); the
+mesh plugin follows the chain each frame, one `drawStaticMesh()` per pass with `listedPartsOnly`, and cuts a chain of
+materials made in code at 8 with one warning. Passes only apply to models.
+
 `FRONT_FACING` is `gl_FrontFacing`: the projection puts Y down in clip space and the screen too, so a triangle
 counter-clockwise in the world is counter-clockwise on screen, the pipelines' default front face. `FRAGCOORD`
 (`gl_FragCoord`) is in every fragment stage. The

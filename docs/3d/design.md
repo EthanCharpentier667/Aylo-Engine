@@ -39,7 +39,7 @@ changing what a 2D game is, and the tasks that bring it, in order. Decided with 
 | `aylo.Camera2D` | `priority` (and the projection's zoom) | graphics (renamed, D3-02) |
 | `aylo.Camera3D` | `projection` (`"perspective"`, `"orthographic"`), `fieldOfView` (degrees), `orthographicHeight`, `near`, `far`, `priority` | graphics, D3-02 |
 | `aylo.Lines3D`... | debug lines in the 3D world | graphics, D3-02 |
-| `aylo.MeshRenderer` | `mesh` asset id, `color` vec4 | mesh (new plugin), D3-03 |
+| `aylo.MeshRenderer` | `mesh` asset id, `color` vec4, `material`, `materials` (one per part, R3D-04) | mesh (new plugin), D3-03 |
 | `aylo.Collider3D` | `shape` (`"box"`, `"sphere"`, `"capsule"`), `size` vec3, `radius`, `halfHeight`, `offset` vec3, `sensor`, `friction`, `restitution`, `layer`, `mask` | physics, D3-04 |
 | `aylo.Velocity3D` | `linear` vec3, `angular` vec3 | physics, D3-04 |
 

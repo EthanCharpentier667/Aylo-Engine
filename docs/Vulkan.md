@@ -205,7 +205,10 @@ by `createStaticMesh()` and freed through the deletion queue. A draw with a game
 materials ask for, in a deque so a frame's pointers stay valid; the culling, blending, depth test and write and depth
 bias come from `RenderState`, the front face is counter-clockwise, which the projection keeps on screen: `FrontFaceTests`)
 (`StaticMeshPass::createMaterialPipeline()`: the same vertices and depth test, against `kWorld3DDepthFormat`) and its
-set 2, found by `findMaterial()`; the others with the built-in pipeline. `StaticMeshPass::record()` draws the opaque draws first, in their order, then
+set 2, found by `findMaterial()`; the others with the built-in pipeline. `uploadWorld()` turns each `StaticMeshDraw` into one draw per part, each with its material
+(`StaticMeshDraw::partMaterials`, copied by `drawStaticMesh()` since the span only lives during the call; a pass with
+`listedPartsOnly` skips the parts it does not name), so a blended part is sorted on its own; the parts of one mesh bind
+its buffers once. `StaticMeshPass::record()` draws the opaque draws first, in their order, then
 the blended ones back to front from the picture's camera (`orderMeshDraws()`: by distance to the centre of their box,
 or along the view for an orthographic camera), per picture, since the scene and the preview have their own camera. The 2D world then draws in a second scope that keeps the image (`loadedColorAttachment`), so
 it lies over the 3D world; the screen effects and the overlay follow as before. Without a 3D view, nothing changes. The
