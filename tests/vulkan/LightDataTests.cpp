@@ -94,3 +94,15 @@ TEST(LightData, PastTheCapKeepsTheSunsThenTheNearestLights) {
     }
     EXPECT_FLOAT_EQ(farthest, static_cast<float>(kMaxLights3D - 1));  // the 10 farthest left out
 }
+
+TEST(LightData, TheHeaderCarriesTheSkyWhenItLightsTheWorld) {
+    std::vector<std::byte> bytes;
+    packLights({}, Environment3D{.skyIntensity = 1.5F}, {}, 0, bytes, 7);
+    const GpuLightsHeader lit = headerOf(bytes);
+    EXPECT_FLOAT_EQ(lit.ambient.w, 1.5F);
+    EXPECT_EQ(lit.count.z, 7U);
+    packLights({}, Environment3D{.skyIntensity = 1.5F}, {}, 0, bytes);
+    const GpuLightsHeader unlit = headerOf(bytes);
+    EXPECT_FLOAT_EQ(unlit.ambient.w, 0.0F);  // no sky light: the shaders read no map
+    EXPECT_EQ(unlit.count.z, 0U);
+}

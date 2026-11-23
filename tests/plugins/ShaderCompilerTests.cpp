@@ -309,6 +309,19 @@ TEST(ShaderCompiler, AScreenEffectReadsTheSceneAndThePreviousFrame) {
     EXPECT_FALSE(errorOf("void fragment() { COLOR = texture(PREVIOUS_FRAME, UV); }\n").empty());
 }
 
+TEST(ShaderCompiler, ALitShaderReadsTheLightAround) {
+    // manual/pages/lighting.md, "The light around": a cel shading whose light around is grey, its reflection dimmer.
+    const CompiledShader toon = compileShader(
+        "#pragma mesh\n#pragma lit\nvoid fragment() { ALBEDO = vec3(0.8); ROUGHNESS = 0.4; }\n"
+        "float luminance3(vec3 c) { return dot(c, vec3(0.333)); }\n"
+        "void light() {\n    DIFFUSE_LIGHT += ALBEDO * LIGHT_COLOR * step(0.3, dot(NORMAL, LIGHT_DIR)) * SHADOW;\n"
+        "    ENV_DIFFUSE = vec3(luminance3(ENV_DIFFUSE));\n    ENV_SPECULAR *= 0.5;\n}\n",
+        "toon");
+    EXPECT_EQ(toon.variants.size(), 1U);
+    EXPECT_FALSE(errorOf("#pragma mesh\nvoid fragment() { COLOR.rgb = ENV_DIFFUSE; }\n").empty());
+    EXPECT_FALSE(errorOf("#pragma mesh\n#pragma lit\nuniform vec3 ENV_SPECULAR;\nvoid fragment() {}\n").empty());
+}
+
 TEST(ShaderCompiler, TheSurfaceBuiltinsAreOnlyForLitShaders) {
     EXPECT_FALSE(errorOf("#pragma mesh\nvoid fragment() { ALBEDO = vec3(1.0); }\n").empty());
 }
