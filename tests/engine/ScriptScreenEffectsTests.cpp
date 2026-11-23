@@ -315,3 +315,76 @@ void fragment() {
     }
     std::filesystem::remove_all(assets);
 }
+
+TEST(ScriptScreenEffects, TheStandardEffectsRunFromAScriptAlone) {
+    // manual/pages/screen-effects.md, "A first look": no shader of the game.
+    Scripts client{aylo::ecs::RunMode::kClient};
+    ASSERT_EQ(client.run(R"(
+        engine.screenEffects({
+            engine.effects.ssao({ radius = 0.4 }),
+            engine.effects.bloom({ threshold = 0.9, intensity = 0.5 }),
+            engine.effects.kuwahara({ radius = 6, anisotropic = true }),
+            "@aylo/chromatic_aberration.glsl",
+            engine.effects.vignette(),
+            engine.effects.tonemap({ mode = 2 }),
+            engine.effects.fxaa(),
+        })
+    )"),
+              "");
+    client.app.runFrame();
+    ASSERT_FALSE(client.state->screenEffects.empty());
+    const auto& passes = client.state->screenEffects.back();
+    // SSAO 4, bloom 8 (radius 24: four levels, down and up), anisotropic Kuwahara 4, then four of one pass.
+    ASSERT_EQ(passes.size(), 20U);
+    EXPECT_TRUE(passes.front().lowPrecision);
+    EXPECT_FLOAT_EQ(passes.front().scale, 0.5F);
+    const auto& composite = passes.at(11);
+    ASSERT_EQ(composite.inputs.size(), 1U);
+    EXPECT_TRUE(composite.inputs.front().target.ends_with("up0")) << composite.inputs.front().target;
+    for (const auto& shader : client.state->createdShaders) {
+        EXPECT_EQ(shader.variants.size(), 1U) << shader.name;
+    }
+    EXPECT_EQ(client.state->createdShaders.size(), 13U);  // ssao, blur, ssao_apply, 4 bloom, 2 kuwahara, 4 others
+}
+
+TEST(ScriptScreenEffects, EachStandardEffectOfOnePassIsAChain) {
+    Scripts client{aylo::ecs::RunMode::kClient};
+    ASSERT_EQ(client.run(R"(
+        engine.screenEffects({
+            engine.effects.fog({ density = 0.05, heightFalloff = 0.3 }),
+            engine.effects.kuwahara({ radius = 3 }),
+            engine.effects.sharpen({ amount = 0.6, mode = 1 }),
+            engine.effects.chromaticAberration({ offset = { x = 1, y = 0 } }),
+            engine.effects.filmGrain({ luminanceNoise = 0.1 }),
+            engine.effects.vignette({ color = { x = 0.1, y = 0, z = 0 } }),
+            engine.effects.fxaa({ spanMax = 4 }),
+            engine.effects.tonemap(),
+        })
+    )"),
+              "");
+    client.app.runFrame();
+    ASSERT_FALSE(client.state->screenMaterials.empty());
+    EXPECT_EQ(client.state->screenMaterials.back().size(), 8U);
+    ASSERT_EQ(client.state->createdShaders.size(), 8U);
+    EXPECT_TRUE(client.state->createdShaders.front().readsDepth);  // the fog
+}
+
+TEST(ScriptScreenEffects, ASmallBloomRadiusMakesFewerLevelsAndAWrongValueIsAnError) {
+    Scripts client{aylo::ecs::RunMode::kClient};
+    ASSERT_EQ(client.run(R"(engine.screenEffects({ engine.effects.bloom({ radius = 4 }) }))"), "");
+    client.app.runFrame();
+    ASSERT_FALSE(client.state->screenEffects.empty());
+    EXPECT_EQ(client.state->screenEffects.back().size(), 2U);  // one level: the bright part, then the composite
+
+    const std::string typo = client.run(R"(engine.effects.bloom({ thresold = 1 }))");
+    EXPECT_TRUE(typo.contains("engine.effects.bloom: unexpected 'thresold'")) << typo;
+    const std::string kind = client.run(R"(engine.effects.kuwahara({ anisotropic = 1 }))");
+    EXPECT_TRUE(kind.contains("engine.effects.kuwahara: 'anisotropic' must be a boolean")) << kind;
+}
+
+TEST(ScriptScreenEffects, AServerIgnoresTheStandardEffects) {
+    Scripts server{aylo::ecs::RunMode::kServer};
+    EXPECT_EQ(
+        server.run(R"(engine.screenEffects({ engine.effects.bloom(), engine.effects.ssao(), "@aylo/fxaa.glsl" }))"),
+        "");
+}
