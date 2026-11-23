@@ -245,3 +245,9 @@ TEST(ShaderParser, ReadsALitShaderAndItsLightFunction) {
             << name;
     }
 }
+
+TEST(ShaderParser, ReadsThatA3DShaderCastsNoShadow) {
+    EXPECT_FALSE(parseShader("#pragma mesh\n#pragma shadow off\nvoid fragment() {}", "glow").castsShadows);
+    EXPECT_TRUE(parseShader("#pragma mesh\nvoid fragment() {}", "plain").castsShadows);
+    EXPECT_TRUE(errorOf("#pragma shadow off\nvoid fragment() {}").contains("for a '#pragma mesh' shader"));
+}

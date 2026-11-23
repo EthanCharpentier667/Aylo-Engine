@@ -317,3 +317,16 @@ TEST(MeshPlugin, CreatesAModelWithItsMapsReadAsData) {
     EXPECT_NE(part.emissiveTexture, aylo::contract::renderer::TextureId{});
     EXPECT_NE(part.normalTexture, part.texture);  // the same image, read linear for the normal map
 }
+
+TEST(MeshPlugin, TellsTheRendererWhetherAModelCastsAndReceivesShadows) {
+    AssetsFolder assets;
+    assets.writeTriangle();
+    MeshApp fixture{assets};
+    fixture.app().getWorld().spawn(
+        aylo::plugins::transform::Transform3D{},
+        MeshRenderer{.mesh = fixture.meshes().load("models/tri.gltf"), .castShadows = false, .receiveShadows = false});
+    fixture.runFrames(4);
+    ASSERT_FALSE(fixture.state().staticMeshDraws.empty());
+    EXPECT_FALSE(fixture.state().staticMeshDraws.back().castShadows);
+    EXPECT_FALSE(fixture.state().staticMeshDraws.back().receiveShadows);
+}

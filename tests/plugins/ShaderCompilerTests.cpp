@@ -261,6 +261,15 @@ TEST(ShaderCompiler, AMeshShaderReadsItsVertexData) {
     EXPECT_FALSE(errorOf("void fragment() { COLOR = VERTEX_COLOR; }\n").empty());
 }
 
+TEST(ShaderCompiler, SaysWhetherA3DShaderCastsShadowsAndCutsOut) {
+    const CompiledShader leaf = compileShader("#pragma mesh\nvoid fragment() { ALPHA_SCISSOR = 0.5; }\n", "leaf");
+    EXPECT_TRUE(leaf.castsShadows);
+    EXPECT_TRUE(leaf.cutsOut);
+    const CompiledShader glow = compileShader("#pragma mesh\n#pragma shadow off\nvoid fragment() {}\n", "glow");
+    EXPECT_FALSE(glow.castsShadows);
+    EXPECT_FALSE(glow.cutsOut);
+}
+
 TEST(ShaderCompiler, TheSurfaceBuiltinsAreOnlyForLitShaders) {
     EXPECT_FALSE(errorOf("#pragma mesh\nvoid fragment() { ALBEDO = vec3(1.0); }\n").empty());
 }

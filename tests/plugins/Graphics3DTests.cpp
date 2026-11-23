@@ -195,8 +195,9 @@ TEST(Light3D, ReflectsItsFieldsWithTheKindByName) {
     using aylo::plugins::graphics::Light3D;
     EXPECT_EQ(aylo::ecs::ComponentTraits<Light3D>::kName, "aylo.Light3D");
     const aylo::ecs::TypeInfo info = aylo::ecs::TypeTraits<Light3D>::makeTypeInfo();
-    ASSERT_EQ(info.fields.size(), 10U);
+    ASSERT_EQ(info.fields.size(), 13U);
     EXPECT_EQ(info.fields.at(0).name, "kind");
+    EXPECT_EQ(info.fields.at(10).name, "shadowSoftness");
     ASSERT_EQ(info.fields.at(0).enumNames.size(), 4U);
     EXPECT_EQ(info.fields.at(0).enumNames[3], "area");
     EXPECT_EQ(aylo::ecs::ComponentTraits<aylo::plugins::graphics::Environment3D>::kName, "aylo.Environment3D");
