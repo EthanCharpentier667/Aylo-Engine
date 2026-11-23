@@ -168,4 +168,5 @@ times `AO`.
 
 - [Lights](lights.md): the lights and the ambient light.
 - [Materials](materials.md): material files, values, render states, passes.
+- [Shader libraries](shader-libraries.md): noise for procedural surfaces.
 - [Post-processing](post-processing.md): the tonemap.

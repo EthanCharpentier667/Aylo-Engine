@@ -341,6 +341,7 @@ hit is over.
 
 - [Setup forms](setup-forms.md): `engine.assets.shader` and `engine.assets.material`.
 - [Materials](materials.md): keep a material in a `.material` file, edit it in the editor.
+- [Shader libraries](shader-libraries.md): `#include` noise, colour and maths functions in an effect.
 - [Engine calls](engine-calls.md): how calls are made from a system.
 - [Hot reload](hot-reload.md): changing a shader while the game runs.
 - [Particles](particles.md): effects that look good with a glow.

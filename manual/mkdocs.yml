@@ -39,6 +39,7 @@ nav:
   - Materials: materials.md
   - Lights: lights.md
   - Lit materials: lighting.md
+  - Shader libraries: shader-libraries.md
   - User interface: ui.md
   - HTTP: http.md
   - JSON: json.md

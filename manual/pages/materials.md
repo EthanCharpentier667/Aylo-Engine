@@ -389,5 +389,6 @@ created, and the drawings keep the default material.
 ## See also
 
 - [Post-processing](post-processing.md): writing a shader, and screen effects.
+- [Shader libraries](shader-libraries.md): `#include`, noise, colour and maths functions.
 - [Setup forms](setup-forms.md): `engine.assets.shader` and `engine.assets.material`.
 - [Editor](editor.md): the Assets panel and the Inspector.
