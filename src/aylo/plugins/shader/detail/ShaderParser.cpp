@@ -33,8 +33,20 @@ namespace {
 using contract::renderer::ShaderValueType;
 
 /// @brief Names a shader cannot declare: the engine's built-ins (docs/Shaders.md).
-constexpr std::array<std::string_view, 8> kBuiltins{
-    "VERTEX", "UV", "COLOR", "TEXTURE", "TIME", "SCREEN_TEXTURE", "SCREEN_UV", "SCREEN_PIXEL_SIZE"};
+constexpr std::array<std::string_view, 14> kBuiltins{"VERTEX",
+                                                     "UV",
+                                                     "COLOR",
+                                                     "TEXTURE",
+                                                     "TIME",
+                                                     "SCREEN_TEXTURE",
+                                                     "SCREEN_UV",
+                                                     "NORMAL",
+                                                     "SCREEN_PIXEL_SIZE",
+                                                     "MODEL_MATRIX",
+                                                     "INV_MODEL_MATRIX",
+                                                     "NORMAL_MATRIX",
+                                                     "AABB_MIN",
+                                                     "AABB_MAX"};
 
 /// @brief The line that makes a shader a screen effect (ParsedShader::screen).
 constexpr std::string_view kScreenPragma = "#pragma screen";

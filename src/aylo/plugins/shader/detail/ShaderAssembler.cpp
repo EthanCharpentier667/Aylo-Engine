@@ -211,6 +211,22 @@ std::string screenInstanceValues(const ParsedShader& shader) {
     return glsl;
 }
 
+/// @return Where @p target's main() reads the instance values from: 4 vec4.
+std::string_view instanceSource(ShaderTarget target) noexcept {
+    switch (target) {
+        case ShaderTarget::kParticle:
+            return "ayloParticles.instance";
+        case ShaderTarget::kMesh:
+            return "ayloMeshDraws[ayloPart.draw].instance";
+        case ShaderTarget::kSprite:
+        case ShaderTarget::kGlyph:
+        case ShaderTarget::kShape:
+        case ShaderTarget::kScreen:
+            break;
+    }
+    return "ayloInstance";
+}
+
 /// @return The statements that fill the instance values from @p source (4 vec4), for main().
 std::string loadInstanceValues(const ParsedShader& shader, std::string_view source) {
     std::string glsl;
@@ -269,9 +285,9 @@ std::string assembleShader(const ParsedShader& shader, ShaderTarget target, Shad
     if (particle) {
         glsl += text(kParticleConstants);
     }
-    // A screen effect's vertex stage and both stages of a mesh have no drawing to carry instance values: their
-    // defaults are written in.
-    const bool screenValues = ((target == ShaderTarget::kScreen && vertex) || mesh) && !shader.instanceValues.empty();
+    // A screen effect's vertex stage has no drawing to carry instance values: their defaults are written in. A mesh
+    // reads its draw's from the frame's buffer of mesh draws.
+    const bool screenValues = target == ShaderTarget::kScreen && vertex && !shader.instanceValues.empty();
     if (screenValues) {
         glsl += "vec4 ayloInstance[4];\n";
     }
@@ -290,8 +306,7 @@ std::string assembleShader(const ParsedShader& shader, ShaderTarget target, Shad
     const std::string_view call = vertex ? "    vertex();" : "    fragment();";
     const std::string mainCode =
         std::format("{}{}{}", screenValues ? screenInstanceValues(shader) : std::string{},
-                    loadInstanceValues(shader, particle ? "ayloParticles.instance" : "ayloInstance"),
-                    calls ? call : std::string_view{});
+                    loadInstanceValues(shader, instanceSource(target)), calls ? call : std::string_view{});
     glsl += replaceMarker(replaceMarker(std::string{stageTemplate}, kShaderMarker, shaderCode), kMainMarker, mainCode);
     return glsl;
 }
