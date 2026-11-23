@@ -308,6 +308,10 @@ std::string assembleShader(const ParsedShader& shader, ShaderTarget target, Shad
     }
     if (mesh) {
         glsl += "#define AYLO_MESH\n";
+        // The cutout is only compiled in when the shader writes it: a discard can cost the early depth test.
+        if (!vertex && shader.body.contains("ALPHA_SCISSOR")) {
+            glsl += "#define AYLO_ALPHA_SCISSOR\n";
+        }
     }
     glsl += text(kCommon);
     if (particle) {

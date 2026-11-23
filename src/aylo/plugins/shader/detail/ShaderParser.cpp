@@ -24,6 +24,7 @@
 #include <vector>
 
 #include "aylo/contract/renderer/shaders/CompiledShader.hpp"
+#include "plugins/shader/RenderStateNames.hpp"
 #include "plugins/shader/exceptions/ShaderExceptions.hpp"
 
 namespace aylo::plugins::shader::detail {
@@ -33,7 +34,7 @@ namespace {
 using contract::renderer::ShaderValueType;
 
 /// @brief Names a shader cannot declare: the engine's built-ins (docs/Shaders.md).
-constexpr std::array<std::string_view, 24> kBuiltins{"VERTEX",
+constexpr std::array<std::string_view, 25> kBuiltins{"VERTEX",
                                                      "UV",
                                                      "COLOR",
                                                      "TEXTURE",
@@ -57,6 +58,15 @@ constexpr std::array<std::string_view, 24> kBuiltins{"VERTEX",
                                                      "INV_PROJECTION_MATRIX",
                                                      "FRONT_FACING",
                                                      "FRAGCOORD"};
+
+/// @return @p names quoted and joined, for a message.
+std::string joinNames(std::span<const std::string_view> names) {
+    std::string joined;
+    for (const std::string_view name : names) {
+        joined += std::format("{}'{}'", joined.empty() ? "" : ", ", name);
+    }
+    return joined;
+}
 
 /// @brief The types a varying may have.
 constexpr std::array<std::string_view, 5> kVaryingTypes{"float", "vec2", "vec3", "vec4", "int"};
@@ -316,6 +326,62 @@ struct Parser {
         }
     }
 
+    std::optional<std::uint32_t> renderStateLine;  ///< The first render state pragma, if any.
+    bool depthGiven{false};                        ///< Whether a `#pragma depth` was read.
+
+    /// @return Whether @p code, a line stripped of its comments, is a render state pragma, read into the shader.
+    bool addRenderPragma(std::string_view code, std::uint32_t line) {
+        std::vector<std::string> words;
+        std::istringstream stream{std::string{code}};
+        for (std::string word; stream >> word;) {
+            words.push_back(std::move(word));
+        }
+        if (words.size() < 2 || words.at(0) != "#pragma") {
+            return false;
+        }
+        const std::string& kind = words.at(1);
+        std::string value;
+        for (std::size_t index = 2; index < words.size(); ++index) {
+            value += (index == 2 ? "" : " ") + words.at(index);
+        }
+        contract::renderer::RenderState& state = shader.renderState;
+        if (kind == "cull") {
+            const auto mode = cullModeNamed(value);
+            if (!mode) {
+                fail(shader.name, line,
+                     std::format("'#pragma cull' takes {}, not '{}'", joinNames(cullModeNames()), value));
+            }
+            state.cull = *mode;
+        } else if (kind == "blend") {
+            const auto mode = blendNamed(value);
+            if (!mode) {
+                fail(shader.name, line,
+                     std::format("'#pragma blend' takes {}, not '{}'", joinNames(blendNames()), value));
+            }
+            state.blend = *mode;
+        } else if (kind == "depth") {
+            const auto mode = depthModeNamed(value);
+            if (!mode) {
+                fail(shader.name, line,
+                     std::format("'#pragma depth' takes {}, not '{}'", joinNames(depthModeNames()), value));
+            }
+            state.depth = *mode;
+            depthGiven = true;
+        } else if (kind == "depth_bias") {
+            const std::optional<float> constant = words.size() >= 3 ? readNumber(words.at(2)) : std::nullopt;
+            const std::optional<float> slope = words.size() == 4 ? readNumber(words.at(3)) : std::optional{0.0F};
+            if (!constant || !slope || words.size() > 4) {
+                fail(shader.name, line, "'#pragma depth_bias' takes a number, and optionally a slope factor");
+            }
+            state.depthBias = *constant;
+            state.depthBiasSlope = *slope;
+        } else {
+            return false;
+        }
+        renderStateLine = renderStateLine.value_or(line);
+        return true;
+    }
+
     /// @brief Reads the varying declared on @p code, line @p line: `varying <type> <name>;`.
     void addVarying(std::string_view code, std::uint32_t line) {
         const auto semicolon = code.find(';');
@@ -390,6 +456,10 @@ ParsedShader parseShader(std::string_view source, std::string_view name) {
             (trimmed == kScreenPragma ? shader.screen : shader.mesh) = true;
             continue;
         }
+        if (trimmed.starts_with("#pragma ") && parser.addRenderPragma(trimmed, lineNumber)) {
+            shader.body += '\n';
+            continue;
+        }
         if (trimmed.starts_with("varying ")) {
             shader.body += '\n';
             parser.addVarying(trimmed, lineNumber);
@@ -409,6 +479,12 @@ ParsedShader parseShader(std::string_view source, std::string_view name) {
     shader.materialSize = alignUp(parser.materialCursor, 16);
     shader.materialDefaults.resize(shader.materialSize);
     std::memcpy(shader.instanceDefaults.data(), parser.instanceBlock.data(), parser.instanceBlock.size());
+    if (parser.renderStateLine && !shader.mesh) {
+        fail(name, *parser.renderStateLine, "a render state pragma is for a '#pragma mesh' shader");
+    }
+    if (!parser.depthGiven && contract::renderer::isTransparent(shader.renderState)) {
+        shader.renderState.depth = contract::renderer::DepthMode::kTestNoWrite;
+    }
     const std::string collapsed = collapseSpaces(code);
     shader.hasVertex = definesFunction(collapsed, "vertex");
     shader.hasFragment = definesFunction(collapsed, "fragment");

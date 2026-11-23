@@ -127,7 +127,8 @@ contract::renderer::CompiledShader compileShader(std::string_view source, std::s
                                               .materialSize = parsed.materialSize,
                                               .materialDefaults = parsed.materialDefaults,
                                               .instanceDefaults = parsed.instanceDefaults,
-                                              .textures = parsed.textures};
+                                              .textures = parsed.textures,
+                                              .renderState = parsed.renderState};
     for (const DeclaredValue& declared : parsed.materialValues) {
         shader.materialValues.push_back(declared.value);
     }

@@ -51,7 +51,8 @@ struct ParsedShader {
     bool hasFragment{false};                                      ///< Whether it defines `void fragment()`.
     bool screen{false};  ///< Whether it says `#pragma screen`: a screen effect, drawn over the whole scene.
     bool mesh{false};    ///< Whether it says `#pragma mesh`: a 3D shader, drawn on static meshes.
-    std::string body;    ///< The source, every declaration line left empty, so line numbers stay the game's.
+    contract::renderer::RenderState renderState;  ///< From `#pragma cull`, `blend`, `depth` and `depth_bias`.
+    std::string body;  ///< The source, every declaration line left empty, so line numbers stay the game's.
 };
 
 /// @brief Reads the declarations of a shader, written in the engine's GLSL dialect (docs/Shaders.md), one per line:
@@ -67,8 +68,9 @@ struct ParsedShader {
 /// @param name Names the shader in messages.
 /// @throws exceptions::ShaderException Naming the shader and the line: an unknown type, a declaration it cannot read
 /// (an array, a block, several on a line), a name declared twice or reserved by the engine, a default it cannot read,
-/// instance values past kShaderInstanceBytes, too many textures or varyings, a varying of another type, or neither
-/// vertex() nor fragment().
+/// instance values past kShaderInstanceBytes, too many textures or varyings, a varying of another type, a render state
+/// pragma it does not know the value of, or in a shader that is not `#pragma mesh`, or neither vertex() nor
+/// fragment(). A blended shader that says no `#pragma depth` tests depth without writing it.
 [[nodiscard]] AYLO_PLUGIN_SHADER_API ParsedShader parseShader(std::string_view source, std::string_view name);
 
 }  // namespace aylo::plugins::shader::detail
