@@ -122,6 +122,40 @@ The names above, and those starting with `aylo`, are the engine's: you cannot de
 `SCREEN_UV` and `SCREEN_PIXEL_SIZE` only exist in a screen effect, and a sprite whose material is a screen effect is
 drawn as if it had none.
 
+## Depth and the 3D camera
+
+A screen effect can read how far each pixel of the 3D world is, and where the 3D camera is: fog, a depth of field,
+outlines found at the edges of things, a scan line that sweeps the ground.
+
+```glsl
+// assets/shaders/fog.glsl
+#pragma screen
+uniform vec3 fogColor = vec3(0.5, 0.6, 0.7);
+uniform float density = 0.04;
+
+void fragment() {
+    float distance = linearDepth(texture(DEPTH_TEXTURE, SCREEN_UV).r);  // metres from the camera
+    COLOR.rgb = mix(fogColor, COLOR.rgb, exp(-density * distance));
+}
+```
+
+| Name | Type | What it is |
+|---|---|---|
+| `DEPTH_TEXTURE` | `sampler2D` | The 3D world's depth: `0` at the camera's near plane, `1` at its far plane and where nothing 3D was drawn (the 2D world, the sky) |
+| `linearDepth(depth)` | `float` | A depth of `DEPTH_TEXTURE` as metres from the camera |
+| `viewPositionAt(uv)` | `vec3` | The point seen at `uv`, in the camera's space (it looks along -Z) |
+| `worldPositionAt(uv)` | `vec3` | The point seen at `uv`, in the world |
+| `normalAt(uv)` | `vec3` | The surface's normal at `uv`, in the camera's space, toward the camera |
+| `CAMERA_POSITION` | `vec3` | The 3D camera, in the world |
+| `VIEW_MATRIX`, `INV_VIEW_MATRIX` | `mat4` | The world's space to the camera's, and back |
+| `PROJECTION_MATRIX`, `INV_PROJECTION_MATRIX` | `mat4` | The camera's space to the screen's, and back |
+
+The depth only covers the 3D world: the 2D world and the user interface, drawn over it, are at the far plane, so a fog
+leaves them as they are. The depth is kept for the effects only when one of them reads it: a game whose effects do not
+pays nothing. `normalAt()` rebuilds the normal from the depth of the neighbouring pixels, so it is the shape of what
+was drawn, not a normal map's. With a `virtualResolution` that puts bars around the picture, the positions assume the 3D
+view fills the screen.
+
 A shader file under `assets/shaders/` is compiled again when you save it, in a game with [hot reload](hot-reload.md) on.
 A screen effect follows: you see the change on the next frame, and a typo keeps the last version on screen.
 
