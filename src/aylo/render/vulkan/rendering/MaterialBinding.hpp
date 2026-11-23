@@ -22,6 +22,7 @@ struct MaterialBinding {
     bool instanceValues = false;                           ///< Its pipeline reads the instance values binding.
     contract::renderer::RenderState state;  ///< How it is drawn (kMesh): its material's, or its shader's.
     const pipeline::GraphicsPipeline* shadowPipeline = nullptr;  ///< kMesh: what draws it into a shadow map; none.
+    bool readsDepth = false;                                     ///< kScreen: the effect reads the 3D depth (set 3).
 };
 
 /// @brief Finds what a game material is drawn with this frame for a target, or a null pipeline if it cannot be drawn.

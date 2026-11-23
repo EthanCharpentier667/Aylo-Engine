@@ -57,6 +57,8 @@ class AYLO_RENDER_VULKAN_API GameShader {
     [[nodiscard]] std::uint32_t getMaterialSize() const noexcept { return _materialSize; }
     /// @return Whether it declares instance values: only then do its sprites carry them.
     [[nodiscard]] bool hasInstanceValues() const noexcept { return _instanceValues; }
+    /// @return Whether its screen effect reads the 3D depth.
+    [[nodiscard]] bool readsDepth() const noexcept { return _readsDepth; }
 
     /// @return Whether it serves @p target.
     [[nodiscard]] bool serves(contract::renderer::ShaderTarget target) const noexcept;
@@ -105,6 +107,7 @@ class AYLO_RENDER_VULKAN_API GameShader {
     contract::renderer::RenderState _renderState;                           ///< Its pragmas.
     bool _castsShadows{true};                                               ///< No `#pragma shadow off`.
     bool _cutsOut{false};                                                   ///< It writes ALPHA_SCISSOR.
+    bool _readsDepth{false};                                                ///< Its screen effect reads depth.
     std::array<Variant, contract::renderer::kShaderTargetCount> _variants;  ///< By ShaderTarget.
 };
 

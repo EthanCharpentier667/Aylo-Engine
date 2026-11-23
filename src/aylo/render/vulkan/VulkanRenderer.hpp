@@ -428,6 +428,7 @@ class AYLO_RENDER_VULKAN_API VulkanRenderer final : public contract::renderer::I
         std::unique_ptr<memory::Image>* depth;   ///< Its depth buffer.
         const char* depthName;                   ///< The depth buffer's debug name.
         std::size_t lineVertices;                ///< How many of the uploaded line vertices it draws.
+        bool keepDepth = false;  ///< Whether its depth is kept and left readable (a screen effect reads it).
     };
 
     /// @brief Records a picture of the frame's 3D world into its target, cleared to the clear colour, with its own
@@ -583,9 +584,14 @@ class AYLO_RENDER_VULKAN_API VulkanRenderer final : public contract::renderer::I
     std::unique_ptr<pipeline::PipelineLayout> _layout;  ///< The shared layout (rendering/ShaderLayout.hpp) of every
                                                         ///< pipeline: sets 0 and 1, and the push constants.
     std::unique_ptr<pipeline::PipelineLayout> _materialLayout;  ///< The game shaders' layout: the shared one and set 2.
-    std::unique_ptr<descriptor::DescriptorSetLayout> _meshDrawSetLayout;    ///< Set 3: the frame's mesh draws.
-    std::unique_ptr<descriptor::DescriptorSetLayout> _meshPartSetLayout;    ///< Set 1 of a mesh: its part's textures.
-    std::unique_ptr<descriptor::DescriptorAllocator> _meshPartDescriptors;  ///< Allocates the parts' sets.
+    std::unique_ptr<descriptor::DescriptorSetLayout> _meshDrawSetLayout;     ///< Set 3: the frame's mesh draws.
+    std::unique_ptr<descriptor::DescriptorSetLayout> _meshPartSetLayout;     ///< Set 1 of a mesh: its part's textures.
+    std::unique_ptr<descriptor::DescriptorAllocator> _meshPartDescriptors;   ///< Allocates the parts' sets.
+    std::unique_ptr<descriptor::DescriptorSetLayout> _screenDepthSetLayout;  ///< Set 3 of a screen effect: the depth.
+    std::unique_ptr<descriptor::DescriptorAllocator> _screenDepthDescriptors;  ///< Allocates the depth sets.
+    std::vector<vk::raii::DescriptorSet> _screenDepthSets;    ///< One per frame in flight, written each frame.
+    std::unique_ptr<pipeline::PipelineLayout> _screenLayout;  ///< Every screen effect's: sets 0 to 3.
+    std::unique_ptr<frame::FrameGlobals> _screenGlobals;  ///< The screen effects' uniforms: the 2D view, the 3D camera.
     std::unique_ptr<pipeline::PipelineLayout> _meshLayout;       ///< Every static mesh pipeline's: sets 0 to 3.
     std::unique_ptr<rendering::SpritePass> _spritePass;          ///< Draws _sprites at endFrame().
     std::unique_ptr<rendering::SpritePass> _overlaySpritePass;   ///< Draws _overlaySprites, with buffers of its own.

@@ -46,7 +46,8 @@ GameShader::GameShader(const core::Device& device, const contract::renderer::Com
       _instanceValues{!shader.instanceValues.empty()},
       _renderState{shader.renderState},
       _castsShadows{shader.castsShadows},
-      _cutsOut{shader.cutsOut} {
+      _cutsOut{shader.cutsOut},
+      _readsDepth{shader.readsDepth} {
     contract::renderer::validate(shader);
     for (const contract::renderer::ShaderVariant& variant : shader.variants) {
         Variant& created = _variants.at(static_cast<std::size_t>(variant.target));

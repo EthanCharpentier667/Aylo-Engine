@@ -113,7 +113,8 @@ std::unique_ptr<ScreenPass::Targets> ScreenPass::createTargets(const memory::All
 
 std::size_t ScreenPass::recordEffects(const vk::raii::CommandBuffer& commandBuffer, const Targets& targets,
                                       std::span<const rendering::MaterialBinding> effects,
-                                      const frame::FrameGlobals& globals, std::size_t frameIndex) const {
+                                      const frame::FrameGlobals& globals, std::size_t frameIndex,
+                                      vk::DescriptorSet depthSet) const {
     std::size_t current = 0;
     for (const rendering::MaterialBinding& effect : effects) {
         if (effect.pipeline == nullptr) {
@@ -134,6 +135,8 @@ std::size_t ScreenPass::recordEffects(const vk::raii::CommandBuffer& commandBuff
                                          *targets.sets.at(current), {});
         commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *layout.getLayout(), kMaterialSet,
                                          effect.set, {});
+        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *layout.getLayout(), kScreenDepthSet,
+                                         depthSet, {});
         commandBuffer.draw(3, 1, 0, 0);
         commandBuffer.endRendering();
         rendering::transitionImage(commandBuffer, *target.getImage(), rendering::kSceneToShaderRead);

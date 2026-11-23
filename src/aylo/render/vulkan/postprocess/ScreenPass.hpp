@@ -9,6 +9,7 @@
 
 #include <array>
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <span>
 #include <vulkan/vulkan_raii.hpp>
@@ -27,6 +28,9 @@
 #include "render/vulkan/rendering/MaterialBinding.hpp"
 
 namespace aylo::render::vulkan::postprocess {
+
+/// @brief The set of the 3D depth (DEPTH_TEXTURE) in the screen effects' layout.
+inline constexpr std::uint32_t kScreenDepthSet = 3;
 
 /// @brief Runs the screen effects (game shaders of ShaderTarget::kScreen) over the floating-point scene, then copies
 /// the result to where it is shown.
@@ -80,11 +84,13 @@ class AYLO_RENDER_VULKAN_API ScreenPass {
 
     /// @brief Records @p effects in their order, starting from the scene in the first image, which must be in
     /// SHADER_READ_ONLY_OPTIMAL. An effect with no pipeline is skipped. Outside a rendering scope.
-    /// @param globals The frame's uniforms (set 0 of every effect), for @p frameIndex.
+    /// @param globals The frame's uniforms (set 0 of every effect), for @p frameIndex: the 2D view and the 3D camera.
+    /// @param depthSet Set 3 of every effect: the 3D depth (DEPTH_TEXTURE), or the white pixel (far) without it.
     /// @return The index of the image holding the result, left in SHADER_READ_ONLY_OPTIMAL: 0 with no effect.
     [[nodiscard]] std::size_t recordEffects(const vk::raii::CommandBuffer& commandBuffer, const Targets& targets,
                                             std::span<const rendering::MaterialBinding> effects,
-                                            const frame::FrameGlobals& globals, std::size_t frameIndex) const;
+                                            const frame::FrameGlobals& globals, std::size_t frameIndex,
+                                            vk::DescriptorSet depthSet) const;
 
     /// @brief Records the copy of @p source (a set of Targets) into the rendering scope already begun, over
     /// @p extent: into the window's format, or the scene's if @p toWindow is false.

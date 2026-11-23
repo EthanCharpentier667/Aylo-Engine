@@ -408,6 +408,21 @@ void VulkanRenderer::init(contract::platform::IPlatform& platform) {
     _meshLayout = std::make_unique<pipeline::PipelineLayout>(*_device, meshSetLayouts, pushConstants);
     _device->setName(*_meshDrawSetLayout->getLayout(), "Static mesh draws set layout");
     _device->setName(*_meshLayout->getLayout(), "Static mesh pipeline layout");
+    _screenDepthSetLayout = std::make_unique<descriptor::DescriptorSetLayout>(
+        descriptor::DescriptorSetLayout::Builder{}
+            .addBinding(0, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
+            .build(*_device));
+    const std::array screenDepthSizes{vk::DescriptorPoolSize{vk::DescriptorType::eCombinedImageSampler, 4}};
+    _screenDepthDescriptors =
+        std::make_unique<descriptor::DescriptorAllocator>(*_device, 4, screenDepthSizes, "Screen depth sets");
+    for (std::size_t frame = 0; frame < kFramesInFlight; ++frame) {
+        _screenDepthSets.push_back(_screenDepthDescriptors->allocate(*_screenDepthSetLayout));
+    }
+    const std::array screenSetLayouts{*_globals->getSetLayout().getLayout(), *_textureSetLayout->getLayout(),
+                                      *_materialSetLayout->getLayout(), *_screenDepthSetLayout->getLayout()};
+    _screenLayout = std::make_unique<pipeline::PipelineLayout>(*_device, screenSetLayouts, pushConstants);
+    _screenGlobals = std::make_unique<frame::FrameGlobals>(*_device, *_allocator, kFramesInFlight);
+    _device->setName(*_screenLayout->getLayout(), "Screen effects pipeline layout");
     _device->setName(*_layout->getLayout(), "Shared pipeline layout");
     _device->setName(*_materialLayout->getLayout(), "Game shaders pipeline layout");
     constexpr std::array<std::byte, 4> kWhite{std::byte{0xFF}, std::byte{0xFF}, std::byte{0xFF}, std::byte{0xFF}};
@@ -758,6 +773,15 @@ vk::DescriptorSet VulkanRenderer::recordScene(const vk::raii::CommandBuffer& com
                                               glm::vec2 viewSize, glm::uvec2 framebufferSize) {
     const postprocess::ScreenPass::Targets& targets = acquireScreenTargets(frameIndex, extent);
     const memory::Image& sceneImage = targets.images.front();
+    // The effects first: the 3D depth is only kept when one of them reads it.
+    std::vector<rendering::MaterialBinding> effects;
+    effects.reserve(_screenMaterials.size());
+    for (const contract::renderer::MaterialId material : _screenMaterials) {
+        effects.push_back(findMaterial(material, contract::renderer::ShaderTarget::kScreen, frameIndex));
+    }
+    const bool keepDepth = _view3D && std::ranges::any_of(effects, [](const rendering::MaterialBinding& effect) {
+                               return effect.pipeline != nullptr && effect.readsDepth;
+                           });
     {
         const command::CommandLabel label{*_device, commandBuffer, "Scene"};
         rendering::transitionImage(commandBuffer, *sceneImage.getImage(), rendering::kSceneToColorAttachment);
@@ -772,7 +796,8 @@ vk::DescriptorSet VulkanRenderer::recordScene(const vk::raii::CommandBuffer& com
                                         .globals = _globals3D.get(),
                                         .depth = &_sceneDepth,
                                         .depthName = "Scene depth",
-                                        .lineVertices = _sceneLineVertices});
+                                        .lineVertices = _sceneLineVertices,
+                                        .keepDepth = keepDepth});
         }
         const vk::RenderingAttachmentInfo sceneColor =
             _view3D ? rendering::loadedColorAttachment(*sceneImage.getImageView())
@@ -782,12 +807,24 @@ vk::DescriptorSet VulkanRenderer::recordScene(const vk::raii::CommandBuffer& com
         commandBuffer.endRendering();
         rendering::transitionImage(commandBuffer, *sceneImage.getImage(), rendering::kSceneToShaderRead);
     }
-    std::vector<rendering::MaterialBinding> effects;
-    effects.reserve(_screenMaterials.size());
-    for (const contract::renderer::MaterialId material : _screenMaterials) {
-        effects.push_back(findMaterial(material, contract::renderer::ShaderTarget::kScreen, frameIndex));
+    // The effects see the 2D view and the 3D camera, and the depth (the white pixel, far, without it).
+    rendering::FrameUniforms screenUniforms = makeFrameUniforms(view, extent);
+    if (_view3D) {
+        const contract::renderer::CameraView3D shown{*_view3D, viewSize, framebufferSize};
+        rendering::setCamera(screenUniforms, shown.getViewMatrix(), shown.getProjection(),
+                             std::holds_alternative<contract::renderer::Perspective>(_view3D->projection));
+        screenUniforms.viewProjection = makeFrameUniforms(view, extent).viewProjection;
     }
-    const std::size_t result = _screenPass->recordEffects(commandBuffer, targets, effects, *_globals, frameIndex);
+    _screenGlobals->update(frameIndex, screenUniforms);
+    const vk::raii::DescriptorSet& depthSet = _screenDepthSets.at(frameIndex);
+    const vk::ImageView depthView = keepDepth && _sceneDepth ? *_sceneDepth->getImageView()
+                                                             : *_textures.find(_fallbackTexture)->image.getImageView();
+    descriptor::DescriptorWriter{}
+        .writeImage(0, depthView, *_samplers->get(contract::renderer::TextureFilter::kNearest, false),
+                    vk::ImageLayout::eShaderReadOnlyOptimal)
+        .update(*_device, *depthSet);
+    const std::size_t result =
+        _screenPass->recordEffects(commandBuffer, targets, effects, *_screenGlobals, frameIndex, *depthSet);
     if (!_overlayRuns.empty()) {
         // Over the effects, so they leave the interface alone.
         const memory::Image& resultImage = targets.images.at(result);
@@ -869,8 +906,9 @@ const memory::Image& VulkanRenderer::acquireDepth(std::unique_ptr<memory::Image>
         // The previous frames may still test against it: it goes when they are done.
         _deletionQueue.defer(frameIndex, std::move(slot));
     }
-    slot = std::make_unique<memory::Image>(*_device, *_allocator, extent, kDepthFormat,
-                                           vk::ImageUsageFlagBits::eDepthStencilAttachment);
+    slot = std::make_unique<memory::Image>(
+        *_device, *_allocator, extent, kDepthFormat,
+        vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eSampled);
     _device->setName(*slot->getImage(), name);
     return *slot;
 }
@@ -889,7 +927,10 @@ void VulkanRenderer::recordWorld3D(const vk::raii::CommandBuffer& commandBuffer,
     rendering::transitionImage(commandBuffer, *depth.getImage(), rendering::kToDepthAttachment);
     const vk::RenderingAttachmentInfo colorAttachment =
         rendering::colorAttachment(target.color, toClearColor(_clearColor));
-    const vk::RenderingAttachmentInfo depthAttachment = rendering::depthAttachment(*depth.getImageView(), 1.0F);
+    vk::RenderingAttachmentInfo depthAttachment = rendering::depthAttachment(*depth.getImageView(), 1.0F);
+    if (target.keepDepth) {
+        depthAttachment.setStoreOp(vk::AttachmentStoreOp::eStore);
+    }
     commandBuffer.beginRendering(rendering::renderingInfo(target.extent, {&colorAttachment, 1}, &depthAttachment));
     target.globals->bind(commandBuffer, *_layout, frameIndex);
     const contract::renderer::Viewport& area = view.getViewport();
@@ -912,6 +953,18 @@ void VulkanRenderer::recordWorld3D(const vk::raii::CommandBuffer& commandBuffer,
             .framesInFlight = kFramesInFlight});
     _lines3DPass->record(commandBuffer, frameIndex, viewport, scissor, target.lineVertices);
     commandBuffer.endRendering();
+    if (target.keepDepth) {
+        // For the screen effects: DEPTH_TEXTURE.
+        rendering::transitionImage(
+            commandBuffer, *depth.getImage(),
+            rendering::ImageTransition{.oldLayout = vk::ImageLayout::eDepthAttachmentOptimal,
+                                       .newLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
+                                       .srcStage = vk::PipelineStageFlagBits2::eLateFragmentTests,
+                                       .srcAccess = vk::AccessFlagBits2::eDepthStencilAttachmentWrite,
+                                       .dstStage = vk::PipelineStageFlagBits2::eFragmentShader,
+                                       .dstAccess = vk::AccessFlagBits2::eShaderSampledRead,
+                                       .aspect = vk::ImageAspectFlagBits::eDepth});
+    }
 }
 
 void VulkanRenderer::draw(const contract::renderer::Sprite& sprite) {
@@ -1519,12 +1572,16 @@ rendering::MaterialBinding VulkanRenderer::findMaterial(contract::renderer::Mate
     if (shader == nullptr) {
         return {};
     }
-    // A mesh pipeline also reads the frame's mesh draws (set 3).
-    const pipeline::PipelineLayout& layout =
-        target == contract::renderer::ShaderTarget::kMesh ? *_meshLayout : *_materialLayout;
+    // A mesh pipeline also reads the frame's mesh draws (set 3), a screen effect the 3D depth (set 3).
+    const pipeline::PipelineLayout* layout = _materialLayout.get();
+    if (target == contract::renderer::ShaderTarget::kMesh) {
+        layout = _meshLayout.get();
+    } else if (target == contract::renderer::ShaderTarget::kScreen) {
+        layout = _screenLayout.get();
+    }
     const contract::renderer::RenderState state = found->getRenderState().value_or(shader->getRenderState());
     const pipeline::GraphicsPipeline* pipeline = shader->getPipeline(
-        target, *_device, layout, kSceneFormat, &_pipelineCache->getCache(), pipelineBuilderOf(target), state);
+        target, *_device, *layout, kSceneFormat, &_pipelineCache->getCache(), pipelineBuilderOf(target), state);
     if (pipeline == nullptr) {
         return {};
     }
@@ -1533,6 +1590,7 @@ rendering::MaterialBinding VulkanRenderer::findMaterial(contract::renderer::Mate
             .set = found->prepare(*_device, frameIndex, findTexture, _fallbackTexture),
             .instanceValues = shader->hasInstanceValues(),
             .state = state,
+            .readsDepth = shader->readsDepth(),
             .shadowPipeline =
                 target == contract::renderer::ShaderTarget::kMesh
                     ? shader->getShadowPipeline(
