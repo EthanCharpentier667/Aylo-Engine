@@ -8,6 +8,7 @@
 #pragma once
 
 #include <glm/ext/vector_float4.hpp>
+#include <vector>
 
 #include "aylo/ecs/component/ComponentTraits.hpp"
 #include "core/asset/AssetId.hpp"
@@ -31,7 +32,9 @@ struct MeshRenderer {
     core::asset::AssetId mesh;  ///< The model, from MeshAssets::load().
     glm::vec4 color{1.0F};      ///< Linear RGBA, not premultiplied: multiplies the model's colours (a tint, a fade).
     core::asset::AssetId material;  ///< A material of a `#pragma mesh` shader; none: the built-in unlit shader.
+    std::vector<core::asset::AssetId> materials;  ///< Per part (a glTF primitive, an FBX or OBJ material), replacing
+                                                  ///< `material`; a missing or empty one keeps it.
 };
 
-AYLO_ECS_COMPONENT(MeshRenderer, "aylo.MeshRenderer", mesh, color, material);
+AYLO_ECS_COMPONENT(MeshRenderer, "aylo.MeshRenderer", mesh, color, material, materials);
 }  // namespace aylo::plugins::mesh

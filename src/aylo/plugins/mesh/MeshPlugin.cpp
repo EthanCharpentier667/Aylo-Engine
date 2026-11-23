@@ -12,6 +12,7 @@
 #include <cstddef>
 #include <exception>
 #include <format>
+#include <glm/ext/matrix_float4x4.hpp>
 #include <iostream>
 #include <memory>
 #include <optional>
@@ -43,6 +44,9 @@
 #include "plugins/mesh/MeshRenderer.hpp"
 #include "plugins/mesh/detail/Model.hpp"
 #include "plugins/mesh/detail/ModelLoader.hpp"
+#include "plugins/shader/Material.hpp"
+#include "plugins/shader/MaterialAssets.hpp"
+#include "plugins/shader/MaterialFile.hpp"
 #include "plugins/shader/MaterialInstance.hpp"
 #include "plugins/shader/ShaderAssets.hpp"
 #include "plugins/shader/ShaderHandles.hpp"
@@ -94,6 +98,7 @@ void readMeshes(ecs::ResMut<MeshAssets> meshes, ecs::ResAppend<graphics::Texture
             for (const std::optional<std::size_t>& image : model->partImages) {
                 entry.partTextures.push_back(image ? images.at(*image) : std::nullopt);
             }
+            entry.partNames = model->partNames;
             entry.model = std::move(model);
             entry.state = MeshState::kWaitingTextures;
         } catch (const std::exception& error) {
@@ -163,13 +168,96 @@ const shader::ShaderHandles::Material* materialOf(core::asset::AssetId material,
     return created;
 }
 
+/// @brief What drawMeshes() reuses from one model to the next, so a frame allocates nothing once it is big enough.
+struct PassScratch {
+    std::vector<core::asset::AssetId> assets;             ///< Per part: the material of the pass drawn.
+    std::vector<contract::renderer::MaterialId> created;  ///< Per part: what the renderer created it as.
+};
+
+/// @brief Draws the passes of @p model after its first: each part's material's next pass, then theirs,
+/// kMaxMaterialPasses materials at most per part (a longer chain loops, which is warned about once).
+void drawNextPasses(contract::renderer::IRenderer& renderer, contract::renderer::StaticMeshDraw draw,
+                    PassScratch& scratch, MeshAssets& meshes, const shader::MaterialAssets& materials,
+                    const shader::ShaderHandles& handles, const shader::ShaderAssets& shaders) {
+    draw.material = {};
+    draw.listedPartsOnly = true;
+    for (std::size_t pass = 1;; ++pass) {
+        bool any = false;
+        for (core::asset::AssetId& asset : scratch.assets) {
+            const shader::Material* material = asset != core::asset::AssetId{} ? materials.get(asset) : nullptr;
+            asset = material != nullptr ? material->nextPass : core::asset::AssetId{};
+            any = any || asset != core::asset::AssetId{};
+        }
+        if (!any) {
+            return;
+        }
+        if (pass == shader::kMaxMaterialPasses) {
+            if (meshes.firstWarningFor(scratch.assets.front())) {
+                std::cerr << std::format(
+                    "[Mesh] A material's next passes chain more than {} materials: the rest are "
+                    "not drawn (do they loop?)\n",
+                    shader::kMaxMaterialPasses);
+            }
+            return;
+        }
+        scratch.created.clear();
+        for (const core::asset::AssetId asset : scratch.assets) {
+            const shader::ShaderHandles::Material* created = materialOf(asset, meshes, handles, shaders);
+            scratch.created.push_back(created != nullptr ? created->material : contract::renderer::MaterialId{});
+        }
+        draw.partMaterials = scratch.created;
+        renderer.drawStaticMesh(draw);
+    }
+}
+
+/// @brief What drawModel() reads besides the model: the assets and the renderer's materials.
+struct ModelContext {
+    MeshAssets* meshes;
+    const shader::MaterialAssets* materials;
+    const shader::ShaderHandles* handles;
+    const shader::ShaderAssets* shaders;
+};
+
+/// @brief Draws @p model at @p world: each part with its material (MeshRenderer::materials, or else
+/// MeshRenderer::material) and @p instance's values (or else its first material's defaults), then the next passes.
+void drawModel(contract::renderer::IRenderer& renderer, contract::renderer::StaticMeshId mesh, const glm::mat4& world,
+               const MeshRenderer& model, const shader::MaterialInstance* instance, PassScratch& scratch,
+               const ModelContext& context) {
+    contract::renderer::StaticMeshDraw draw{.mesh = mesh, .world = world, .color = model.color};
+    const shader::ShaderHandles::Material* first =
+        materialOf(model.material, *context.meshes, *context.handles, *context.shaders);
+    if (first != nullptr) {
+        draw.material = first->material;
+    }
+    const std::size_t parts = context.meshes->get(model.mesh)->partNames.size();
+    scratch.assets.assign(parts, model.material);
+    scratch.created.clear();
+    for (std::size_t part = 0; part < parts; ++part) {
+        const core::asset::AssetId own =
+            part < model.materials.size() ? model.materials.at(part) : core::asset::AssetId{};
+        const shader::ShaderHandles::Material* created =
+            materialOf(own, *context.meshes, *context.handles, *context.shaders);
+        if (own != core::asset::AssetId{}) {
+            scratch.assets.at(part) = own;
+        }
+        first = first != nullptr ? first : created;
+        scratch.created.push_back(created != nullptr ? created->material : contract::renderer::MaterialId{});
+    }
+    if (first != nullptr) {
+        draw.instanceValues = instance != nullptr ? instance->values : first->instanceDefaults;
+    }
+    draw.partMaterials = scratch.created;
+    renderer.drawStaticMesh(draw);
+    drawNextPasses(renderer, draw, scratch, *context.meshes, *context.materials, *context.handles, *context.shaders);
+}
+
 /// @brief Render: creates the meshes whose textures are ready, then draws each MeshRenderer whose mesh is loaded, at
-/// its GlobalTransform3D, with its material and its MaterialInstance's values (or else its shader's defaults). One
-/// system, placed among the GraphicsPlugin's own, so no other plugin's use of the backend needs an order with it.
+/// its GlobalTransform3D (drawModel()). One system, placed among the GraphicsPlugin's own, so no other plugin's use of
+/// the backend needs an order with it.
 void drawMeshes(
     ecs::NonSendMut<graphics::Backend> backend, ecs::ResMut<MeshAssets> meshes,
     ecs::Res<graphics::TextureAssets> textures, ecs::Res<shader::ShaderHandles> handles,
-    ecs::Res<shader::ShaderAssets> shaders,
+    ecs::Res<shader::ShaderAssets> shaders, ecs::Res<shader::MaterialAssets> materials,
     ecs::Query<const transform::GlobalTransform3D, const MeshRenderer, ecs::Optional<const shader::MaterialInstance>>
         renderers) {
     contract::renderer::IRenderer* renderer = rendererOf(*backend);
@@ -180,18 +268,13 @@ void drawMeshes(
     if (!renderer->supports3D()) {
         return;
     }
+    PassScratch scratch;
+    const ModelContext context{
+        .meshes = &*meshes, .materials = &*materials, .handles = &*handles, .shaders = &*shaders};
     for (auto [entity, global, model, instance] : renderers) {
-        const std::optional<contract::renderer::StaticMeshId> mesh = meshes->getMesh(model.mesh);
-        if (!mesh) {
-            continue;
+        if (const std::optional<contract::renderer::StaticMeshId> mesh = meshes->getMesh(model.mesh)) {
+            drawModel(*renderer, *mesh, transform::toMatrix(global), model, instance, scratch, context);
         }
-        contract::renderer::StaticMeshDraw draw{
-            .mesh = *mesh, .world = transform::toMatrix(global), .color = model.color};
-        if (const shader::ShaderHandles::Material* material = materialOf(model.material, *meshes, *handles, *shaders)) {
-            draw.material = material->material;
-            draw.instanceValues = instance != nullptr ? instance->values : material->instanceDefaults;
-        }
-        renderer->drawStaticMesh(draw);
     }
 }
 
