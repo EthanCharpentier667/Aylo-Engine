@@ -150,6 +150,8 @@ struct AYLO_CONTRACT_RENDERER_API CompiledShader {
     ShaderInstanceValues instanceDefaults{};  ///< The declared defaults of the instance values.
     std::vector<ShaderTexture> textures;      ///< `uniform sampler2D` textures, in slot order.
     RenderState renderState;                  ///< How its kMesh variant is drawn (its pragmas); ignored by 2D targets.
+    bool castsShadows{true};                  ///< kMesh: whether it casts shadows (`#pragma shadow off`: not).
+    bool cutsOut{false};  ///< kMesh: whether it writes ALPHA_SCISSOR, so its shadow runs its fragment() too.
 
     /// @return The variant for @p target, or nullptr if the shader does not serve it.
     [[nodiscard]] const ShaderVariant* findVariant(ShaderTarget target) const noexcept;

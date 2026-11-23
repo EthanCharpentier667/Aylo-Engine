@@ -40,14 +40,21 @@ struct Light3D {
     float outerCone{0.7853982F};             ///< Spot: the half-angle past which nothing is lit, radians.
     glm::vec2 size{1.0F};                    ///< Area: its width and height, in world units.
     bool castShadows{false};                 ///< Whether it casts shadows (R3D-08).
+    float shadowSoftness{1.0F};    ///< 0: hard shadows; 1: as soft as a light of its size (the sun's half a degree, a
+                                   ///< 10 cm bulb, an area light's rectangle); more: softer.
+    float shadowBias{1.0F};        ///< Multiplies the depth bias that keeps a surface from shadowing itself (acne).
+    float shadowNormalBias{1.0F};  ///< Texels the shadow's lookup moves along the surface's normal, for the same.
 
     [[nodiscard]] bool operator==(const Light3D& other) const = default;
 };
 
 /// @brief The light that reaches everything of the 3D world, wherever it is: what is not lit by a Light3D is not black.
 struct Environment3D {
-    glm::vec3 ambient{0.0F};  ///< Linear RGB, multiplied by strength.
-    float strength{1.0F};     ///< How much of ambient reaches the surfaces.
+    glm::vec3 ambient{0.0F};               ///< Linear RGB, multiplied by strength.
+    float strength{1.0F};                  ///< How much of ambient reaches the surfaces.
+    std::uint32_t shadowCascades{3};       ///< Directional lights: cascades of shadow maps, 1 to 4.
+    std::uint32_t shadowResolution{1024};  ///< Texels of a side of one shadow map: 512, 1024 or 2048.
+    float shadowDistance{60.0F};           ///< Directional lights: how far from the camera they cast shadows.
 
     [[nodiscard]] bool operator==(const Environment3D& other) const = default;
 };

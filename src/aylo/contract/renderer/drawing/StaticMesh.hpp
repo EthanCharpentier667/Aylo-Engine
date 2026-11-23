@@ -104,6 +104,8 @@ struct StaticMeshDraw {
     /// Draws only the parts partMaterials names (not default): a pass drawn again over some parts (a material's next
     /// pass), the others left alone.
     bool listedPartsOnly{false};
+    bool castShadows{true};     ///< Whether it casts shadows (of the lights that cast them).
+    bool receiveShadows{true};  ///< Whether shadows fall on it.
 };
 
 /// @return The box @p desc's vertices fit in; zeros for a mesh without vertices.
