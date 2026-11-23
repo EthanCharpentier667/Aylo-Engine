@@ -11,6 +11,7 @@
 #include <glm/ext/matrix_float4x4.hpp>
 #include <glm/ext/vector_float2.hpp>
 #include <glm/ext/vector_float3.hpp>
+#include <span>
 #include <vector>
 
 #include "aylo/contract/renderer/Export.hpp"
@@ -66,7 +67,13 @@ struct StaticMeshDraw {
     glm::mat4 world{1.0F};  ///< Places the mesh in the world.
     Color color{1.0F};      ///< Linear RGBA, not premultiplied: multiplies every part's colour (a tint, a fade).
     MaterialId material;  ///< A material whose shader has a ShaderTarget::kMesh variant; the default: built-in, unlit.
-    ShaderInstanceValues instanceValues{};  ///< The material's `instance uniform` values for this draw (its entity's).
+    ShaderInstanceValues instanceValues{};  ///< The materials' `instance uniform` values for this draw (its entity's).
+    /// Per part, in the order of StaticMeshDesc::parts: its material, replacing `material`; a default MaterialId, or a
+    /// part past the end, keeps `material`. Only read during drawStaticMesh().
+    std::span<const MaterialId> partMaterials;
+    /// Draws only the parts partMaterials names (not default): a pass drawn again over some parts (a material's next
+    /// pass), the others left alone.
+    bool listedPartsOnly{false};
 };
 
 /// @return The box @p desc's vertices fit in; zeros for a mesh without vertices.
