@@ -107,3 +107,40 @@ TEST(ScriptCamera3D, AProjectionNameItDoesNotHaveIsAnError) {
 
     EXPECT_NE(log.find("'fisheye' is not one of perspective, orthographic"), std::string::npos) << log;
 }
+
+TEST(ScriptCamera3D, AScriptLightsThe3DWorld) {
+    // manual/pages/lights.md: the first example.
+    ClientScripts client;
+    ASSERT_EQ(client.run(R"(
+        engine.ecs.system("game.Lights", {
+            phase = "Startup",
+            side = "client",
+            run = function(ctx)
+                ctx.commands:spawn({
+                    ["aylo.Transform3D"] = { position = vector.create(3, 2.4, 0.3) },
+                    ["aylo.Light3D"] = { kind = "area", color = vector.create(1, 0.6, 0.38), power = 600,
+                                         size = { x = 5, y = 5 } },
+                })
+                ctx.commands:spawn({
+                    ["aylo.Transform3D"] = { rotation = engine.math.quat.fromEuler(math.rad(-50), 0, 0) },
+                    ["aylo.Light3D"] = { kind = "directional", intensity = 1.4 },
+                })
+                ctx.commands:spawn({ ["aylo.Environment3D"] = { ambient = vector.create(0.05, 0.05, 0.06) } })
+            end,
+        })
+    )"),
+              "");
+    client.app.runFrame();
+    client.app.runFrame();
+
+    ASSERT_FALSE(client.state->lightFrames.empty());
+    const auto& lights = client.state->lightFrames.back();
+    ASSERT_EQ(lights.size(), 2U);
+    EXPECT_EQ(lights.at(0).kind, aylo::contract::renderer::LightKind3D::kArea);
+    EXPECT_FLOAT_EQ(lights.at(0).intensity, 600.0F);
+    EXPECT_FLOAT_EQ(lights.at(0).size.x, 5.0F);
+    EXPECT_FLOAT_EQ(lights.at(0).position.y, 2.4F);
+    EXPECT_FLOAT_EQ(lights.at(1).intensity, 1.4F);
+    EXPECT_LT(lights.at(1).direction.y, 0.0F);  // turned down
+    EXPECT_FLOAT_EQ(client.state->environments.back().ambient.z, 0.06F);
+}
