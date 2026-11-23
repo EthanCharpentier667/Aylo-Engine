@@ -492,6 +492,7 @@ class AYLO_RENDER_VULKAN_API VulkanRenderer final : public contract::renderer::I
     std::optional<contract::renderer::View3D> _view3D;     ///< From setView3D(); reset by beginFrame().
     std::vector<rendering::LineVertex3D> _lines3D;  ///< The frame's 3D lines, in the world; cleared by beginFrame().
     std::vector<contract::renderer::StaticMeshDraw> _staticMeshDraws;  ///< The frame's meshes; cleared by beginFrame().
+    std::vector<rendering::StaticMeshPass::Draw> _meshDraws;  ///< _staticMeshDraws found, for the upload; reused.
     std::filesystem::path _pipelineCachePath;     ///< Config::pipelineCache resolved by init(); empty: not kept.
     contract::renderer::Color _clearColor{0.0F};  ///< From beginFrame(): what endFrame() clears with.
     rendering::SpriteBatch _sprites;              ///< The frame's sprites; cleared by beginFrame().
@@ -552,12 +553,14 @@ class AYLO_RENDER_VULKAN_API VulkanRenderer final : public contract::renderer::I
     std::unique_ptr<pipeline::PipelineLayout> _layout;  ///< The shared layout (rendering/ShaderLayout.hpp) of every
                                                         ///< pipeline: sets 0 and 1, and the push constants.
     std::unique_ptr<pipeline::PipelineLayout> _materialLayout;  ///< The game shaders' layout: the shared one and set 2.
-    std::unique_ptr<rendering::SpritePass> _spritePass;         ///< Draws _sprites at endFrame().
-    std::unique_ptr<rendering::SpritePass> _overlaySpritePass;  ///< Draws _overlaySprites, with buffers of its own.
-    std::unique_ptr<rendering::ShapePass> _overlayShapePass;    ///< Draws _overlayShapes, with buffers of its own.
-    std::unique_ptr<rendering::ShapePass> _shapePass;           ///< Draws _shapes at endFrame(), after the sprites.
-    std::unique_ptr<rendering::MeshPass> _meshPass;             ///< Draws _mesh at endFrame(), over everything.
-    std::unique_ptr<rendering::Lines3DPass> _lines3DPass;       ///< Draws _lines3D first, in the 3D world.
+    std::unique_ptr<descriptor::DescriptorSetLayout> _meshDrawSetLayout;  ///< Set 3: the frame's mesh draws.
+    std::unique_ptr<pipeline::PipelineLayout> _meshLayout;       ///< Every static mesh pipeline's: sets 0 to 3.
+    std::unique_ptr<rendering::SpritePass> _spritePass;          ///< Draws _sprites at endFrame().
+    std::unique_ptr<rendering::SpritePass> _overlaySpritePass;   ///< Draws _overlaySprites, with buffers of its own.
+    std::unique_ptr<rendering::ShapePass> _overlayShapePass;     ///< Draws _overlayShapes, with buffers of its own.
+    std::unique_ptr<rendering::ShapePass> _shapePass;            ///< Draws _shapes at endFrame(), after the sprites.
+    std::unique_ptr<rendering::MeshPass> _meshPass;              ///< Draws _mesh at endFrame(), over everything.
+    std::unique_ptr<rendering::Lines3DPass> _lines3DPass;        ///< Draws _lines3D first, in the 3D world.
     std::unique_ptr<rendering::StaticMeshPass> _staticMeshPass;  ///< Draws _staticMeshDraws, in the 3D world.
     std::unique_ptr<frame::FrameGlobals> _globals3D;             ///< The frame uniforms of the 3D world: its view.
     std::unique_ptr<memory::Image> _sceneDepth;                  ///< The 3D world's depth buffer, the scene's size.

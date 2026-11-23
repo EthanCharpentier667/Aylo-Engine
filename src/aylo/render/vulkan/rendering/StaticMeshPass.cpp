@@ -21,11 +21,15 @@
 #include "aylo/contract/renderer/drawing/StaticMesh.hpp"
 #include "aylo/contract/renderer/drawing/Texture.hpp"
 #include "render/vulkan/core/Device.hpp"
+#include "render/vulkan/descriptor/DescriptorPool.hpp"
+#include "render/vulkan/descriptor/DescriptorSetLayout.hpp"
+#include "render/vulkan/descriptor/DescriptorWriter.hpp"
 #include "render/vulkan/memory/Allocator.hpp"
 #include "render/vulkan/memory/Buffer.hpp"
 #include "render/vulkan/pipeline/GraphicsPipeline.hpp"
 #include "render/vulkan/pipeline/PipelineLayout.hpp"
 #include "render/vulkan/pipeline/ShaderCache.hpp"
+#include "render/vulkan/rendering/StaticMeshDrawData.hpp"
 #include "staticmesh.frag.h"
 #include "staticmesh.vert.h"
 
@@ -38,7 +42,19 @@ using contract::renderer::StaticMeshVertex;
 static_assert(sizeof(StaticMeshVertex) == 32 && offsetof(StaticMeshVertex, normal) == 12 &&
                   offsetof(StaticMeshVertex, uv) == 24,
               "StaticMeshVertex must stay tightly packed: the pipeline's attribute offsets assume it");
+static_assert(sizeof(StaticMeshConstants) == 32 && offsetof(StaticMeshConstants, draw) == 16,
+              "StaticMeshConstants must match AyloMeshPart of common.glsl");
 static_assert(sizeof(StaticMeshConstants) <= kMaxPushConstantsSize, "The push constants must fit the shared range");
+
+/// @brief Draws a buffer of mesh draws holds when it is first made: it doubles from there.
+constexpr std::size_t kInitialDraws = 64;
+
+/// @return A pool for one set of one storage buffer per frame in flight.
+descriptor::DescriptorPool createPool(const core::Device& device, std::size_t framesInFlight) {
+    const auto frames = static_cast<std::uint32_t>(framesInFlight);
+    const std::array sizes{vk::DescriptorPoolSize{vk::DescriptorType::eStorageBuffer, frames}};
+    return descriptor::DescriptorPool{device, frames, sizes};
+}
 
 /// @return A static mesh pipeline drawing with @p vertex and @p fragment.
 pipeline::GraphicsPipeline buildPipeline(const core::Device& device, const vk::raii::ShaderModule& vertex,
@@ -91,11 +107,21 @@ void validate(const contract::renderer::StaticMeshDesc& desc) {
 
 }  // namespace
 
-StaticMeshPass::StaticMeshPass(const core::Device& device, pipeline::ShaderCache& shaders,
-                               const pipeline::PipelineLayout& layout, vk::Format colorFormat, vk::Format depthFormat,
-                               const vk::raii::PipelineCache* cache)
-    : _pipeline{createPipeline(device, shaders, layout, colorFormat, depthFormat, cache)} {
+StaticMeshPass::StaticMeshPass(const core::Device& device, const memory::Allocator& allocator,
+                               pipeline::ShaderCache& shaders, const pipeline::PipelineLayout& layout,
+                               const descriptor::DescriptorSetLayout& drawSetLayout, vk::Format colorFormat,
+                               vk::Format depthFormat, const vk::raii::PipelineCache* cache, std::size_t framesInFlight)
+    : _allocator{&allocator},
+      _layout{&layout},
+      _pipeline{createPipeline(device, shaders, layout, colorFormat, depthFormat, cache)},
+      _pool{createPool(device, framesInFlight)},
+      _frames(framesInFlight) {
     device.setName(*_pipeline.getPipeline(), "Static mesh pipeline");
+    device.setName(*_pool.getPool(), "Static mesh draws pool");
+    for (Frame& frame : _frames) {
+        frame.set = _pool.allocate(drawSetLayout);
+        device.setName(*frame.set, "Static mesh draws set");
+    }
 }
 
 pipeline::GraphicsPipeline StaticMeshPass::createMaterialPipeline(
@@ -122,21 +148,60 @@ GpuStaticMesh StaticMeshPass::upload(const memory::Allocator& allocator,
         parts.push_back(contract::renderer::StaticMeshPart{
             .indexOffset = 0, .indexCount = static_cast<std::uint32_t>(desc.indices.size())});
     }
-    return GpuStaticMesh{.vertices = std::move(vertices), .indices = std::move(indices), .parts = std::move(parts)};
+    return GpuStaticMesh{.vertices = std::move(vertices),
+                         .bounds = contract::renderer::computeBounds(desc),
+                         .indices = std::move(indices),
+                         .parts = std::move(parts)};
 }
 
-void StaticMeshPass::record(const vk::raii::CommandBuffer& commandBuffer, std::span<const Draw> draws,
+void StaticMeshPass::upload(std::size_t frameIndex, std::span<const Draw> draws) {
+    Frame& frame = _frames.at(frameIndex);
+    frame.draws.assign(draws.begin(), draws.end());
+    if (draws.empty()) {
+        return;
+    }
+    _staging.clear();
+    for (const Draw& draw : draws) {
+        _staging.push_back(makeStaticMeshDrawData(
+            draw.world, draw.color, draw.mesh != nullptr ? draw.mesh->bounds : contract::renderer::StaticMeshBounds{},
+            draw.instanceValues));
+    }
+    const std::span<const std::byte> bytes = std::as_bytes(std::span{_staging});
+    if (!frame.buffer || frame.buffer->getSize() < bytes.size()) {
+        std::size_t capacity = kInitialDraws;
+        while (capacity < draws.size()) {
+            capacity *= 2;
+        }
+        // The frame's fence was waited for: neither its old buffer nor its set is in use any more.
+        frame.buffer.emplace(*_allocator, capacity * sizeof(StaticMeshDrawData),
+                             vk::BufferUsageFlagBits::eStorageBuffer, memory::Allocator::MemoryAccess::kStaging);
+        const core::Device& device = _allocator->getDevice();
+        device.setName(*frame.buffer->getBuffer(), "Static mesh draws");
+        descriptor::DescriptorWriter{}
+            .writeBuffer(kMeshDrawBinding, *frame.buffer->getBuffer(), 0, frame.buffer->getSize(),
+                         vk::DescriptorType::eStorageBuffer)
+            .update(device, *frame.set);
+    }
+    frame.buffer->write(bytes);
+}
+
+void StaticMeshPass::record(const vk::raii::CommandBuffer& commandBuffer, std::size_t frameIndex,
                             const vk::Viewport& viewport, const vk::Rect2D& scissor, const SetFinder& findSet,
                             vk::DescriptorSet whiteSet) const {
-    if (draws.empty()) {
+    const Frame& frame = _frames.at(frameIndex);
+    if (frame.draws.empty() || !frame.buffer) {
         return;
     }
     commandBuffer.setViewport(0, viewport);
     commandBuffer.setScissor(0, scissor);
     const vk::ShaderStageFlags stages = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment;
+    // Every mesh pipeline shares the static mesh layout: the draws' set stays bound across them.
+    commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *_layout->getLayout(), kMeshDrawSet, *frame.set,
+                                     {});
     const pipeline::GraphicsPipeline* boundPipeline = nullptr;
     vk::DescriptorSet bound;
-    for (const Draw& draw : draws) {
+    for (std::size_t index = 0; index < frame.draws.size(); ++index) {
+        const Draw& draw = frame.draws.at(index);
         if (draw.mesh == nullptr) {
             continue;
         }
@@ -146,7 +211,6 @@ void StaticMeshPass::record(const vk::raii::CommandBuffer& commandBuffer, std::s
         if (&used != boundPipeline) {
             used.bind(commandBuffer);
             boundPipeline = &used;
-            bound = vk::DescriptorSet{};  // another layout: the texture set is bound again
         }
         if (draw.material.pipeline != nullptr) {
             commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, layout, kMaterialSet, draw.material.set,
@@ -164,7 +228,7 @@ void StaticMeshPass::record(const vk::raii::CommandBuffer& commandBuffer, std::s
                 commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, layout, kTextureSet, set, {});
                 bound = set;
             }
-            const StaticMeshConstants constants{.world = draw.world, .color = draw.color, .baseColor = part.baseColor};
+            const StaticMeshConstants constants{.baseColor = part.baseColor, .draw = static_cast<std::uint32_t>(index)};
             commandBuffer.pushConstants<StaticMeshConstants>(layout, stages, 0, constants);
             commandBuffer.drawIndexed(part.indexCount, 1, part.indexOffset, 0, 0);
         }

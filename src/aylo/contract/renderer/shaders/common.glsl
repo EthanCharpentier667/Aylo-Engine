@@ -21,8 +21,42 @@ layout(set = 1, binding = 0) uniform sampler2D TEXTURE;
 #define TIME ayloFrame.time
 
 #ifdef AYLO_MESH
-vec3 VERTEX;  // Vertex stage: the vertex, in the model's space (its entity's transform places it).
-vec3 NORMAL;  // The surface's normal: in the model's space in the vertex stage, in the world's (unit) in the fragment.
+// What one static mesh draw is (StaticMeshDrawData in the Vulkan renderer, std430): the frame's draws in a storage
+// buffer at set 3, binding 0, indexed by the push constants' `draw`, so both stages read the model's matrices, bounds
+// and instance values. The part's base colour travels with the index: it changes per part, the rest per draw.
+struct AyloMeshDraw {
+    mat4 model;         // The model's space to the world's.
+    mat4 inverseModel;  // The world's space to the model's.
+    mat4 normal;        // The inverse transpose of the model matrix (its upper 3x3 is used): normals to the world.
+    vec4 color;         // The draw's colour, straight alpha.
+    vec4 boundsMin;     // xyz: the smallest corner of the model's box, in its space.
+    vec4 boundsMax;     // xyz: the largest corner.
+    vec4 instance[4];   // The draw's `instance uniform` values.
+};
+layout(set = 3, binding = 0, std430) readonly buffer AyloMeshDraws {
+    AyloMeshDraw ayloMeshDraws[];
+};
+layout(push_constant) uniform AyloMeshPart {
+    vec4 baseColor;  // The part's base colour, straight alpha.
+    uint draw;       // The draw's index in ayloMeshDraws.
+} ayloPart;
+
+vec3 VERTEX;               // Vertex stage: the vertex, in the model's space (its entity's transform places it).
+vec3 NORMAL;               // The surface's normal: in the model's space in the vertex stage, in the world's in fragment.
+mat4 MODEL_MATRIX;         // The model's space to the world's.
+mat4 INV_MODEL_MATRIX;     // The world's space to the model's.
+mat3 NORMAL_MATRIX;        // A normal of the model's space to the world's (normalize the result).
+vec3 AABB_MIN;             // The smallest corner of the model's box, in its space.
+vec3 AABB_MAX;             // The largest corner.
+
+// Fills the built-ins of the draw, at the start of both stages' main().
+void ayloLoadMeshDraw() {
+    MODEL_MATRIX = ayloMeshDraws[ayloPart.draw].model;
+    INV_MODEL_MATRIX = ayloMeshDraws[ayloPart.draw].inverseModel;
+    NORMAL_MATRIX = mat3(ayloMeshDraws[ayloPart.draw].normal);
+    AABB_MIN = ayloMeshDraws[ayloPart.draw].boundsMin.xyz;
+    AABB_MAX = ayloMeshDraws[ayloPart.draw].boundsMax.xyz;
+}
 #else
 vec2 VERTEX;  // Vertex stage: the vertex, in world units.
 #endif

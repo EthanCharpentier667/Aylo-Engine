@@ -12,6 +12,7 @@ layout(location = 7) in vec3 ayloNormalIn;  // In the world.
 #pragma aylo_shader
 
 void main() {
+    ayloLoadMeshDraw();
     UV = ayloUvIn;
     NORMAL = length(ayloNormalIn) > 0.0 ? normalize(ayloNormalIn) : ayloNormalIn;
     COLOR = texture(TEXTURE, UV) * ayloColorIn;

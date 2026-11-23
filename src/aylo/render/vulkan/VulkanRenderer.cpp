@@ -321,6 +321,15 @@ void VulkanRenderer::init(contract::platform::IPlatform& platform) {
     const std::array materialSetLayouts{*_globals->getSetLayout().getLayout(), *_textureSetLayout->getLayout(),
                                         *_materialSetLayout->getLayout()};
     _materialLayout = std::make_unique<pipeline::PipelineLayout>(*_device, materialSetLayouts, pushConstants);
+    _meshDrawSetLayout = std::make_unique<descriptor::DescriptorSetLayout>(
+        descriptor::DescriptorSetLayout::Builder{}
+            .addBinding(rendering::kMeshDrawBinding, vk::DescriptorType::eStorageBuffer, materialStages)
+            .build(*_device));
+    const std::array meshSetLayouts{*_globals->getSetLayout().getLayout(), *_textureSetLayout->getLayout(),
+                                    *_materialSetLayout->getLayout(), *_meshDrawSetLayout->getLayout()};
+    _meshLayout = std::make_unique<pipeline::PipelineLayout>(*_device, meshSetLayouts, pushConstants);
+    _device->setName(*_meshDrawSetLayout->getLayout(), "Static mesh draws set layout");
+    _device->setName(*_meshLayout->getLayout(), "Static mesh pipeline layout");
     _device->setName(*_layout->getLayout(), "Shared pipeline layout");
     _device->setName(*_materialLayout->getLayout(), "Game shaders pipeline layout");
     createPasses();
@@ -377,8 +386,9 @@ void VulkanRenderer::createPasses() {
     auto lines3DPass =
         std::make_unique<rendering::Lines3DPass>(*_device, *_allocator, *_shaders, *_layout, kSceneFormat, kDepthFormat,
                                                  &_pipelineCache->getCache(), kFramesInFlight);
-    auto staticMeshPass = std::make_unique<rendering::StaticMeshPass>(*_device, *_shaders, *_layout, kSceneFormat,
-                                                                      kDepthFormat, &_pipelineCache->getCache());
+    auto staticMeshPass = std::make_unique<rendering::StaticMeshPass>(*_device, *_allocator, *_shaders, *_meshLayout,
+                                                                      *_meshDrawSetLayout, kSceneFormat, kDepthFormat,
+                                                                      &_pipelineCache->getCache(), kFramesInFlight);
     auto screenPass = std::make_unique<postprocess::ScreenPass>(
         *_device, *_shaders, *_textureSetLayout, *_samplers->get(contract::renderer::TextureFilter::kLinear, false),
         kSceneFormat, _swapchain->getFormat(), &_pipelineCache->getCache());
@@ -780,21 +790,8 @@ void VulkanRenderer::recordWorld3D(const vk::raii::CommandBuffer& commandBuffer,
     const vk::Rect2D scissor{
         vk::Offset2D{static_cast<std::int32_t>(area.position.x), static_cast<std::int32_t>(area.position.y)},
         vk::Extent2D{static_cast<std::uint32_t>(area.size.x), static_cast<std::uint32_t>(area.size.y)}};
-    std::vector<rendering::StaticMeshPass::Draw> meshes;
-    meshes.reserve(_staticMeshDraws.size());
-    for (const contract::renderer::StaticMeshDraw& draw : _staticMeshDraws) {
-        if (const rendering::GpuStaticMesh* mesh = _staticMeshes.find(draw.mesh)) {
-            meshes.push_back(rendering::StaticMeshPass::Draw{
-                .mesh = mesh,
-                .world = draw.world,
-                .color = draw.color,
-                .material = draw.material != contract::renderer::MaterialId{}
-                                ? findMaterial(draw.material, contract::renderer::ShaderTarget::kMesh, frameIndex)
-                                : rendering::MaterialBinding{}});
-        }
-    }
     _staticMeshPass->record(
-        commandBuffer, meshes, viewport, scissor,
+        commandBuffer, frameIndex, viewport, scissor,
         [this](contract::renderer::TextureId texture) { return findTextureSet(texture); },
         findTextureSet(_fallbackTexture));
     _lines3DPass->record(commandBuffer, frameIndex, viewport, scissor, target.lineVertices);
@@ -898,6 +895,20 @@ void VulkanRenderer::uploadWorld(std::size_t frameIndex) {
         }
     }
     _lines3DPass->upload(frameIndex, _lines3D);
+    _meshDraws.clear();
+    for (const contract::renderer::StaticMeshDraw& draw : _staticMeshDraws) {
+        if (const rendering::GpuStaticMesh* mesh = _staticMeshes.find(draw.mesh)) {
+            _meshDraws.push_back(rendering::StaticMeshPass::Draw{
+                .mesh = mesh,
+                .world = draw.world,
+                .color = draw.color,
+                .material = draw.material != contract::renderer::MaterialId{}
+                                ? findMaterial(draw.material, contract::renderer::ShaderTarget::kMesh, frameIndex)
+                                : rendering::MaterialBinding{},
+                .instanceValues = draw.instanceValues});
+        }
+    }
+    _staticMeshPass->upload(frameIndex, _meshDraws);
 }
 
 void VulkanRenderer::recordWorld(const vk::raii::CommandBuffer& commandBuffer, std::size_t frameIndex,
@@ -1308,8 +1319,11 @@ rendering::MaterialBinding VulkanRenderer::findMaterial(contract::renderer::Mate
     if (shader == nullptr) {
         return {};
     }
+    // A mesh pipeline also reads the frame's mesh draws (set 3).
+    const pipeline::PipelineLayout& layout =
+        target == contract::renderer::ShaderTarget::kMesh ? *_meshLayout : *_materialLayout;
     const pipeline::GraphicsPipeline* pipeline = shader->getPipeline(
-        target, *_device, *_materialLayout, kSceneFormat, &_pipelineCache->getCache(), pipelineBuilderOf(target));
+        target, *_device, layout, kSceneFormat, &_pipelineCache->getCache(), pipelineBuilderOf(target));
     if (pipeline == nullptr) {
         return {};
     }
