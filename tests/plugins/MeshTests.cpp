@@ -300,3 +300,20 @@ TEST(MeshPlugin, StopsAChainOfNextPassesThatLoopsAndSaysSo) {
     EXPECT_NE(log.find("next passes chain more than 8"), std::string::npos) << log;
     EXPECT_LE(fixture.state().staticMeshDraws.size(), 4U * 8U);
 }
+
+TEST(MeshPlugin, CreatesAModelWithItsMapsReadAsData) {
+    AssetsFolder assets;
+    assets.writePanel();
+    MeshApp fixture{assets};
+    fixture.app().getWorld().spawn(aylo::plugins::transform::Transform3D{},
+                                   MeshRenderer{.mesh = fixture.meshes().load("models/panel.gltf")});
+    fixture.runFrames(4);
+
+    ASSERT_EQ(fixture.state().createdStaticMeshes.size(), 1U);
+    const auto& part = fixture.state().createdStaticMeshes.at(0).parts.at(0);
+    EXPECT_NE(part.texture, aylo::contract::renderer::TextureId{});
+    EXPECT_NE(part.normalTexture, aylo::contract::renderer::TextureId{});
+    EXPECT_NE(part.metallicRoughnessTexture, aylo::contract::renderer::TextureId{});
+    EXPECT_NE(part.emissiveTexture, aylo::contract::renderer::TextureId{});
+    EXPECT_NE(part.normalTexture, part.texture);  // the same image, read linear for the normal map
+}

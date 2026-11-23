@@ -15,6 +15,7 @@
 
 #include "aylo/contract/renderer/drawing/StaticMesh.hpp"
 #include "aylo/contract/renderer/shaders/CompiledShader.hpp"
+#include "render/vulkan/rendering/StaticMeshConstants.hpp"
 #include "render/vulkan/rendering/StaticMeshDrawData.hpp"
 
 using aylo::contract::renderer::ShaderInstanceValues;
@@ -63,4 +64,23 @@ TEST(StaticMeshDrawData, AFlatModelGetsIdentityInversesInsteadOfNaN) {
     const StaticMeshDrawData data = makeStaticMeshDrawData(world, glm::vec4{1.0F}, StaticMeshBounds{}, {});
     EXPECT_EQ(data.inverseModel, glm::mat4{1.0F});
     EXPECT_EQ(data.normal, glm::mat4{1.0F});
+}
+
+TEST(StaticMeshConstants, CarryThePartsMaterialAndWhichMapsItHas) {
+    using aylo::contract::renderer::AlphaMode;
+    using aylo::contract::renderer::StaticMeshPart;
+    using aylo::contract::renderer::TextureId;
+    const StaticMeshPart part{.metallic = 0.25F,
+                              .roughness = 0.75F,
+                              .normalTexture = TextureId{.index = 2, .generation = 1},
+                              .normalScale = 0.5F,
+                              .emissive = {1.0F, 2.0F, 3.0F},
+                              .alphaMode = AlphaMode::kBlend,
+                              .alphaCutoff = 0.3F};
+    const auto constants = aylo::render::vulkan::rendering::StaticMeshConstants::of(part, 7);
+    EXPECT_EQ(constants.draw, 7U);
+    EXPECT_EQ(constants.flags, 2U | (2U << 4U));  // a normal map, blended
+    EXPECT_FLOAT_EQ(constants.surface.x, 0.25F);
+    EXPECT_FLOAT_EQ(constants.surface.w, 0.3F);
+    EXPECT_FLOAT_EQ(constants.emissive.w, 0.5F);
 }

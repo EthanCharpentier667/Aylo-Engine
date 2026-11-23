@@ -251,6 +251,16 @@ TEST(ShaderCompiler, CompilesTheManualsLitShaders) {
               "");
 }
 
+TEST(ShaderCompiler, AMeshShaderReadsItsVertexData) {
+    // manual/pages/lighting.md: the vertex colours and the second UV set.
+    EXPECT_EQ(errorOf("#pragma mesh\n#pragma lit\nuniform sampler2D lightmap;\n"
+                      "void vertex() { VERTEX += TANGENT * 0.0 + BINORMAL * 0.0; }\n"
+                      "void fragment() {\n    ALBEDO = COLOR.rgb * VERTEX_COLOR.rgb;\n"
+                      "    AO = texture(lightmap, UV2).r;\n    NORMAL = normalize(NORMAL + TANGENT * 0.1);\n}\n"),
+              "");
+    EXPECT_FALSE(errorOf("void fragment() { COLOR = VERTEX_COLOR; }\n").empty());
+}
+
 TEST(ShaderCompiler, TheSurfaceBuiltinsAreOnlyForLitShaders) {
     EXPECT_FALSE(errorOf("#pragma mesh\nvoid fragment() { ALBEDO = vec3(1.0); }\n").empty());
 }
