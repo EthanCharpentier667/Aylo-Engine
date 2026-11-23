@@ -357,6 +357,7 @@ A backend feeds these resources:
 | A screen effect                     | No vertex input: 3 vertices; set 1 binding 0 is the picture so far |
 | A static mesh's vertices            | Attributes 0 to 2: position, normal, UV (`StaticMeshVertex`)      |
 | The frame's lights (meshes)          | Set 3, binding 1 (std430, `AyloLights`: ambient, count, `AyloLight`s) |
+| The sky's light (meshes)             | Set 3, bindings 4 (reflection, a mip a roughness) and 5 (irradiance), equirectangular; read while `count.z` (the mips) is not 0, times `ambient.w` |
 | The shadow maps (meshes)            | Set 3, binding 2 (std430, `AyloShadowTile`s), the atlas at binding 3 |
 | A static mesh's draws               | Set 3, binding 0 (std430, `AyloMeshDraw`), indexed by the push constants `AyloMeshPart` (base colour, draw index) |
 

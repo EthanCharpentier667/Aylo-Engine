@@ -202,6 +202,39 @@ manual has one page with a section per effect, without the before and after pict
 this change could not make. SSAO is the classic hemisphere test on the depth (normals rebuilt by `normalAt()`), with a
 plain blur, not a depth-aware one.
 
+## Sky and image-based lighting (R3D-13)
+
+`Environment3D` gains a sky (`SkyKind`: none, a gradient of three colours, or an image), its intensity, its rotation
+and `lightingFromSky`; the component `aylo.Environment3D` has the same fields, its image an asset id resolved once the
+texture is loaded. Textures gain `TextureEncoding::kHdr` (RGBA 32-bit floats), which the graphics plugin gives a
+Radiance `.hdr` file (stb_image's `stbi_loadf`, already private to it).
+
+The Vulkan renderer's `rendering::EnvironmentMaps` allocates nothing until a sky is set. When the sky changes (not its
+intensity, applied when read), it records before the 3D pass:
+
+1. the environment, 1024x512 half floats, from the image (four samples a texel, turned by the rotation) or the
+   gradient, and its mips by blits;
+2. the reflection, 512x256 with 7 mips, a mip a roughness (0, 1/6... 1), GGX importance sampling (128 samples) reading
+   blurrier mips of the environment for wider lobes (Karis 2013);
+3. the irradiance over pi, 64x32, integrating the 32x16 mip of the environment by solid angle and cosine.
+
+Barriers order this after the frames that still read the last maps, so no wait. The lit meshes read the two last at
+set 3, bindings 4 and 5; `packLights` puts their mips in `count.z` and the intensity in `ambient.w`. `ENV_DIFFUSE` is
+`ambient + irradiance`, `ENV_SPECULAR` `ambient + reflection(R, roughness)`; the ambient term is
+`AO * (diffuse albedo * ENV_DIFFUSE + environmentBrdf * ENV_SPECULAR)`, which is the old term when there is no sky.
+
+Deviations from the issue:
+
+- **Equirectangular 2D images, not cubemaps.** The maps stay on the 2D image and sampler path the renderer has, with a
+  sampler wrapping around the horizon; the contract gains no cubemap type, and a folder of six faces is not read. A
+  cubemap would sample the poles better; the maps' sizes keep the difference small.
+- **No BRDF table.** The analytic fit of the split-sum's second term (`ayloEnvironmentBrdf`, Karis 2014), already used
+  for the ambient light, replaces it.
+- **The sky is drawn first in the 3D pass**, depth neither tested nor written, rather than at the far plane after the
+  opaque models: the models cover it. It costs one fullscreen pass of overdraw, and needs no split of the mesh pass.
+- **The settings form `engine.settings.environment3D` is not added**: the sky is on the `aylo.Environment3D`
+  component, as the ambient light and the shadows' settings are since R3D-05.
+
 ## Transparency: sorting, not order-independent transparency (R3D-03)
 
 Blended 3D draws are drawn after the opaque ones, sorted back to front by the centre of their box, per picture. This is
