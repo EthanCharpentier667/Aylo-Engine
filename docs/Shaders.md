@@ -56,9 +56,13 @@ A shader is compiled for every target that draws something (`kDrawingTargets`), 
 failure in one fails the shader. A shader whose first lines hold `#pragma screen` is a **screen effect** instead, and is
 compiled for `kScreen` only (see *Screen effects* below). One whose first lines hold `#pragma mesh` is a **3D shader**,
 compiled for `kMesh` only: the parts of a static mesh (`MeshRenderer::material`), with `VERTEX` and `NORMAL` as `vec3`
-(`AYLO_MESH` in `common.glsl`; the templates are `mesh.vert.glsl` and `mesh.frag.glsl`, whose push constants are the
-static mesh pass's world matrix and colours). A mesh has no drawing to carry instance values, so, as in a screen
-effect, their defaults are written into both stages. Both pragmas in one shader is an error.
+(`AYLO_MESH` in `common.glsl`; the templates are `mesh.vert.glsl` and `mesh.frag.glsl`). Each draw of a mesh is an
+`AyloMeshDraw` in a storage buffer of the frame (set 3, binding 0, std430: the model matrix, its inverse, the normal
+matrix, the draw's colour, the model's bounds and the draw's instance values), indexed by the push constants
+`AyloMeshPart` (the part's base colour and the draw's index). Both stages fill `MODEL_MATRIX`, `INV_MODEL_MATRIX`,
+`NORMAL_MATRIX`, `AABB_MIN` and `AABB_MAX` from it (`ayloLoadMeshDraw()`), and read the instance values from it. The
+built-in mesh shader (`staticmesh.*` in the Vulkan backend) is these templates with no game code. Both pragmas in one
+shader is an error.
 
 | Target      | Drawn on                    | `UV`                                    | `COLOR` in `fragment()` before the shader  |
 |-------------|-----------------------------|-----------------------------------------|--------------------------------------------|
@@ -251,8 +255,15 @@ A backend feeds these resources:
 | Particle instances                  | Attributes 0 to 5                                                 |
 | A particle draw's constants         | A push constant block, instance values at offset 48               |
 | A screen effect                     | No vertex input: 3 vertices; set 1 binding 0 is the picture so far |
+| A static mesh's vertices            | Attributes 0 to 2: position, normal, UV (`StaticMeshVertex`)      |
+| A static mesh's draws               | Set 3, binding 0 (std430, `AyloMeshDraw`), indexed by the push constants `AyloMeshPart` (base colour, draw index) |
 
 Instance values only exist for a shader that declares some: the assembler then defines `AYLO_INSTANCE_VALUES`.
+A script gives an entity its own with the call `aylo.shader.setInstanceValue` (`entity`, `material`, `name`, a value):
+it queues the value in the client resource `aylo.InstanceValueRequests`, and the Render system
+`aylo.Shader.InstanceValues` (before `aylo.Shader.Update`) writes the frame's values into the entities'
+`MaterialInstance`, adding one from the shader's defaults to an entity without it, so several values given to a new
+entity in one frame all count (`InstanceValues.hpp`).
 
 SPIR-V is the format every backend starts from. A backend for another API translates it, for example with SPIRV-Cross,
 mapping each set and binding to its own resources.

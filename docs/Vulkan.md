@@ -193,8 +193,13 @@ scene's size, made again when it changes, `acquireDepth()`) cleared to 1. `rende
 (line list, depth test and writes, premultiplied blending, `shaders/lines3d.*`), with `_globals3D`: frame uniforms
 whose `viewProjection` is the 3D view's (`CameraView3D`, Vulkan's clip space). The 3D world is drawn in the letterboxed
 viewport of the 2D view. `rendering::StaticMeshPass` draws the static meshes there first, before the lines
-(`shaders/staticmesh.*`: triangles, depth test and writes, no culling, the world matrix and the colours as push
-constants, the base colour texture at set 1); the meshes live in `_staticMeshes`, host-visible buffers written once
+(`shaders/staticmesh.*`, the shaders ABI's mesh stages with no game code: triangles, depth test and writes, no
+culling, the base colour texture at set 1). Every mesh pipeline uses `_meshLayout`: the game shaders' sets 0 to 2 and
+set 3, the frame's draws. `uploadWorld()` turns the frame's `StaticMeshDraw`s into `rendering::StaticMeshDrawData`
+(model matrix, inverse, normal matrix, colour, bounds, instance values; `makeStaticMeshDrawData()`) in a host-visible
+storage buffer per frame in flight, grown by doubling and never shrunk, once per frame; the scene and the preview
+record the same draws. Each part is one indexed draw whose push constants are its base colour and its draw's index
+(`StaticMeshConstants`, 32 bytes); the meshes live in `_staticMeshes`, host-visible buffers written once
 by `createStaticMesh()` and freed through the deletion queue. A draw with a game material
 (`StaticMeshDraw::material`) is drawn with the pipeline of its shader's `kMesh` variant
 (`StaticMeshPass::createMaterialPipeline()`: the same vertices and depth test, against `kWorld3DDepthFormat`) and its
