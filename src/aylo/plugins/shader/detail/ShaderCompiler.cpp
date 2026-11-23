@@ -12,6 +12,7 @@
 #include <glslang/SPIRV/GlslangToSpv.h>
 
 #include <algorithm>
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <format>
@@ -120,6 +121,15 @@ std::vector<std::uint32_t> compileStage(std::string_view glsl, ShaderStage stage
     return {spirv.begin(), spirv.end()};
 }
 
+namespace {
+/// @return Whether a screen effect's @p body reads the 3D depth: DEPTH_TEXTURE or a helper built on it.
+bool readsDepth(std::string_view body) {
+    constexpr std::array<std::string_view, 5> kNames{"DEPTH_TEXTURE", "linearDepth", "viewPositionAt",
+                                                     "worldPositionAt", "normalAt"};
+    return std::ranges::any_of(kNames, [body](std::string_view name) { return body.contains(name); });
+}
+}  // namespace
+
 contract::renderer::CompiledShader compileShader(std::string_view source, std::string_view name,
                                                  std::span<const contract::renderer::ShaderTarget> targets) {
     const ParsedShader parsed = parseShader(source, name);
@@ -130,7 +140,8 @@ contract::renderer::CompiledShader compileShader(std::string_view source, std::s
                                               .textures = parsed.textures,
                                               .renderState = parsed.renderState,
                                               .castsShadows = parsed.castsShadows,
-                                              .cutsOut = parsed.body.contains("ALPHA_SCISSOR")};
+                                              .cutsOut = parsed.body.contains("ALPHA_SCISSOR"),
+                                              .readsDepth = parsed.screen && readsDepth(parsed.body)};
     for (const DeclaredValue& declared : parsed.materialValues) {
         shader.materialValues.push_back(declared.value);
     }
