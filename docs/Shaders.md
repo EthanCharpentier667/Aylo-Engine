@@ -183,6 +183,18 @@ starting with `@aylo/` names one of them instead of a file. `@aylo/bloom.glsl` (
 `threshold`, `softKnee`, `intensity`, `radius`) and `@aylo/tonemap.glsl` (`exposure`, and `mode` 0 none, 1 Reinhard,
 2 ACES). The manual's page is `manual/pages/post-processing.md`.
 
+**Standard effects.** The other shaders of `shader/builtin/` are the standard effects (`manual/pages/screen-effects.md`),
+with no renderer code of their own: a mip-chain bloom (`bloom_prefilter` with Karis-weighted taps, `bloom_down` 13 taps,
+`bloom_up` a 3x3 tent added to the level's down step, `bloom_composite`), Kuwahara (classic in one pass; anisotropic:
+`kuwahara_tensor`, two `blur` passes, `kuwahara_anisotropic` with eight polynomially weighted sectors), `sharpen`,
+`chromatic_aberration`, `film_grain` (on `@aylo/noise.glsl`), `vignette`, `fxaa`, `ssao` (+ `blur`, `ssao_apply`) and
+`fog` (on the depth). Their passes are built in Luau by `engine.effects.<name>` (`ShaderForms.luau`): each call makes
+materials of its own (`@aylo/effects/<effect>/<n>`) and targets of its own (`@aylo/<effect><n>/...`), so an effect may
+be used twice. `engine.screenEffects` takes a mixed list (materials, shader names, passes, `engine.effects` results)
+and sends a plain chain through `setScreenMaterials` when no pass has more than a material. A helper function of a
+screen shader takes what it reads (`sampler2D`, UV) as parameters: the functions go into the vertex stage too, where
+`SCREEN_UV` does not exist. `listBuiltinShaders()` names them all in messages.
+
 ### Libraries
 
 The engine's libraries (`@aylo/noise.glsl`, `@aylo/color.glsl`, `@aylo/math.glsl`) are written in a part of GLSL that

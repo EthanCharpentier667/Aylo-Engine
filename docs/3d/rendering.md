@@ -189,6 +189,19 @@ written in the part of GLSL C++ also reads, and a test runs them over glm, since
 a page per library with pictures; the manual has one page with a section per library and no pictures, which need a
 screen capture this change could not make. `docs/Shaders.md` (*How a shader is compiled*, *Libraries*) describes them.
 
+## Standard screen effects (R3D-12)
+
+Every effect is a shader of `shader/builtin/` and its passes are written in Luau (`engine.effects`), which proves the
+pass graph, depth and libraries enough: no effect has renderer code. The issue's `"@aylo/bloom.effect"` became a Luau
+function, as R3D-10 left out the effect file format; a shader's name in the list is the effect with its defaults. The
+single-pass `@aylo/bloom.glsl` is kept, since games load it by name; the mip-chain bloom has its parameters, its
+`radius` choosing the number of levels (log2(radius / 2), 1 to 8). Its cost was not measured: the renderer has no GPU
+timer (no timestamp queries), so the manual gives samples per pixel instead (about 6 per screen pixel at the default
+radius against 64), and the issue's budget per effect at 1080p is left to a renderer that can time its passes. The
+manual has one page with a section per effect, without the before and after pictures, which need a screen capture
+this change could not make. SSAO is the classic hemisphere test on the depth (normals rebuilt by `normalAt()`), with a
+plain blur, not a depth-aware one.
+
 ## Transparency: sorting, not order-independent transparency (R3D-03)
 
 Blended 3D draws are drawn after the opaque ones, sorted back to front by the centre of their box, per picture. This is
