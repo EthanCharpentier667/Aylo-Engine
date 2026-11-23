@@ -507,9 +507,10 @@ class AYLO_RENDER_VULKAN_API VulkanRenderer final : public contract::renderer::I
     };
     std::vector<StaticMeshRequest> _staticMeshDraws;  ///< The frame's meshes; cleared by beginFrame().
     std::vector<contract::renderer::MaterialId> _staticMeshPartMaterials;  ///< Their part materials, one after another.
-    std::vector<contract::renderer::Light3D> _lights3D;       ///< From setLights3D(); cleared by beginFrame().
-    contract::renderer::Environment3D _environment3D;         ///< From setLights3D(); reset by beginFrame().
-    std::vector<std::byte> _packedLights;                     ///< _lights3D as the shaders read them, reused.
+    std::vector<contract::renderer::Light3D> _lights3D;  ///< From setLights3D(); cleared by beginFrame().
+    contract::renderer::Environment3D _environment3D;    ///< From setLights3D(); reset by beginFrame().
+    std::vector<std::byte> _packedLights;                ///< _lights3D as the shaders read them, reused.
+    bool _lightsGiven{false};  ///< Whether setLights3D() was called this frame: models without a material are lit.
     std::vector<rendering::StaticMeshPass::Draw> _meshDraws;  ///< _staticMeshDraws found, for the upload; reused.
     std::filesystem::path _pipelineCachePath;     ///< Config::pipelineCache resolved by init(); empty: not kept.
     contract::renderer::Color _clearColor{0.0F};  ///< From beginFrame(): what endFrame() clears with.

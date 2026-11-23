@@ -520,6 +520,7 @@ void VulkanRenderer::beginFrame(const contract::renderer::Color& clearColor) {
     _staticMeshPartMaterials.clear();
     _lights3D.clear();
     _environment3D = contract::renderer::Environment3D{};
+    _lightsGiven = false;
     _sprites.clear();
     _particleInstances.clear();
     _particleRanges.clear();
@@ -759,6 +760,7 @@ void VulkanRenderer::setLights3D(std::span<const contract::renderer::Light3D> li
                                  const contract::renderer::Environment3D& environment) {
     _lights3D.assign(lights.begin(), lights.end());
     _environment3D = environment;
+    _lightsGiven = true;
 }
 
 void VulkanRenderer::destroyStaticMesh(contract::renderer::StaticMeshId mesh) {
@@ -961,7 +963,7 @@ void VulkanRenderer::uploadWorld(std::size_t frameIndex) {
     _staticMeshPass->upload(frameIndex, _meshDraws);
     const glm::vec3 camera = _view3D ? _view3D->position : glm::vec3{0.0F};
     rendering::packLights(_lights3D, _environment3D, camera, _packedLights);
-    _staticMeshPass->uploadLights(frameIndex, _packedLights);
+    _staticMeshPass->uploadLights(frameIndex, _packedLights, _lightsGiven);
 }
 
 void VulkanRenderer::recordWorld(const vk::raii::CommandBuffer& commandBuffer, std::size_t frameIndex,

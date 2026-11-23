@@ -39,6 +39,7 @@
 #include "render/vulkan/rendering/StaticMeshDrawData.hpp"
 #include "staticmesh.frag.h"
 #include "staticmesh.vert.h"
+#include "staticmesh_lit.frag.h"
 
 namespace aylo::render::vulkan::rendering {
 
@@ -123,13 +124,14 @@ pipeline::GraphicsPipeline buildPipeline(const core::Device& device, const vk::r
     return builder.build(device, cache);
 }
 
-/// @return The built-in static mesh pipeline.
+/// @return The built-in static mesh pipeline, unlit or @p lit.
 pipeline::GraphicsPipeline createPipeline(const core::Device& device, pipeline::ShaderCache& shaders,
                                           const pipeline::PipelineLayout& layout, vk::Format colorFormat,
-                                          vk::Format depthFormat, const vk::raii::PipelineCache* cache) {
+                                          vk::Format depthFormat, const vk::raii::PipelineCache* cache, bool lit) {
     return buildPipeline(device, shaders.get("staticmesh.vert", aylo_shader_staticmesh_vert),
-                         shaders.get("staticmesh.frag", aylo_shader_staticmesh_frag), layout, colorFormat, depthFormat,
-                         cache, nullptr);
+                         lit ? shaders.get("staticmesh_lit.frag", aylo_shader_staticmesh_lit_frag)
+                             : shaders.get("staticmesh.frag", aylo_shader_staticmesh_frag),
+                         layout, colorFormat, depthFormat, cache, nullptr);
 }
 
 /// @throws std::invalid_argument If an index of @p desc names no vertex, or a part goes past its indices.
@@ -158,10 +160,12 @@ StaticMeshPass::StaticMeshPass(const core::Device& device, const memory::Allocat
                                vk::Format depthFormat, const vk::raii::PipelineCache* cache, std::size_t framesInFlight)
     : _allocator{&allocator},
       _layout{&layout},
-      _pipeline{createPipeline(device, shaders, layout, colorFormat, depthFormat, cache)},
+      _pipeline{createPipeline(device, shaders, layout, colorFormat, depthFormat, cache, false)},
+      _litPipeline{createPipeline(device, shaders, layout, colorFormat, depthFormat, cache, true)},
       _pool{createPool(device, framesInFlight)},
       _frames(framesInFlight) {
     device.setName(*_pipeline.getPipeline(), "Static mesh pipeline");
+    device.setName(*_litPipeline.getPipeline(), "Static mesh lit pipeline");
     device.setName(*_pool.getPool(), "Static mesh draws pool");
     // No light at first: the header alone, so the binding is valid before the first frame sets lights.
     const std::array<std::byte, sizeof(GpuLightsHeader)> noLights{};
@@ -169,12 +173,13 @@ StaticMeshPass::StaticMeshPass(const core::Device& device, const memory::Allocat
         Frame& frame = _frames.at(index);
         frame.set = _pool.allocate(drawSetLayout);
         device.setName(*frame.set, "Static mesh draws set");
-        uploadLights(index, noLights);
+        uploadLights(index, noLights, false);
     }
 }
 
-void StaticMeshPass::uploadLights(std::size_t frameIndex, std::span<const std::byte> bytes) {
+void StaticMeshPass::uploadLights(std::size_t frameIndex, std::span<const std::byte> bytes, bool lit) {
     Frame& frame = _frames.at(frameIndex);
+    frame.lit = lit;
     if (!frame.lights || frame.lights->getSize() < bytes.size()) {
         // Room for every light a frame may have: the buffer is made once.
         const vk::DeviceSize size = std::max<vk::DeviceSize>(
@@ -279,8 +284,8 @@ void StaticMeshPass::record(const vk::raii::CommandBuffer& commandBuffer, std::s
         if (draw.mesh == nullptr) {
             continue;
         }
-        const pipeline::GraphicsPipeline& used =
-            draw.material.pipeline != nullptr ? *draw.material.pipeline : _pipeline;
+        const pipeline::GraphicsPipeline& builtIn = frame.lit ? _litPipeline : _pipeline;
+        const pipeline::GraphicsPipeline& used = draw.material.pipeline != nullptr ? *draw.material.pipeline : builtIn;
         const vk::PipelineLayout layout = *used.getLayout().getLayout();
         if (&used != boundPipeline) {
             used.bind(commandBuffer);

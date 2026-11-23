@@ -127,7 +127,8 @@ class AYLO_RENDER_VULKAN_API StaticMeshPass {
     /// @brief Writes the packed lights @p bytes (packLights()) into frame @p frameIndex's buffer of lights, grown if
     /// needed. Once per frame, after that frame's fence was waited for.
     /// @throws vk::SystemError If a bigger buffer cannot be created.
-    void uploadLights(std::size_t frameIndex, std::span<const std::byte> bytes);
+    /// @param lit Whether the frame has lights: models without a material are then drawn lit (staticmesh_lit.frag).
+    void uploadLights(std::size_t frameIndex, std::span<const std::byte> bytes, bool lit);
 
     /// @brief Records the draws of the last upload() of @p frameIndex inside dynamic rendering with a depth
     /// attachment; the frame's set 0 (the 3D view) must be bound. A draw with a game material is drawn with its
@@ -144,6 +145,7 @@ class AYLO_RENDER_VULKAN_API StaticMeshPass {
     struct Frame {
         std::optional<memory::Buffer> buffer;  ///< Its StaticMeshDrawData; none until a frame draws a mesh.
         std::optional<memory::Buffer> lights;  ///< Its lights (LightData.hpp), made with the pass.
+        bool lit{false};                       ///< Whether it has lights: the built-in material is lit.
         vk::raii::DescriptorSet set{nullptr};  ///< kMeshDrawSet, pointing at buffer.
         std::vector<Draw> draws;               ///< The draws of its last upload().
         std::vector<MeshDrawKey> keys;         ///< Where each draw is and whether it is blended, to order them.
@@ -151,7 +153,8 @@ class AYLO_RENDER_VULKAN_API StaticMeshPass {
 
     const memory::Allocator* _allocator;       ///< Allocates the buffers of draws.
     const pipeline::PipelineLayout* _layout;   ///< The static mesh layout.
-    pipeline::GraphicsPipeline _pipeline;      ///< The static mesh pipeline.
+    pipeline::GraphicsPipeline _pipeline;      ///< The built-in static mesh pipeline, unlit.
+    pipeline::GraphicsPipeline _litPipeline;   ///< The built-in one of a frame with lights.
     descriptor::DescriptorPool _pool;          ///< The frames' sets; declared before them.
     std::vector<Frame> _frames;                ///< One per frame in flight.
     std::vector<StaticMeshDrawData> _staging;  ///< The draws of an upload(), reused.
