@@ -136,3 +136,28 @@ TEST_F(ShaderReloadableTest, ToleratesAMissingFolder) {
     reloader.add(std::make_unique<ShaderReloadable>(&_shaders, "assets"));
     EXPECT_TRUE(settle(reloader).empty());
 }
+
+TEST_F(ShaderReloadableTest, ReloadsTheShadersThatIncludeAChangedFile) {
+    // A shader includes a game file and an engine library; changing the game file recompiles it.
+    std::filesystem::create_directories(_game / "assets/shaders/lib");
+    write("shaders/lib/values.glsl", "uniform vec4 first;\nvec4 tint() { return first; }\n");
+    write(kPath,
+          "#include \"lib/values.glsl\"\n#include \"@aylo/noise.glsl\"\n"
+          "void fragment() { COLOR *= tint() * valueNoise(UV); }\n");
+    const AssetId id = _shaders.load(kPath);
+    ASSERT_NE(_shaders.get(id), nullptr) << _shaders.getEntry(id)->error;
+    EXPECT_EQ(_shaders.getIncluders("shaders/lib/values.glsl"), (std::vector<AssetId>{id}));
+    ShaderReloadable reloadable{&_shaders, "assets"};
+
+    write("shaders/lib/values.glsl", "uniform vec4 second;\nvec4 tint() { return second; }\n");
+    const ReloadOutcome outcome = reloadable.reload(ChangeSet{.modified = {"assets/shaders/lib/values.glsl"}});
+    EXPECT_EQ(outcome.status, ReloadOutcome::Status::kApplied);
+    EXPECT_EQ(outcome.what, (std::vector<std::string>{"shader shaders/tint.glsl"}));
+    EXPECT_EQ(firstValue(id), "second");
+
+    // A broken include keeps the last version and is reported.
+    write("shaders/lib/values.glsl", "uniform vec4 second\nvec4 tint() { return second; }\n");
+    EXPECT_EQ(reloadable.reload(ChangeSet{.modified = {"assets/shaders/lib/values.glsl"}}).status,
+              ReloadOutcome::Status::kFailed);
+    EXPECT_EQ(firstValue(id), "second");
+}
