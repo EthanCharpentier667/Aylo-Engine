@@ -1,9 +1,9 @@
 # Lights
 
 Lights shine on the 3D world: the sun, a lamp, a torch, a window. You add them as components of 3D entities, and the
-engine hands them to the renderer every frame, placed and turned with their entity. An unlit model (one drawn by the
-built-in shader, or by a `#pragma mesh` shader of your own) ignores them; lit materials, which shade their surface from
-the lights, come in the next version of the engine. A game without lights draws as before.
+engine hands them to the renderer every frame, placed and turned with their entity. A [lit material](lighting.md) shades its
+surface from them, and a model with no material is lit by them too; an unlit `#pragma mesh` shader ignores them. A
+game without lights draws as before.
 
 Lights come with the graphics plugin: there is nothing to add to `project.luau`.
 
@@ -87,4 +87,5 @@ spot light's cone, an area light's rectangle and the way it faces. A disabled li
 ## See also
 
 - [2D and 3D](3d.md): transforms, cameras and models.
+- [Lit materials](lighting.md): shaders that the lights shade.
 - [Materials](materials.md): shaders of your own for models.

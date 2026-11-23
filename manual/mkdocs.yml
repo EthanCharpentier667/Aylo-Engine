@@ -38,6 +38,7 @@ nav:
   - Post-processing: post-processing.md
   - Materials: materials.md
   - Lights: lights.md
+  - Lit materials: lighting.md
   - User interface: ui.md
   - HTTP: http.md
   - JSON: json.md
