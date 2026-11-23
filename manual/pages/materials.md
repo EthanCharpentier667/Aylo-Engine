@@ -105,6 +105,24 @@ nothing): call it from a `side = "client"` system.
 
 A shader has 64 bytes of `instance uniform`s in all: 16 `float`s, or 4 `vec4`s.
 
+## From vertex() to fragment()
+
+A `varying` carries a value of yours from `vertex()` to `fragment()`: written for each vertex, read for each pixel,
+blended between the vertices of its triangle. It works on every kind of drawing: sprites, texts, shapes, particles,
+screen effects and models.
+
+```glsl
+#pragma mesh
+varying vec3 objectPosition;  // declared once, outside the functions
+
+void vertex() { objectPosition = VERTEX; }
+void fragment() { COLOR.rgb *= 0.5 + 0.5 * fract(objectPosition.y * 4.0); }  // stripes that follow the model
+```
+
+A varying is a `float`, `vec2`, `vec3`, `vec4` or `int`. An `int` is not blended: each pixel gets the value of one of
+the triangle's vertices. A shader has 5 varyings at most; a sixth is an error that names its line, as is a varying of
+another type, or one named like a built-in or like another value.
+
 ## 3D materials
 
 A model (`aylo.MeshRenderer`) takes a material too, whose shader says `#pragma mesh` on one of its first lines: a 3D
@@ -147,6 +165,14 @@ What a 3D shader reads and writes:
 | `NORMAL_MATRIX` | `mat3` | a normal of the model's space to the world's, even under an uneven scale (normalize the result) | the same |
 | `AABB_MIN` | `vec3` | the smallest corner of the box the model fits in, in its own space | the same |
 | `AABB_MAX` | `vec3` | the largest corner | the same |
+| `WORLD_POSITION` | `vec3` | the vertex in the world, before your `vertex()` moves it | the pixel, in the world |
+| `LOCAL_POSITION` | `vec3` | - | the pixel, in the model's space (after your `vertex()`) |
+| `VIEW_DIR` | `vec3` | - | unit, from the pixel toward the camera (the same everywhere for an orthographic camera) |
+| `CAMERA_POSITION` | `vec3` | the 3D camera, in the world | the same |
+| `VIEW_MATRIX`, `INV_VIEW_MATRIX` | `mat4` | the world's space to the camera's, and back | the same |
+| `PROJECTION_MATRIX`, `INV_PROJECTION_MATRIX` | `mat4` | the camera's space to the screen's (clip space), and back | the same |
+| `FRONT_FACING` | `bool` | - | whether the camera sees the triangle's front (its vertices turn counter-clockwise) |
+| `FRAGCOORD` | `vec4` | - | the pixel on the screen: `xy` in pixels from the top-left corner, `z` its depth (0 near, 1 far) |
 
 With the matrices and the box, an effect can follow the object rather than the world: a texture laid over the
 model's box, a dissolve that keeps its place as the model moves. Each model gets its own `instance uniform` values,
@@ -159,9 +185,22 @@ uniform sampler2D noise;
 instance uniform float dissolve = 0.0;
 
 void fragment() {
-    vec3 local = (INV_MODEL_MATRIX * MODEL_MATRIX * vec4(AABB_MIN, 1.0)).xyz;  // the same as AABB_MIN
-    vec3 box = (local - AABB_MIN) / max(AABB_MAX - AABB_MIN, vec3(0.0001));    // 0 to 1 over the model
+    vec3 box = (LOCAL_POSITION - AABB_MIN) / max(AABB_MAX - AABB_MIN, vec3(0.0001));  // 0 to 1 over the model
     if (texture(noise, box.xy).r < dissolve) { discard; }
+}
+```
+
+With the camera, a shader shades by where the surface is seen from. A rim light brightens the edges a model shows
+the camera:
+
+```glsl
+// assets/shaders/rim.glsl
+#pragma mesh
+uniform vec3 rimColor = vec3(0.3, 0.6, 1.0);
+
+void fragment() {
+    float rim = 1.0 - max(dot(NORMAL, VIEW_DIR), 0.0);  // 0 facing the camera, 1 on the silhouette
+    COLOR.rgb += pow(rim, 3.0) * rimColor * COLOR.a * (FRONT_FACING ? 1.0 : 0.0);
 }
 ```
 
