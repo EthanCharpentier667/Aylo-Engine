@@ -34,6 +34,8 @@
 #include "aylo/ecs/system/ResourceParam.hpp"
 #include "aylo/ecs/system/Side.hpp"
 #include "core/asset/AssetId.hpp"
+#include "core/asset/exceptions/AssetExceptions.hpp"
+#include "core/vfs/FileSource.hpp"
 #include "plugins/AssetDirectory.hpp"
 #include "plugins/graphics/BackendRegistry.hpp"
 #include "plugins/graphics/GraphicsPlugin.hpp"
@@ -58,6 +60,8 @@
 namespace aylo::plugins::mesh {
 namespace {
 
+static_assert(kPartMaps == detail::kPartMapCount, "MeshAssets keeps a texture per map of a model's part");
+
 /// @return The renderer, or null before the GraphicsPlugin created the backend.
 contract::renderer::IRenderer* rendererOf(graphics::Backend& backend) noexcept {
     return backend.platform != nullptr ? backend.renderer.get() : nullptr;
@@ -69,6 +73,50 @@ void fail(MeshAssets::Entry& entry, std::string error) {
     entry.error = std::move(error);
     entry.state = MeshState::kFailed;
     entry.model.reset();
+}
+
+/// @return The texture asset of image @p image of @p model as map @p map of a part. The emissive map is a colour, read
+/// as the base colour is; the others are data, read linear under a name of their own (`<image>#linear`), so an image a
+/// file also uses as a colour gets two textures. None, said on the error output, when the file of a data map cannot be
+/// read: the part goes without that map.
+std::optional<core::asset::AssetId> loadMap(const detail::Model& model, std::size_t image, std::size_t map,
+                                            const std::string& path, const core::vfs::FileSource& source,
+                                            graphics::TextureAssets& textures) {
+    const detail::ModelImage& file = model.images.at(image);
+    const bool colour = map == static_cast<std::size_t>(detail::PartMap::kEmissive);
+    contract::renderer::TextureDesc desc{.filter = contract::renderer::TextureFilter::kLinear, .repeat = true};
+    if (colour) {
+        return file.path.empty() ? textures.load(std::format("{}#image{}", path, image), file.encoded, desc)
+                                 : textures.load(std::filesystem::path{file.path}, desc);
+    }
+    desc.encoding = contract::renderer::TextureEncoding::kLinear;
+    if (!file.path.empty()) {
+        try {
+            const std::string bytes = source.read(file.path);
+            return textures.load(file.path + "#linear", std::as_bytes(std::span{bytes}), desc);
+        } catch (const core::asset::exceptions::AssetLoadException& error) {
+            std::cerr << std::format("[Mesh] Mesh '{}': a map is left out: {}\n", path, error.what());
+            return std::nullopt;
+        }
+    }
+    return textures.load(std::format("{}#image{}#linear", path, image), file.encoded, desc);
+}
+
+/// @return Per part of @p model, the texture assets of its maps (loadMap()).
+std::vector<std::array<std::optional<core::asset::AssetId>, kPartMaps>> loadMaps(const detail::Model& model,
+                                                                                 const std::string& path,
+                                                                                 const core::vfs::FileSource& source,
+                                                                                 graphics::TextureAssets& textures) {
+    std::vector<std::array<std::optional<core::asset::AssetId>, kPartMaps>> parts;
+    for (const auto& maps : model.partMaps) {
+        auto& assets = parts.emplace_back();
+        for (std::size_t map = 0; map < maps.size(); ++map) {
+            if (const std::optional<std::size_t>& image = maps.at(map)) {
+                assets.at(map) = loadMap(model, *image, map, path, source, textures);
+            }
+        }
+    }
+    return parts;
 }
 
 /// @brief Render, before the GraphicsPlugin loads the textures: reads the queued model files and asks for the textures
@@ -98,6 +146,7 @@ void readMeshes(ecs::ResMut<MeshAssets> meshes, ecs::ResAppend<graphics::Texture
             for (const std::optional<std::size_t>& image : model->partImages) {
                 entry.partTextures.push_back(image ? images.at(*image) : std::nullopt);
             }
+            entry.partMapTextures = loadMaps(*model, entry.path, *meshes->getSource(), *textures);
             entry.partNames = model->partNames;
             entry.model = std::move(model);
             entry.state = MeshState::kWaitingTextures;
@@ -109,10 +158,13 @@ void readMeshes(ecs::ResMut<MeshAssets> meshes, ecs::ResAppend<graphics::Texture
 
 /// @return Whether every texture of @p entry is done loading (loaded or failed).
 bool texturesSettled(const MeshAssets::Entry& entry, const graphics::TextureAssets& textures) {
-    return std::ranges::all_of(entry.partTextures, [&textures](const std::optional<core::asset::AssetId>& texture) {
+    const auto settled = [&textures](const std::optional<core::asset::AssetId>& texture) {
         const graphics::TextureAssets::Entry* known = texture ? textures.get(*texture) : nullptr;
         return known == nullptr || known->state != graphics::AssetState::kQueued;
-    });
+    };
+    return std::ranges::all_of(entry.partTextures, settled) &&
+           std::ranges::all_of(entry.partMapTextures,
+                               [&settled](const auto& maps) { return std::ranges::all_of(maps, settled); });
 }
 
 /// @brief Creates the meshes whose textures are settled.
@@ -128,9 +180,22 @@ void uploadMeshes(contract::renderer::IRenderer& renderer, MeshAssets& meshes,
             continue;
         }
         contract::renderer::StaticMeshDesc desc = entry.model->mesh;
-        for (std::size_t part = 0; part < desc.parts.size() && part < entry.partTextures.size(); ++part) {
-            if (const std::optional<core::asset::AssetId>& texture = entry.partTextures.at(part)) {
-                desc.parts.at(part).texture = textures.getTexture(*texture).value_or(contract::renderer::TextureId{});
+        const auto created = [&textures](const std::optional<core::asset::AssetId>& texture) {
+            return texture ? textures.getTexture(*texture).value_or(contract::renderer::TextureId{})
+                           : contract::renderer::TextureId{};
+        };
+        for (std::size_t part = 0; part < desc.parts.size(); ++part) {
+            contract::renderer::StaticMeshPart& made = desc.parts.at(part);
+            if (part < entry.partTextures.size()) {
+                made.texture = created(entry.partTextures.at(part));
+            }
+            if (part < entry.partMapTextures.size()) {
+                const auto& maps = entry.partMapTextures.at(part);
+                made.metallicRoughnessTexture =
+                    created(maps.at(static_cast<std::size_t>(detail::PartMap::kMetallicRoughness)));
+                made.normalTexture = created(maps.at(static_cast<std::size_t>(detail::PartMap::kNormal)));
+                made.occlusionTexture = created(maps.at(static_cast<std::size_t>(detail::PartMap::kOcclusion)));
+                made.emissiveTexture = created(maps.at(static_cast<std::size_t>(detail::PartMap::kEmissive)));
             }
         }
         try {

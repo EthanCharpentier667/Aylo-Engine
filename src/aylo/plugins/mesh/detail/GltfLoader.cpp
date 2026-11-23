@@ -22,6 +22,7 @@
 #include <format>
 #include <glm/ext/matrix_float3x3.hpp>
 #include <glm/ext/matrix_float4x4.hpp>
+#include <glm/ext/vector_float2.hpp>
 #include <glm/ext/vector_float3.hpp>
 #include <glm/ext/vector_float4.hpp>
 #include <glm/geometric.hpp>
@@ -37,7 +38,9 @@
 #include <vector>
 
 #include "Model.hpp"
+#include "Tangents.hpp"
 #include "aylo/contract/renderer/drawing/StaticMesh.hpp"
+#include "aylo/contract/renderer/drawing/Texture.hpp"
 #include "core/asset/exceptions/AssetExceptions.hpp"
 #include "core/vfs/FileSource.hpp"
 
@@ -140,6 +143,25 @@ class ModelBuilder {
             throw core::asset::exceptions::AssetLoadException{
                 std::format("Mesh '{}': it has no triangles to draw", _path)};
         }
+        if (!_anyColor) {
+            _model.mesh.colors.clear();
+        }
+        if (!_anyUv2) {
+            _model.mesh.uv2.clear();
+        }
+        // Tangents are only for normal maps: a model with neither keeps none, and does not pay for them.
+        const bool normalMaps = std::ranges::any_of(_model.mesh.parts,
+                                                    [](const auto& part) {
+                                                        return part.normalTexture != contract::renderer::TextureId{};
+                                                    }) ||
+                                std::ranges::any_of(_model.partMaps, [](const auto& maps) {
+                                    return maps.at(static_cast<std::size_t>(PartMap::kNormal)).has_value();
+                                });
+        if (_anyTangent || normalMaps) {
+            generateMissingTangents(_model.mesh, _knownTangents);
+        } else {
+            _model.mesh.tangents.clear();
+        }
         return std::move(_model);
     }
 
@@ -149,6 +171,9 @@ class ModelBuilder {
         const cgltf_accessor* positions = nullptr;  ///< POSITION.
         const cgltf_accessor* normals = nullptr;    ///< NORMAL.
         const cgltf_accessor* uvs = nullptr;        ///< TEXCOORD_0.
+        const cgltf_accessor* tangents = nullptr;   ///< TANGENT.
+        const cgltf_accessor* colors = nullptr;     ///< COLOR_0.
+        const cgltf_accessor* uv2 = nullptr;        ///< TEXCOORD_1.
     };
 
     /// @return The attributes of @p primitive the model uses.
@@ -161,6 +186,12 @@ class ModelBuilder {
                 found.normals = attribute.data;
             } else if (attribute.type == cgltf_attribute_type_texcoord && attribute.index == 0) {
                 found.uvs = attribute.data;
+            } else if (attribute.type == cgltf_attribute_type_texcoord && attribute.index == 1) {
+                found.uv2 = attribute.data;
+            } else if (attribute.type == cgltf_attribute_type_tangent) {
+                found.tangents = attribute.data;
+            } else if (attribute.type == cgltf_attribute_type_color && attribute.index == 0) {
+                found.colors = attribute.data;
             }
         }
         return found;
@@ -183,7 +214,38 @@ class ModelBuilder {
                 cgltf_accessor_read_float(attributes.uvs, index, glm::value_ptr(vertex.uv), 2);
             }
             _model.mesh.vertices.push_back(vertex);
+            addVertexData(attributes, index, world);
         }
+    }
+
+    /// @brief Appends the tangent, colour and second UV of vertex @p index of @p attributes, defaults where it has
+    /// none: the lists stay one per vertex, and take() keeps only those some vertex has.
+    void addVertexData(const Attributes& attributes, cgltf_size index, const glm::mat4& world) {
+        glm::vec4 tangent{1.0F, 0.0F, 0.0F, 1.0F};
+        const bool hasTangent = attributes.tangents != nullptr && index < attributes.tangents->count;
+        if (hasTangent) {
+            cgltf_accessor_read_float(attributes.tangents, index, glm::value_ptr(tangent), 4);
+            const glm::vec3 turned = glm::mat3{world} * glm::vec3{tangent};
+            // A mirroring transform turns the bitangent over.
+            const float sign = glm::determinant(glm::mat3{world}) < 0.0F ? -tangent.w : tangent.w;
+            tangent = glm::vec4{glm::length(turned) > 0.0F ? glm::normalize(turned) : turned, sign};
+        }
+        _model.mesh.tangents.push_back(tangent);
+        _knownTangents.push_back(hasTangent);
+        _anyTangent = _anyTangent || hasTangent;
+        glm::vec4 color{1.0F};
+        if (attributes.colors != nullptr && index < attributes.colors->count) {
+            cgltf_accessor_read_float(attributes.colors, index, glm::value_ptr(color),
+                                      cgltf_num_components(attributes.colors->type));
+            _anyColor = true;
+        }
+        _model.mesh.colors.push_back(color);
+        glm::vec2 uv2{0.0F};
+        if (attributes.uv2 != nullptr && index < attributes.uv2->count) {
+            cgltf_accessor_read_float(attributes.uv2, index, glm::value_ptr(uv2), 2);
+            _anyUv2 = true;
+        }
+        _model.mesh.uv2.push_back(uv2);
     }
 
     /// @brief Appends the indices of @p primitive, shifted by @p base, its vertices numbering @p count; without an
@@ -207,13 +269,52 @@ class ModelBuilder {
         }
     }
 
-    /// @brief Gives @p part the base colour and texture of @p material, if it has them; @return its image.
-    std::optional<std::size_t> applyMaterial(const cgltf_material* material, contract::renderer::StaticMeshPart& part) {
-        if (material == nullptr || material->has_pbr_metallic_roughness == 0) {
+    /// @brief Gives @p part @p material: its metallic-roughness factors, alpha mode, sides, emission and texture
+    /// transform, and @p maps the images of its other maps. A primitive without a material keeps the part's defaults
+    /// (both sides drawn, as before).
+    /// @return Its base colour image.
+    std::optional<std::size_t> applyMaterial(const cgltf_material* material, contract::renderer::StaticMeshPart& part,
+                                             std::array<std::optional<std::size_t>, kPartMapCount>& maps) {
+        if (material == nullptr) {
+            return std::nullopt;
+        }
+        part.doubleSided = material->double_sided != 0;
+        part.alphaMode = contract::renderer::AlphaMode::kOpaque;
+        if (material->alpha_mode == cgltf_alpha_mode_blend) {
+            part.alphaMode = contract::renderer::AlphaMode::kBlend;
+        } else if (material->alpha_mode == cgltf_alpha_mode_mask) {
+            part.alphaMode = contract::renderer::AlphaMode::kMask;
+        }
+        part.alphaCutoff = material->alpha_cutoff;
+        const float strength =
+            material->has_emissive_strength != 0 ? material->emissive_strength.emissive_strength : 1.0F;
+        part.emissive = glm::make_vec3(static_cast<const cgltf_float*>(material->emissive_factor)) * strength;
+        const auto mapOf = [this, &maps](const cgltf_texture_view& view, PartMap map) {
+            if (view.texture != nullptr && view.texture->image != nullptr) {
+                maps.at(static_cast<std::size_t>(map)) = imageOf(*view.texture->image);
+            }
+        };
+        mapOf(material->normal_texture, PartMap::kNormal);
+        part.normalScale = material->normal_texture.scale;
+        mapOf(material->occlusion_texture, PartMap::kOcclusion);
+        part.occlusionStrength =
+            material->occlusion_texture.texture != nullptr ? material->occlusion_texture.scale : 1.0F;
+        mapOf(material->emissive_texture, PartMap::kEmissive);
+        if (material->has_pbr_metallic_roughness == 0) {
             return std::nullopt;
         }
         const cgltf_pbr_metallic_roughness& pbr = material->pbr_metallic_roughness;
         part.baseColor = glm::make_vec4(static_cast<const cgltf_float*>(pbr.base_color_factor));
+        part.metallic = pbr.metallic_factor;
+        part.roughness = pbr.roughness_factor;
+        mapOf(pbr.metallic_roughness_texture, PartMap::kMetallicRoughness);
+        // KHR_texture_transform: the base colour's, applied to every map.
+        if (pbr.base_color_texture.has_transform != 0) {
+            const cgltf_texture_transform& transform = pbr.base_color_texture.transform;
+            part.uvTransform = glm::vec4{transform.offset[0], transform.offset[1], transform.scale[0],
+                                         transform.scale[1]};  // NOLINT(*-constant-array-index)
+            part.uvRotation = transform.rotation;
+        }
         if (pbr.base_color_texture.texture == nullptr || pbr.base_color_texture.texture->image == nullptr) {
             return std::nullopt;
         }
@@ -233,9 +334,11 @@ class ModelBuilder {
         const auto count = static_cast<std::uint32_t>(_model.mesh.indices.size()) - offset;
         _model.mesh.indices.resize(offset + (count - (count % 3)));
         contract::renderer::StaticMeshPart part{.indexOffset = offset, .indexCount = count - (count % 3)};
-        const std::optional<std::size_t> image = applyMaterial(primitive.material, part);
+        std::array<std::optional<std::size_t>, kPartMapCount> maps{};
+        const std::optional<std::size_t> image = applyMaterial(primitive.material, part, maps);
         _model.mesh.parts.push_back(part);
         _model.partImages.push_back(image);
+        _model.partMaps.push_back(maps);
         _model.partNames.emplace_back(
             primitive.material != nullptr && primitive.material->name != nullptr ? primitive.material->name : "");
     }
@@ -291,6 +394,10 @@ class ModelBuilder {
     std::string _path;                                            ///< For the messages, and to find the images.
     const cgltf_options* _options;                                ///< To decode data URIs.
     Model _model;                                                 ///< What is built.
+    std::vector<bool> _knownTangents;                             ///< Per vertex: whether the file gave its tangent.
+    bool _anyTangent{false};                                      ///< Whether some vertex has one from the file.
+    bool _anyColor{false};                                        ///< Whether some vertex has a colour.
+    bool _anyUv2{false};                                          ///< Whether some vertex has a second UV.
     std::unordered_map<const cgltf_image*, std::size_t> _images;  ///< Images already added, by their index.
 };
 

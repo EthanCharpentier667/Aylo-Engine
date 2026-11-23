@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include <array>
+#include <cstddef>
 #include <cstdint>
 #include <filesystem>
 #include <memory>
@@ -26,6 +28,9 @@ namespace aylo::plugins::mesh {
 namespace detail {
 struct Model;
 }  // namespace detail
+
+/// @brief The maps of a model's part besides its base colour: metallic-roughness, normal, occlusion, emissive.
+inline constexpr std::size_t kPartMaps = 4;
 
 /// @brief Where a mesh is in its loading.
 enum class MeshState : std::uint8_t {
@@ -48,6 +53,8 @@ class AYLO_PLUGIN_MESH_API MeshAssets {
         MeshState state{MeshState::kQueued};   ///< Where it is in its loading.
         std::shared_ptr<detail::Model> model;  ///< The file read, until the renderer created the mesh.
         std::vector<std::optional<core::asset::AssetId>> partTextures;  ///< Per part: its texture asset, or none.
+        /// Per part: the texture assets of its other maps (detail::PartMap order), or none.
+        std::vector<std::array<std::optional<core::asset::AssetId>, kPartMaps>> partMapTextures;
         std::vector<std::string> partNames;     ///< Per part: its material's name in the file, empty without one.
         contract::renderer::StaticMeshId mesh;  ///< The renderer's id, once loaded.
         std::string error;                      ///< Why it failed to load.
