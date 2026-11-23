@@ -38,6 +38,12 @@ class AYLO_RENDER_VULKAN_API MeshPartTextures {
     MeshPartTextures(const core::Device& device, descriptor::DescriptorAllocator& descriptors,
                      const descriptor::DescriptorSetLayout& layout, std::size_t framesInFlight);
 
+    ~MeshPartTextures() = default;
+    MeshPartTextures(const MeshPartTextures&) = delete;
+    MeshPartTextures& operator=(const MeshPartTextures&) = delete;
+    MeshPartTextures(MeshPartTextures&&) noexcept = default;
+    MeshPartTextures& operator=(MeshPartTextures&&) noexcept = default;
+
     /// @return Frame @p frameIndex's set, bound to @p wanted (a missing or destroyed one as @p fallback, which must
     /// exist).
     /// @warning Only while recording frame @p frameIndex, after its fence was waited for.
