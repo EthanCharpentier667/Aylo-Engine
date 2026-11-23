@@ -385,6 +385,7 @@ and the call `aylo.shader.setScreenMaterials` (`materials`, client), which sets 
 
 | Call | Arguments | Result |
 |---|---|---|
+| `aylo.shader.setMaterialRenderState` | `material`, and any of `cull`, `blend`, `depth` (names) and `depthBias`, `depthBiasSlope` (numbers) | the material; it replaces what the material changed of its 3D shader's render state before. Prefer the `renderState` key of `engine.assets.material`: see [How a 3D material is drawn](materials.md#how-a-3d-material-is-drawn) |
 | `aylo.shader.setInstanceValue` | `entity`, `material` (the one it is drawn with), `name` (an `instance uniform` of its shader), `x` (a number), or `x`, `y` (`z`, `w`) with `size` 2 to 4 for a vector | nothing; the value is used from the next frame. Client only: see [One value per drawing](materials.md#one-value-per-drawing) |
 
 Particle effects have the `engine.assets.particle` form, see [Particles](particles.md). It is made of the calls

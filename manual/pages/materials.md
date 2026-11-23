@@ -204,7 +204,84 @@ void fragment() {
 }
 ```
 
-The Inspector edits a 3D material as a 2D one. A shader cannot say both `#pragma screen` and `#pragma mesh`.
+### How a 3D material is drawn
+
+A 3D shader says how its pixels are drawn with pragmas on its first lines, and a material can change them:
+
+```glsl
+// assets/shaders/glass.glsl
+#pragma mesh
+#pragma blend alpha   // see what is behind it
+#pragma cull none     // and its inside faces too
+void fragment() { COLOR = vec4(0.2, 0.5, 1.0, 1.0) * 0.4; }  // premultiplied: rgb times the alpha
+```
+
+| Pragma | Values | Default |
+|---|---|---|
+| `#pragma cull` | `back`: the faces seen from behind are not drawn; `front`: the faces seen from the front are not drawn; `none`: both sides drawn | `back` |
+| `#pragma blend` | `opaque`; `alpha` (or `premultiplied`, the same): over what is behind by `COLOR.a`; `additive`: added to it (fire, glows); `multiply`: multiplies it (stains, tinted glass) | `opaque` |
+| `#pragma depth` | `test write`: hidden by what is in front, hides what is behind; `test nowrite`: hidden, hides nothing; `notest`: always drawn | `test write`, and `test nowrite` with a `blend` other than `opaque` |
+| `#pragma depth_bias` | a number, and optionally a slope factor: moves the depth by that many steps (negative is closer), to draw a decal on a wall without flicker | `0 0` |
+
+A model with a blended material is drawn after every opaque one, from the farthest to the nearest, so glass in front
+of glass looks right from every side. Two blended models that cross each other can still show the wrong one in front
+where they cross: split one of them, or let the denser one write depth (`#pragma depth test write`).
+
+!!! note "Back faces"
+    A 3D shader skips the faces seen from behind (`#pragma cull back`), which halves the work on closed models. A
+    plane or a leaf seen from both sides needs `#pragma cull none`. A face's front is the side its vertices turn
+    counter-clockwise, as in glTF, FBX and OBJ files. Models without a material are drawn with both sides for now.
+
+**Cutout.** Write `ALPHA_SCISSOR` in `fragment()` to cut a shape out of a texture (leaves, fences, grass): a pixel
+whose `COLOR.a` is below it is not drawn, the others are opaque. It stays an opaque material, sorted with them.
+
+```glsl
+#pragma mesh
+#pragma cull none
+void fragment() { ALPHA_SCISSOR = 0.5; }  // the texture's alpha cuts the leaf
+```
+
+**An outline** (an inverted hull): the model drawn a little bigger, its front faces skipped, so only the rim behind the
+model shows. Draw it as a second entity at the same place, with the same model.
+
+```glsl
+// assets/shaders/outline.glsl
+#pragma mesh
+#pragma cull front
+uniform vec4 outlineColor = vec4(0.0, 0.0, 0.0, 1.0);
+uniform float width = 0.03;
+void vertex() { VERTEX += NORMAL * width; }
+void fragment() { COLOR = outlineColor; }
+```
+
+A material changes what it wants of its shader's way of drawing, in its file or in the script that makes it; what it
+leaves out keeps the shader's pragma:
+
+```json
+{ "shader": "shaders/glass.glsl", "renderState": { "blend": "additive", "depthBias": -1 } }
+```
+
+```luau
+local ghost = engine.assets.material({
+	name = "ghost",
+	shader = engine.assets.shader("shaders/glass.glsl"),
+	renderState = { blend = "additive", cull = "back" },
+})
+```
+
+| `renderState` key | Value |
+|---|---|
+| `cull` | `"back"`, `"front"` or `"none"` |
+| `blend` | `"opaque"`, `"alpha"`, `"premultiplied"`, `"additive"` or `"multiply"` |
+| `depth` | `"test write"`, `"test nowrite"` or `"notest"` |
+| `depthBias`, `depthBiasSlope` | numbers |
+
+A name it does not know is an error: `Material '...': render state 'cull' is "back", "front" or "none"` in a file,
+`'sideways' is not a render state cull` from a script. A render state pragma in a shader without `#pragma mesh` is an
+error too: 2D drawings have their own blend modes.
+
+The Inspector edits a 3D material as a 2D one, and shows its **Render state**: each part is the shader's until you
+pick another. A shader cannot say both `#pragma screen` and `#pragma mesh`.
 
 !!! warning "A 2D material on a model"
     A model given a material whose shader is a 2D one (no `#pragma mesh`) is drawn with the built-in shader, and the
@@ -237,7 +314,7 @@ Assets.
 | Message | Cause |
 |---|---|
 | `Material 'materials/hit.material': not a JSON object` | the file is not JSON, or not an object |
-| `Material '...': unknown key 'colour' (shader, values, textures)` | a key the format does not have |
+| `Material '...': unknown key 'colour' (shader, values, textures, renderState)` | a key the format does not have |
 | `Material '...': value 'tint' must be a number or 2 to 4 numbers` | a value of the wrong kind |
 | `Material '...': texture 'noise' must be an image path` | a texture that is not a string |
 | `Material '...': ...` with the reason of the file system | the file cannot be read (missing, misspelled) |
