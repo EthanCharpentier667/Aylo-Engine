@@ -7,7 +7,6 @@
 
 #pragma once
 
-#include <cstddef>
 #include <cstdint>
 #include <glm/ext/matrix_float4x4.hpp>
 #include <glm/ext/vector_float4.hpp>
