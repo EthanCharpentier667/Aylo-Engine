@@ -11,6 +11,7 @@ add_requires("nlohmann_json 3.12.x", {alias = "nlohmann_json"})
 add_requires("yoga 3.2.x", {alias = "yoga"})
 add_requires("cgltf v1.15", {alias = "cgltf"})
 add_requires("ufbx v0.23.0", {alias = "ufbx"})
+add_requires("mikktspace 2020.03.26", {alias = "mikktspace"})
 -- HTTPS for the http plugin: Schannel on Windows, OpenSSL 3 elsewhere (the package picks it). Never the system's, nor
 -- its OpenSSL: xmake builds both, static, as the system's (apt's libcurl4 and libssl3, Homebrew's openssl@4) are shared
 -- libraries the release does not hold (docs/release/self-contained.md).
@@ -110,8 +111,8 @@ plugin("mesh", {"plugin-graphics", "plugin-shader", "plugin-transform"})
     add_files("mesh/MeshForms.luau")
     add_headerfiles("mesh/**.hpp|detail/**.hpp")
     -- Read the model files. Private: cgltf (glTF) only in mesh/detail/GltfLoader.cpp, ufbx (FBX, OBJ) only in
-    -- mesh/detail/UfbxLoader.cpp.
-    add_packages("cgltf", "ufbx")
+    -- mesh/detail/UfbxLoader.cpp, mikktspace (tangents) only in mesh/detail/Tangents.cpp.
+    add_packages("cgltf", "ufbx", "mikktspace")
 
 plugin("audio", {"contract-audiodevice", "plugin-transform"})
     add_files("audio/**.cpp")
