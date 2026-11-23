@@ -27,6 +27,7 @@
 #include "aylo/ecs/schedule/RunMode.hpp"
 #include "aylo/ecs/world/World.hpp"
 #include "plugins/graphics/Camera.hpp"
+#include "plugins/graphics/Light.hpp"
 #include "plugins/graphics/Lines3D.hpp"
 #include "plugins/transform/Transform.hpp"
 
@@ -188,4 +189,67 @@ TEST(Graphics3D, ARendererWithout3DIsToldOnceAndGetsNothing) {
     const std::size_t first = log.find(warning);
     ASSERT_NE(first, std::string::npos) << log;
     EXPECT_EQ(log.find(warning, first + 1), std::string::npos) << log;
+}
+
+TEST(Light3D, ReflectsItsFieldsWithTheKindByName) {
+    using aylo::plugins::graphics::Light3D;
+    EXPECT_EQ(aylo::ecs::ComponentTraits<Light3D>::kName, "aylo.Light3D");
+    const aylo::ecs::TypeInfo info = aylo::ecs::TypeTraits<Light3D>::makeTypeInfo();
+    ASSERT_EQ(info.fields.size(), 10U);
+    EXPECT_EQ(info.fields.at(0).name, "kind");
+    ASSERT_EQ(info.fields.at(0).enumNames.size(), 4U);
+    EXPECT_EQ(info.fields.at(0).enumNames[3], "area");
+    EXPECT_EQ(aylo::ecs::ComponentTraits<aylo::plugins::graphics::Environment3D>::kName, "aylo.Environment3D");
+}
+
+TEST(Graphics3D, GivesTheRendererTheEnabledLightsInTheWorldAndTheAmbient) {
+    using aylo::plugins::graphics::Environment3D;
+    using aylo::plugins::graphics::Light3D;
+    using aylo::plugins::graphics::LightKind;
+    BackendApp app;
+    aylo::ecs::World& world = app.app().getWorld();
+    // A spot one metre up, turned a quarter to the left: it shines along -X.
+    world.spawn(Transform3D{.position = {0.0F, 1.0F, 0.0F},
+                            .rotation = {0.0F, std::sin(glm::radians(45.0F)), 0.0F, std::cos(glm::radians(45.0F))}},
+                Light3D{.kind = LightKind::kSpot, .power = 500.0F, .innerConeAngle = 10.0F, .outerConeAngle = 30.0F});
+    world.spawn(Transform3D{}, Light3D{.kind = LightKind::kDirectional, .intensity = 2.0F});
+    world.spawn(Transform3D{}, Light3D{.enabled = false});
+    world.spawn(Environment3D{.ambient = {0.1F, 0.1F, 0.2F}, .strength = 0.5F, .priority = 2});
+    world.spawn(Environment3D{.ambient = {1.0F, 0.0F, 0.0F}});
+
+    app.app().runFrame();
+    app.app().runFrame();
+
+    ASSERT_FALSE(app.state().lightFrames.empty());
+    const auto& lights = app.state().lightFrames.back();
+    ASSERT_EQ(lights.size(), 2U);
+    const auto& spot = lights.at(0);
+    EXPECT_EQ(spot.kind, aylo::contract::renderer::LightKind3D::kSpot);
+    EXPECT_FLOAT_EQ(spot.position.y, 1.0F);
+    EXPECT_NEAR(glm::distance(spot.direction, glm::vec3{-1.0F, 0.0F, 0.0F}), 0.0F, 1e-5F);
+    EXPECT_FLOAT_EQ(spot.intensity, 500.0F);
+    EXPECT_NEAR(spot.outerCone, glm::radians(30.0F), 1e-5F);
+    EXPECT_FLOAT_EQ(lights.at(1).intensity, 2.0F);  // a directional light's lux
+    EXPECT_EQ(app.state().environments.back().ambient, glm::vec3(0.1F, 0.1F, 0.2F));
+    EXPECT_FLOAT_EQ(app.state().environments.back().strength, 0.5F);
+}
+
+TEST(Graphics3D, AGameWithoutLightsGivesTheRendererNone) {
+    BackendApp app;
+    app.app().runFrame();
+    app.app().runFrame();
+    EXPECT_TRUE(app.state().lightFrames.empty());
+}
+
+TEST(Graphics3D, SaysOnceThatTheRendererDoesNotLight3D) {
+    BackendApp app;
+    app.state().lights3D = false;
+    app.app().getWorld().spawn(Transform3D{}, aylo::plugins::graphics::Light3D{});
+    testing::internal::CaptureStderr();
+    app.app().runFrame();
+    app.app().runFrame();
+    const std::string log = testing::internal::GetCapturedStderr();
+    EXPECT_EQ(log.find("does not light"), log.rfind("does not light")) << log;
+    EXPECT_NE(log.find("does not light"), std::string::npos) << log;
+    EXPECT_TRUE(app.state().lightFrames.empty());
 }

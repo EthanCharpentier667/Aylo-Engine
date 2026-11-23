@@ -70,6 +70,9 @@ struct FakeBackendState {
     std::vector<aylo::contract::renderer::View3D> views3D;                      ///< Every setView3D() call.
     std::vector<aylo::contract::renderer::Lines3D> lines3D;                     ///< Every drawLines3D() call.
     bool draws3D{true};                                                         ///< What supports3D() returns.
+    bool lights3D{true};                                                        ///< What supportsLights3D() returns.
+    std::vector<std::vector<aylo::contract::renderer::Light3D>> lightFrames;    ///< Every setLights3D() call's lights.
+    std::vector<aylo::contract::renderer::Environment3D> environments;          ///< Every setLights3D() call's ambient.
     std::vector<aylo::contract::renderer::StaticMeshDesc> createdStaticMeshes;  ///< Every createStaticMesh() call.
     std::vector<aylo::contract::renderer::StaticMeshId> destroyedStaticMeshes;  ///< Every destroyStaticMesh() call.
     std::vector<aylo::contract::renderer::StaticMeshDraw> staticMeshDraws;      ///< Every drawStaticMesh() call.
@@ -176,6 +179,12 @@ class FakeRenderer : public aylo::contract::renderer::IRenderer {
     void setView(const aylo::contract::renderer::View& view) override { _state->views.push_back(view); }
     [[nodiscard]] bool supports3D() const noexcept override { return _state->draws3D; }
     void setView3D(const aylo::contract::renderer::View3D& view) override { _state->views3D.push_back(view); }
+    [[nodiscard]] bool supportsLights3D() const noexcept override { return _state->lights3D; }
+    void setLights3D(std::span<const aylo::contract::renderer::Light3D> lights,
+                     const aylo::contract::renderer::Environment3D& environment) override {
+        _state->lightFrames.emplace_back(lights.begin(), lights.end());
+        _state->environments.push_back(environment);
+    }
     void drawLines3D(const aylo::contract::renderer::Lines3D& lines) override { _state->lines3D.push_back(lines); }
     [[nodiscard]] aylo::contract::renderer::StaticMeshId createStaticMesh(
         const aylo::contract::renderer::StaticMeshDesc& desc) override {
