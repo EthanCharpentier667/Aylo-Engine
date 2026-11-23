@@ -80,6 +80,7 @@ struct AYLO_PLUGIN_SHADER_API Material {
     std::vector<Value> values;        ///< The values set; a name set twice keeps the last.
     std::vector<Texture> textures;    ///< The textures set; a name set twice keeps the last.
     RenderStateOverride renderState;  ///< What it changes of its 3D shader's render state.
+    core::asset::AssetId nextPass;    ///< A material drawn after it on the same model (an outline); none by default.
 
     /// @brief Sets the value @p name, replacing a previous one.
     /// @return This material, to chain.

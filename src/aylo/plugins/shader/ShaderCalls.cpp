@@ -159,6 +159,20 @@ MaterialResult setMaterialRenderState(ecs::ResMut<MaterialAssets> materials,
     return MaterialResult{.material = arguments.material};
 }
 
+MaterialResult setMaterialNextPass(ecs::ResMut<MaterialAssets> materials,
+                                   const SetMaterialNextPassArguments& arguments) {
+    if (arguments.nextPass != core::asset::AssetId{} && materials->get(arguments.nextPass) == nullptr) {
+        throw exceptions::ShaderException{std::format("No material has the id {}", arguments.nextPass.value)};
+    }
+    if (arguments.nextPass == arguments.material) {
+        throw exceptions::ShaderException{"A material cannot be its own next pass"};
+    }
+    if (!materials->setNextPass(arguments.material, arguments.nextPass)) {
+        throw exceptions::ShaderException{std::format("No material has the id {}", arguments.material.value)};
+    }
+    return MaterialResult{.material = arguments.material};
+}
+
 void setScreenMaterials(ecs::Res<MaterialAssets> materials, ecs::ResMut<ScreenMaterials> screen,
                         const SetScreenMaterialsArguments& arguments) {
     for (const core::asset::AssetId material : arguments.materials) {
@@ -186,6 +200,7 @@ void addShaderCalls(ecs::App& app) {
     app.addCall(std::string{kSetValueCall}, &setMaterialValue);
     app.addCall(std::string{kSetTextureCall}, &setMaterialTexture);
     app.addCall(std::string{kSetRenderStateCall}, &setMaterialRenderState);
+    app.addCall(std::string{kSetNextPassCall}, &setMaterialNextPass);
     app.addCall(std::string{kSetInstanceValueCall}, &setInstanceValue);
     app.addCall(std::string{kSetScreenMaterialsCall}, &setScreenMaterials);
 }

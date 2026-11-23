@@ -89,6 +89,18 @@ bool MaterialAssets::setRenderState(core::asset::AssetId id, const RenderStateOv
     return true;
 }
 
+bool MaterialAssets::setNextPass(core::asset::AssetId id, core::asset::AssetId nextPass) {
+    const Entry* entry = _materials.getEntry(id);
+    if (entry == nullptr || !entry->value) {
+        return false;
+    }
+    Material material = *entry->value;
+    material.nextPass = nextPass;
+    static_cast<void>(_materials.store(id, entry->path, std::move(material)));
+    markChanged(id);
+    return true;
+}
+
 bool MaterialAssets::unload(core::asset::AssetId id) {
     if (!_materials.unload(id)) {
         return false;

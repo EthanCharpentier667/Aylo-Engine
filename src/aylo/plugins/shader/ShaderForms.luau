@@ -41,7 +41,7 @@ engine.assets.material = function(...)
 		end
 		return forms.call(form, "aylo.shader.loadMaterial", { path = path })
 	end
-	local spec = forms.table(form, (...), { "name", "shader", "values", "textures", "renderState" })
+	local spec = forms.table(form, (...), { "name", "shader", "values", "textures", "renderState", "nextPass" })
 	local name = forms.string(form, spec, "name")
 	if name == nil or name == "" or spec.shader == nil then
 		forms.fail(form, "expected a 'name' and a 'shader'")
@@ -81,6 +81,9 @@ engine.assets.material = function(...)
 			depthBias = forms.number(context, state, "depthBias"),
 			depthBiasSlope = forms.number(context, state, "depthBiasSlope"),
 		})
+	end
+	if spec.nextPass ~= nil then
+		forms.call(form, "aylo.shader.setMaterialNextPass", { material = material, nextPass = spec.nextPass })
 	end
 	return material
 end

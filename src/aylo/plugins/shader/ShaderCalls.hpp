@@ -33,6 +33,8 @@ inline constexpr std::string_view kSetInstanceValueCall =
     "aylo.shader.setInstanceValue";  ///< An entity's MaterialInstance (InstanceValueRequests).
 inline constexpr std::string_view kSetRenderStateCall =
     "aylo.shader.setMaterialRenderState";  ///< MaterialAssets::setRenderState().
+inline constexpr std::string_view kSetNextPassCall =
+    "aylo.shader.setMaterialNextPass";  ///< MaterialAssets::setNextPass().
 inline constexpr std::string_view kSetScreenMaterialsCall =
     "aylo.shader.setScreenMaterials";  ///< ScreenMaterials, replaced.
 
@@ -108,6 +110,13 @@ struct SetMaterialRenderStateArguments {
 AYLO_ECS_CALL_DATA(SetMaterialRenderStateArguments, "aylo.shader.SetMaterialRenderStateArguments", material, cull,
                    blend, depth, depthBias, depthBiasSlope);
 
+/// @brief The arguments of `aylo.shader.setMaterialNextPass`: the material drawn after @ref material on the same model.
+struct SetMaterialNextPassArguments {
+    core::asset::AssetId material;  ///< The material, from `aylo.shader.addMaterial`.
+    core::asset::AssetId nextPass;  ///< Another material, drawn after it; none: no next pass.
+};
+AYLO_ECS_CALL_DATA(SetMaterialNextPassArguments, "aylo.shader.SetMaterialNextPassArguments", material, nextPass);
+
 /// @brief The arguments of `aylo.shader.setMaterialTexture`.
 struct SetMaterialTextureArguments {
     core::asset::AssetId material;  ///< The material, from `aylo.shader.addMaterial`.
@@ -125,6 +134,7 @@ AYLO_ECS_CALL_DATA(SetScreenMaterialsArguments, "aylo.shader.SetScreenMaterialsA
 
 /// @brief Registers the shader engine calls on @p app, for scripts: `aylo.shader.load`, `aylo.shader.addMaterial`,
 /// `aylo.shader.setMaterialValue`, `aylo.shader.setMaterialTexture`, `aylo.shader.setMaterialRenderState`,
+/// `aylo.shader.setMaterialNextPass`,
 /// `aylo.shader.setInstanceValue` and `aylo.shader.setScreenMaterials`. They throw a
 /// ShaderException naming what is wrong (an unknown material, a size that is not 1 to 4). Called by the ShaderPlugin.
 void addShaderCalls(ecs::App& app);

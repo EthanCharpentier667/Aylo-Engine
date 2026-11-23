@@ -7,6 +7,7 @@
 
 #include "plugins/shader/MaterialFile.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <filesystem>
@@ -209,8 +210,13 @@ MaterialFile MaterialFile::parse(std::string_view text, std::string_view path) {
             file.textures = readTextures(value, path);
         } else if (key == "renderState") {
             file.renderState = readRenderState(value, path);
+        } else if (key == "nextPass") {
+            if (!value.is_string()) {
+                fail(path, "'nextPass' must be the path of a .material");
+            }
+            file.nextPass = value.get<std::string>();
         } else {
-            fail(path, std::format("unknown key '{}' (shader, values, textures, renderState)", key));
+            fail(path, std::format("unknown key '{}' (shader, values, textures, renderState, nextPass)", key));
         }
     }
     return file;
@@ -236,12 +242,17 @@ std::string MaterialFile::write() const {
     if (!renderState.empty()) {
         root.emplace("renderState", writeRenderState(renderState));
     }
+    if (!nextPass.empty()) {
+        root.emplace("nextPass", nextPass);
+    }
     return root.dump(2) + "\n";
 }
 
-core::asset::AssetId loadMaterialFile(const std::filesystem::path& path, ShaderAssets& shaders,
-                                      MaterialAssets& materials, graphics::TextureAssets& textures) {
-    const std::string name = path.generic_string();
+namespace {
+/// @return The material the file @p name describes, read through @p shaders' source, its shader and textures loaded;
+/// @p nextPass gets the path of its next pass, empty without one.
+Material readMaterial(const std::string& name, ShaderAssets& shaders, graphics::TextureAssets& textures,
+                      std::string& nextPass) {
     std::string text;
     try {
         text = shaders.getSource().read(name);
@@ -268,7 +279,37 @@ core::asset::AssetId loadMaterialFile(const std::filesystem::path& path, ShaderA
         material.setTexture(texture.name, textures.load(texture.path));
     }
     material.renderState = file.renderState;
-    return materials.define(name, std::move(material));
+    nextPass = file.nextPass.empty() ? std::string{} : std::filesystem::path{file.nextPass}.generic_string();
+    return material;
+}
+}  // namespace
+
+core::asset::AssetId loadMaterialFile(const std::filesystem::path& path, ShaderAssets& shaders,
+                                      MaterialAssets& materials, graphics::TextureAssets& textures) {
+    // The file and its next passes, read first and defined together, so a chain that fails defines none of them. A
+    // pass is named by its path, whose id is known before it is defined.
+    std::vector<std::pair<std::string, Material>> chain;
+    for (std::string name = path.generic_string(); !name.empty();) {
+        if (std::ranges::find(chain, name, &std::pair<std::string, Material>::first) != chain.end()) {
+            fail(chain.front().first, std::format("its next passes loop back to '{}'", name));
+        }
+        if (chain.size() == kMaxMaterialPasses) {
+            fail(chain.front().first, std::format("its next passes chain more than {} materials", kMaxMaterialPasses));
+        }
+        std::string next;
+        Material material = readMaterial(name, shaders, textures, next);
+        if (!next.empty()) {
+            material.nextPass = core::asset::AssetId::fromPath(next);
+        }
+        chain.emplace_back(std::move(name), std::move(material));
+        name = std::move(next);
+    }
+    core::asset::AssetId first;
+    for (auto& [name, material] : chain) {
+        const core::asset::AssetId id = materials.define(name, std::move(material));
+        first = first == core::asset::AssetId{} ? id : first;
+    }
+    return first;
 }
 
 MaterialFile describeMaterial(core::asset::AssetId id, const ShaderAssets& shaders, const MaterialAssets& materials,
@@ -290,6 +331,9 @@ MaterialFile describeMaterial(core::asset::AssetId id, const ShaderAssets& shade
         }
     }
     file.renderState = material->renderState;
+    if (const MaterialAssets::Entry* next = materials.getEntry(material->nextPass)) {
+        file.nextPass = next->path;
+    }
     return file;
 }
 
