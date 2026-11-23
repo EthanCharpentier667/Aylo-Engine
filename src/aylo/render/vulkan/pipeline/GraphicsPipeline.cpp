@@ -128,19 +128,26 @@ GraphicsPipeline::Builder& GraphicsPipeline::Builder::setDepthBias(float constan
     return *this;
 }
 
+GraphicsPipeline::Builder& GraphicsPipeline::Builder::setDynamicDepthBias() {
+    _dynamicDepthBias = true;
+    return *this;
+}
+
 GraphicsPipeline::Builder& GraphicsPipeline::Builder::setLayout(const PipelineLayout& layout) {
     _layout = &layout;
     return *this;
 }
 
 bool GraphicsPipeline::Builder::isComplete() const noexcept {
-    return _vertexShader != nullptr && _fragmentShader != nullptr && _colorFormat && _layout != nullptr;
+    return _vertexShader != nullptr && _fragmentShader != nullptr && (_colorFormat || _depthFormat) &&
+           _layout != nullptr;
 }
 
 GraphicsPipeline GraphicsPipeline::Builder::build(const core::Device& device,
                                                   const vk::raii::PipelineCache* cache) const {
-    if (!_colorFormat || !isComplete()) {
-        throw std::logic_error("GraphicsPipeline::Builder: the shaders, the color format and the layout are required");
+    if (!isComplete()) {
+        throw std::logic_error(
+            "GraphicsPipeline::Builder: the shaders, a color or depth format and the layout are required");
     }
     // Everything the create info points to lives in this scope, until the pipeline is created.
     const std::array stages{
@@ -154,7 +161,7 @@ GraphicsPipeline GraphicsPipeline::Builder::build(const core::Device& device,
             _attributes);
     const auto inputAssembly = vk::PipelineInputAssemblyStateCreateInfo{}.setTopology(_topology);
     const auto viewport = vk::PipelineViewportStateCreateInfo{}.setViewportCount(1).setScissorCount(1);
-    const bool depthBias = _depthBiasConstant != 0.0F || _depthBiasSlope != 0.0F;
+    const bool depthBias = _dynamicDepthBias || _depthBiasConstant != 0.0F || _depthBiasSlope != 0.0F;
     const auto rasterization = vk::PipelineRasterizationStateCreateInfo{}
                                    .setCullMode(_cullMode)
                                    .setFrontFace(vk::FrontFace::eCounterClockwise)
@@ -169,12 +176,16 @@ GraphicsPipeline GraphicsPipeline::Builder::build(const core::Device& device,
                            .setDepthWriteEnable(_depthWrite ? vk::True : vk::False)
                            .setDepthCompareOp(vk::CompareOp::eLessOrEqual);
     const vk::PipelineColorBlendAttachmentState attachment = blendAttachment(_blendMode);
-    const auto blend = vk::PipelineColorBlendStateCreateInfo{}.setAttachments(attachment);
-    const std::array dynamicStates{vk::DynamicState::eViewport, vk::DynamicState::eScissor};
-    const auto dynamic = vk::PipelineDynamicStateCreateInfo{}.setDynamicStates(dynamicStates);
-    const std::array colorFormats{*_colorFormat};
-    const vk::PipelineRenderingCreateInfo rendering =
-        rendering::pipelineRenderingInfo(colorFormats, _depthFormat.value_or(vk::Format::eUndefined));
+    const auto blend = _colorFormat ? vk::PipelineColorBlendStateCreateInfo{}.setAttachments(attachment)
+                                    : vk::PipelineColorBlendStateCreateInfo{};
+    const std::array dynamicStates{vk::DynamicState::eViewport, vk::DynamicState::eScissor,
+                                   vk::DynamicState::eDepthBias};
+    const auto dynamic = vk::PipelineDynamicStateCreateInfo{}
+                             .setDynamicStateCount(_dynamicDepthBias ? 3U : 2U)
+                             .setPDynamicStates(dynamicStates.data());
+    const std::array colorFormats{_colorFormat.value_or(vk::Format::eUndefined)};
+    const vk::PipelineRenderingCreateInfo rendering = rendering::pipelineRenderingInfo(
+        std::span{colorFormats}.first(_colorFormat ? 1 : 0), _depthFormat.value_or(vk::Format::eUndefined));
 
     const vk::GraphicsPipelineCreateInfo info = vk::GraphicsPipelineCreateInfo{}
                                                     .setPNext(&rendering)

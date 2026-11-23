@@ -85,10 +85,14 @@ class AYLO_RENDER_VULKAN_API GraphicsPipeline {
         /// @brief Adds @p constant steps of the depth buffer, and @p slope times the surface's slope, to the depth of
         /// every fragment. Default: none.
         Builder& setDepthBias(float constant, float slope);
+        /// @brief Makes the depth bias a dynamic state, set when recording (vkCmdSetDepthBias): one pipeline for every
+        /// shadow map, each with its light's bias. Default: static.
+        Builder& setDynamicDepthBias();
         /// @brief Sets the layout: descriptor set layouts and push constant ranges. Required.
         Builder& setLayout(const PipelineLayout& layout);
 
-        /// @return Whether the required settings (shaders, color format, layout) are set: build() can be called.
+        /// @return Whether the required settings (shaders, a color format or a depth format, layout) are set: build()
+        /// can be called. A pipeline with a depth format and no color format draws depth only (a shadow map).
         [[nodiscard]] bool isComplete() const noexcept;
 
         /// @return A new pipeline with the settings so far.
@@ -114,6 +118,7 @@ class AYLO_RENDER_VULKAN_API GraphicsPipeline {
         bool _depthTest = true;                                                  ///< Whether depth is tested.
         float _depthBiasConstant = 0.0F;                                         ///< setDepthBias()'s constant.
         float _depthBiasSlope = 0.0F;                                            ///< setDepthBias()'s slope.
+        bool _dynamicDepthBias = false;                                          ///< setDynamicDepthBias().
         const PipelineLayout* _layout = nullptr;                                 ///< Not owned.
     };
 
