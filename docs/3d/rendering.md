@@ -5,7 +5,8 @@ The 3D world is drawn unlit today: a static mesh is its texture times its colour
 (`docs/materials/plan.md`). A screen effect reads one image, the output of the effect before it. This plan gives the 3D
 world what a general-purpose engine is expected to offer, in the order a game needs it: the data a 3D shader needs to
 compute anything in space, the render state of a material, lights, lit materials, shadows, and screen effects that can
-read depth and chain several passes. It follows the 3D plan (epic #42) and the materials plan (epic #56).
+read depth and chain several passes. It follows the 3D plan (epic #42) and the materials plan (epic #56), and supersedes the 3D tickets of the renderer
+Aylo was forked from (`Charles-Mahoudeau/rtype` #62, #63, #66 and the screen-effect side of #57).
 
 Every task is general: none is shaped after one look. A toon shader, a painterly one, a realistic PBR scene, an
 outline, a fog or a bloom all have to be writable with what this plan gives, without engine code of their own.
@@ -33,7 +34,7 @@ Each task is one pull request; the epic is #93.
 |---|---|---|
 | R3D-01 (#94) | Per-draw data of meshes in a storage buffer: `instance uniform`s and `MaterialInstance` on models, the world matrix and the model's bounds in both stages | |
 | R3D-02 (#100) | 3D shader built-ins and varyings: world and local position, view direction, camera, matrices, `FRONT_FACING`, `FRAGCOORD`; user varyings between `vertex()` and `fragment()` | R3D-01 (#94) |
-| R3D-03 (#95) | Render state of 3D materials: cull mode, depth test and write, blend modes, alpha cutout, depth bias; transparent draws sorted | |
+| R3D-03 (#95) | Render state of 3D materials: cull mode, depth test and write, blend modes, alpha cutout, depth bias; transparent draws sorted, order-independent transparency evaluated | |
 | R3D-04 (#101) | Several materials per model and extra passes: a material per part, `nextPass` drawn after it on the same mesh | R3D-03 (#95) |
 | R3D-05 (#96) | Lights: `aylo.Light3D` (directional, point, spot, rectangle), `aylo.Environment3D` (ambient), `setLights3D()`, the frame's light buffer | |
 | R3D-06 (#102) | Lit 3D materials: the PBR model, surface built-ins, `light()`, LTC area lights, the built-in lit material | R3D-02, R3D-05 |
@@ -43,6 +44,7 @@ Each task is one pull request; the epic is #93.
 | R3D-10 (#98) | Multi-pass screen effects: named intermediate targets at a scale of the screen, any earlier target or the original scene as input, the previous frame | |
 | R3D-11 (#99) | Shader libraries: `#include` in the dialect; `@aylo/noise.glsl`, `@aylo/color.glsl`, `@aylo/math.glsl` | |
 | R3D-12 (#105) | Standard screen effects on the pass graph: mip-chain bloom, sharpen, Kuwahara (anisotropic), chromatic aberration, film grain, FXAA, SSAO, fog | R3D-09, R3D-10, R3D-11 |
+| R3D-13 (#107) | Environment: a sky (cubemap, HDR image or gradient) and image-based lighting from it | R3D-06 |
 
 ```mermaid
 flowchart LR
@@ -57,12 +59,14 @@ flowchart LR
     R9["R3D-09 Depth in effects"] --> R12["R3D-12 Standard effects"]
     R10["R3D-10 Pass graph"] --> R12
     R11["R3D-11 Shader libraries"] --> R12
+    R6 --> R13["R3D-13 Sky, IBL"]
 ```
 
 R3D-01, R3D-03, R3D-05, R3D-09, R3D-10 and R3D-11 can start at once.
 
 ## Not in this plan
 
-Image-based lighting and reflection probes, global illumination, screen-space reflections, volumetrics, clustered or
-deferred shading (the light list is capped; a clustered pass can replace it later without changing what a shader sees),
-skinned meshes, GPU instancing, a shader graph editor, lit materials on raylib.
+Reflection probes, global illumination, screen-space reflections, volumetrics, clustered or
+deferred shading (the light list is capped; a clustered pass can replace it later without changing what a shader sees:
+`Charles-Mahoudeau/rtype#64`), skinned meshes, GPU instancing and LOD (`Charles-Mahoudeau/rtype#65`), a general render
+graph for every pass (`Charles-Mahoudeau/rtype#57`), a shader graph editor, lit materials on raylib.
