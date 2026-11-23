@@ -38,6 +38,7 @@
 #include "editor/gui/GuiMesh.hpp"
 #include "editor/gui/Text.hpp"
 #include "editor/scene/Gizmo.hpp"
+#include "editor/scene/LightGizmos.hpp"
 #include "editor/scene/Picking.hpp"
 #include "editor/scene/SceneCamera.hpp"
 #include "editor/scene/SceneEdit.hpp"
@@ -454,6 +455,9 @@ void drawScenePanel(EditorState& state, contract::renderer::IRenderer& renderer)
     if (camera.mode == SceneMode::k3D && renderer.supports3D()) {
         preview.view3D = camera.view3D();
         preview.lines = gridAround(camera);
+        for (contract::renderer::Lines3D& gizmo : scene::lightGizmos(*state.world)) {
+            preview.lines.push_back(std::move(gizmo));
+        }
         preview.world2D = false;
         picture.view3D.emplace(*preview.view3D, glm::vec2{0.0F}, size);
     } else {
