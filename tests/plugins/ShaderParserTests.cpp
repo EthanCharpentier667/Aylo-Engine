@@ -254,4 +254,6 @@ TEST(ShaderParser, ReadsThatA3DShaderCastsNoShadow) {
 
 TEST(ShaderParser, ReservesTheDepthTexture) {
     EXPECT_TRUE(errorOf("uniform float DEPTH_TEXTURE;\nvoid fragment() {}").contains("reserved"));
+    EXPECT_TRUE(errorOf("uniform sampler2D SCENE_TEXTURE;\nvoid fragment() {}").contains("reserved"));
+    EXPECT_TRUE(errorOf("uniform sampler2D PREVIOUS_FRAME;\nvoid fragment() {}").contains("reserved"));
 }

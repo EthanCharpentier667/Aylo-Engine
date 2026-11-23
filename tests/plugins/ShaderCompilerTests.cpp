@@ -293,6 +293,22 @@ TEST(ShaderCompiler, AScreenEffectReadsTheDepthAndTheCamera) {
     EXPECT_FALSE(errorOf("void fragment() { COLOR.r = texture(DEPTH_TEXTURE, UV).r; }\n").empty());
 }
 
+TEST(ShaderCompiler, AScreenEffectReadsTheSceneAndThePreviousFrame) {
+    // manual/pages/post-processing.md, "Several passes": trails from the last frame over the untouched scene.
+    const CompiledShader trails = compileShader(
+        "#pragma screen\nuniform float keep = 0.9;\nvoid fragment() {\n"
+        "    vec3 last = texture(PREVIOUS_FRAME, SCREEN_UV).rgb;\n"
+        "    vec3 scene = texture(SCENE_TEXTURE, SCREEN_UV + SCREEN_PIXEL_SIZE).rgb;\n"
+        "    COLOR.rgb = max(COLOR.rgb, max(scene, last * keep));\n}\n",
+        "trails");
+    EXPECT_TRUE(trails.readsPreviousFrame);
+    EXPECT_FALSE(trails.readsDepth);
+    EXPECT_FALSE(
+        compileShader("#pragma screen\nvoid fragment() { COLOR = texture(SCENE_TEXTURE, SCREEN_UV); }\n", "scene")
+            .readsPreviousFrame);
+    EXPECT_FALSE(errorOf("void fragment() { COLOR = texture(PREVIOUS_FRAME, UV); }\n").empty());
+}
+
 TEST(ShaderCompiler, TheSurfaceBuiltinsAreOnlyForLitShaders) {
     EXPECT_FALSE(errorOf("#pragma mesh\nvoid fragment() { ALBEDO = vec3(1.0); }\n").empty());
 }

@@ -32,6 +32,7 @@
 #include "aylo/contract/renderer/particle/Particle.hpp"
 #include "aylo/contract/renderer/particle/ParticleSystemDesc.hpp"
 #include "aylo/contract/renderer/shaders/CompiledShader.hpp"
+#include "aylo/contract/renderer/shaders/ScreenEffect.hpp"
 #include "aylo/contract/renderer/view/View.hpp"
 #include "aylo/ecs/app/App.hpp"
 #include "core/config/Settings.hpp"
@@ -99,6 +100,8 @@ struct FakeBackendState {
     aylo::contract::renderer::TextureId sceneTexture;          ///< What getSceneTexture() returns.
     std::vector<std::vector<aylo::contract::renderer::MaterialId>>
         screenMaterials;  ///< Every setScreenMaterials() call.
+    std::vector<std::vector<aylo::contract::renderer::ScreenEffectPass>>
+        screenEffects;  ///< Every setScreenEffects() call.
 };
 
 /// @brief A window that returns scripted events.
@@ -264,6 +267,9 @@ class FakeRenderer : public aylo::contract::renderer::IRenderer {
     void drawMesh(const aylo::contract::renderer::Mesh& mesh) override { _state->meshes.push_back(mesh); }
     void setScreenMaterials(std::span<const aylo::contract::renderer::MaterialId> materials) override {
         _state->screenMaterials.emplace_back(materials.begin(), materials.end());
+    }
+    void setScreenEffects(std::span<const aylo::contract::renderer::ScreenEffectPass> passes) override {
+        _state->screenEffects.emplace_back(passes.begin(), passes.end());
     }
     void setSceneSize(std::optional<glm::uvec2> size) override {
         _state->sceneSizeRequests.push_back(size);
