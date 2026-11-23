@@ -36,6 +36,7 @@ nav:
   - Reading and writing capsule files: capsule-files.md
   - Particles: particles.md
   - Post-processing: post-processing.md
+  - Standard screen effects: screen-effects.md
   - Materials: materials.md
   - Lights: lights.md
   - Lit materials: lighting.md

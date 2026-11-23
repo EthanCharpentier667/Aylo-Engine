@@ -31,7 +31,7 @@ order of the list, each one reading what the previous one wrote.
 
 | Form or call | Arguments | What it does |
 |---|---|---|
-| `engine.screenEffects(materials)` | a list of material ids, or a list of passes ([Several passes](#several-passes)) | Sets the screen effects, in their order, replacing the previous ones. `{}` removes them all. Does nothing on a server |
+| `engine.screenEffects(effects)` | a list mixing material ids, passes ([Several passes](#several-passes)), shader names (`"@aylo/vignette.glsl"`, its defaults) and what [`engine.effects`](screen-effects.md) functions return | Sets the screen effects, in their order, replacing the previous ones. `{}` removes them all. Does nothing on a server |
 | `aylo.shader.setScreenMaterials` | `materials`: a list of material ids | The call behind the form, for a system (list it in its `calls`). Replaces the effects, passes included. Absent on a server |
 | `aylo.shader.addScreenEffect` | `material`; `input`, `output`: strings (default `""`); `scale`: number (default `1`); `width`, `height`: whole numbers (default `0`: by `scale`); `lowPrecision`: boolean (default `false`) | Adds a pass after the others. Call `setScreenMaterials` with `{}` first to start over. Absent on a server |
 | `aylo.shader.addScreenEffectInput` | `sampler`: a `uniform sampler2D` of the last pass's shader; `target`: a target's name | Binds that texture of the last pass added to a target. Absent on a server |
@@ -45,6 +45,8 @@ effects still run.
 ## The engine's effects
 
 Load them with `engine.assets.shader("@aylo/<name>.glsl")`, then give their values in the material, as for any shader.
+The engine has more: a mip-chain bloom, Kuwahara, sharpen, chromatic aberration, film grain, vignette, FXAA, SSAO and
+fog, each a call of `engine.effects` ([Standard screen effects](screen-effects.md)).
 
 ### `@aylo/bloom.glsl`
 
@@ -324,7 +326,7 @@ hit is over.
 | `engine.screenEffects: engine call 'aylo.shader.checkScreenEffects': The screen effects cannot run: pass 2 reads 'blur', which no pass before it writes` | A pass reads a target that only a later pass writes, or a typo in a target's name |
 | `engine.screenEffects: pass 1: expected a 'material'` | A pass without its `material` |
 | `engine.screenEffects: pass 1: unexpected 'scales', expected 'material', 'input', 'inputs', 'output', 'scale', 'size', 'lowPrecision'` | A key a pass does not have |
-| `[ShaderAssets] Shader '@aylo/vignette.glsl': the engine has no such shader (@aylo/bloom.glsl, @aylo/tonemap.glsl)` | A name after `@aylo/` the engine does not have (printed, the shader is recorded as failed) |
+| `[ShaderAssets] Shader '@aylo/glitch.glsl': the engine has no such shader (@aylo/bloom.glsl, @aylo/tonemap.glsl, ...)` | A name after `@aylo/` the engine does not have (printed, the shader is recorded as failed) |
 | `[ShaderAssets] Shader 'shaders/x.glsl' (sprite fragment): line 3: 'SCREEN_UV' : undeclared identifier` | A shader that uses the screen names without the `#pragma screen` line |
 
 ## Good to know
@@ -342,6 +344,7 @@ hit is over.
 - [Setup forms](setup-forms.md): `engine.assets.shader` and `engine.assets.material`.
 - [Materials](materials.md): keep a material in a `.material` file, edit it in the editor.
 - [Shader libraries](shader-libraries.md): `#include` noise, colour and maths functions in an effect.
+- [Standard screen effects](screen-effects.md): bloom, Kuwahara, FXAA, SSAO, fog and more, without a shader.
 - [Engine calls](engine-calls.md): how calls are made from a system.
 - [Hot reload](hot-reload.md): changing a shader while the game runs.
 - [Particles](particles.md): effects that look good with a glow.
