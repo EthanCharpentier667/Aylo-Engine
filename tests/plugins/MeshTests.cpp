@@ -7,6 +7,7 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <array>
 #include <atomic>
 #include <cstddef>
@@ -24,6 +25,7 @@
 #include "FakeBackend.hpp"
 #include "TestImages.hpp"
 #include "TestModels.hpp"
+#include "aylo/contract/renderer/shaders/CompiledShader.hpp"
 #include "aylo/ecs/app/App.hpp"
 #include "aylo/ecs/schedule/RunMode.hpp"
 #include "aylo/ecs/world/World.hpp"
@@ -36,6 +38,7 @@
 #include "plugins/mesh/detail/GltfLoader.hpp"
 #include "plugins/shader/Material.hpp"
 #include "plugins/shader/MaterialAssets.hpp"
+#include "plugins/shader/MaterialInstance.hpp"
 #include "plugins/shader/ShaderAssets.hpp"
 #include "plugins/transform/Transform.hpp"
 
@@ -224,4 +227,23 @@ TEST(MeshPlugin, AModelWithA2DMaterialIsDrawnWithTheBuiltInShaderAndAWarning) {
         ++warnings;
     }
     EXPECT_EQ(warnings, 1U);  // once, not every frame
+}
+
+TEST(MeshPlugin, TwoModelsSharingAMaterialDrawWithTheirOwnInstanceValues) {
+    MaterialFixture test{"#pragma mesh\ninstance uniform float glow = 0.5;\nvoid fragment() { COLOR.rgb *= glow; }\n"};
+    auto& world = test.fixture.app().getWorld();
+    const aylo::contract::renderer::CompiledShader& shader =
+        *world.getResources().get<aylo::plugins::shader::ShaderAssets>()->get(
+            world.getResources().get<aylo::plugins::shader::MaterialAssets>()->get(test.material)->shader);
+    world.spawn(aylo::plugins::transform::Transform3D{},
+                MeshRenderer{.mesh = test.fixture.meshes().load("models/tri.gltf"), .material = test.material},
+                aylo::plugins::shader::MaterialInstance::of(shader).set(shader, "glow", 0.9F));
+    test.fixture.runFrames(4);
+
+    const auto& draws = test.fixture.state().staticMeshDraws;
+    ASSERT_GE(draws.size(), 2U);
+    const float first = draws.at(draws.size() - 2).instanceValues.at(0).x;
+    const float second = draws.back().instanceValues.at(0).x;
+    EXPECT_FLOAT_EQ(std::min(first, second), 0.5F);  // the shader's default, without a MaterialInstance
+    EXPECT_FLOAT_EQ(std::max(first, second), 0.9F);
 }
