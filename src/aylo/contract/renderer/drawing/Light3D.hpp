@@ -12,6 +12,8 @@
 #include <glm/ext/vector_float2.hpp>
 #include <glm/ext/vector_float3.hpp>
 
+#include "aylo/contract/renderer/drawing/Texture.hpp"
+
 namespace aylo::contract::renderer {
 
 /// @brief What shape a light of the 3D world has.
@@ -48,13 +50,30 @@ struct Light3D {
     [[nodiscard]] bool operator==(const Light3D& other) const = default;
 };
 
+/// @brief What is drawn behind the 3D world, where no model is.
+enum class SkyKind : std::uint8_t {
+    kNone,      ///< Nothing: the clear colour, and no light from the sky.
+    kGradient,  ///< Three colours, from the top through the horizon to the bottom: no image.
+    kTexture,   ///< An equirectangular image (twice as wide as high, the horizon across its middle), sRGB or HDR.
+};
+
 /// @brief The light that reaches everything of the 3D world, wherever it is: what is not lit by a Light3D is not black.
+/// A sky is drawn behind the world and, with lightingFromSky, lights it (image-based lighting): its average colour from
+/// each direction for the diffuse light, its reflection, blurred by roughness, for the specular.
 struct Environment3D {
-    glm::vec3 ambient{0.0F};               ///< Linear RGB, multiplied by strength.
-    float strength{1.0F};                  ///< How much of ambient reaches the surfaces.
-    std::uint32_t shadowCascades{3};       ///< Directional lights: cascades of shadow maps, 1 to 4.
-    std::uint32_t shadowResolution{1024};  ///< Texels of a side of one shadow map: 512, 1024 or 2048.
-    float shadowDistance{60.0F};           ///< Directional lights: how far from the camera they cast shadows.
+    glm::vec3 ambient{0.0F};                    ///< Linear RGB, multiplied by strength.
+    float strength{1.0F};                       ///< How much of ambient reaches the surfaces.
+    std::uint32_t shadowCascades{3};            ///< Directional lights: cascades of shadow maps, 1 to 4.
+    std::uint32_t shadowResolution{1024};       ///< Texels of a side of one shadow map: 512, 1024 or 2048.
+    float shadowDistance{60.0F};                ///< Directional lights: how far from the camera they cast shadows.
+    SkyKind sky{SkyKind::kNone};                ///< What is drawn behind the world.
+    TextureId skyTexture;                       ///< kTexture: the equirectangular image.
+    glm::vec3 skyTop{0.25F, 0.45F, 0.85F};      ///< kGradient: the colour straight up, linear.
+    glm::vec3 skyHorizon{0.75F, 0.85F, 0.95F};  ///< kGradient: the colour at the horizon, linear.
+    glm::vec3 skyBottom{0.3F, 0.28F, 0.25F};    ///< kGradient: the colour straight down, linear.
+    float skyIntensity{1.0F};                   ///< Multiplies the sky, drawn and as light.
+    float skyRotation{0.0F};                    ///< Turns the sky around the vertical axis, in radians.
+    bool lightingFromSky{true};                 ///< Whether the sky lights the world (added to ambient).
 
     [[nodiscard]] bool operator==(const Environment3D& other) const = default;
 };

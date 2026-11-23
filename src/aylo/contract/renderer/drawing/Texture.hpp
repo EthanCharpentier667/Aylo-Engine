@@ -35,9 +35,10 @@ enum class TextureFilter : std::uint8_t {
 enum class TextureEncoding : std::uint8_t {
     kSrgb,    ///< sRGB colours with straight alpha: images. The renderer may convert and premultiply them.
     kLinear,  ///< Data sampled as stored, untouched: the distances of a font atlas (Text), normal maps.
+    kHdr,     ///< Linear colours that may exceed 1, RGBA as 32-bit floats (16 bytes a pixel): an HDR image, a sky.
 };
 
-/// @brief Creation parameters of a texture. The pixels are always RGBA, 8 bits per channel.
+/// @brief Creation parameters of a texture. The pixels are RGBA, 8 bits per channel (4 floats for kHdr).
 struct TextureDesc {
     glm::uvec2 size{0};  ///< In pixels.
     TextureFilter filter = TextureFilter::kNearest;
