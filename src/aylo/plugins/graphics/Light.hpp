@@ -65,18 +65,25 @@ struct Light3D {
     glm::vec2 size{1.0F};                ///< Area: its width (along X) and height (along Y), in world units.
     bool castShadows = false;            ///< Whether it casts shadows.
     bool enabled = true;                 ///< Off: it lights nothing.
+    float shadowSoftness = 1.0F;         ///< 0: hard; 1: as soft as a light of its size; more: softer.
+    float shadowBias = 1.0F;             ///< Raise it if a lit surface shows dark stripes (acne).
+    float shadowNormalBias = 1.0F;       ///< The same, along the surface's normal.
 };
 AYLO_ECS_COMPONENT(Light3D, "aylo.Light3D", kind, color, power, intensity, range, innerConeAngle, outerConeAngle, size,
-                   castShadows, enabled);
+                   castShadows, enabled, shadowSoftness, shadowBias, shadowNormalBias);
 
 /// @brief The component ("aylo.Environment3D") that gives the 3D world its ambient light: the light that reaches every
 /// surface, wherever it is, so what no Light3D reaches is not black. The one with the highest priority is used; without
 /// one, there is no ambient light.
 struct Environment3D {
-    glm::vec3 ambient{0.0F};    ///< Linear RGB.
-    float strength = 1.0F;      ///< Multiplies ambient.
-    std::int32_t priority = 0;  ///< Among several, the highest one is used.
+    glm::vec3 ambient{0.0F};                ///< Linear RGB.
+    float strength = 1.0F;                  ///< Multiplies ambient.
+    std::int32_t priority = 0;              ///< Among several, the highest one is used.
+    std::uint32_t shadowCascades = 3;       ///< Directional lights: cascades of shadow maps, 1 to 4.
+    std::uint32_t shadowResolution = 1024;  ///< Texels of a side of a shadow map: 512, 1024 or 2048.
+    float shadowDistance = 60.0F;           ///< Directional lights: how far from the camera they cast shadows.
 };
-AYLO_ECS_COMPONENT(Environment3D, "aylo.Environment3D", ambient, strength, priority);
+AYLO_ECS_COMPONENT(Environment3D, "aylo.Environment3D", ambient, strength, priority, shadowCascades, shadowResolution,
+                   shadowDistance);
 
 }  // namespace aylo::plugins::graphics

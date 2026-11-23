@@ -34,7 +34,9 @@ struct MeshRenderer {
     core::asset::AssetId material;  ///< A material of a `#pragma mesh` shader; none: the built-in unlit shader.
     std::vector<core::asset::AssetId> materials;  ///< Per part (a glTF primitive, an FBX or OBJ material), replacing
                                                   ///< `material`; a missing or empty one keeps it.
+    bool castShadows = true;                      ///< Whether it casts shadows.
+    bool receiveShadows = true;                   ///< Whether shadows fall on it.
 };
 
-AYLO_ECS_COMPONENT(MeshRenderer, "aylo.MeshRenderer", mesh, color, material, materials);
+AYLO_ECS_COMPONENT(MeshRenderer, "aylo.MeshRenderer", mesh, color, material, materials, castShadows, receiveShadows);
 }  // namespace aylo::plugins::mesh

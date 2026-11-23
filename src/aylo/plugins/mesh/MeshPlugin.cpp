@@ -288,7 +288,11 @@ struct ModelContext {
 void drawModel(contract::renderer::IRenderer& renderer, contract::renderer::StaticMeshId mesh, const glm::mat4& world,
                const MeshRenderer& model, const shader::MaterialInstance* instance, PassScratch& scratch,
                const ModelContext& context) {
-    contract::renderer::StaticMeshDraw draw{.mesh = mesh, .world = world, .color = model.color};
+    contract::renderer::StaticMeshDraw draw{.mesh = mesh,
+                                            .world = world,
+                                            .color = model.color,
+                                            .castShadows = model.castShadows,
+                                            .receiveShadows = model.receiveShadows};
     const shader::ShaderHandles::Material* first =
         materialOf(model.material, *context.meshes, *context.handles, *context.shaders);
     if (first != nullptr) {

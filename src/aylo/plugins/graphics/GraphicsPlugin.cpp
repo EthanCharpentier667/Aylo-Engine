@@ -304,7 +304,10 @@ contract::renderer::Light3D toLight(const transform::GlobalTransform3D& global, 
         .innerCone = std::min(glm::radians(std::max(light.innerConeAngle, 0.0F)), outer),
         .outerCone = outer,
         .size = glm::max(light.size, glm::vec2{0.0F}),
-        .castShadows = light.castShadows};
+        .castShadows = light.castShadows,
+        .shadowSoftness = std::max(light.shadowSoftness, 0.0F),
+        .shadowBias = std::max(light.shadowBias, 0.0F),
+        .shadowNormalBias = std::max(light.shadowNormalBias, 0.0F)};
 }
 
 /// @brief Render: gives the renderer the enabled lights of the 3D world, in the world's space, and the ambient light of
@@ -323,7 +326,11 @@ void applyLights3D(ecs::NonSendMut<plugins::graphics::Backend> backend,
     std::int32_t environmentPriority = 0;
     for (auto [entity, shown] : environments) {
         if (!environment || shown.priority > environmentPriority) {
-            environment = contract::renderer::Environment3D{.ambient = shown.ambient, .strength = shown.strength};
+            environment = contract::renderer::Environment3D{.ambient = shown.ambient,
+                                                            .strength = shown.strength,
+                                                            .shadowCascades = shown.shadowCascades,
+                                                            .shadowResolution = shown.shadowResolution,
+                                                            .shadowDistance = shown.shadowDistance};
             environmentPriority = shown.priority;
         }
     }
