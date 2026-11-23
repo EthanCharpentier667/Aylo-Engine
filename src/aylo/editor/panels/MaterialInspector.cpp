@@ -22,6 +22,7 @@
 #include <ios>
 #include <iterator>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -42,6 +43,7 @@
 #include "plugins/shader/Material.hpp"
 #include "plugins/shader/MaterialAssets.hpp"
 #include "plugins/shader/MaterialFile.hpp"
+#include "plugins/shader/RenderStateNames.hpp"
 #include "plugins/shader/ShaderAssets.hpp"
 
 namespace aylo::editor::panels {
@@ -221,6 +223,72 @@ void drawValues(EditorState& state, const MaterialResources& resources, core::as
         }
     }
 }
+/// @return The name of the value @p index among @p names.
+std::string nameAt(std::span<const std::string_view> names, std::size_t index) {
+    return index < names.size() ? std::string{names.subspan(index, 1).front()} : std::string{};
+}
+
+/// @brief A combo of @p names whose first entry keeps the shader's @p inherited. @return Whether @p set changed.
+template <typename Enum>
+bool editRenderPart(const char* label, std::span<const std::string_view> names, Enum inherited,
+                    std::optional<Enum>& set) {
+    const std::string keep = std::format("shader's ({})", nameAt(names, static_cast<std::size_t>(inherited)));
+    const std::string current = set ? nameAt(names, static_cast<std::size_t>(*set)) : keep;
+    bool changed = false;
+    if (ImGui::BeginCombo(label, current.c_str())) {
+        if (ImGui::Selectable(keep.c_str(), !set)) {
+            set.reset();
+            changed = true;
+        }
+        for (std::size_t index = 0; index < names.size(); ++index) {
+            const std::string name = nameAt(names, index);
+            if (ImGui::Selectable(name.c_str(), set && static_cast<std::size_t>(*set) == index)) {
+                set = static_cast<Enum>(index);
+                changed = true;
+            }
+        }
+        ImGui::EndCombo();
+    }
+    return changed;
+}
+
+/// @brief A number of the render state, set or left to the shader's @p inherited. @return Whether @p set changed.
+bool editRenderNumber(const char* label, float inherited, std::optional<float>& set) {
+    bool overridden = set.has_value();
+    bool changed = ImGui::Checkbox(std::format("##{}", label).c_str(), &overridden);
+    if (changed) {
+        set = overridden ? std::optional{inherited} : std::nullopt;
+    }
+    ImGui::SameLine();
+    ImGui::BeginDisabled(!overridden);
+    float value = set.value_or(inherited);
+    if (ImGui::DragFloat(label, &value, 0.1F) && set) {
+        set = value;
+        changed = true;
+    }
+    ImGui::EndDisabled();
+    return changed;
+}
+
+/// @brief The render state of a 3D material (RenderStateOverride): each part the material's, or the shader's.
+void drawRenderState(EditorState& state, const MaterialResources& resources, core::asset::AssetId id,
+                     const shader::Material& material, const cr::CompiledShader& compiled) {
+    if (compiled.findVariant(cr::ShaderTarget::kMesh) == nullptr) {
+        return;
+    }
+    ImGui::SeparatorText("Render state");
+    shader::RenderStateOverride edited = material.renderState;
+    const cr::RenderState& inherited = compiled.renderState;
+    bool changed = editRenderPart("Cull", shader::cullModeNames(), inherited.cull, edited.cull);
+    changed = editRenderPart("Blend", shader::blendNames(), inherited.blend, edited.blend) || changed;
+    changed = editRenderPart("Depth", shader::depthModeNames(), inherited.depth, edited.depth) || changed;
+    changed = editRenderNumber("Depth bias", inherited.depthBias, edited.depthBias) || changed;
+    changed = editRenderNumber("Depth bias slope", inherited.depthBiasSlope, edited.depthBiasSlope) || changed;
+    if (changed) {
+        resources.materials->setRenderState(id, edited);
+        state.materialUnsaved = true;
+    }
+}
 }  // namespace
 
 void drawMaterialInspector(EditorState& state) {
@@ -243,6 +311,7 @@ void drawMaterialInspector(EditorState& state) {
     drawShader(state, resources, *id, material);
     if (const cr::CompiledShader* compiled = resources.shaders->get(material.shader)) {
         drawValues(state, resources, *id, material, *compiled);
+        drawRenderState(state, resources, *id, material, *compiled);
     }
     ImGui::Separator();
     ImGui::BeginDisabled(!state.materialUnsaved);
