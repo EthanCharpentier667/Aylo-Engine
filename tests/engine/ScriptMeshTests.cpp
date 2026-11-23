@@ -334,3 +334,40 @@ TEST(ScriptMesh, AScriptGivesEachPartItsMaterialAndAMaterialItsNextPass) {
     EXPECT_NE(parts.back().at(0), aylo::contract::renderer::MaterialId{});
     EXPECT_EQ(parts.back().at(1), aylo::contract::renderer::MaterialId{});
 }
+
+TEST(ScriptMesh, AScriptDrawsALitModelUnderALight) {
+    // manual/pages/lighting.md: the first example.
+    ClientScripts client;
+    client.state->shaders = true;
+    client.assets.write("models/painted.glsl",
+                        "#pragma mesh\n#pragma lit\nuniform vec3 tint = vec3(1.0);\n"
+                        "void fragment() { ALBEDO *= tint; ROUGHNESS = 0.4; }\n");
+    ASSERT_EQ(client.run(R"(
+        local triangle = engine.assets.mesh("models/tri.gltf")
+        local painted = engine.assets.material({ name = "painted", shader = engine.assets.shader("models/painted.glsl"),
+                                                 values = { tint = { x = 0.9, y = 0.3, z = 0.2 } } })
+        engine.ecs.system("game.Setup", {
+            phase = "Startup",
+            side = "client",
+            run = function(ctx)
+                ctx.commands:spawn({
+                    ["aylo.Transform3D"] = {},
+                    ["aylo.MeshRenderer"] = { mesh = triangle, material = painted },
+                })
+                ctx.commands:spawn({
+                    ["aylo.Transform3D"] = { position = vector.create(0, 2, 2) },
+                    ["aylo.Light3D"] = { kind = "point", power = 500 },
+                })
+            end,
+        })
+    )"),
+              "");
+    testing::internal::CaptureStderr();
+    for (int frame = 0; frame < 4; ++frame) {
+        client.app.runFrame();
+    }
+    const std::string log = testing::internal::GetCapturedStderr();
+    EXPECT_EQ(log.find("painted.glsl"), std::string::npos) << log;
+    ASSERT_FALSE(client.state->staticMeshDraws.empty());
+    EXPECT_NE(client.state->staticMeshDraws.back().material, aylo::contract::renderer::MaterialId{});
+}
