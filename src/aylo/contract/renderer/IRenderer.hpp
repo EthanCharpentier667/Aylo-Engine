@@ -19,6 +19,7 @@
 #include "aylo/contract/platform/IPlatform.hpp"
 #include "aylo/contract/platform/exceptions/PlatformExceptions.hpp"
 #include "aylo/contract/renderer/drawing/Color.hpp"
+#include "aylo/contract/renderer/drawing/Light3D.hpp"
 #include "aylo/contract/renderer/drawing/Lines3D.hpp"
 #include "aylo/contract/renderer/drawing/Mesh.hpp"
 #include "aylo/contract/renderer/drawing/Overlay.hpp"
@@ -136,6 +137,14 @@ class AYLO_HEADER_ONLY_API IRenderer {
 
     /// @brief Destroys a mesh of createStaticMesh(); a destroyed or unknown one is ignored. Default: does nothing.
     virtual void destroyStaticMesh(StaticMeshId /*mesh*/) {}
+
+    /// @return Whether the renderer lights the 3D world: setLights3D() does something. Default: false.
+    [[nodiscard]] virtual bool supportsLights3D() const noexcept { return false; }
+
+    /// @brief Sets the lights of the frame's 3D world, in the world's space, and its ambient light; a frame where it is
+    /// not called has none. Past kMaxLights3D, the renderer keeps the directional lights and the nearest others to the
+    /// 3D camera. Default: does nothing.
+    virtual void setLights3D(std::span<const Light3D> /*lights*/, const Environment3D& /*environment*/) {}
 
     /// @brief Draws a mesh in the 3D world, with the depth test, its parts unlit (base colour times texture, times the
     /// draw's colour). A destroyed mesh is skipped. Default: draws nothing.
