@@ -14,6 +14,7 @@
 #include "aylo/ecs/app/App.hpp"
 #include "aylo/ecs/app/PluginRegistry.hpp"
 #include "aylo/ecs/call/CallTraits.hpp"
+#include "aylo/ecs/entity/Entity.hpp"
 #include "aylo/ecs/type/String.hpp"
 #include "core/asset/AssetId.hpp"
 #include "plugins/AssetIdReflection.hpp"  // IWYU pragma: keep
@@ -27,6 +28,8 @@ inline constexpr std::string_view kLoadMaterialCall = "aylo.shader.loadMaterial"
 inline constexpr std::string_view kSetValueCall = "aylo.shader.setMaterialValue";  ///< MaterialAssets::setValue().
 inline constexpr std::string_view kSetTextureCall =
     "aylo.shader.setMaterialTexture";  ///< MaterialAssets::setTexture().
+inline constexpr std::string_view kSetInstanceValueCall =
+    "aylo.shader.setInstanceValue";  ///< An entity's MaterialInstance (InstanceValueRequests).
 inline constexpr std::string_view kSetScreenMaterialsCall =
     "aylo.shader.setScreenMaterials";  ///< ScreenMaterials, replaced.
 
@@ -74,6 +77,21 @@ struct SetMaterialValueArguments {
 AYLO_ECS_CALL_DATA(SetMaterialValueArguments, "aylo.shader.SetMaterialValueArguments", material, name, size, x, y, z,
                    w);
 
+/// @brief The arguments of `aylo.shader.setInstanceValue`: an `instance uniform` of one entity's drawing (its
+/// aylo.MaterialInstance), a float or a vector of @ref size components, laid out by @ref material's shader.
+struct SetInstanceValueArguments {
+    ecs::Entity entity;             ///< The entity drawn (a sprite, a text, a model...).
+    core::asset::AssetId material;  ///< The material it is drawn with, whose shader declares the value.
+    ecs::String name;               ///< The `instance uniform`, as declared in the shader.
+    std::uint32_t size{1};          ///< 1: a float (or a whole number, for an `int`); 2 to 4: a vec2 to a vec4.
+    float x{0.0F};                  ///< The float, or the first component.
+    float y{0.0F};                  ///< The second component.
+    float z{0.0F};                  ///< The third component.
+    float w{0.0F};                  ///< The fourth component.
+};
+AYLO_ECS_CALL_DATA(SetInstanceValueArguments, "aylo.shader.SetInstanceValueArguments", entity, material, name, size, x,
+                   y, z, w);
+
 /// @brief The arguments of `aylo.shader.setMaterialTexture`.
 struct SetMaterialTextureArguments {
     core::asset::AssetId material;  ///< The material, from `aylo.shader.addMaterial`.
@@ -90,7 +108,8 @@ struct SetScreenMaterialsArguments {
 AYLO_ECS_CALL_DATA(SetScreenMaterialsArguments, "aylo.shader.SetScreenMaterialsArguments", materials);
 
 /// @brief Registers the shader engine calls on @p app, for scripts: `aylo.shader.load`, `aylo.shader.addMaterial`,
-/// `aylo.shader.setMaterialValue`, `aylo.shader.setMaterialTexture` and `aylo.shader.setScreenMaterials`. They throw a
+/// `aylo.shader.setMaterialValue`, `aylo.shader.setMaterialTexture`, `aylo.shader.setInstanceValue` and
+/// `aylo.shader.setScreenMaterials`. They throw a
 /// ShaderException naming what is wrong (an unknown material, a size that is not 1 to 4). Called by the ShaderPlugin.
 void addShaderCalls(ecs::App& app);
 

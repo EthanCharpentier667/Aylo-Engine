@@ -18,6 +18,8 @@
 #include "aylo/contract/renderer/shaders/CompiledShader.hpp"
 #include "aylo/core/reload/HotReloader.hpp"
 #include "aylo/ecs/app/App.hpp"
+#include "aylo/ecs/command/Commands.hpp"
+#include "aylo/ecs/query/Query.hpp"
 #include "aylo/ecs/resource/Resources.hpp"
 #include "aylo/ecs/schedule/Phase.hpp"
 #include "aylo/ecs/system/ResourceParam.hpp"
@@ -29,6 +31,7 @@
 #include "plugins/graphics/GraphicsPlugin.hpp"
 #include "plugins/graphics/GraphicsResources.hpp"  // IWYU pragma: keep
 #include "plugins/graphics/TextureAssets.hpp"
+#include "plugins/shader/InstanceValues.hpp"
 #include "plugins/shader/MaterialAssets.hpp"
 #include "plugins/shader/MaterialInstance.hpp"
 #include "plugins/shader/MaterialReloadable.hpp"
@@ -65,6 +68,15 @@ void updateScreenMaterials(ecs::NonSendMut<plugins::graphics::Backend> backend, 
     }
     backend->renderer->setScreenMaterials(materials);
 }
+/// @brief Render, client: writes the instance values scripts gave since the last frame into the entities'
+/// MaterialInstance, before anything is drawn.
+void updateInstanceValues(ecs::ResMut<InstanceValueRequests> requests, ecs::Res<ShaderAssets> shaders,
+                          ecs::Res<MaterialAssets> materials, ecs::Query<MaterialInstance> instances,
+                          ecs::Commands& commands) {
+    if (!requests->requests.empty()) {
+        applyInstanceValues(*requests, *shaders, *materials, instances, commands);
+    }
+}
 }  // namespace
 
 std::string_view ShaderPlugin::getName() const noexcept { return kName; }
@@ -80,6 +92,7 @@ void ShaderPlugin::build(ecs::App& app) {
     resources.insertIfAbsent<MaterialAssets>();
     resources.insertIfAbsent<ShaderHandles>();
     resources.insertIfAbsent<ScreenMaterials>();
+    resources.insertIfAbsent<InstanceValueRequests>();
     resources.insertIfAbsent<graphics::TextureAssets>();
     static_cast<void>(app.getWorld().getComponents().registerType<MaterialInstance>());
     app.addSystem(ecs::Phase::kRender, std::string{kUpdateSystem}, &updateShaders)
@@ -88,6 +101,10 @@ void ShaderPlugin::build(ecs::App& app) {
         .setSide(ecs::Side::kClient);
     app.addSystem(ecs::Phase::kRender, std::string{kScreenSystem}, &updateScreenMaterials)
         .after(std::string{kUpdateSystem})
+        .before(std::string{graphics::GraphicsPlugin::kBeginFrameSystem})
+        .setSide(ecs::Side::kClient);
+    app.addSystem(ecs::Phase::kRender, std::string{kInstanceValuesSystem}, &updateInstanceValues)
+        .before(std::string{kUpdateSystem})
         .before(std::string{graphics::GraphicsPlugin::kBeginFrameSystem})
         .setSide(ecs::Side::kClient);
     addShaderCalls(app);

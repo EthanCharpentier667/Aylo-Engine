@@ -43,6 +43,8 @@ class AYLO_PLUGIN_SHADER_API ShaderPlugin : public ecs::Plugin {
     static constexpr std::string_view kName = "aylo.Shader";                 ///< The plugin's name.
     static constexpr std::string_view kUpdateSystem = "aylo.Shader.Update";  ///< Updates the renderer.
     static constexpr std::string_view kScreenSystem = "aylo.Shader.Screen";  ///< Gives the renderer the screen effects.
+    static constexpr std::string_view kInstanceValuesSystem =
+        "aylo.Shader.InstanceValues";  ///< Writes the scripts' instance values into the entities' MaterialInstance.
 
     ShaderPlugin() = default;
     ~ShaderPlugin() override = default;

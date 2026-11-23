@@ -25,6 +25,7 @@
 #include "aylo/ecs/system/ResourceParam.hpp"
 #include "core/asset/AssetId.hpp"
 #include "plugins/graphics/TextureAssets.hpp"
+#include "plugins/shader/InstanceValues.hpp"
 #include "plugins/shader/Material.hpp"
 #include "plugins/shader/MaterialAssets.hpp"
 #include "plugins/shader/MaterialFile.hpp"
@@ -46,10 +47,23 @@ namespace {
     return declared != shader->materialValues.end() && declared->type == contract::renderer::ShaderValueType::kInt;
 }
 
+/// @return Whether the shader of @p material declares the `instance uniform` @p name as an `int`.
+[[nodiscard]] bool isInstanceInt(const ShaderAssets& shaders, const MaterialAssets& materials,
+                                 const core::asset::AssetId material, const std::string_view name) {
+    const Material* found = materials.get(material);
+    const contract::renderer::CompiledShader* shader = found != nullptr ? shaders.get(found->shader) : nullptr;
+    if (shader == nullptr) {
+        return false;
+    }
+    const auto declared = std::ranges::find(shader->instanceValues, name, &contract::renderer::ShaderValue::name);
+    return declared != shader->instanceValues.end() && declared->type == contract::renderer::ShaderValueType::kInt;
+}
+
 /// @return The value @p arguments describe; a script has one kind of number, so it is an `int` if @p integer says so
 /// and it is whole.
 /// @throws exceptions::ShaderException If its size is not 1 to 4.
-[[nodiscard]] MaterialValue readValue(const SetMaterialValueArguments& arguments, const bool integer) {
+template <typename Arguments>
+[[nodiscard]] MaterialValue readValue(const Arguments& arguments, const bool integer) {
     switch (arguments.size) {
         case 1:
             if (integer && std::trunc(arguments.x) == arguments.x) {
@@ -99,6 +113,18 @@ MaterialResult setMaterialTexture(ecs::ResMut<MaterialAssets> materials, const S
     return MaterialResult{.material = arguments.material};
 }
 
+void setInstanceValue(ecs::Res<ShaderAssets> shaders, ecs::Res<MaterialAssets> materials,
+                      ecs::ResMut<InstanceValueRequests> requests, const SetInstanceValueArguments& arguments) {
+    if (materials->get(arguments.material) == nullptr) {
+        throw exceptions::ShaderException{std::format("No material has the id {}", arguments.material.value)};
+    }
+    const bool integer = isInstanceInt(*shaders, *materials, arguments.material, arguments.name.view());
+    requests->requests.push_back(InstanceValueRequest{.entity = arguments.entity,
+                                                      .material = arguments.material,
+                                                      .name = std::string{arguments.name.view()},
+                                                      .value = readValue(arguments, integer)});
+}
+
 void setScreenMaterials(ecs::Res<MaterialAssets> materials, ecs::ResMut<ScreenMaterials> screen,
                         const SetScreenMaterialsArguments& arguments) {
     for (const core::asset::AssetId material : arguments.materials) {
@@ -125,6 +151,7 @@ void addShaderCalls(ecs::App& app) {
     app.addCall(std::string{kLoadMaterialCall}, &loadMaterial);
     app.addCall(std::string{kSetValueCall}, &setMaterialValue);
     app.addCall(std::string{kSetTextureCall}, &setMaterialTexture);
+    app.addCall(std::string{kSetInstanceValueCall}, &setInstanceValue);
     app.addCall(std::string{kSetScreenMaterialsCall}, &setScreenMaterials);
 }
 
