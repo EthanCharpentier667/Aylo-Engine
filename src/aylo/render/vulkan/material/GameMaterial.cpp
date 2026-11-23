@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <format>
 #include <optional>
+#include <span>
 #include <vulkan/vulkan_raii.hpp>
 
 #include "aylo/contract/renderer/drawing/Texture.hpp"
@@ -46,6 +47,31 @@ void GameMaterial::update(const contract::renderer::MaterialDesc& desc) {
     _textures = desc.textures;
     _renderState = desc.renderState;
     ++_version;
+}
+
+void GameMaterial::writeCopy(const core::Device& device, std::size_t frameIndex, vk::DescriptorSet set,
+                             std::span<const std::optional<TextureBinding>> overrides, const TextureFinder& findTexture,
+                             contract::renderer::TextureId fallback) const {
+    const Frame& frame = _frames.at(frameIndex);
+    descriptor::DescriptorWriter writer;
+    if (frame.values) {
+        writer.writeBuffer(kMaterialValuesBinding, *frame.values->getBuffer(), 0, frame.values->getSize());
+    }
+    for (std::size_t slot = 0; slot < _textures.size(); ++slot) {
+        std::optional<TextureBinding> binding =
+            slot < overrides.size() ? overrides.subspan(slot, 1).front() : std::nullopt;
+        if (!binding && _textures.at(slot) != contract::renderer::TextureId{}) {
+            binding = findTexture(_textures.at(slot));
+        }
+        if (!binding) {
+            binding = findTexture(fallback);
+        }
+        if (binding) {
+            writer.writeImage(kMaterialFirstTextureBinding + static_cast<std::uint32_t>(slot), binding->view,
+                              binding->sampler, vk::ImageLayout::eShaderReadOnlyOptimal);
+        }
+    }
+    writer.update(device, set);
 }
 
 vk::DescriptorSet GameMaterial::prepare(const core::Device& device, std::size_t frameIndex,

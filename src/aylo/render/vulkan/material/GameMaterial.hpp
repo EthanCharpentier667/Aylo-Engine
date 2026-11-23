@@ -12,6 +12,7 @@
 #include <cstdint>
 #include <functional>
 #include <optional>
+#include <span>
 #include <vector>
 #include <vulkan/vulkan_raii.hpp>
 
@@ -82,6 +83,12 @@ class AYLO_RENDER_VULKAN_API GameMaterial {
     /// @warning Only while recording frame @p frameIndex, after its fence was waited for.
     [[nodiscard]] vk::DescriptorSet prepare(const core::Device& device, std::size_t frameIndex,
                                             const TextureFinder& findTexture, contract::renderer::TextureId fallback);
+
+    /// @brief Writes into @p set (of the material set layout) frame @p frameIndex's values (prepare() first) and its
+    /// textures, those @p overrides give in their place (a screen effect's pass binding a target to a sampler).
+    void writeCopy(const core::Device& device, std::size_t frameIndex, vk::DescriptorSet set,
+                   std::span<const std::optional<TextureBinding>> overrides, const TextureFinder& findTexture,
+                   contract::renderer::TextureId fallback) const;
 
   private:
     /// @brief One frame's copy.

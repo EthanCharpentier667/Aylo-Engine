@@ -59,6 +59,8 @@ class AYLO_RENDER_VULKAN_API GameShader {
     [[nodiscard]] bool hasInstanceValues() const noexcept { return _instanceValues; }
     /// @return Whether its screen effect reads the 3D depth.
     [[nodiscard]] bool readsDepth() const noexcept { return _readsDepth; }
+    /// @return Whether its screen effect reads PREVIOUS_FRAME.
+    [[nodiscard]] bool readsPreviousFrame() const noexcept { return _readsPreviousFrame; }
 
     /// @return Whether it serves @p target.
     [[nodiscard]] bool serves(contract::renderer::ShaderTarget target) const noexcept;
@@ -89,14 +91,20 @@ class AYLO_RENDER_VULKAN_API GameShader {
         const contract::renderer::RenderState& state = {});
 
   private:
+    /// @brief A pipeline built for one render state and one colour format.
+    struct Built {
+        contract::renderer::RenderState state;  ///< What it was built for.
+        vk::Format format;                      ///< The colour format it draws into.
+        pipeline::GraphicsPipeline pipeline;    ///< The pipeline.
+    };
+
     /// @brief What the shader draws one target with.
     struct Variant {
         vk::raii::ShaderModule vertex{nullptr};    ///< Null if the shader does not serve the target.
         vk::raii::ShaderModule fragment{nullptr};  ///< Null if the shader does not serve the target.
-        /// @brief The pipelines built for `format`, by the first draw with each render state. A deque: building one
-        /// keeps the others where they are, as the frame's draws point to them.
-        std::deque<std::pair<contract::renderer::RenderState, pipeline::GraphicsPipeline>> built;
-        vk::Format format{vk::Format::eUndefined};  ///< The colour format `built` draws into.
+        /// @brief The pipelines built, by render state and colour format. A deque: building one keeps the others where
+        /// they are, as the frame's draws point to them.
+        std::deque<Built> built;
         /// The shadow map pipelines of a kMesh variant, by the faces they cull.
         std::deque<std::pair<contract::renderer::CullMode, pipeline::GraphicsPipeline>> shadows;
     };
@@ -108,6 +116,7 @@ class AYLO_RENDER_VULKAN_API GameShader {
     bool _castsShadows{true};                                               ///< No `#pragma shadow off`.
     bool _cutsOut{false};                                                   ///< It writes ALPHA_SCISSOR.
     bool _readsDepth{false};                                                ///< Its screen effect reads depth.
+    bool _readsPreviousFrame{false};                                        ///< Its screen effect reads PREVIOUS_FRAME.
     std::array<Variant, contract::renderer::kShaderTargetCount> _variants;  ///< By ShaderTarget.
 };
 

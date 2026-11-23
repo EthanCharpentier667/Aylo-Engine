@@ -55,6 +55,7 @@
 #include "aylo/contract/renderer/particle/Particle.hpp"
 #include "aylo/contract/renderer/particle/ParticleSystemDesc.hpp"
 #include "aylo/contract/renderer/shaders/CompiledShader.hpp"
+#include "aylo/contract/renderer/shaders/ScreenEffect.hpp"
 #include "aylo/contract/renderer/view/CameraView.hpp"
 #include "aylo/contract/renderer/view/CameraView3D.hpp"
 #include "aylo/contract/renderer/view/View.hpp"
@@ -112,6 +113,8 @@ constexpr vk::Format kDataTextureFormat = vk::Format::eR8G8B8A8Unorm;
 /// Every pass that draws the world renders into it, the window's format only comes with the copy of the frame
 /// (postprocess::ScreenPass) and the meshes.
 constexpr vk::Format kSceneFormat = vk::Format::eR16G16B16A16Sfloat;
+/// @brief Format of a screen effect's 8-bit target (ScreenEffectPass::lowPrecision): half the memory, clamped to 0..1.
+constexpr vk::Format kLowPrecisionFormat = vk::Format::eR8G8B8A8Unorm;
 /// The format of the 3D world's depth buffer: supported as a depth attachment by every desktop GPU.
 constexpr vk::Format kDepthFormat = rendering::kWorld3DDepthFormat;
 
@@ -411,8 +414,11 @@ void VulkanRenderer::init(contract::platform::IPlatform& platform) {
     _screenDepthSetLayout = std::make_unique<descriptor::DescriptorSetLayout>(
         descriptor::DescriptorSetLayout::Builder{}
             .addBinding(0, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
+            .addBinding(1, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
+            .addBinding(2, vk::DescriptorType::eCombinedImageSampler, vk::ShaderStageFlagBits::eFragment)
             .build(*_device));
-    const std::array screenDepthSizes{vk::DescriptorPoolSize{vk::DescriptorType::eCombinedImageSampler, 4}};
+    const std::array screenDepthSizes{vk::DescriptorPoolSize{vk::DescriptorType::eCombinedImageSampler, 12}};
+    _effectSets.resize(kFramesInFlight);
     _screenDepthDescriptors =
         std::make_unique<descriptor::DescriptorAllocator>(*_device, 4, screenDepthSizes, "Screen depth sets");
     for (std::size_t frame = 0; frame < kFramesInFlight; ++frame) {
@@ -751,7 +757,14 @@ void VulkanRenderer::endFrame() {
 }
 
 void VulkanRenderer::setScreenMaterials(std::span<const contract::renderer::MaterialId> materials) {
-    _screenMaterials.assign(materials.begin(), materials.end());
+    _screenEffects.clear();
+    for (const contract::renderer::MaterialId material : materials) {
+        _screenEffects.push_back(contract::renderer::ScreenEffectPass{.material = material});
+    }
+}
+
+void VulkanRenderer::setScreenEffects(std::span<const contract::renderer::ScreenEffectPass> passes) {
+    _screenEffects.assign(passes.begin(), passes.end());
 }
 
 const postprocess::ScreenPass::Targets& VulkanRenderer::acquireScreenTargets(std::size_t frameIndex,
@@ -768,6 +781,170 @@ const postprocess::ScreenPass::Targets& VulkanRenderer::acquireScreenTargets(std
     return *_screenTargets;
 }
 
+VulkanRenderer::ScreenTarget& VulkanRenderer::acquireScreenTarget(std::unique_ptr<ScreenTarget>& slot,
+                                                                  std::size_t frameIndex, vk::Extent2D extent,
+                                                                  vk::Format format, const std::string& name) {
+    if (slot) {
+        if (slot->image.getExtent() == extent && slot->image.getFormat() == format) {
+            return *slot;
+        }
+        _deletionQueue.defer(frameIndex, std::move(slot));
+    }
+    memory::Image image = _screenPass->createImage(*_allocator, extent, format, name);
+    vk::raii::DescriptorSet set = _textureDescriptors->allocate(*_textureSetLayout);
+    _screenPass->writeSet(*set, image);
+    slot = std::make_unique<ScreenTarget>(ScreenTarget{.image = std::move(image), .set = std::move(set)});
+    return *slot;
+}
+
+vk::Extent2D VulkanRenderer::sizeOf(const contract::renderer::ScreenEffectPass& pass, vk::Extent2D extent) {
+    if (pass.size.x > 0 && pass.size.y > 0) {
+        return vk::Extent2D{pass.size.x, pass.size.y};
+    }
+    const auto scaled = [&pass](std::uint32_t length) {
+        return std::max(1U, static_cast<std::uint32_t>(static_cast<float>(length) * pass.scale));
+    };
+    return vk::Extent2D{scaled(extent.width), scaled(extent.height)};
+}
+
+vk::DescriptorSet VulkanRenderer::effectMaterialSet(std::size_t frameIndex, std::size_t index,
+                                                    const contract::renderer::ScreenEffectPass& pass,
+                                                    const rendering::MaterialBinding& effect,
+                                                    const postprocess::ScreenPass::Targets& targets) {
+    if (pass.inputs.empty()) {
+        return effect.set;
+    }
+    // A copy of the material's set with targets in place of some of its textures,
+    // for this pass only.
+    std::vector<vk::raii::DescriptorSet>& copies = _effectSets.at(frameIndex);
+    while (copies.size() <= index) {
+        copies.push_back(_materialDescriptors->allocate(*_materialSetLayout));
+    }
+    const vk::Sampler linear = *_samplers->get(contract::renderer::TextureFilter::kLinear, false);
+    std::array<std::optional<material::GameMaterial::TextureBinding>, contract::renderer::kShaderMaxTextures>
+        overrides{};
+    for (const contract::renderer::ScreenEffectInput& input : pass.inputs) {
+        const memory::Image& image = input.target == contract::renderer::kSceneTarget
+                                         ? targets.images.front()
+                                         : _effectTargets.at(input.target)->image;
+        if (input.slot < overrides.size()) {
+            overrides.at(input.slot) =
+                material::GameMaterial::TextureBinding{.view = *image.getImageView(), .sampler = linear};
+        }
+    }
+    _materials.find(pass.material)
+        ->writeCopy(
+            *_device, frameIndex, *copies.at(index), overrides,
+            [this](contract::renderer::TextureId texture) { return findTextureBinding(texture); }, _fallbackTexture);
+    return *copies.at(index);
+}
+
+void VulkanRenderer::writeScreenSet(const vk::raii::CommandBuffer& commandBuffer, std::size_t frameIndex,
+                                    const postprocess::ScreenPass::Targets& targets, vk::Extent2D extent,
+                                    bool keepDepth, bool keepPrevious) {
+    const vk::ImageView white = *_textures.find(_fallbackTexture)->image.getImageView();
+    if (keepPrevious && (!_previousFrame || _previousFrame->image.getExtent() != extent)) {
+        // Black the first time.
+        const ScreenTarget& made =
+            acquireScreenTarget(_previousFrame, frameIndex, extent, kSceneFormat, "Previous frame");
+        rendering::transitionImage(commandBuffer, *made.image.getImage(), rendering::kSceneToColorAttachment);
+        const vk::RenderingAttachmentInfo black =
+            rendering::colorAttachment(*made.image.getImageView(), vk::ClearColorValue{});
+        commandBuffer.beginRendering(rendering::renderingInfo(extent, {&black, 1}));
+        commandBuffer.endRendering();
+        rendering::transitionImage(commandBuffer, *made.image.getImage(), rendering::kSceneToShaderRead);
+    }
+    const vk::Sampler linear = *_samplers->get(contract::renderer::TextureFilter::kLinear, false);
+    descriptor::DescriptorWriter{}
+        .writeImage(0, keepDepth && _sceneDepth ? *_sceneDepth->getImageView() : white,
+                    *_samplers->get(contract::renderer::TextureFilter::kNearest, false),
+                    vk::ImageLayout::eShaderReadOnlyOptimal)
+        .writeImage(1, *targets.images.front().getImageView(), linear, vk::ImageLayout::eShaderReadOnlyOptimal)
+        .writeImage(2, keepPrevious ? *_previousFrame->image.getImageView() : white, linear,
+                    vk::ImageLayout::eShaderReadOnlyOptimal)
+        .update(*_device, *_screenDepthSets.at(frameIndex));
+}
+
+std::size_t VulkanRenderer::recordScreenEffects(const vk::raii::CommandBuffer& commandBuffer, std::size_t frameIndex,
+                                                const postprocess::ScreenPass::Targets& targets, vk::Extent2D extent,
+                                                std::span<const rendering::MaterialBinding> effects, bool keepDepth) {
+    if (_screenEffects.empty()) {
+        return 0;
+    }
+    if (const std::optional<std::string> problem = contract::renderer::checkScreenEffects(_screenEffects)) {
+        if (*problem != _screenEffectsProblem) {
+            std::cerr << std::format("[vulkan] The screen effects cannot run: {}\n", *problem);
+            _screenEffectsProblem = *problem;
+        }
+        return 0;
+    }
+    // A pass whose material is not ready would leave a target unwritten: the
+    // effects wait for all of them.
+    if (std::ranges::any_of(effects,
+                            [](const rendering::MaterialBinding& effect) { return effect.pipeline == nullptr; })) {
+        return 0;
+    }
+    const bool keepPrevious = std::ranges::any_of(
+        effects, [](const rendering::MaterialBinding& effect) { return effect.readsPreviousFrame; });
+    // The targets no pass writes any more, and the last frame no effect reads, go once the frame is done.
+    std::erase_if(_effectTargets, [&](auto& entry) {
+        const bool named =
+            std::ranges::contains(_screenEffects, entry.first, &contract::renderer::ScreenEffectPass::output);
+        if (!named) {
+            _deletionQueue.defer(frameIndex, std::move(entry.second));
+        }
+        return !named;
+    });
+    if (!keepPrevious && _previousFrame) {
+        _deletionQueue.defer(frameIndex, std::move(_previousFrame));
+    }
+    writeScreenSet(commandBuffer, frameIndex, targets, extent, keepDepth, keepPrevious);
+    const vk::DescriptorSet screenSet = *_screenDepthSets.at(frameIndex);
+    std::size_t current = 0;  // the scene, then the chain's images 1 and 2 in turns
+    for (std::size_t index = 0; index < _screenEffects.size(); ++index) {
+        const contract::renderer::ScreenEffectPass& pass = _screenEffects.at(index);
+        const rendering::MaterialBinding& effect = effects.subspan(index, 1).front();
+        vk::DescriptorSet input = *targets.sets.at(current);
+        if (pass.input == contract::renderer::kSceneTarget) {
+            input = *targets.sets.front();
+        } else if (!pass.input.empty()) {
+            input = *_effectTargets.at(pass.input)->set;
+        }
+        postprocess::ScreenPass::Pass recorded{.pipeline = effect.pipeline,
+                                               .input = input,
+                                               .material = effectMaterialSet(frameIndex, index, pass, effect, targets)};
+        if (pass.output.empty()) {
+            current = current == 1 ? 2 : 1;
+            const memory::Image& image = targets.images.at(current);
+            recorded.image = *image.getImage();
+            recorded.view = *image.getImageView();
+            recorded.extent = extent;
+        } else {
+            const vk::Extent2D size = sizeOf(pass, extent);
+            const ScreenTarget& target = acquireScreenTarget(_effectTargets[pass.output], frameIndex, size,
+                                                             pass.lowPrecision ? kLowPrecisionFormat : kSceneFormat,
+                                                             std::format("Screen target '{}'", pass.output));
+            recorded.image = *target.image.getImage();
+            recorded.view = *target.image.getImageView();
+            recorded.extent = size;
+        }
+        _screenPass->recordPass(commandBuffer, recorded, *_screenGlobals, frameIndex, screenSet);
+    }
+    if (keepPrevious) {
+        // The result, for the next frame's PREVIOUS_FRAME: copied before the
+        // interface goes over it.
+        const vk::Image previous = *_previousFrame->image.getImage();
+        rendering::transitionImage(commandBuffer, previous, rendering::kSceneToColorAttachment);
+        // The copy covers the whole image: nothing to load.
+        const vk::RenderingAttachmentInfo attachment =
+            rendering::colorAttachment(*_previousFrame->image.getImageView(), vk::ClearColorValue{});
+        commandBuffer.beginRendering(rendering::renderingInfo(extent, {&attachment, 1}));
+        _screenPass->recordCopy(commandBuffer, *targets.sets.at(current), extent, false);
+        commandBuffer.endRendering();
+        rendering::transitionImage(commandBuffer, previous, rendering::kSceneToShaderRead);
+    }
+    return current;
+}
 vk::DescriptorSet VulkanRenderer::recordScene(const vk::raii::CommandBuffer& commandBuffer, std::size_t frameIndex,
                                               vk::Extent2D extent, const contract::renderer::CameraView& view,
                                               glm::vec2 viewSize, glm::uvec2 framebufferSize) {
@@ -775,9 +952,10 @@ vk::DescriptorSet VulkanRenderer::recordScene(const vk::raii::CommandBuffer& com
     const memory::Image& sceneImage = targets.images.front();
     // The effects first: the 3D depth is only kept when one of them reads it.
     std::vector<rendering::MaterialBinding> effects;
-    effects.reserve(_screenMaterials.size());
-    for (const contract::renderer::MaterialId material : _screenMaterials) {
-        effects.push_back(findMaterial(material, contract::renderer::ShaderTarget::kScreen, frameIndex));
+    effects.reserve(_screenEffects.size());
+    for (const contract::renderer::ScreenEffectPass& pass : _screenEffects) {
+        effects.push_back(findMaterial(pass.material, contract::renderer::ShaderTarget::kScreen, frameIndex,
+                                       pass.lowPrecision ? kLowPrecisionFormat : kSceneFormat));
     }
     const bool keepDepth = _view3D && std::ranges::any_of(effects, [](const rendering::MaterialBinding& effect) {
                                return effect.pipeline != nullptr && effect.readsDepth;
@@ -816,15 +994,7 @@ vk::DescriptorSet VulkanRenderer::recordScene(const vk::raii::CommandBuffer& com
         screenUniforms.viewProjection = makeFrameUniforms(view, extent).viewProjection;
     }
     _screenGlobals->update(frameIndex, screenUniforms);
-    const vk::raii::DescriptorSet& depthSet = _screenDepthSets.at(frameIndex);
-    const vk::ImageView depthView = keepDepth && _sceneDepth ? *_sceneDepth->getImageView()
-                                                             : *_textures.find(_fallbackTexture)->image.getImageView();
-    descriptor::DescriptorWriter{}
-        .writeImage(0, depthView, *_samplers->get(contract::renderer::TextureFilter::kNearest, false),
-                    vk::ImageLayout::eShaderReadOnlyOptimal)
-        .update(*_device, *depthSet);
-    const std::size_t result =
-        _screenPass->recordEffects(commandBuffer, targets, effects, *_screenGlobals, frameIndex, *depthSet);
+    const std::size_t result = recordScreenEffects(commandBuffer, frameIndex, targets, extent, effects, keepDepth);
     if (!_overlayRuns.empty()) {
         // Over the effects, so they leave the interface alone.
         const memory::Image& resultImage = targets.images.at(result);
@@ -1565,8 +1735,8 @@ void VulkanRenderer::checkMaterial(const contract::renderer::MaterialDesc& desc,
 }
 
 rendering::MaterialBinding VulkanRenderer::findMaterial(contract::renderer::MaterialId material,
-                                                        contract::renderer::ShaderTarget target,
-                                                        std::size_t frameIndex) {
+                                                        contract::renderer::ShaderTarget target, std::size_t frameIndex,
+                                                        vk::Format colorFormat) {
     material::GameMaterial* found = _materials.find(material);
     material::GameShader* shader = found != nullptr ? _gameShaders.find(found->getShader()) : nullptr;
     if (shader == nullptr) {
@@ -1581,7 +1751,8 @@ rendering::MaterialBinding VulkanRenderer::findMaterial(contract::renderer::Mate
     }
     const contract::renderer::RenderState state = found->getRenderState().value_or(shader->getRenderState());
     const pipeline::GraphicsPipeline* pipeline = shader->getPipeline(
-        target, *_device, *layout, kSceneFormat, &_pipelineCache->getCache(), pipelineBuilderOf(target), state);
+        target, *_device, *layout, colorFormat == vk::Format::eUndefined ? kSceneFormat : colorFormat,
+        &_pipelineCache->getCache(), pipelineBuilderOf(target), state);
     if (pipeline == nullptr) {
         return {};
     }
@@ -1591,6 +1762,7 @@ rendering::MaterialBinding VulkanRenderer::findMaterial(contract::renderer::Mate
             .instanceValues = shader->hasInstanceValues(),
             .state = state,
             .readsDepth = shader->readsDepth(),
+            .readsPreviousFrame = shader->readsPreviousFrame(),
             .shadowPipeline =
                 target == contract::renderer::ShaderTarget::kMesh
                     ? shader->getShadowPipeline(

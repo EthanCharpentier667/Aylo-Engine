@@ -19,6 +19,7 @@
 #include <span>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 #include <vulkan/vulkan_raii.hpp>
@@ -40,6 +41,7 @@
 #include "aylo/contract/renderer/particle/Particle.hpp"
 #include "aylo/contract/renderer/particle/ParticleSystemDesc.hpp"
 #include "aylo/contract/renderer/shaders/CompiledShader.hpp"
+#include "aylo/contract/renderer/shaders/ScreenEffect.hpp"
 #include "aylo/contract/renderer/stats/FrameStats.hpp"
 #include "aylo/contract/renderer/view/CameraView.hpp"
 #include "aylo/contract/renderer/view/ScenePreview.hpp"
@@ -303,6 +305,11 @@ class AYLO_RENDER_VULKAN_API VulkanRenderer final : public contract::renderer::I
     /// each effect runs over it (postprocess::ScreenPass), in the window and in a tool's scene texture alike.
     void setScreenMaterials(std::span<const contract::renderer::MaterialId> materials) override;
 
+    /// @brief Sets the screen effects as passes, from the next frame recorded (see IRenderer::setScreenEffects()):
+    /// named targets are made and resized as their passes ask, the picture before the effects stays readable
+    /// (SCENE_TEXTURE), and the last result is kept when an effect reads PREVIOUS_FRAME.
+    void setScreenEffects(std::span<const contract::renderer::ScreenEffectPass> passes) override;
+
     /// @brief Adds @p mesh to the frame's meshes, drawn by endFrame() in the window, over the scene and the overlay,
     /// by rendering::MeshPass. Does nothing if beginFrame() skipped the frame.
     void drawMesh(const contract::renderer::Mesh& mesh) override;
@@ -330,6 +337,12 @@ class AYLO_RENDER_VULKAN_API VulkanRenderer final : public contract::renderer::I
     [[nodiscard]] contract::renderer::FrameStats getFrameStats() const override;
 
   private:
+    /// @brief A target of the screen effects: an image and the set that samples it.
+    struct ScreenTarget {
+        memory::Image image;          ///< Drawn into, then sampled.
+        vk::raii::DescriptorSet set;  ///< Samples image (the texture set layout).
+    };
+
     /// @brief Overlay draws that share a kind and a clip, recorded at endFrame().
     struct OverlayRun {
         bool shapes = false;                                 ///< Batches of _overlayShapes, or of _overlaySprites.
@@ -361,6 +374,32 @@ class AYLO_RENDER_VULKAN_API VulkanRenderer final : public contract::renderer::I
     /// @brief Builds the sprite, particle and shape passes for the swapchain's image format, deferring the previous
     /// ones (their pipelines render into the old format) to the deletion queue.
     void createPasses();
+
+    /// @return The named target @p name of @p extent and @p format, made or made again if its size or format changed
+    /// (the old one deferred to @p frameIndex).
+    ScreenTarget& acquireScreenTarget(std::unique_ptr<ScreenTarget>& slot, std::size_t frameIndex, vk::Extent2D extent,
+                                      vk::Format format, const std::string& name);
+
+    /// @brief Records the screen effects over @p targets (the scene in the first image), of @p extent.
+    /// @return The index of the image of @p targets holding the result, in SHADER_READ_ONLY_OPTIMAL.
+    /// @return The size of @p pass's target, for a picture of @p extent.
+    [[nodiscard]] static vk::Extent2D sizeOf(const contract::renderer::ScreenEffectPass& pass, vk::Extent2D extent);
+
+    /// @return Set 2 of the pass @p index: its material's set, or a copy of it with the targets @p pass binds.
+    vk::DescriptorSet effectMaterialSet(std::size_t frameIndex, std::size_t index,
+                                        const contract::renderer::ScreenEffectPass& pass,
+                                        const rendering::MaterialBinding& effect,
+                                        const postprocess::ScreenPass::Targets& targets);
+
+    /// @brief Writes set 3 of the effects for @p frameIndex (depth, scene, previous frame), making the previous frame's
+    /// image when @p keepPrevious asks for it.
+    void writeScreenSet(const vk::raii::CommandBuffer& commandBuffer, std::size_t frameIndex,
+                        const postprocess::ScreenPass::Targets& targets, vk::Extent2D extent, bool keepDepth,
+                        bool keepPrevious);
+
+    std::size_t recordScreenEffects(const vk::raii::CommandBuffer& commandBuffer, std::size_t frameIndex,
+                                    const postprocess::ScreenPass::Targets& targets, vk::Extent2D extent,
+                                    std::span<const rendering::MaterialBinding> effects, bool keepDepth);
 
     /// @return The images the scene is drawn into and the screen effects take turns on, for a scene of @p extent: the
     /// current ones, or new ones when the size changed (the old are deferred to @p frameIndex).
@@ -470,7 +509,8 @@ class AYLO_RENDER_VULKAN_API VulkanRenderer final : public contract::renderer::I
     /// exists, or if its shader does not serve @p target.
     [[nodiscard]] rendering::MaterialBinding findMaterial(contract::renderer::MaterialId material,
                                                           contract::renderer::ShaderTarget target,
-                                                          std::size_t frameIndex);
+                                                          std::size_t frameIndex,
+                                                          vk::Format colorFormat = vk::Format::eUndefined);
 
     /// @brief Checks that @p desc fits @p shader: values of its block's size, and textures that exist.
     /// @throws std::invalid_argument Naming @p function if not.
@@ -549,7 +589,8 @@ class AYLO_RENDER_VULKAN_API VulkanRenderer final : public contract::renderer::I
     std::optional<glm::uvec2> _previewSize;         ///< The preview texture's size now; empty: no preview.
     contract::renderer::TextureId _previewTexture;  ///< The preview's texture in _textures.
     contract::renderer::FrameStats _stats;          ///< What the last frame drew.
-    std::vector<contract::renderer::MaterialId> _screenMaterials;  ///< From setScreenMaterials(), in their order.
+    std::vector<contract::renderer::ScreenEffectPass> _screenEffects;  ///< From setScreenEffects() (or materials).
+    std::string _screenEffectsProblem;  ///< Why the effects last refused to run, said once.
 
     // 2. Context: created by init(), in this order.
     std::optional<core::Instance> _instance;                ///< The VkInstance.
@@ -591,6 +632,9 @@ class AYLO_RENDER_VULKAN_API VulkanRenderer final : public contract::renderer::I
     std::unique_ptr<descriptor::DescriptorAllocator> _screenDepthDescriptors;  ///< Allocates the depth sets.
     std::vector<vk::raii::DescriptorSet> _screenDepthSets;    ///< One per frame in flight, written each frame.
     std::unique_ptr<pipeline::PipelineLayout> _screenLayout;  ///< Every screen effect's: sets 0 to 3.
+    std::unordered_map<std::string, std::unique_ptr<ScreenTarget>> _effectTargets;  ///< The passes' named outputs.
+    std::unique_ptr<ScreenTarget> _previousFrame;  ///< The last result, kept when an effect reads PREVIOUS_FRAME.
+    std::vector<std::vector<vk::raii::DescriptorSet>> _effectSets;  ///< Per frame, per pass: set 2 with targets bound.
     std::unique_ptr<frame::FrameGlobals> _screenGlobals;  ///< The screen effects' uniforms: the 2D view, the 3D camera.
     std::unique_ptr<pipeline::PipelineLayout> _meshLayout;       ///< Every static mesh pipeline's: sets 0 to 3.
     std::unique_ptr<rendering::SpritePass> _spritePass;          ///< Draws _sprites at endFrame().

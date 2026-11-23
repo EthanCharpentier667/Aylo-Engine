@@ -47,7 +47,8 @@ GameShader::GameShader(const core::Device& device, const contract::renderer::Com
       _renderState{shader.renderState},
       _castsShadows{shader.castsShadows},
       _cutsOut{shader.cutsOut},
-      _readsDepth{shader.readsDepth} {
+      _readsDepth{shader.readsDepth},
+      _readsPreviousFrame{shader.readsPreviousFrame} {
     contract::renderer::validate(shader);
     for (const contract::renderer::ShaderVariant& variant : shader.variants) {
         Variant& created = _variants.at(static_cast<std::size_t>(variant.target));
@@ -74,20 +75,20 @@ const pipeline::GraphicsPipeline* GameShader::getPipeline(contract::renderer::Sh
     if (*variant.vertex == nullptr) {
         return nullptr;
     }
-    if (variant.format != colorFormat) {
-        variant.built.clear();
-        variant.format = colorFormat;
-    }
-    // A 2D target ignores the render state: one pipeline for all its materials.
+    // A 2D target ignores the render state: one pipeline for all its materials. A format a pass writes is part of the
+    // key, so a screen effect writing a half-float and an 8-bit target keeps both.
     const contract::renderer::RenderState key =
         target == contract::renderer::ShaderTarget::kMesh ? state : contract::renderer::RenderState{};
-    for (const auto& [builtState, pipeline] : variant.built) {
-        if (builtState == key) {
-            return &pipeline;
+    for (const Built& built : variant.built) {
+        if (built.state == key && built.format == colorFormat) {
+            return &built.pipeline;
         }
     }
-    auto& [builtState, pipeline] = variant.built.emplace_back(
-        key, build(device, variant.vertex, variant.fragment, _instanceValues, layout, colorFormat, cache, key));
+    const Built& made = variant.built.emplace_back(Built{
+        .state = key,
+        .format = colorFormat,
+        .pipeline = build(device, variant.vertex, variant.fragment, _instanceValues, layout, colorFormat, cache, key)});
+    const pipeline::GraphicsPipeline& pipeline = made.pipeline;
     device.setName(*pipeline.getPipeline(),
                    std::format("{} {} pipeline", _name, kTargetNames.at(static_cast<std::size_t>(target))));
     return &pipeline;
