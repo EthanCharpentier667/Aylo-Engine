@@ -139,6 +139,28 @@ void light() {
 | `SHADOW` | `float` | `1` lit, `0` in shadow, between in a soft shadow's penumbra; see [Shadows](lights.md#shadows) |
 | `DIFFUSE_LIGHT` | `vec3` | what the lights gave so far by diffusion: add to it |
 | `SPECULAR_LIGHT` | `vec3` | what the lights gave so far by reflection: add to it |
+| `ENV_DIFFUSE` | `vec3` | the light around (ambient and [sky](lights.md#the-sky)) a white matte surface facing `NORMAL` shows |
+| `ENV_SPECULAR` | `vec3` | the light around seen in the mirror direction, blurred by `ROUGHNESS` |
+
+### The light around
+
+`ENV_DIFFUSE` and `ENV_SPECULAR` are set before the first `light()` call. The engine shades the light around with them
+after the lights: `ENV_DIFFUSE` times the albedo, plus `ENV_SPECULAR` by the surface's reflectance, times `AO`. Change
+them in `light()` to change that; they are the same for every light, so set them, do not add to them.
+
+```glsl
+#pragma mesh
+#pragma lit
+void fragment() { ALBEDO = vec3(0.8); ROUGHNESS = 0.4; }
+
+float luminance3(vec3 c) { return dot(c, vec3(0.333)); }
+
+void light() {
+    DIFFUSE_LIGHT += ALBEDO * LIGHT_COLOR * step(0.3, dot(NORMAL, LIGHT_DIR)) * SHADOW;
+    ENV_DIFFUSE = vec3(luminance3(ENV_DIFFUSE));  // a grey light around, whatever the sky's colour
+    ENV_SPECULAR *= 0.5;                          // dimmer reflections
+}
+```
 
 The surface built-ins (`ALBEDO`, `NORMAL`, `ROUGHNESS`...) hold what `fragment()` wrote. A `light()` in a shader
 without `#pragma lit` is an error, as is `#pragma lit` without `#pragma mesh`.
@@ -153,7 +175,8 @@ without `#pragma lit` is an error, as is `#pragma lit` without `#pragma mesh`.
 | area | the light of the whole rectangle (`power / (π × width × height)` from each point of it): soft, and reflected as a long highlight on shiny surfaces |
 
 The ambient light of `aylo.Environment3D` lights everything, diffused by the albedo and reflected by shiny surfaces,
-times `AO`.
+times `AO`. Its [sky](lights.md#the-sky) adds the light of each direction: a surface takes the colour of the sky it faces,
+and reflects the sky, sharp when smooth, blurred when rough (`ENV_DIFFUSE`, `ENV_SPECULAR`).
 
 ## Errors
 

@@ -76,6 +76,47 @@ needs no transform); with several, the one with the highest `priority` is used.
 | `shadowCascades` | u32 | `3` | directional lights: how many shadow maps share the view, 1 to 4 (more: sharper far away) |
 | `shadowResolution` | u32 | `1024` | texels of a side of one shadow map: `512`, `1024` or `2048` |
 | `shadowDistance` | f32 | `60` | directional lights: how far from the camera shadows fall, in metres |
+| `skyTexture` | asset id | none | a sky image ([The sky](#the-sky)) |
+| `skyGradient` | bool | `false` | without `skyTexture`: a sky of three colours |
+| `skyTop`, `skyHorizon`, `skyBottom` | vec3 | blue, pale blue, brown | the gradient's colours straight up, at the horizon and straight down, linear RGB |
+| `skyIntensity` | f32 | `1` | multiplies the sky, as drawn and as light |
+| `skyRotation` | f32 | `0` | turns the sky around the vertical axis, in radians |
+| `lightingFromSky` | bool | `true` | whether the sky lights the world, added to `ambient` |
+
+## The sky
+
+A sky is drawn behind the 3D world, where no model is, and lights it: a surface takes the sky's colour from the
+directions it faces, and a shiny one reflects it, blurred as its `ROUGHNESS` grows. A white matte ball under a blue sky
+turns blue-grey; a chrome ball shows the sky; metals stop looking black.
+
+```luau
+-- A gradient: no image needed.
+ctx.commands:spawn({
+	["aylo.Environment3D"] = {
+		skyGradient = true,
+		skyTop = vector.create(0.2, 0.4, 1.0),
+		skyHorizon = vector.create(0.9, 0.8, 0.7),
+		skyIntensity = 1.5,
+		skyRotation = math.rad(90),
+	},
+})
+```
+
+```luau
+-- An image: equirectangular (twice as wide as high, the horizon across its middle), PNG, JPEG or HDR.
+local meadow = engine.assets.texture("skies/meadow.hdr")
+-- ... in a Startup system:
+ctx.commands:spawn({ ["aylo.Environment3D"] = { skyTexture = meadow, ambient = vector.create(0, 0, 0) } })
+```
+
+- A Radiance `.hdr` image keeps colours brighter than white, a sun for instance, which lights much better than a PNG.
+  Free ones are on Poly Haven, as "HDRIs".
+- With a sky lighting the world, set `ambient` low or to `0`: the sky gives the light around.
+- `lightingFromSky = false` draws the sky without its light, for a stylised game that lights its world by hand.
+- Changing `skyIntensity` costs nothing. Changing the image, the colours or `skyRotation` makes the sky's light again,
+  a few milliseconds on the GPU: do not turn the sky every frame.
+- Until the image is loaded, there is no sky.
+- A game without a sky pays nothing for it.
 
 ## Shadows
 
@@ -119,6 +160,8 @@ spot light's cone, an area light's rectangle and the way it faces. A disabled li
   would sit on. Place your lights with entities.
 - Lights live on the client: the server spawns them as any component, and does nothing with them.
 - Shadows need a 3D camera: the sun's cascades are fitted to it. The Scene tab's preview reads the game camera's.
+- A sky is an equirectangular image; six cube faces are not read. A sky's light is computed at a fixed size: a very
+  detailed image is drawn sharp behind the world, but lights it as a smaller one would.
 
 ## See also
 
