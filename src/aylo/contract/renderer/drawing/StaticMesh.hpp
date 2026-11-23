@@ -13,6 +13,7 @@
 #include <glm/ext/vector_float3.hpp>
 #include <vector>
 
+#include "aylo/contract/renderer/Export.hpp"
 #include "aylo/contract/renderer/drawing/Color.hpp"
 #include "aylo/contract/renderer/drawing/Texture.hpp"
 #include "aylo/contract/renderer/shaders/CompiledShader.hpp"
@@ -43,6 +44,14 @@ struct StaticMeshPart {
     TextureId texture;             ///< The base colour texture; none: plain baseColor.
 };
 
+/// @brief The box a static mesh fits in, in its own axes: what a 3D shader reads as AABB_MIN and AABB_MAX.
+struct StaticMeshBounds {
+    glm::vec3 min{0.0F};  ///< The smallest x, y and z of its vertices.
+    glm::vec3 max{0.0F};  ///< The largest x, y and z of its vertices.
+
+    [[nodiscard]] bool operator==(const StaticMeshBounds& other) const = default;
+};
+
 /// @brief What IRenderer::createStaticMesh() uploads: indexed triangles and their parts. The textures of the parts must
 /// exist when the mesh is drawn; destroying a texture does not destroy the mesh.
 struct StaticMeshDesc {
@@ -57,6 +66,10 @@ struct StaticMeshDraw {
     glm::mat4 world{1.0F};  ///< Places the mesh in the world.
     Color color{1.0F};      ///< Linear RGBA, not premultiplied: multiplies every part's colour (a tint, a fade).
     MaterialId material;  ///< A material whose shader has a ShaderTarget::kMesh variant; the default: built-in, unlit.
+    ShaderInstanceValues instanceValues{};  ///< The material's `instance uniform` values for this draw (its entity's).
 };
+
+/// @return The box @p desc's vertices fit in; zeros for a mesh without vertices.
+[[nodiscard]] AYLO_CONTRACT_RENDERER_API StaticMeshBounds computeBounds(const StaticMeshDesc& desc) noexcept;
 
 }  // namespace aylo::contract::renderer
