@@ -7,6 +7,7 @@
 
 #include "StaticMeshPass.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -20,6 +21,7 @@
 #include <vulkan/vulkan_raii.hpp>
 
 #include "ShaderLayout.hpp"
+#include "aylo/contract/renderer/drawing/Light3D.hpp"
 #include "aylo/contract/renderer/drawing/StaticMesh.hpp"
 #include "aylo/contract/renderer/drawing/Texture.hpp"
 #include "aylo/contract/renderer/shaders/CompiledShader.hpp"
@@ -32,6 +34,7 @@
 #include "render/vulkan/pipeline/GraphicsPipeline.hpp"
 #include "render/vulkan/pipeline/PipelineLayout.hpp"
 #include "render/vulkan/pipeline/ShaderCache.hpp"
+#include "render/vulkan/rendering/LightData.hpp"
 #include "render/vulkan/rendering/MeshDrawOrder.hpp"
 #include "render/vulkan/rendering/StaticMeshDrawData.hpp"
 #include "staticmesh.frag.h"
@@ -56,7 +59,7 @@ constexpr std::size_t kInitialDraws = 64;
 /// @return A pool for one set of one storage buffer per frame in flight.
 descriptor::DescriptorPool createPool(const core::Device& device, std::size_t framesInFlight) {
     const auto frames = static_cast<std::uint32_t>(framesInFlight);
-    const std::array sizes{vk::DescriptorPoolSize{vk::DescriptorType::eStorageBuffer, frames}};
+    const std::array sizes{vk::DescriptorPoolSize{vk::DescriptorType::eStorageBuffer, frames * 2}};
     return descriptor::DescriptorPool{device, frames, sizes};
 }
 
@@ -160,10 +163,32 @@ StaticMeshPass::StaticMeshPass(const core::Device& device, const memory::Allocat
       _frames(framesInFlight) {
     device.setName(*_pipeline.getPipeline(), "Static mesh pipeline");
     device.setName(*_pool.getPool(), "Static mesh draws pool");
-    for (Frame& frame : _frames) {
+    // No light at first: the header alone, so the binding is valid before the first frame sets lights.
+    const std::array<std::byte, sizeof(GpuLightsHeader)> noLights{};
+    for (std::size_t index = 0; index < _frames.size(); ++index) {
+        Frame& frame = _frames.at(index);
         frame.set = _pool.allocate(drawSetLayout);
         device.setName(*frame.set, "Static mesh draws set");
+        uploadLights(index, noLights);
     }
+}
+
+void StaticMeshPass::uploadLights(std::size_t frameIndex, std::span<const std::byte> bytes) {
+    Frame& frame = _frames.at(frameIndex);
+    if (!frame.lights || frame.lights->getSize() < bytes.size()) {
+        // Room for every light a frame may have: the buffer is made once.
+        const vk::DeviceSize size = std::max<vk::DeviceSize>(
+            bytes.size(), sizeof(GpuLightsHeader) + (contract::renderer::kMaxLights3D * sizeof(GpuLight)));
+        frame.lights.emplace(*_allocator, size, vk::BufferUsageFlagBits::eStorageBuffer,
+                             memory::Allocator::MemoryAccess::kStaging);
+        const core::Device& device = _allocator->getDevice();
+        device.setName(*frame.lights->getBuffer(), "Lights 3D");
+        descriptor::DescriptorWriter{}
+            .writeBuffer(kLightsBinding, *frame.lights->getBuffer(), 0, frame.lights->getSize(),
+                         vk::DescriptorType::eStorageBuffer)
+            .update(device, *frame.set);
+    }
+    frame.lights->write(bytes);
 }
 
 pipeline::GraphicsPipeline StaticMeshPass::createMaterialPipeline(

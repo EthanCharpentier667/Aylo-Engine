@@ -42,6 +42,7 @@
 #include "aylo/contract/platform/IPlatform.hpp"
 #include "aylo/contract/platform/exceptions/PlatformExceptions.hpp"
 #include "aylo/contract/renderer/drawing/Color.hpp"
+#include "aylo/contract/renderer/drawing/Light3D.hpp"
 #include "aylo/contract/renderer/drawing/Lines3D.hpp"
 #include "aylo/contract/renderer/drawing/Mesh.hpp"
 #include "aylo/contract/renderer/drawing/Overlay.hpp"
@@ -81,6 +82,7 @@
 #include "postprocess/ScreenPass.hpp"
 #include "rendering/DynamicRendering.hpp"
 #include "rendering/FrameUniforms.hpp"
+#include "rendering/LightData.hpp"
 #include "rendering/MaterialBinding.hpp"
 #include "rendering/ShaderLayout.hpp"
 #include "rendering/ShapeBatch.hpp"
@@ -329,6 +331,7 @@ void VulkanRenderer::init(contract::platform::IPlatform& platform) {
     _meshDrawSetLayout = std::make_unique<descriptor::DescriptorSetLayout>(
         descriptor::DescriptorSetLayout::Builder{}
             .addBinding(rendering::kMeshDrawBinding, vk::DescriptorType::eStorageBuffer, materialStages)
+            .addBinding(rendering::kLightsBinding, vk::DescriptorType::eStorageBuffer, materialStages)
             .build(*_device));
     const std::array meshSetLayouts{*_globals->getSetLayout().getLayout(), *_textureSetLayout->getLayout(),
                                     *_materialSetLayout->getLayout(), *_meshDrawSetLayout->getLayout()};
@@ -515,6 +518,8 @@ void VulkanRenderer::beginFrame(const contract::renderer::Color& clearColor) {
     _lines3D.clear();
     _staticMeshDraws.clear();
     _staticMeshPartMaterials.clear();
+    _lights3D.clear();
+    _environment3D = contract::renderer::Environment3D{};
     _sprites.clear();
     _particleInstances.clear();
     _particleRanges.clear();
@@ -748,6 +753,14 @@ contract::renderer::StaticMeshId VulkanRenderer::createStaticMesh(const contract
     return _staticMeshes.insert(rendering::StaticMeshPass::upload(*_allocator, desc));
 }
 
+bool VulkanRenderer::supportsLights3D() const noexcept { return true; }
+
+void VulkanRenderer::setLights3D(std::span<const contract::renderer::Light3D> lights,
+                                 const contract::renderer::Environment3D& environment) {
+    _lights3D.assign(lights.begin(), lights.end());
+    _environment3D = environment;
+}
+
 void VulkanRenderer::destroyStaticMesh(contract::renderer::StaticMeshId mesh) {
     std::optional<rendering::GpuStaticMesh> removed = _staticMeshes.erase(mesh);
     if (removed) {
@@ -946,6 +959,9 @@ void VulkanRenderer::uploadWorld(std::size_t frameIndex) {
         }
     }
     _staticMeshPass->upload(frameIndex, _meshDraws);
+    const glm::vec3 camera = _view3D ? _view3D->position : glm::vec3{0.0F};
+    rendering::packLights(_lights3D, _environment3D, camera, _packedLights);
+    _staticMeshPass->uploadLights(frameIndex, _packedLights);
 }
 
 void VulkanRenderer::recordWorld(const vk::raii::CommandBuffer& commandBuffer, std::size_t frameIndex,

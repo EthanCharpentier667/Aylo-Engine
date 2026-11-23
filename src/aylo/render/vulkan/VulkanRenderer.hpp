@@ -27,6 +27,7 @@
 #include "aylo/contract/platform/IPlatform.hpp"
 #include "aylo/contract/renderer/IRenderer.hpp"
 #include "aylo/contract/renderer/drawing/Color.hpp"
+#include "aylo/contract/renderer/drawing/Light3D.hpp"
 #include "aylo/contract/renderer/drawing/Lines3D.hpp"
 #include "aylo/contract/renderer/drawing/Mesh.hpp"
 #include "aylo/contract/renderer/drawing/Overlay.hpp"
@@ -211,6 +212,13 @@ class AYLO_RENDER_VULKAN_API VulkanRenderer final : public contract::renderer::I
     /// @brief Adds @p lines to the frame's 3D world, placed by their world matrix. Does nothing if beginFrame() skipped
     /// the frame.
     void drawLines3D(const contract::renderer::Lines3D& lines) override;
+
+    /// @return True: the 3D world's lights reach the mesh shaders (set 3, binding 1).
+    [[nodiscard]] bool supportsLights3D() const noexcept override;
+
+    /// @brief Sets the frame's lights and ambient light; the last call of a frame applies.
+    void setLights3D(std::span<const contract::renderer::Light3D> lights,
+                     const contract::renderer::Environment3D& environment) override;
 
     /// @brief Uploads a static mesh (rendering::StaticMeshPass::upload()), kept until destroyStaticMesh().
     /// @throws std::invalid_argument If an index or a part goes past the vertices or the indices.
@@ -499,6 +507,9 @@ class AYLO_RENDER_VULKAN_API VulkanRenderer final : public contract::renderer::I
     };
     std::vector<StaticMeshRequest> _staticMeshDraws;  ///< The frame's meshes; cleared by beginFrame().
     std::vector<contract::renderer::MaterialId> _staticMeshPartMaterials;  ///< Their part materials, one after another.
+    std::vector<contract::renderer::Light3D> _lights3D;       ///< From setLights3D(); cleared by beginFrame().
+    contract::renderer::Environment3D _environment3D;         ///< From setLights3D(); reset by beginFrame().
+    std::vector<std::byte> _packedLights;                     ///< _lights3D as the shaders read them, reused.
     std::vector<rendering::StaticMeshPass::Draw> _meshDraws;  ///< _staticMeshDraws found, for the upload; reused.
     std::filesystem::path _pipelineCachePath;     ///< Config::pipelineCache resolved by init(); empty: not kept.
     contract::renderer::Color _clearColor{0.0F};  ///< From beginFrame(): what endFrame() clears with.

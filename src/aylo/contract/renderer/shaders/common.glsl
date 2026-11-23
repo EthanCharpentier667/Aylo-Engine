@@ -41,6 +41,20 @@ struct AyloMeshDraw {
 layout(set = 3, binding = 0, std430) readonly buffer AyloMeshDraws {
     AyloMeshDraw ayloMeshDraws[];
 };
+// The frame's lights (LightData.hpp in the Vulkan renderer, std430) at set 3, binding 1: the ambient light, then
+// `count.x` lights in the world's space, laid out as a clustered pass would read them.
+struct AyloLight {
+    vec4 position;   // xyz: where it is; w: its range, 0 for none.
+    vec4 direction;  // xyz: where it shines, unit; w: its kind (0 directional, 1 point, 2 spot, 3 area).
+    vec4 color;      // rgb: linear colour; w: its intensity, in watts or lux.
+    vec4 cone;       // x, y: cos of the spot's inner and outer half-angles; z, w: half the area's size.
+    vec4 right;      // xyz: the area's width axis, unit; w: 1 if it casts shadows.
+};
+layout(set = 3, binding = 1, std430) readonly buffer AyloLights {
+    vec4 ambient;  // rgb: the ambient light.
+    uvec4 count;   // x: how many lights follow.
+    AyloLight light[];
+} ayloLights;
 layout(push_constant) uniform AyloMeshPart {
     vec4 baseColor;  // The part's base colour, straight alpha.
     uint draw;       // The draw's index in ayloMeshDraws.

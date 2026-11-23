@@ -52,6 +52,8 @@ inline constexpr vk::Format kWorld3DDepthFormat = vk::Format::eD32Sfloat;
 inline constexpr std::uint32_t kMeshDrawSet = 3;
 /// @brief The binding of the storage buffer of mesh draws in kMeshDrawSet.
 inline constexpr std::uint32_t kMeshDrawBinding = 0;
+/// @brief The binding of the storage buffer of the frame's lights (LightData.hpp) in kMeshDrawSet.
+inline constexpr std::uint32_t kLightsBinding = 1;
 
 /// @brief The push constants of a static mesh part: what the shaders ABI reads as `ayloPart`, 32 bytes. The rest of
 /// the draw is in the frame's buffer of mesh draws, at index `draw`.
@@ -122,6 +124,11 @@ class AYLO_RENDER_VULKAN_API StaticMeshPass {
     /// @throws vk::SystemError If a bigger buffer cannot be created.
     void upload(std::size_t frameIndex, std::span<const Draw> draws);
 
+    /// @brief Writes the packed lights @p bytes (packLights()) into frame @p frameIndex's buffer of lights, grown if
+    /// needed. Once per frame, after that frame's fence was waited for.
+    /// @throws vk::SystemError If a bigger buffer cannot be created.
+    void uploadLights(std::size_t frameIndex, std::span<const std::byte> bytes);
+
     /// @brief Records the draws of the last upload() of @p frameIndex inside dynamic rendering with a depth
     /// attachment; the frame's set 0 (the 3D view) must be bound. A draw with a game material is drawn with its
     /// pipeline and set 2, the others with the built-in one.
@@ -136,6 +143,7 @@ class AYLO_RENDER_VULKAN_API StaticMeshPass {
     /// @brief What one frame in flight draws.
     struct Frame {
         std::optional<memory::Buffer> buffer;  ///< Its StaticMeshDrawData; none until a frame draws a mesh.
+        std::optional<memory::Buffer> lights;  ///< Its lights (LightData.hpp), made with the pass.
         vk::raii::DescriptorSet set{nullptr};  ///< kMeshDrawSet, pointing at buffer.
         std::vector<Draw> draws;               ///< The draws of its last upload().
         std::vector<MeshDrawKey> keys;         ///< Where each draw is and whether it is blended, to order them.
