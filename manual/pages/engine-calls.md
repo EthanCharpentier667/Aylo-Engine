@@ -382,6 +382,11 @@ On both sides, in every game. See [States](states.md).
 The shader plugin has `engine.assets.shader` and `engine.assets.material` forms, see [Setup forms](setup-forms.md),
 and the call `aylo.shader.setScreenMaterials` (`materials`, client), which sets the screen effects: see
 [Post-processing](post-processing.md), and its form `engine.screenEffects`.
+
+| Call | Arguments | Result |
+|---|---|---|
+| `aylo.shader.setInstanceValue` | `entity`, `material` (the one it is drawn with), `name` (an `instance uniform` of its shader), `x` (a number), or `x`, `y` (`z`, `w`) with `size` 2 to 4 for a vector | nothing; the value is used from the next frame. Client only: see [One value per drawing](materials.md#one-value-per-drawing) |
+
 Particle effects have the `engine.assets.particle` form, see [Particles](particles.md). It is made of the calls
 `aylo.particle.beginEffect`, `aylo.particle.addBurst`, `aylo.particle.addColorKey`, `aylo.particle.addCurveKey` and
 `aylo.particle.addEffect` (client); use the form rather than the calls.

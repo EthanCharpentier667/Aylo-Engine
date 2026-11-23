@@ -52,6 +52,59 @@ A material file can also be a [screen effect](post-processing.md): give it a `#p
 engine.screenEffects({ engine.assets.material("materials/tone.material") })
 ```
 
+## One value per drawing
+
+A `uniform` belongs to the material: every drawing that uses it shares the value. An **`instance uniform`** belongs to
+each drawing: two enemies with the same material can flash by different amounts, two crates can burn at their own
+pace, and they still share the material (and draw together). Declare it in the shader, then give an entity its value
+with the call `aylo.shader.setInstanceValue`:
+
+```glsl
+// assets/shaders/flash.glsl
+instance uniform float amount = 0.0;  // the default, for a drawing you give nothing
+void fragment() { COLOR.rgb = mix(COLOR.rgb, vec3(COLOR.a), amount); }
+```
+
+```luau
+local flash = engine.assets.material({ name = "flash", shader = engine.assets.shader("shaders/flash.glsl") })
+
+-- 1 when the enemy is hit (your game sets it), fading back to 0 in a quarter of a second.
+engine.ecs.component("game.Flash", { fields = { amount = "f32" } })
+
+engine.ecs.system("game.Flash", {
+	phase = "Update",
+	side = "client",
+	query = { write = { "game.Flash" } },
+	calls = { "aylo.shader.setInstanceValue" },
+	run = function(ctx)
+		for entity, hit in ctx.query do
+			hit.amount = math.max(hit.amount - ctx.time.delta * 4, 0)
+			ctx.call("aylo.shader.setInstanceValue",
+				{ entity = entity, material = flash, name = "amount", x = hit.amount })
+		end
+	end,
+})
+```
+
+| Argument | Type | What it is |
+|---|---|---|
+| `entity` | entity | The entity drawn: a sprite, a text, a particle emitter or a 3D model |
+| `material` | material | The material it is drawn with: its shader says where the value goes |
+| `name` | string | An `instance uniform` its shader declares |
+| `x` | number | The value of a `float` or `int` |
+| `size`, `x`, `y`, `z`, `w` | numbers | A `vec2` to `vec4`: `size` is 2, 3 or 4, and gives that many of `x`, `y`, `z`, `w` |
+
+The value is used from the next frame, and kept until you set it again. An entity you never give a value draws with
+the defaults the shader declares; the first value you give it starts from those defaults, so you only set what
+differs. Give several values in the same frame and they all count. It lives on the client only (the server draws
+nothing): call it from a `side = "client"` system.
+
+!!! warning "A value the shader does not have"
+    A `name` the shader does not declare (or a value of another type) is not set, and the output says
+    `[Shader] aylo.shader.setInstanceValue: ...` with the reason. A `material` that is not one is a Luau error.
+
+A shader has 64 bytes of `instance uniform`s in all: 16 `float`s, or 4 `vec4`s.
+
 ## 3D materials
 
 A model (`aylo.MeshRenderer`) takes a material too, whose shader says `#pragma mesh` on one of its first lines: a 3D
@@ -89,9 +142,30 @@ What a 3D shader reads and writes:
 | `COLOR` | `vec4` | the draw's colour times the part's base colour, straight alpha | the pixel's colour, **premultiplied** (texture times colour) |
 | `TEXTURE` | `sampler2D` | the part's base colour texture (white without one) | the same |
 | `TIME` | `float` | seconds since the renderer started | the same |
+| `MODEL_MATRIX` | `mat4` | the model's space to the world's: the entity's transform | the same |
+| `INV_MODEL_MATRIX` | `mat4` | the world's space to the model's | the same |
+| `NORMAL_MATRIX` | `mat3` | a normal of the model's space to the world's, even under an uneven scale (normalize the result) | the same |
+| `AABB_MIN` | `vec3` | the smallest corner of the box the model fits in, in its own space | the same |
+| `AABB_MAX` | `vec3` | the largest corner | the same |
 
-A model's `instance uniform` values are the ones the shader declares: a model has no `aylo.MaterialInstance` yet. The
-Inspector edits a 3D material as a 2D one. A shader cannot say both `#pragma screen` and `#pragma mesh`.
+With the matrices and the box, an effect can follow the object rather than the world: a texture laid over the
+model's box, a dissolve that keeps its place as the model moves. Each model gets its own `instance uniform` values,
+[as any drawing](#one-value-per-drawing):
+
+```glsl
+// assets/shaders/burn.glsl
+#pragma mesh
+uniform sampler2D noise;
+instance uniform float dissolve = 0.0;
+
+void fragment() {
+    vec3 local = (INV_MODEL_MATRIX * MODEL_MATRIX * vec4(AABB_MIN, 1.0)).xyz;  // the same as AABB_MIN
+    vec3 box = (local - AABB_MIN) / max(AABB_MAX - AABB_MIN, vec3(0.0001));    // 0 to 1 over the model
+    if (texture(noise, box.xy).r < dissolve) { discard; }
+}
+```
+
+The Inspector edits a 3D material as a 2D one. A shader cannot say both `#pragma screen` and `#pragma mesh`.
 
 !!! warning "A 2D material on a model"
     A model given a material whose shader is a 2D one (no `#pragma mesh`) is drawn with the built-in shader, and the
