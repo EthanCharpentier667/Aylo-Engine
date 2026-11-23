@@ -299,6 +299,7 @@ A backend feeds these resources:
 | A screen effect                     | No vertex input: 3 vertices; set 1 binding 0 is the picture so far |
 | A static mesh's vertices            | Attributes 0 to 2: position, normal, UV (`StaticMeshVertex`)      |
 | The frame's lights (meshes)          | Set 3, binding 1 (std430, `AyloLights`: ambient, count, `AyloLight`s) |
+| The shadow maps (meshes)            | Set 3, binding 2 (std430, `AyloShadowTile`s), the atlas at binding 3 |
 | A static mesh's draws               | Set 3, binding 0 (std430, `AyloMeshDraw`), indexed by the push constants `AyloMeshPart` (base colour, draw index) |
 
 Instance values only exist for a shader that declares some: the assembler then defines `AYLO_INSTANCE_VALUES`.

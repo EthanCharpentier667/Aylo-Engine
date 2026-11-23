@@ -127,6 +127,37 @@ not double sided culls its back faces. A lit shader on a model starts from the s
 `doubleSided` true and is opaque: an alpha below 1 on it is no longer blended. ufbx gives FBX and OBJ files the same
 material values, but no tangents, vertex colours or second UVs from the file yet, and keeps both sides.
 
+## Shadows (R3D-08)
+
+The shadow maps are tiles of one depth atlas of `kShadowAtlasSize` (4096) texels, cut by the environment's
+`shadowResolution` (2048: 4 tiles, 1024: 16, 512: 64), so no image is made again when lights come and go.
+`rendering::planShadows()` (pure, tested) gives each light that casts shadows its tiles, in the order of the buffer of
+lights, while they fit: a directional light one per cascade over `shadowDistance` of the scene's camera (practical
+split, 0.7 logarithmic), each the bounding sphere of its slice of the frustum, its size rounded and its centre snapped
+to whole texels in the light's space so the edges do not shimmer; a spot light a perspective map of its cone; an area
+light one of 120° along its facing (its true shape is not used); a point light six of a little more than 90°, the faces
+of a cube. The projections put Y down, as the camera's, so a cull mode keeps its meaning. `AyloLight.right.w` holds a
+light's first tile + 1, the header's `count.y` the cascades; the tiles (`AyloShadowTile`: matrix, rectangle, bias,
+depth range, sizes) are at set 3, binding 2, the atlas at binding 3.
+
+The shadow pass records, before the pictures, every draw that casts shadows into each tile, with the frame's set 0
+holding the tile's view: a game material with its shader's `vertex()` (`GameShader::getShadowPipeline()`, per culling)
+and, when it writes `ALPHA_SCISSOR`, its `fragment()`; a model without one with the built-in vertex stage and an empty
+fragment stage, or the cutout one for a glTF mask part. Blended draws, `#pragma shadow off` shaders and models with
+`castShadows` off are skipped. The pass binds a set 3 of its own whose atlas binding is the fallback texture, so a
+cutout lit shader does not read the image it writes. A pipeline depth bias (dynamic, scaled by the light's
+`shadowBias`) and a lookup moved along the normal by `shadowNormalBias` texels keep surfaces from shadowing themselves.
+
+`lighting.glsl` picks the tile (the cascade by the view depth, the cube face by the major axis), compares linear
+depths, and filters by percentage-closer soft shadows: 16 Poisson taps find the blockers, the penumbra grows with the
+gap to them times the light's size (the sun's angle, a 10 cm bulb, an area light's rectangle, times `shadowSoftness`),
+and 16 taps filter it, between 1 and 12 texels. The atlas is read with `texelFetch`: MoltenVK's translation to Metal
+loses a sampler handed down through several calls. A draw that does not receive shadows says so in `boundsMin.w`.
+
+A game cutout shader's `fragment()` writes a colour in the shadow pass, which has no colour attachment: the validation
+layer warns that the write is unused, which is harmless. Shadows of the preview (the editor's Scene tab) are the scene
+camera's cascades.
+
 ## Transparency: sorting, not order-independent transparency (R3D-03)
 
 Blended 3D draws are drawn after the opaque ones, sorted back to front by the centre of their box, per picture. This is
