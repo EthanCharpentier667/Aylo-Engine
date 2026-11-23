@@ -95,6 +95,11 @@ passes of a file as files of their own and refuses a chain that loops or holds m
 mesh plugin follows the chain each frame, one `drawStaticMesh()` per pass with `listedPartsOnly`, and cuts a chain of
 materials made in code at 8 with one warning. Passes only apply to models.
 
+`#pragma lit` makes a 3D shader lit: its `fragment()` writes the surface (`ALBEDO`, `ALPHA`, `METALLIC`, `ROUGHNESS`,
+`SPECULAR`, `NORMAL`, `EMISSION`, `AO`) and the engine lights it after (`lighting.glsl`, added to the fragment stage
+with `AYLO_LIT`); an optional `void light()` replaces the shading of each light (`AYLO_CUSTOM_LIGHT`), and is blanked
+from the vertex stage as `fragment()` is. The model and its units are in `docs/3d/rendering.md` (Lit materials).
+
 `FRONT_FACING` is `gl_FrontFacing`: the projection puts Y down in clip space and the screen too, so a triangle
 counter-clockwise in the world is counter-clockwise on screen, the pipelines' default front face. `FRAGCOORD`
 (`gl_FragCoord`) is in every fragment stage. The

@@ -82,6 +82,32 @@ directional lights are kept, then the nearest to the scene's camera. The editor 
 the Scene tab (`editor/scene/LightGizmos`). The lights of a glTF file (`KHR_lights_punctual`) are not read: the mesh
 plugin flattens a file into one mesh and spawns no node to carry them.
 
+## Lit materials (R3D-06)
+
+`#pragma lit` (with `#pragma mesh`) makes the assembler define `AYLO_LIT` in the fragment stage and add
+`contract/renderer/shaders/lighting.glsl`: the surface built-ins (`ALBEDO`, `ALPHA`, `METALLIC`, `ROUGHNESS`,
+`SPECULAR`, `EMISSION`, `AO`), the light built-ins of `light()`, and the BRDF of glTF 2.0's appendix B (GGX, height-
+correlated Smith, Schlick, Lambert). `mesh.frag.glsl` fills the surface from the part before `fragment()` (a back face's
+normal turned to the camera), then after it runs `ayloLightSurface()`: per light, `ayloSetLight()` gives `LIGHT_DIR`,
+`LIGHT_COLOR` (W/m² facing the light: lux for a directional light, `P / 4π` over the distance squared for point and
+spot lights, with glTF's range window and a smoothstep cone) and `ATTENUATION`, then either the shader's `light()`
+(`AYLO_CUSTOM_LIGHT`) or the PBR model adds to `DIFFUSE_LIGHT` and `SPECULAR_LIGHT`; the ambient light is diffused by
+the albedo and reflected through Karis's analytic environment BRDF, times `AO`; `EMISSION` is added. The result is
+premultiplied by `ALPHA` and linear: tonemapping stays a screen effect. The built-in material has a lit variant
+(`staticmesh_lit.frag`, the same ABI with `AYLO_LIT`), used in a frame where `setLights3D()` was called.
+
+**Area lights do not use LTC yet.** The plan chose linearly transformed cosines; their two 64x64 tables are either the
+published fits (Heitz et al., distributed under their own licence, which a release would have to carry as a notice)
+or a fit made for the engine, a few hours of work of its own. Until then, a rectangle's diffuse light is exact (its
+form factor by Lambert's edge formula, which is what LTC gives for a Lambertian lobe), and its reflection uses the
+representative point (the point of the rectangle nearest the reflected ray) with a lobe widened by the light's size,
+energy kept (Karis 2013): right for rough surfaces, a softer highlight than LTC on glossy ones. `light()` sees an area
+light as one from its centre whose `LIGHT_COLOR * n.l` is that exact irradiance. Swapping in LTC changes no shader.
+
+There is no multiple-scattering compensation: very rough metals are slightly darker than a reference path tracer.
+The reference scene of the issue (a grid of spheres compared against another renderer) is not automated: there is no
+GPU in CI to draw it.
+
 ## Transparency: sorting, not order-independent transparency (R3D-03)
 
 Blended 3D draws are drawn after the opaque ones, sorted back to front by the centre of their box, per picture. This is
