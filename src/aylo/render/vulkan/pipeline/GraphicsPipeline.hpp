@@ -32,6 +32,8 @@ class AYLO_RENDER_VULKAN_API GraphicsPipeline {
         /// Blends a colour already multiplied by its alpha: `src + dst * (1 - src.a)`. Covers kAlpha (rgb * a, a) and
         /// kAdditive (rgb * a, 0) in one pipeline, and filters textures without dark fringes.
         kPremultipliedAlpha,
+        kPremultipliedAdditive,  ///< Adds a premultiplied colour: `src + dst`, the alpha kept.
+        kMultiply,               ///< Multiplies by a premultiplied colour: `src * dst + dst * (1 - src.a)`.
     };
 
     /// @brief Builds graphics pipelines in a few lines, with defaults that suit 2D.
@@ -77,6 +79,12 @@ class AYLO_RENDER_VULKAN_API GraphicsPipeline {
         /// @brief Enables the depth test against a depth attachment of @p format, writing depth if @p write.
         /// Default: no depth.
         Builder& setDepth(vk::Format format, bool write);
+        /// @brief Keeps the depth attachment of setDepth() but does not test against it (it is written if asked).
+        /// Default: tested.
+        Builder& setDepthTest(bool test);
+        /// @brief Adds @p constant steps of the depth buffer, and @p slope times the surface's slope, to the depth of
+        /// every fragment. Default: none.
+        Builder& setDepthBias(float constant, float slope);
         /// @brief Sets the layout: descriptor set layouts and push constant ranges. Required.
         Builder& setLayout(const PipelineLayout& layout);
 
@@ -103,6 +111,9 @@ class AYLO_RENDER_VULKAN_API GraphicsPipeline {
         std::optional<vk::Format> _colorFormat;                                  ///< Color attachment format.
         std::optional<vk::Format> _depthFormat;                                  ///< Depth format; empty: none.
         bool _depthWrite = false;                                                ///< Whether depth is written.
+        bool _depthTest = true;                                                  ///< Whether depth is tested.
+        float _depthBiasConstant = 0.0F;                                         ///< setDepthBias()'s constant.
+        float _depthBiasSlope = 0.0F;                                            ///< setDepthBias()'s slope.
         const PipelineLayout* _layout = nullptr;                                 ///< Not owned.
     };
 

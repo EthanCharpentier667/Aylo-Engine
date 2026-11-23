@@ -54,6 +54,20 @@ vk::PipelineColorBlendAttachmentState blendAttachment(GraphicsPipeline::BlendMod
                 .setDstColorBlendFactor(Factor::eOneMinusSrcAlpha)
                 .setSrcAlphaBlendFactor(Factor::eOne)
                 .setDstAlphaBlendFactor(Factor::eOneMinusSrcAlpha);
+        case GraphicsPipeline::BlendMode::kPremultipliedAdditive:
+            return vk::PipelineColorBlendAttachmentState{state}
+                .setBlendEnable(vk::True)
+                .setSrcColorBlendFactor(Factor::eOne)
+                .setDstColorBlendFactor(Factor::eOne)
+                .setSrcAlphaBlendFactor(Factor::eZero)
+                .setDstAlphaBlendFactor(Factor::eOne);
+        case GraphicsPipeline::BlendMode::kMultiply:
+            return vk::PipelineColorBlendAttachmentState{state}
+                .setBlendEnable(vk::True)
+                .setSrcColorBlendFactor(Factor::eDstColor)
+                .setDstColorBlendFactor(Factor::eOneMinusSrcAlpha)
+                .setSrcAlphaBlendFactor(Factor::eZero)
+                .setDstAlphaBlendFactor(Factor::eOne);
     }
     throw std::logic_error("GraphicsPipeline: invalid blend mode");
 }
@@ -103,6 +117,17 @@ GraphicsPipeline::Builder& GraphicsPipeline::Builder::setDepth(vk::Format format
     return *this;
 }
 
+GraphicsPipeline::Builder& GraphicsPipeline::Builder::setDepthTest(bool test) {
+    _depthTest = test;
+    return *this;
+}
+
+GraphicsPipeline::Builder& GraphicsPipeline::Builder::setDepthBias(float constant, float slope) {
+    _depthBiasConstant = constant;
+    _depthBiasSlope = slope;
+    return *this;
+}
+
 GraphicsPipeline::Builder& GraphicsPipeline::Builder::setLayout(const PipelineLayout& layout) {
     _layout = &layout;
     return *this;
@@ -129,11 +154,18 @@ GraphicsPipeline GraphicsPipeline::Builder::build(const core::Device& device,
             _attributes);
     const auto inputAssembly = vk::PipelineInputAssemblyStateCreateInfo{}.setTopology(_topology);
     const auto viewport = vk::PipelineViewportStateCreateInfo{}.setViewportCount(1).setScissorCount(1);
-    const auto rasterization = vk::PipelineRasterizationStateCreateInfo{}.setCullMode(_cullMode).setLineWidth(1.0F);
+    const bool depthBias = _depthBiasConstant != 0.0F || _depthBiasSlope != 0.0F;
+    const auto rasterization = vk::PipelineRasterizationStateCreateInfo{}
+                                   .setCullMode(_cullMode)
+                                   .setFrontFace(vk::FrontFace::eCounterClockwise)
+                                   .setDepthBiasEnable(depthBias ? vk::True : vk::False)
+                                   .setDepthBiasConstantFactor(_depthBiasConstant)
+                                   .setDepthBiasSlopeFactor(_depthBiasSlope)
+                                   .setLineWidth(1.0F);
     const auto multisample =
         vk::PipelineMultisampleStateCreateInfo{}.setRasterizationSamples(vk::SampleCountFlagBits::e1);
     const auto depth = vk::PipelineDepthStencilStateCreateInfo{}
-                           .setDepthTestEnable(_depthFormat ? vk::True : vk::False)
+                           .setDepthTestEnable(_depthFormat && _depthTest ? vk::True : vk::False)
                            .setDepthWriteEnable(_depthWrite ? vk::True : vk::False)
                            .setDepthCompareOp(vk::CompareOp::eLessOrEqual);
     const vk::PipelineColorBlendAttachmentState attachment = blendAttachment(_blendMode);
