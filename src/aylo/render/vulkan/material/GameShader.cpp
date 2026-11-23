@@ -41,7 +41,10 @@ vk::raii::ShaderModule createModule(const core::Device& device, std::span<const 
 }  // namespace
 
 GameShader::GameShader(const core::Device& device, const contract::renderer::CompiledShader& shader)
-    : _name{shader.name}, _materialSize{shader.materialSize}, _instanceValues{!shader.instanceValues.empty()} {
+    : _name{shader.name},
+      _materialSize{shader.materialSize},
+      _instanceValues{!shader.instanceValues.empty()},
+      _renderState{shader.renderState} {
     contract::renderer::validate(shader);
     for (const contract::renderer::ShaderVariant& variant : shader.variants) {
         Variant& created = _variants.at(static_cast<std::size_t>(variant.target));
@@ -62,20 +65,29 @@ const pipeline::GraphicsPipeline* GameShader::getPipeline(contract::renderer::Sh
                                                           const core::Device& device,
                                                           const pipeline::PipelineLayout& layout,
                                                           vk::Format colorFormat, const vk::raii::PipelineCache* cache,
-                                                          PipelineBuilder build) {
+                                                          PipelineBuilder build,
+                                                          const contract::renderer::RenderState& state) {
     Variant& variant = _variants.at(static_cast<std::size_t>(target));
     if (*variant.vertex == nullptr) {
         return nullptr;
     }
-    if (!variant.built || variant.format != colorFormat) {
-        variant.built.reset();
-        variant.built.emplace(
-            build(device, variant.vertex, variant.fragment, _instanceValues, layout, colorFormat, cache));
+    if (variant.format != colorFormat) {
+        variant.built.clear();
         variant.format = colorFormat;
-        device.setName(*variant.built->getPipeline(),
-                       std::format("{} {} pipeline", _name, kTargetNames.at(static_cast<std::size_t>(target))));
     }
-    return &*variant.built;
+    // A 2D target ignores the render state: one pipeline for all its materials.
+    const contract::renderer::RenderState key =
+        target == contract::renderer::ShaderTarget::kMesh ? state : contract::renderer::RenderState{};
+    for (const auto& [builtState, pipeline] : variant.built) {
+        if (builtState == key) {
+            return &pipeline;
+        }
+    }
+    auto& [builtState, pipeline] = variant.built.emplace_back(
+        key, build(device, variant.vertex, variant.fragment, _instanceValues, layout, colorFormat, cache, key));
+    device.setName(*pipeline.getPipeline(),
+                   std::format("{} {} pipeline", _name, kTargetNames.at(static_cast<std::size_t>(target))));
+    return &pipeline;
 }
 
 }  // namespace aylo::render::vulkan::material

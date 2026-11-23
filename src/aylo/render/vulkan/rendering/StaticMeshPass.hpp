@@ -31,6 +31,7 @@
 #include "render/vulkan/pipeline/PipelineLayout.hpp"
 #include "render/vulkan/pipeline/ShaderCache.hpp"
 #include "render/vulkan/rendering/MaterialBinding.hpp"
+#include "render/vulkan/rendering/MeshDrawOrder.hpp"
 #include "render/vulkan/rendering/StaticMeshDrawData.hpp"
 
 namespace aylo::render::vulkan::rendering {
@@ -106,7 +107,7 @@ class AYLO_RENDER_VULKAN_API StaticMeshPass {
     [[nodiscard]] static pipeline::GraphicsPipeline createMaterialPipeline(
         const core::Device& device, const vk::raii::ShaderModule& vertex, const vk::raii::ShaderModule& fragment,
         bool instanceValues, const pipeline::PipelineLayout& layout, vk::Format colorFormat,
-        const vk::raii::PipelineCache* cache);
+        const vk::raii::PipelineCache* cache, const contract::renderer::RenderState& state);
 
     /// @return @p desc uploaded into new buffers, written once (host-visible memory, like the other passes'), with its
     /// bounds.
@@ -125,8 +126,10 @@ class AYLO_RENDER_VULKAN_API StaticMeshPass {
     /// pipeline and set 2, the others with the built-in one.
     /// @param findSet Gives the set of a part's texture.
     /// @param whiteSet The set of a part with no texture, or whose texture no longer exists: a white pixel.
+    /// The opaque draws go first, then the blended ones back to front from @p viewpoint (orderMeshDraws()).
     void record(const vk::raii::CommandBuffer& commandBuffer, std::size_t frameIndex, const vk::Viewport& viewport,
-                const vk::Rect2D& scissor, const SetFinder& findSet, vk::DescriptorSet whiteSet) const;
+                const vk::Rect2D& scissor, const MeshViewpoint& viewpoint, const SetFinder& findSet,
+                vk::DescriptorSet whiteSet);
 
   private:
     /// @brief What one frame in flight draws.
@@ -134,6 +137,7 @@ class AYLO_RENDER_VULKAN_API StaticMeshPass {
         std::optional<memory::Buffer> buffer;  ///< Its StaticMeshDrawData; none until a frame draws a mesh.
         vk::raii::DescriptorSet set{nullptr};  ///< kMeshDrawSet, pointing at buffer.
         std::vector<Draw> draws;               ///< The draws of its last upload().
+        std::vector<MeshDrawKey> keys;         ///< Where each draw is and whether it is blended, to order them.
     };
 
     const memory::Allocator* _allocator;       ///< Allocates the buffers of draws.
@@ -142,6 +146,7 @@ class AYLO_RENDER_VULKAN_API StaticMeshPass {
     descriptor::DescriptorPool _pool;          ///< The frames' sets; declared before them.
     std::vector<Frame> _frames;                ///< One per frame in flight.
     std::vector<StaticMeshDrawData> _staging;  ///< The draws of an upload(), reused.
+    std::vector<std::uint32_t> _order;         ///< The order of a record(), reused.
 };
 
 }  // namespace aylo::render::vulkan::rendering

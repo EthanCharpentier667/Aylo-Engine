@@ -11,6 +11,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <format>
+#include <glm/ext/vector_float3.hpp>
+#include <glm/ext/vector_float4.hpp>
 #include <span>
 #include <stdexcept>
 #include <utility>
@@ -20,6 +22,7 @@
 #include "ShaderLayout.hpp"
 #include "aylo/contract/renderer/drawing/StaticMesh.hpp"
 #include "aylo/contract/renderer/drawing/Texture.hpp"
+#include "aylo/contract/renderer/shaders/CompiledShader.hpp"
 #include "render/vulkan/core/Device.hpp"
 #include "render/vulkan/descriptor/DescriptorPool.hpp"
 #include "render/vulkan/descriptor/DescriptorSetLayout.hpp"
@@ -29,6 +32,7 @@
 #include "render/vulkan/pipeline/GraphicsPipeline.hpp"
 #include "render/vulkan/pipeline/PipelineLayout.hpp"
 #include "render/vulkan/pipeline/ShaderCache.hpp"
+#include "render/vulkan/rendering/MeshDrawOrder.hpp"
 #include "render/vulkan/rendering/StaticMeshDrawData.hpp"
 #include "staticmesh.frag.h"
 #include "staticmesh.vert.h"
@@ -56,11 +60,42 @@ descriptor::DescriptorPool createPool(const core::Device& device, std::size_t fr
     return descriptor::DescriptorPool{device, frames, sizes};
 }
 
-/// @return A static mesh pipeline drawing with @p vertex and @p fragment.
+/// @return The blend preset of @p blend, for a fragment whose COLOR is premultiplied.
+pipeline::GraphicsPipeline::BlendMode blendModeOf(contract::renderer::MeshBlend blend) noexcept {
+    switch (blend) {
+        case contract::renderer::MeshBlend::kOpaque:
+            return pipeline::GraphicsPipeline::BlendMode::kOpaque;
+        case contract::renderer::MeshBlend::kAdditive:
+            return pipeline::GraphicsPipeline::BlendMode::kPremultipliedAdditive;
+        case contract::renderer::MeshBlend::kMultiply:
+            return pipeline::GraphicsPipeline::BlendMode::kMultiply;
+        case contract::renderer::MeshBlend::kAlpha:
+        case contract::renderer::MeshBlend::kPremultiplied:
+            break;
+    }
+    return pipeline::GraphicsPipeline::BlendMode::kPremultipliedAlpha;
+}
+
+/// @return The faces @p cull discards.
+vk::CullModeFlags cullModeOf(contract::renderer::CullMode cull) noexcept {
+    switch (cull) {
+        case contract::renderer::CullMode::kBack:
+            return vk::CullModeFlagBits::eBack;
+        case contract::renderer::CullMode::kFront:
+            return vk::CullModeFlagBits::eFront;
+        case contract::renderer::CullMode::kNone:
+            break;
+    }
+    return vk::CullModeFlagBits::eNone;
+}
+
+/// @return A static mesh pipeline drawing with @p vertex and @p fragment; without @p state, the built-in one's:
+/// premultiplied alpha, depth tested and written, no culling.
 pipeline::GraphicsPipeline buildPipeline(const core::Device& device, const vk::raii::ShaderModule& vertex,
                                          const vk::raii::ShaderModule& fragment, const pipeline::PipelineLayout& layout,
                                          vk::Format colorFormat, vk::Format depthFormat,
-                                         const vk::raii::PipelineCache* cache) {
+                                         const vk::raii::PipelineCache* cache,
+                                         const contract::renderer::RenderState* state) {
     const std::array bindings{
         vk::VertexInputBindingDescription{0, sizeof(StaticMeshVertex), vk::VertexInputRate::eVertex}};
     const std::array attributes{
@@ -68,14 +103,21 @@ pipeline::GraphicsPipeline buildPipeline(const core::Device& device, const vk::r
         vk::VertexInputAttributeDescription{1, 0, vk::Format::eR32G32B32Sfloat, offsetof(StaticMeshVertex, normal)},
         vk::VertexInputAttributeDescription{2, 0, vk::Format::eR32G32Sfloat, offsetof(StaticMeshVertex, uv)},
     };
-    return pipeline::GraphicsPipeline::Builder{}
-        .setShaders(vertex, fragment)
+    pipeline::GraphicsPipeline::Builder builder;
+    builder.setShaders(vertex, fragment)
         .setVertexInput(bindings, attributes)
         .setBlend(pipeline::GraphicsPipeline::BlendMode::kPremultipliedAlpha)
         .setColorFormat(colorFormat)
         .setDepth(depthFormat, true)
-        .setLayout(layout)
-        .build(device, cache);
+        .setLayout(layout);
+    if (state != nullptr) {
+        builder.setBlend(blendModeOf(state->blend))
+            .setCullMode(cullModeOf(state->cull))
+            .setDepth(depthFormat, state->depth == contract::renderer::DepthMode::kTestWrite)
+            .setDepthTest(state->depth != contract::renderer::DepthMode::kNoTest)
+            .setDepthBias(state->depthBias, state->depthBiasSlope);
+    }
+    return builder.build(device, cache);
 }
 
 /// @return The built-in static mesh pipeline.
@@ -84,7 +126,7 @@ pipeline::GraphicsPipeline createPipeline(const core::Device& device, pipeline::
                                           vk::Format depthFormat, const vk::raii::PipelineCache* cache) {
     return buildPipeline(device, shaders.get("staticmesh.vert", aylo_shader_staticmesh_vert),
                          shaders.get("staticmesh.frag", aylo_shader_staticmesh_frag), layout, colorFormat, depthFormat,
-                         cache);
+                         cache, nullptr);
 }
 
 /// @throws std::invalid_argument If an index of @p desc names no vertex, or a part goes past its indices.
@@ -127,8 +169,8 @@ StaticMeshPass::StaticMeshPass(const core::Device& device, const memory::Allocat
 pipeline::GraphicsPipeline StaticMeshPass::createMaterialPipeline(
     const core::Device& device, const vk::raii::ShaderModule& vertex, const vk::raii::ShaderModule& fragment,
     bool /*instanceValues*/, const pipeline::PipelineLayout& layout, vk::Format colorFormat,
-    const vk::raii::PipelineCache* cache) {
-    return buildPipeline(device, vertex, fragment, layout, colorFormat, kWorld3DDepthFormat, cache);
+    const vk::raii::PipelineCache* cache, const contract::renderer::RenderState& state) {
+    return buildPipeline(device, vertex, fragment, layout, colorFormat, kWorld3DDepthFormat, cache, &state);
 }
 
 GpuStaticMesh StaticMeshPass::upload(const memory::Allocator& allocator,
@@ -161,10 +203,15 @@ void StaticMeshPass::upload(std::size_t frameIndex, std::span<const Draw> draws)
         return;
     }
     _staging.clear();
+    frame.keys.clear();
     for (const Draw& draw : draws) {
-        _staging.push_back(makeStaticMeshDrawData(
-            draw.world, draw.color, draw.mesh != nullptr ? draw.mesh->bounds : contract::renderer::StaticMeshBounds{},
-            draw.instanceValues));
+        const contract::renderer::StaticMeshBounds bounds =
+            draw.mesh != nullptr ? draw.mesh->bounds : contract::renderer::StaticMeshBounds{};
+        _staging.push_back(makeStaticMeshDrawData(draw.world, draw.color, bounds, draw.instanceValues));
+        const glm::vec3 center = glm::vec3{draw.world * glm::vec4{(bounds.min + bounds.max) * 0.5F, 1.0F}};
+        frame.keys.push_back(MeshDrawKey{.center = center,
+                                         .transparent = draw.material.pipeline != nullptr &&
+                                                        contract::renderer::isTransparent(draw.material.state)});
     }
     const std::span<const std::byte> bytes = std::as_bytes(std::span{_staging});
     if (!frame.buffer || frame.buffer->getSize() < bytes.size()) {
@@ -186,12 +233,13 @@ void StaticMeshPass::upload(std::size_t frameIndex, std::span<const Draw> draws)
 }
 
 void StaticMeshPass::record(const vk::raii::CommandBuffer& commandBuffer, std::size_t frameIndex,
-                            const vk::Viewport& viewport, const vk::Rect2D& scissor, const SetFinder& findSet,
-                            vk::DescriptorSet whiteSet) const {
+                            const vk::Viewport& viewport, const vk::Rect2D& scissor, const MeshViewpoint& viewpoint,
+                            const SetFinder& findSet, vk::DescriptorSet whiteSet) {
     const Frame& frame = _frames.at(frameIndex);
     if (frame.draws.empty() || !frame.buffer) {
         return;
     }
+    orderMeshDraws(frame.keys, viewpoint, _order);
     commandBuffer.setViewport(0, viewport);
     commandBuffer.setScissor(0, scissor);
     const vk::ShaderStageFlags stages = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment;
@@ -200,7 +248,7 @@ void StaticMeshPass::record(const vk::raii::CommandBuffer& commandBuffer, std::s
                                      {});
     const pipeline::GraphicsPipeline* boundPipeline = nullptr;
     vk::DescriptorSet bound;
-    for (std::size_t index = 0; index < frame.draws.size(); ++index) {
+    for (const std::uint32_t index : _order) {
         const Draw& draw = frame.draws.at(index);
         if (draw.mesh == nullptr) {
             continue;

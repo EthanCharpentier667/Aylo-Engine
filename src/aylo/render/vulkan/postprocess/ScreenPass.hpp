@@ -13,6 +13,7 @@
 #include <span>
 #include <vulkan/vulkan_raii.hpp>
 
+#include "aylo/contract/renderer/shaders/CompiledShader.hpp"
 #include "render/vulkan/Export.hpp"
 #include "render/vulkan/core/Device.hpp"
 #include "render/vulkan/descriptor/DescriptorAllocator.hpp"
@@ -67,7 +68,7 @@ class AYLO_RENDER_VULKAN_API ScreenPass {
     [[nodiscard]] static pipeline::GraphicsPipeline createMaterialPipeline(
         const core::Device& device, const vk::raii::ShaderModule& vertex, const vk::raii::ShaderModule& fragment,
         bool instanceValues, const pipeline::PipelineLayout& layout, vk::Format colorFormat,
-        const vk::raii::PipelineCache* cache);
+        const vk::raii::PipelineCache* cache, const contract::renderer::RenderState& state);
 
     /// @return The images for a scene of @p extent pixels, in an undefined layout.
     /// @param descriptors Where the sets come from; must outlive them.

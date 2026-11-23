@@ -77,7 +77,7 @@ ShapePass::ShapePass(const core::Device& device, const memory::Allocator& alloca
 pipeline::GraphicsPipeline ShapePass::createMaterialPipeline(
     const core::Device& device, const vk::raii::ShaderModule& vertex, const vk::raii::ShaderModule& fragment,
     bool instanceValues, const pipeline::PipelineLayout& layout, vk::Format colorFormat,
-    const vk::raii::PipelineCache* cache) {
+    const vk::raii::PipelineCache* cache, const contract::renderer::RenderState& /*state*/) {
     std::vector<vk::VertexInputBindingDescription> bindings{ShapeInstance::getBindings().front()};
     std::vector<vk::VertexInputAttributeDescription> attributes;
     for (const vk::VertexInputAttributeDescription& attribute : ShapeInstance::getAttributes()) {

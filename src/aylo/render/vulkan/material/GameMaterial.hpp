@@ -68,7 +68,13 @@ class AYLO_RENDER_VULKAN_API GameMaterial {
         return _textures;
     }
 
-    /// @brief Records @p desc's values and textures (its shader is ignored), for the next frames prepare()d.
+    /// @return The render state it replaces its shader's with, if any (MaterialDesc::renderState).
+    [[nodiscard]] const std::optional<contract::renderer::RenderState>& getRenderState() const noexcept {
+        return _renderState;
+    }
+
+    /// @brief Records @p desc's values, textures and render state (its shader is ignored), for the next frames
+    /// prepare()d.
     void update(const contract::renderer::MaterialDesc& desc);
 
     /// @return Frame @p frameIndex's set, brought up to date first: its values written, and its textures bound (an
@@ -90,9 +96,10 @@ class AYLO_RENDER_VULKAN_API GameMaterial {
     contract::renderer::ShaderId _shader;  ///< Its shader.
     std::vector<std::byte> _values;        ///< The latest material block.
     std::array<contract::renderer::TextureId, contract::renderer::kShaderMaxTextures>
-        _textures{};             ///< The latest textures, by slot.
-    std::uint64_t _version{1};   ///< Incremented by update().
-    std::vector<Frame> _frames;  ///< One per frame in flight.
+        _textures{};                                              ///< The latest textures, by slot.
+    std::uint64_t _version{1};                                    ///< Incremented by update().
+    std::optional<contract::renderer::RenderState> _renderState;  ///< Replaces its shader's; none: the shader's.
+    std::vector<Frame> _frames;                                   ///< One per frame in flight.
 };
 
 }  // namespace aylo::render::vulkan::material

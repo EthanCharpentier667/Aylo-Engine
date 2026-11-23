@@ -9,8 +9,9 @@
 
 #include <array>
 #include <cstdint>
-#include <optional>
+#include <deque>
 #include <string>
+#include <utility>
 #include <vulkan/vulkan_raii.hpp>
 
 #include "aylo/contract/renderer/shaders/CompiledShader.hpp"
@@ -29,14 +30,14 @@ namespace aylo::render::vulkan::material {
 /// @warning Destroy it before the Device.
 class AYLO_RENDER_VULKAN_API GameShader {
   public:
-    /// @brief Builds the pipeline of a target: its modules, whether they read instance values, the colour format, and
-    /// the layout and cache to use.
+    /// @brief Builds the pipeline of a target: its modules, whether they read instance values, the colour format, the
+    /// layout and cache to use, and the render state (kMesh only; the 2D targets ignore it).
     using PipelineBuilder = pipeline::GraphicsPipeline (*)(const core::Device& device,
                                                            const vk::raii::ShaderModule& vertex,
                                                            const vk::raii::ShaderModule& fragment, bool instanceValues,
                                                            const pipeline::PipelineLayout& layout,
-                                                           vk::Format colorFormat,
-                                                           const vk::raii::PipelineCache* cache);
+                                                           vk::Format colorFormat, const vk::raii::PipelineCache* cache,
+                                                           const contract::renderer::RenderState& state);
 
     /// @brief Creates the modules of every variant of @p shader.
     /// @throws std::invalid_argument If @p shader is invalid (contract::renderer::validate()).
@@ -59,25 +60,33 @@ class AYLO_RENDER_VULKAN_API GameShader {
     /// @return Whether it serves @p target.
     [[nodiscard]] bool serves(contract::renderer::ShaderTarget target) const noexcept;
 
-    /// @return The pipeline drawing @p target into @p colorFormat, built by @p build the first time (or after a format
-    /// change), or nullptr if the shader does not serve @p target.
+    /// @return The shader's own render state (its pragmas).
+    [[nodiscard]] const contract::renderer::RenderState& getRenderState() const noexcept { return _renderState; }
+
+    /// @return The pipeline drawing @p target into @p colorFormat with @p state, built by @p build the first time (or
+    /// after a format change), or nullptr if the shader does not serve @p target. A target keeps one pipeline per
+    /// render state its materials ask for (a 2D target only ever has the default one).
     /// @throws vk::SystemError If the pipeline cannot be built.
     [[nodiscard]] const pipeline::GraphicsPipeline* getPipeline(
         contract::renderer::ShaderTarget target, const core::Device& device, const pipeline::PipelineLayout& layout,
-        vk::Format colorFormat, const vk::raii::PipelineCache* cache, PipelineBuilder build);
+        vk::Format colorFormat, const vk::raii::PipelineCache* cache, PipelineBuilder build,
+        const contract::renderer::RenderState& state = {});
 
   private:
     /// @brief What the shader draws one target with.
     struct Variant {
-        vk::raii::ShaderModule vertex{nullptr};           ///< Null if the shader does not serve the target.
-        vk::raii::ShaderModule fragment{nullptr};         ///< Null if the shader does not serve the target.
-        std::optional<pipeline::GraphicsPipeline> built;  ///< Built for `format`, by the first draw.
-        vk::Format format{vk::Format::eUndefined};        ///< The colour format `built` draws into.
+        vk::raii::ShaderModule vertex{nullptr};    ///< Null if the shader does not serve the target.
+        vk::raii::ShaderModule fragment{nullptr};  ///< Null if the shader does not serve the target.
+        /// @brief The pipelines built for `format`, by the first draw with each render state. A deque: building one
+        /// keeps the others where they are, as the frame's draws point to them.
+        std::deque<std::pair<contract::renderer::RenderState, pipeline::GraphicsPipeline>> built;
+        vk::Format format{vk::Format::eUndefined};  ///< The colour format `built` draws into.
     };
 
     std::string _name;                                                      ///< For messages.
     std::uint32_t _materialSize{0};                                         ///< Its material block.
     bool _instanceValues{false};                                            ///< It has `instance uniform`s.
+    contract::renderer::RenderState _renderState;                           ///< Its pragmas.
     std::array<Variant, contract::renderer::kShaderTargetCount> _variants;  ///< By ShaderTarget.
 };
 

@@ -27,7 +27,7 @@ namespace aylo::render::vulkan::material {
 GameMaterial::GameMaterial(const memory::Allocator& allocator, descriptor::DescriptorAllocator& descriptors,
                            const descriptor::DescriptorSetLayout& layout, std::uint32_t materialSize,
                            const contract::renderer::MaterialDesc& desc, std::size_t framesInFlight)
-    : _shader{desc.shader}, _values{desc.values}, _textures{desc.textures} {
+    : _shader{desc.shader}, _values{desc.values}, _textures{desc.textures}, _renderState{desc.renderState} {
     _frames.reserve(framesInFlight);
     for (std::size_t frame = 0; frame < framesInFlight; ++frame) {
         Frame& created = _frames.emplace_back(Frame{.set = descriptors.allocate(layout)});
@@ -44,6 +44,7 @@ GameMaterial::GameMaterial(const memory::Allocator& allocator, descriptor::Descr
 void GameMaterial::update(const contract::renderer::MaterialDesc& desc) {
     _values = desc.values;
     _textures = desc.textures;
+    _renderState = desc.renderState;
     ++_version;
 }
 

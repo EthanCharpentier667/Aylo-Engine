@@ -18,6 +18,7 @@
 #include <utility>
 #include <vulkan/vulkan_raii.hpp>
 
+#include "aylo/contract/renderer/shaders/CompiledShader.hpp"
 #include "render/vulkan/command/CommandLabel.hpp"
 #include "render/vulkan/descriptor/DescriptorWriter.hpp"
 #include "render/vulkan/rendering/DynamicRendering.hpp"
@@ -75,7 +76,7 @@ ScreenPass::ScreenPass(const core::Device& device, pipeline::ShaderCache& shader
 pipeline::GraphicsPipeline ScreenPass::createMaterialPipeline(
     const core::Device& device, const vk::raii::ShaderModule& vertex, const vk::raii::ShaderModule& fragment,
     bool /*instanceValues*/, const pipeline::PipelineLayout& layout, vk::Format colorFormat,
-    const vk::raii::PipelineCache* cache) {
+    const vk::raii::PipelineCache* cache, const contract::renderer::RenderState& /*state*/) {
     // The instance values of a screen effect are constants of its code: nothing to read.
     return pipeline::GraphicsPipeline::Builder{}
         .setShaders(vertex, fragment)

@@ -81,7 +81,7 @@ SpritePass::SpritePass(const core::Device& device, const memory::Allocator& allo
 pipeline::GraphicsPipeline SpritePass::createMaterialPipeline(
     const core::Device& device, const vk::raii::ShaderModule& vertex, const vk::raii::ShaderModule& fragment,
     bool instanceValues, const pipeline::PipelineLayout& layout, vk::Format colorFormat,
-    const vk::raii::PipelineCache* cache) {
+    const vk::raii::PipelineCache* cache, const contract::renderer::RenderState& /*state*/) {
     std::vector<vk::VertexInputBindingDescription> bindings{SpriteInstance::getBindings().front()};
     std::vector<vk::VertexInputAttributeDescription> attributes;
     for (const vk::VertexInputAttributeDescription& attribute : SpriteInstance::getAttributes()) {

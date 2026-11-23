@@ -72,7 +72,7 @@ class AYLO_RENDER_VULKAN_API ParticlePass {
     [[nodiscard]] static pipeline::GraphicsPipeline createMaterialPipeline(
         const core::Device& device, const vk::raii::ShaderModule& vertex, const vk::raii::ShaderModule& fragment,
         bool instanceValues, const pipeline::PipelineLayout& layout, vk::Format colorFormat,
-        const vk::raii::PipelineCache* cache);
+        const vk::raii::PipelineCache* cache, const contract::renderer::RenderState& state);
 
     /// @brief Copies @p instances, every CPU particle of the frame, into frame @p frameIndex's buffer, for record().
     /// @throws vk::SystemError If a bigger instance buffer cannot be created.

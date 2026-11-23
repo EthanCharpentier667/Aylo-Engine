@@ -20,6 +20,7 @@ struct MaterialBinding {
     const pipeline::GraphicsPipeline* pipeline = nullptr;  ///< Its shader's; null: drawn as the default material.
     vk::DescriptorSet set;                                 ///< Its set 2, for this frame.
     bool instanceValues = false;                           ///< Its pipeline reads the instance values binding.
+    contract::renderer::RenderState state;  ///< How it is drawn (kMesh): its material's, or its shader's.
 };
 
 /// @brief Finds what a game material is drawn with this frame for a target, or a null pipeline if it cannot be drawn.

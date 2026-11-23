@@ -16,9 +16,13 @@
 #include <filesystem>
 #include <format>
 #include <glm/common.hpp>
+#include <glm/ext/matrix_float4x4.hpp>
 #include <glm/ext/vector_float2.hpp>
+#include <glm/ext/vector_float3.hpp>
 #include <glm/ext/vector_float4.hpp>
 #include <glm/ext/vector_uint2.hpp>
+#include <glm/geometric.hpp>
+#include <glm/gtc/matrix_access.hpp>
 #include <glm/matrix.hpp>
 #include <iostream>
 #include <limits>
@@ -794,8 +798,13 @@ void VulkanRenderer::recordWorld3D(const vk::raii::CommandBuffer& commandBuffer,
     const vk::Rect2D scissor{
         vk::Offset2D{static_cast<std::int32_t>(area.position.x), static_cast<std::int32_t>(area.position.y)},
         vk::Extent2D{static_cast<std::uint32_t>(area.size.x), static_cast<std::uint32_t>(area.size.y)}};
+    const glm::mat4 cameraToWorld = glm::inverse(view.getViewMatrix());
+    const rendering::MeshViewpoint viewpoint{
+        .position = glm::vec3{glm::column(cameraToWorld, 3)},
+        .forward = -glm::normalize(glm::vec3{glm::column(cameraToWorld, 2)}),
+        .perspective = std::holds_alternative<contract::renderer::Perspective>(target.view->projection)};
     _staticMeshPass->record(
-        commandBuffer, frameIndex, viewport, scissor,
+        commandBuffer, frameIndex, viewport, scissor, viewpoint,
         [this](contract::renderer::TextureId texture) { return findTextureSet(texture); },
         findTextureSet(_fallbackTexture));
     _lines3DPass->record(commandBuffer, frameIndex, viewport, scissor, target.lineVertices);
@@ -1326,8 +1335,9 @@ rendering::MaterialBinding VulkanRenderer::findMaterial(contract::renderer::Mate
     // A mesh pipeline also reads the frame's mesh draws (set 3).
     const pipeline::PipelineLayout& layout =
         target == contract::renderer::ShaderTarget::kMesh ? *_meshLayout : *_materialLayout;
+    const contract::renderer::RenderState state = found->getRenderState().value_or(shader->getRenderState());
     const pipeline::GraphicsPipeline* pipeline = shader->getPipeline(
-        target, *_device, layout, kSceneFormat, &_pipelineCache->getCache(), pipelineBuilderOf(target));
+        target, *_device, layout, kSceneFormat, &_pipelineCache->getCache(), pipelineBuilderOf(target), state);
     if (pipeline == nullptr) {
         return {};
     }
@@ -1342,7 +1352,8 @@ rendering::MaterialBinding VulkanRenderer::findMaterial(contract::renderer::Mate
     };
     return {.pipeline = pipeline,
             .set = found->prepare(*_device, frameIndex, findTexture, _fallbackTexture),
-            .instanceValues = shader->hasInstanceValues()};
+            .instanceValues = shader->hasInstanceValues(),
+            .state = state};
 }
 
 interop::vulkan::IVulkanSurfaceSource& VulkanRenderer::surfaceSourceOf(contract::platform::IPlatform& platform) {
