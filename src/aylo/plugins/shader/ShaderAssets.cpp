@@ -154,7 +154,7 @@ contract::renderer::CompiledShader ShaderAssets::compileFile(core::asset::AssetI
     }
     if (name.starts_with(kBuiltinShaderPrefix)) {
         throw core::asset::exceptions::AssetLoadException{
-            std::format("Shader '{}': the engine has no such shader (@aylo/bloom.glsl, @aylo/tonemap.glsl)", name)};
+            std::format("Shader '{}': the engine has no such shader ({})", name, listBuiltinShaders())};
     }
     std::string text;
     try {
