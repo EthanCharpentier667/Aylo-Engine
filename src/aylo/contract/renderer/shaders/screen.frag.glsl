@@ -14,6 +14,14 @@
 // The 3D world's depth (set 3, binding 0): 0 at the camera's near plane, 1 at its far plane and where nothing 3D was
 // drawn. Kept for the effects only when one of them reads it.
 layout(set = 3, binding = 0) uniform sampler2D DEPTH_TEXTURE;
+// The picture before any effect, whatever the pass reads as TEXTURE.
+layout(set = 3, binding = 1) uniform sampler2D SCENE_TEXTURE;
+// The last frame's result, once every effect ran (black on the first): kept only when an effect reads it.
+layout(set = 3, binding = 2) uniform sampler2D PREVIOUS_FRAME;
+// The size of the target this pass writes, in pixels (a pass may write a smaller one).
+layout(push_constant) uniform AyloScreenPass {
+    vec2 targetSize;
+} ayloScreenPass;
 #define VIEW_MATRIX ayloFrame.view                         // World to the 3D camera's space.
 #define PROJECTION_MATRIX ayloFrame.projection             // The 3D camera's space to clip space.
 #define INV_VIEW_MATRIX ayloFrame.inverseView              // The 3D camera's space to the world's.
@@ -56,14 +64,14 @@ vec3 normalAt(vec2 uv) {
     return normalize(cross(alongY, alongX));
 }
 vec2 SCREEN_UV;          // This pixel on the screen, 0..1.
-vec2 SCREEN_PIXEL_SIZE;  // One pixel, in SCREEN_UV units: 1 / the target's size.
+vec2 SCREEN_PIXEL_SIZE;  // One pixel of the target written, in SCREEN_UV units: 1 / its size.
 
 #pragma aylo_shader
 
 void main() {
     UV = ayloUvIn;
     SCREEN_UV = ayloUvIn;
-    SCREEN_PIXEL_SIZE = 1.0 / vec2(textureSize(TEXTURE, 0));
+    SCREEN_PIXEL_SIZE = 1.0 / ayloScreenPass.targetSize;
     COLOR = texture(TEXTURE, UV);
 #pragma aylo_main
     ayloFragColor = COLOR;

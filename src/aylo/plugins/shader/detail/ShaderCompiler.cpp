@@ -133,15 +133,17 @@ bool readsDepth(std::string_view body) {
 contract::renderer::CompiledShader compileShader(std::string_view source, std::string_view name,
                                                  std::span<const contract::renderer::ShaderTarget> targets) {
     const ParsedShader parsed = parseShader(source, name);
-    contract::renderer::CompiledShader shader{.name = std::string{name},
-                                              .materialSize = parsed.materialSize,
-                                              .materialDefaults = parsed.materialDefaults,
-                                              .instanceDefaults = parsed.instanceDefaults,
-                                              .textures = parsed.textures,
-                                              .renderState = parsed.renderState,
-                                              .castsShadows = parsed.castsShadows,
-                                              .cutsOut = parsed.body.contains("ALPHA_SCISSOR"),
-                                              .readsDepth = parsed.screen && readsDepth(parsed.body)};
+    contract::renderer::CompiledShader shader{
+        .name = std::string{name},
+        .materialSize = parsed.materialSize,
+        .materialDefaults = parsed.materialDefaults,
+        .instanceDefaults = parsed.instanceDefaults,
+        .textures = parsed.textures,
+        .renderState = parsed.renderState,
+        .castsShadows = parsed.castsShadows,
+        .cutsOut = parsed.body.contains("ALPHA_SCISSOR"),
+        .readsDepth = parsed.screen && readsDepth(parsed.body),
+        .readsPreviousFrame = parsed.screen && parsed.body.contains("PREVIOUS_FRAME")};
     for (const DeclaredValue& declared : parsed.materialValues) {
         shader.materialValues.push_back(declared.value);
     }

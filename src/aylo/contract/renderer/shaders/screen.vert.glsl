@@ -16,15 +16,20 @@ layout(location = 2) flat out uint ayloBlendOut;
 layout(location = 3) flat out vec4 ayloInstanceOut[4];
 #endif
 
+// The size of the target this pass writes, in pixels: VERTEX is in its pixels.
+layout(push_constant) uniform AyloScreenPass {
+    vec2 targetSize;
+} ayloScreenPass;
+
 #pragma aylo_shader
 
 void main() {
     const vec2 ayloCorner = vec2(float((gl_VertexIndex << 1) & 2), float(gl_VertexIndex & 2));
-    VERTEX = ayloCorner * ayloFrame.framebufferSize;
+    VERTEX = ayloCorner * ayloScreenPass.targetSize;
     UV = ayloCorner;
     COLOR = vec4(1.0);
 #pragma aylo_main
-    gl_Position = vec4(((VERTEX / ayloFrame.framebufferSize) * 2.0) - 1.0, 0.0, 1.0);
+    gl_Position = vec4(((VERTEX / ayloScreenPass.targetSize) * 2.0) - 1.0, 0.0, 1.0);
     ayloUvOut = UV;
     ayloColorOut = COLOR;
     ayloBlendOut = 0u;

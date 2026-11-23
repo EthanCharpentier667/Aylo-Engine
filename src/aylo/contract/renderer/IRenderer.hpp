@@ -15,6 +15,7 @@
 #include <span>
 #include <stdexcept>
 #include <variant>
+#include <vector>
 
 #include "aylo/contract/platform/IPlatform.hpp"
 #include "aylo/contract/platform/exceptions/PlatformExceptions.hpp"
@@ -31,6 +32,7 @@
 #include "aylo/contract/renderer/particle/Particle.hpp"
 #include "aylo/contract/renderer/particle/ParticleSystemDesc.hpp"
 #include "aylo/contract/renderer/shaders/CompiledShader.hpp"
+#include "aylo/contract/renderer/shaders/ScreenEffect.hpp"
 #include "aylo/contract/renderer/stats/FrameStats.hpp"
 #include "aylo/contract/renderer/view/ScenePreview.hpp"
 #include "aylo/contract/renderer/view/View.hpp"
@@ -253,6 +255,20 @@ class AYLO_HEADER_ONLY_API IRenderer {
     /// after them, so they leave it alone. A material destroyed, or whose shader does not serve kScreen, is skipped.
     /// Empty, the default: the scene is shown as drawn. Default: does nothing.
     virtual void setScreenMaterials(std::span<const MaterialId> /*materials*/) {}
+
+    /// @brief Sets the screen effects as passes (ScreenEffectPass): each writes the chain or a named target at a scale
+    /// of the screen, reading earlier targets and the scene; the list of setScreenMaterials() is a chain of passes at
+    /// full size. Passes that checkScreenEffects() refuses are skipped. Default: the chain of their materials, their
+    /// targets ignored.
+    virtual void setScreenEffects(std::span<const ScreenEffectPass> passes) {
+        std::vector<MaterialId> materials;
+        for (const ScreenEffectPass& pass : passes) {
+            if (pass.output.empty()) {
+                materials.push_back(pass.material);
+            }
+        }
+        setScreenMaterials(materials);
+    }
     /// @}
 
     /// @name Tools
