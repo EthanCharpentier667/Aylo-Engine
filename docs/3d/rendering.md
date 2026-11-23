@@ -179,6 +179,16 @@ lifetimes allow"): a game names a handful of them and aliasing would need a life
 optional `.effect` file format is left out: a script shares a chain as a Luau module.
 `docs/Shaders.md` (*Screen effects*) describes the implementation.
 
+## Shader libraries (R3D-11)
+
+`#include` is expanded before the parser, into one text with the origin of each line, rather than handled by
+glslang's own include support: the parser must see the declarations of an included file (a `uniform` in a palette
+file is a material value), and the engine's error messages must name the included file. Each file is included once, as
+if every file had an include guard, so two libraries may share a third. The libraries are tested on the CPU: they are
+written in the part of GLSL C++ also reads, and a test runs them over glm, since the CI has no GPU. The issue asked for
+a page per library with pictures; the manual has one page with a section per library and no pictures, which need a
+screen capture this change could not make. `docs/Shaders.md` (*How a shader is compiled*, *Libraries*) describes them.
+
 ## Transparency: sorting, not order-independent transparency (R3D-03)
 
 Blended 3D draws are drawn after the opaque ones, sorted back to front by the centre of their box, per picture. This is

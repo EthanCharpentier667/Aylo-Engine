@@ -183,6 +183,17 @@ starting with `@aylo/` names one of them instead of a file. `@aylo/bloom.glsl` (
 `threshold`, `softKnee`, `intensity`, `radius`) and `@aylo/tonemap.glsl` (`exposure`, and `mode` 0 none, 1 Reinhard,
 2 ACES). The manual's page is `manual/pages/post-processing.md`.
 
+### Libraries
+
+The engine's libraries (`@aylo/noise.glsl`, `@aylo/color.glsl`, `@aylo/math.glsl`) are written in a part of GLSL that
+C++ also compiles: no swizzle of several components, no `out` parameter, no array, no preprocessor line. The test
+`ShaderLibraries` includes them in C++ over a thin layer on glm (`tests/plugins/GlslShim.hpp`) and checks their values:
+the noises' ranges, means, spread and continuity, Perlin noise's zero on the lattice, Voronoi against its metrics, the
+colour conversions and blend modes against their formulas. Their names carry no `aylo` prefix: they are the game's to
+call. The hashes are PCG (O'Neill), the noises written for the engine from the published algorithms (Perlin 1985 and
+2002, simplex 2001, Worley 1996); no code comes from another engine. `ShaderIncludes.TheEnginesLibrariesCompileInEveryTarget`
+compiles every function in each kind of shader. The manual's page is `manual/pages/shader-libraries.md`.
+
 ## Using a shader
 
 A drawing does not name a shader but a **material**: a shader and the values of its `uniform`s and textures. Several
@@ -281,6 +292,8 @@ engine.settings.hotReload = true
 - An edit that does not compile prints the error and keeps the last version on screen. A shader that failed at load
   is created at the first save that compiles.
 - A `MaterialInstance` keeps its bytes: if a save moves or retypes an `instance uniform`, set its values again.
+- Saving a file a shader includes compiles again every shader the game loaded that includes it, directly or through
+  another file. Only the files under `assets/shaders` are watched.
 
 ## Limits
 
@@ -347,6 +360,15 @@ mapping each set and binding to its own resources.
 
 ## How a shader is compiled
 
+0. **The includes** (`detail/ShaderIncludes`, `expandIncludes()`) replace each `#include "path"` line by the file it
+   names: `@aylo/<lib>.glsl` is a library of the engine (`findBuiltinLibrary()`, `shader/builtin/noise.glsl`,
+   `color.glsl`, `math.glsl`, embedded like the built-in shaders), any other path is read through the shaders'
+   `FileSource`, next to the including file first, then from the assets' root. Each file is included once (a second
+   include is skipped), a file including itself is an error, and the nesting stops at `kMaxIncludeDepth` (16). The
+   expanded text keeps, for each of its lines, the file and line it came from (`ExpandedShader::lines`), and
+   `compileShader()` rewrites the "line N:" of a parser or glslang error with it ("line 2 of 'shaders/lib.glsl'").
+   Declarations in an included file are the shader's, as the parser sees one text. `ShaderAssets` records the files a
+   shader includes (`getIncluders()`), so the `ShaderReloadable` compiles again the shaders that include a changed file.
 1. **The parser** (`detail/ShaderParser`) reads the declarations and lays the values out. It leaves their lines empty,
    so an error keeps the line of the file.
 2. **The assembler** (`detail/ShaderAssembler`) builds the complete GLSL 450 of each stage of each target. Each stage
