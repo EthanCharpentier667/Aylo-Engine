@@ -24,6 +24,15 @@ constexpr auto kBloom = std::to_array<char>({
 constexpr auto kTonemap = std::to_array<char>({
 #include "tonemap.glsl.h"
 });
+constexpr auto kNoise = std::to_array<char>({
+#include "noise.glsl.h"
+});
+constexpr auto kColor = std::to_array<char>({
+#include "color.glsl.h"
+});
+constexpr auto kMath = std::to_array<char>({
+#include "math.glsl.h"
+});
 
 /// @return The text of an embedded file, without its null terminator.
 template <std::size_t N>
@@ -37,19 +46,33 @@ constexpr std::array<std::pair<std::string_view, std::string_view>, 2> kShaders{
     {"tonemap.glsl", text(kTonemap)},
 }};
 
-}  // namespace
+/// @brief Every library the engine gives, by the name after kBuiltinShaderPrefix.
+constexpr std::array<std::pair<std::string_view, std::string_view>, 3> kLibraries{{
+    {"noise.glsl", text(kNoise)},
+    {"color.glsl", text(kColor)},
+    {"math.glsl", text(kMath)},
+}};
 
-std::optional<std::string_view> findBuiltinShader(std::string_view name) noexcept {
+/// @return The file of @p files that @p name (with kBuiltinShaderPrefix) names.
+template <std::size_t N>
+std::optional<std::string_view> findIn(const std::array<std::pair<std::string_view, std::string_view>, N>& files,
+                                       std::string_view name) noexcept {
     if (!name.starts_with(kBuiltinShaderPrefix)) {
         return std::nullopt;
     }
     name.remove_prefix(kBuiltinShaderPrefix.size());
-    for (const auto& [shaderName, source] : kShaders) {
-        if (shaderName == name) {
+    for (const auto& [fileName, source] : files) {
+        if (fileName == name) {
             return source;
         }
     }
     return std::nullopt;
 }
+
+}  // namespace
+
+std::optional<std::string_view> findBuiltinShader(std::string_view name) noexcept { return findIn(kShaders, name); }
+
+std::optional<std::string_view> findBuiltinLibrary(std::string_view name) noexcept { return findIn(kLibraries, name); }
 
 }  // namespace aylo::plugins::shader
