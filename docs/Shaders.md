@@ -45,6 +45,11 @@ One declaration per line, outside any function:
 - `uniform <type> <name> = <default>;`: a value of the **material**.
 - `instance uniform <type> <name> = <default>;`: a value of **each drawing**.
 - `uniform sampler2D <name>;`: an extra texture of the material, readable in both stages.
+- `varying <type> <name>;`: a value `vertex()` writes and `fragment()` reads, interpolated (`float`, `vec2` to `vec4`;
+  an `int` is `flat`). At most 5 (`kShaderMaxVaryings`). The assembler declares each `out` in the vertex stage and `in`
+  in the fragment stage, from the first location the target leaves free (`firstVaryingLocation()`: 7 for sprites,
+  glyphs, particles and the screen, 8 for meshes, 11 for shapes), so the last one is at most 15: the 16 locations
+  every device offers.
 
 The types are `float`, `vec2`, `vec3`, `vec4` and `int`. A default is a number or a `vecN(...)` of numbers (one number
 fills every component), and 0 when omitted. A shader cannot declare a built-in, nor a name starting with `aylo`, which
@@ -60,7 +65,15 @@ compiled for `kMesh` only: the parts of a static mesh (`MeshRenderer::material`)
 `AyloMeshDraw` in a storage buffer of the frame (set 3, binding 0, std430: the model matrix, its inverse, the normal
 matrix, the draw's colour, the model's bounds and the draw's instance values), indexed by the push constants
 `AyloMeshPart` (the part's base colour and the draw's index). Both stages fill `MODEL_MATRIX`, `INV_MODEL_MATRIX`,
-`NORMAL_MATRIX`, `AABB_MIN` and `AABB_MAX` from it (`ayloLoadMeshDraw()`), and read the instance values from it. The
+`NORMAL_MATRIX`, `AABB_MIN` and `AABB_MAX` from it (`ayloLoadMeshDraw()`), and read the instance values from it.
+The 3D camera of the frame is in `AyloFrame` (`view`, `projection`, their inverses, `cameraPosition`, whose `w` is 1 for
+a perspective and 0 for an orthographic projection; identity and the 2D view-projection in 2D frames): a mesh reads it as
+`VIEW_MATRIX`, `PROJECTION_MATRIX`, `INV_VIEW_MATRIX`, `INV_PROJECTION_MATRIX` and `CAMERA_POSITION`. The mesh
+templates pass the world and model-space positions at locations 3 and 4: `WORLD_POSITION` (in the vertex stage, the
+vertex before `vertex()`), `LOCAL_POSITION`, and `VIEW_DIR` (toward the camera, or along the orthographic camera's +Z).
+`FRONT_FACING` is `gl_FrontFacing`: the projection puts Y down in clip space and the screen too, so a triangle
+counter-clockwise in the world is counter-clockwise on screen, the pipelines' default front face. `FRAGCOORD`
+(`gl_FragCoord`) is in every fragment stage. The
 built-in mesh shader (`staticmesh.*` in the Vulkan backend) is these templates with no game code. Both pragmas in one
 shader is an error.
 
