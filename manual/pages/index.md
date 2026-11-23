@@ -37,6 +37,7 @@ your game never needs a program of its own.
 - **Particle effects** (sparks, smoke, trails) are tables too. See [Particles](particles.md).
 - **Screen effects** change the whole picture with shaders of your own, and the engine's bloom and tonemap. See
   [Post-processing](post-processing.md).
+- **Lights** shine on the 3D world: the sun, lamps, torches, windows. See [Lights](lights.md).
 
 ## Client and server
 

@@ -37,6 +37,7 @@ nav:
   - Particles: particles.md
   - Post-processing: post-processing.md
   - Materials: materials.md
+  - Lights: lights.md
   - User interface: ui.md
   - HTTP: http.md
   - JSON: json.md
