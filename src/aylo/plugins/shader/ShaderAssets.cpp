@@ -28,6 +28,7 @@
 #include "core/vfs/FileSource.hpp"
 #include "plugins/shader/BuiltinShaders.hpp"
 #include "plugins/shader/detail/ShaderCompiler.hpp"
+#include "plugins/shader/detail/ShaderIncludes.hpp"
 
 namespace aylo::plugins::shader {
 

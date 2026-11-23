@@ -7,6 +7,7 @@
 
 #include "plugins/shader/ShaderReloadable.hpp"
 
+#include <algorithm>
 #include <filesystem>
 #include <format>
 #include <string>
@@ -31,6 +32,19 @@ std::vector<core::reload::WatchedPath> ShaderReloadable::watched() const {
     return {core::reload::WatchedPath{.path = _assets / kDirectory, .extensions = {}}};
 }
 
+namespace {
+
+/// @brief Reloads the shader @p id of @p shaders named @p name into @p done or @p failed, unless it is in one already.
+void reloadOnce(ShaderAssets& shaders, core::asset::AssetId id, const std::string& name, std::vector<std::string>& done,
+                std::vector<std::string>& failed) {
+    if (std::ranges::contains(done, name) || std::ranges::contains(failed, name)) {
+        return;
+    }
+    (shaders.reload(id) ? done : failed).push_back(name);
+}
+
+}  // namespace
+
 core::reload::ReloadOutcome ShaderReloadable::reload(const core::reload::ChangeSet& changes) {
     std::vector<std::string> done;
     std::vector<std::string> failed;
@@ -40,14 +54,11 @@ core::reload::ReloadOutcome ShaderReloadable::reload(const core::reload::ChangeS
             const std::filesystem::path path = std::filesystem::path{file}.lexically_relative(_assets);
             const core::asset::AssetId id = core::asset::AssetId::fromPath(path);
             if (_shaders->getEntry(id) != nullptr) {
-                (_shaders->reload(id) ? done : failed).push_back(path.generic_string());
+                reloadOnce(*_shaders, id, path.generic_string(), done, failed);
             }
-            // The shaders that include it, once each.
+            // The shaders that include it.
             for (const core::asset::AssetId includer : _shaders->getIncluders(path.generic_string())) {
-                const std::string name = _shaders->getEntry(includer)->path;
-                if (!std::ranges::contains(done, name) && !std::ranges::contains(failed, name)) {
-                    (_shaders->reload(includer) ? done : failed).push_back(name);
-                }
+                reloadOnce(*_shaders, includer, _shaders->getEntry(includer)->path, done, failed);
             }
         }
     };

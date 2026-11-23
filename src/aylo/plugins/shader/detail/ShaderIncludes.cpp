@@ -15,6 +15,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include "plugins/shader/BuiltinShaders.hpp"
@@ -38,27 +39,29 @@ class Expander {
   public:
     Expander(ExpandedShader& expanded, const IncludeReader& read) : _expanded{&expanded}, _read{&read} {}
 
-    /// @brief Appends the file of index @p file, whose text is @p source, expanding its includes.
-    void expand(std::string_view source, std::uint32_t file) {
-        _stack.push_back(file);
-        std::uint32_t lineNumber = 0;
-        for (std::size_t start = 0; start <= source.size();) {
-            const std::size_t end = std::min(source.find('\n', start), source.size());
-            const std::string_view line = source.substr(start, end - start);
-            start = end + 1;
-            ++lineNumber;
+    /// @brief Appends @p source, the shader, expanding its includes: an included file is read to its end, then the file
+    /// that included it goes on, as a stack of files being read rather than a recursion.
+    void expand(std::string_view source) {
+        _frames.push_back(Frame{.source = std::string{source}});
+        while (!_frames.empty()) {
+            Frame& frame = _frames.back();
+            if (frame.position > frame.source.size()) {
+                _frames.pop_back();
+                continue;
+            }
+            const std::size_t end = std::min(frame.source.find('\n', frame.position), frame.source.size());
+            const std::string line = frame.source.substr(frame.position, end - frame.position);
+            frame.position = end + 1;
+            const std::uint32_t file = frame.file;
+            const std::uint32_t lineNumber = ++frame.line;
             const std::string_view trimmed = trim(line);
             if (trimmed.starts_with("#include")) {
                 append({}, file, lineNumber);
-                include(trimmed, file, lineNumber);
+                include(trimmed, file, lineNumber);  // may push a frame: `frame` is not used after it
             } else {
                 append(line, file, lineNumber);
             }
-            if (end == source.size()) {
-                break;
-            }
         }
-        _stack.pop_back();
     }
 
   private:
@@ -77,25 +80,26 @@ class Expander {
 
     /// @brief Expands the `#include` @p directive of @p file at @p lineNumber.
     void include(std::string_view directive, std::uint32_t file, std::uint32_t lineNumber) {
-        std::string_view rest = trim(directive.substr(std::string_view{"#include"}.size()));
+        const std::string_view rest = trim(directive.substr(std::string_view{"#include"}.size()));
         if (rest.size() < 2 || rest.front() != '"' || rest.find('"', 1) != rest.size() - 1) {
             fail(file, lineNumber, "expected #include \"path\"");
         }
         const std::string path{rest.substr(1, rest.size() - 2)};
-        const auto [name, source] = find(path, _expanded->files.at(file), file, lineNumber);
+        auto [name, source] = find(path, _expanded->files.at(file), file, lineNumber);
         const auto known = std::ranges::find(_expanded->files, name);
         if (known != _expanded->files.end()) {
             const auto index = static_cast<std::uint32_t>(known - _expanded->files.begin());
-            if (std::ranges::contains(_stack, index)) {
+            if (std::ranges::any_of(_frames, [index](const Frame& open) { return open.file == index; })) {
                 fail(file, lineNumber, std::format("'{}' includes itself", name));
             }
             return;  // each file once
         }
-        if (_stack.size() >= kMaxIncludeDepth) {
+        if (_frames.size() >= kMaxIncludeDepth) {
             fail(file, lineNumber, std::format("more than {} levels of #include", kMaxIncludeDepth));
         }
         _expanded->files.push_back(name);
-        expand(source, static_cast<std::uint32_t>(_expanded->files.size() - 1));
+        _frames.push_back(
+            Frame{.source = std::move(source), .file = static_cast<std::uint32_t>(_expanded->files.size() - 1)});
     }
 
     /// @return The name and text of the file @p path names, included from @p from.
@@ -131,9 +135,17 @@ class Expander {
         fail(file, lineNumber, std::format("cannot find \"{}\" (looked for {})", path, looked));
     }
 
-    ExpandedShader* _expanded;          ///< What is being built.
-    const IncludeReader* _read;         ///< Reads the game's files.
-    std::vector<std::uint32_t> _stack;  ///< The files being expanded, the shader first.
+    /// @brief A file being read.
+    struct Frame {
+        std::string source;       ///< Its text.
+        std::uint32_t file{0};    ///< Its index in ExpandedShader::files.
+        std::size_t position{0};  ///< Where its next line starts.
+        std::uint32_t line{0};    ///< The number of its last line read.
+    };
+
+    ExpandedShader* _expanded;   ///< What is being built.
+    const IncludeReader* _read;  ///< Reads the game's files.
+    std::vector<Frame> _frames;  ///< The files being read, the shader first, the one read now last.
 };
 
 }  // namespace
@@ -177,7 +189,7 @@ std::string ExpandedShader::locateLines(std::string_view message) const {
 ExpandedShader expandIncludes(std::string_view source, std::string_view name, const IncludeReader& read) {
     ExpandedShader expanded;
     expanded.files.emplace_back(name);
-    Expander{expanded, read}.expand(source, 0);
+    Expander{expanded, read}.expand(source);
     if (!expanded.text.empty()) {
         expanded.text.pop_back();  // the last line ends as the source did
     }
