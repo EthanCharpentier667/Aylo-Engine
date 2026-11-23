@@ -170,3 +170,12 @@ TEST(ShaderAssembler, DeclaresTheVaryingsOutInTheVertexStageAndInInTheFragmentSt
               std::string::npos)
         << fragment;
 }
+
+TEST(ShaderAssembler, CompilesTheCutoutInOnlyWhenAMeshShaderWritesIt) {
+    const ParsedShader leaf = parseShader("#pragma mesh\nvoid fragment() { ALPHA_SCISSOR = 0.5; }\n", "leaf");
+    EXPECT_TRUE(
+        assembleShader(leaf, ShaderTarget::kMesh, ShaderStage::kFragment).contains("#define AYLO_ALPHA_SCISSOR"));
+    const ParsedShader plain = parseShader("#pragma mesh\nvoid fragment() { COLOR.r = 1.0; }\n", "plain");
+    EXPECT_FALSE(
+        assembleShader(plain, ShaderTarget::kMesh, ShaderStage::kFragment).contains("#define AYLO_ALPHA_SCISSOR"));
+}

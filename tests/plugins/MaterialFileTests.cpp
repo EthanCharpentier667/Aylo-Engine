@@ -181,3 +181,29 @@ TEST_F(MaterialFileTest, TheReloadableReadsAgainOnlyTheLoadedMaterials) {
               ReloadOutcome::Status::kFailed);
     EXPECT_EQ(std::get<std::int32_t>(_materials.get(id)->values.at(0).value), 7);  // the last version is kept
 }
+
+TEST(MaterialFile, ReadsAndWritesTheRenderStateItChanges) {
+    const MaterialFile file = MaterialFile::parse(
+        R"({ "shader": "shaders/hull.glsl", "renderState": { "cull": "front", "depthBias": -2 } })", "hull.material");
+    EXPECT_EQ(file.renderState.cull, aylo::contract::renderer::CullMode::kFront);
+    EXPECT_EQ(file.renderState.depthBias, -2.0F);
+    EXPECT_FALSE(file.renderState.blend);
+    const MaterialFile again = MaterialFile::parse(file.write(), "hull.material");
+    EXPECT_EQ(again.renderState, file.renderState);
+    EXPECT_FALSE(MaterialFile::parse(R"({ "shader": "a.glsl" })", "a").write().contains("renderState"));
+}
+
+TEST(MaterialFile, NamesAWrongRenderState) {
+    const auto errorOf = [](std::string_view text) {
+        try {
+            static_cast<void>(MaterialFile::parse(text, "bad.material"));
+        } catch (const AssetLoadException& error) {
+            return std::string{error.what()};
+        }
+        return std::string{};
+    };
+    EXPECT_TRUE(errorOf(R"({ "renderState": { "cull": "sideways" } })").contains("'cull'"));
+    EXPECT_TRUE(errorOf(R"({ "renderState": { "blend": 3 } })").contains("'blend' must be a name"));
+    EXPECT_TRUE(errorOf(R"({ "renderState": { "depthBias": "a lot" } })").contains("'depthBias' must be a number"));
+    EXPECT_TRUE(errorOf(R"({ "renderState": { "stencil": "on" } })").contains("unknown render state 'stencil'"));
+}

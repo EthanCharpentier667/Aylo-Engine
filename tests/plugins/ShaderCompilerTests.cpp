@@ -219,6 +219,25 @@ TEST(ShaderCompiler, CompilesTheManuals3DShaders) {
               "");
 }
 
+TEST(ShaderCompiler, CompilesTheManualsRenderStateShaders) {
+    // manual/pages/materials.md, "How a 3D material is drawn": glass, a cutout and an outline.
+    EXPECT_EQ(errorOf("#pragma mesh\n#pragma blend alpha   // see what is behind it\n#pragma cull none\n"
+                      "void fragment() { COLOR = vec4(0.2, 0.5, 1.0, 1.0) * 0.4; }\n"),
+              "");
+    EXPECT_EQ(errorOf("#pragma mesh\n#pragma cull none\nvoid fragment() { ALPHA_SCISSOR = 0.5; }\n"), "");
+    EXPECT_EQ(errorOf("#pragma mesh\n#pragma cull front\nuniform vec4 outlineColor = vec4(0.0, 0.0, 0.0, 1.0);\n"
+                      "uniform float width = 0.03;\nvoid vertex() { VERTEX += NORMAL * width; }\n"
+                      "void fragment() { COLOR = outlineColor; }\n"),
+              "");
+}
+
+TEST(ShaderCompiler, CarriesTheRenderStateAndCompilesACutout) {
+    const CompiledShader leaf = compileShader(
+        "#pragma mesh\n#pragma cull none\nvoid fragment() { ALPHA_SCISSOR = 0.5; COLOR.a = UV.x; }\n", "leaf");
+    EXPECT_EQ(leaf.renderState.cull, aylo::contract::renderer::CullMode::kNone);
+    EXPECT_FALSE(errorOf("void fragment() { ALPHA_SCISSOR = 0.5; }\n").empty());  // a 3D built-in
+}
+
 TEST(ShaderCompiler, The3DViewBuiltinsAreOnlyForMeshShadersButFragcoordIsEverywhere) {
     EXPECT_FALSE(errorOf("void fragment() { COLOR.rgb = WORLD_POSITION; }\n").empty());
     EXPECT_FALSE(errorOf("void fragment() { COLOR.rgb = VIEW_DIR; }\n").empty());

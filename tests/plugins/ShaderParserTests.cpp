@@ -201,3 +201,32 @@ TEST(ShaderParser, ReservesThe3DViewBuiltins) {
         EXPECT_NE(message.find("reserved"), std::string::npos) << name;
     }
 }
+
+TEST(ShaderParser, ReadsTheRenderStatePragmasOfA3DShader) {
+    using aylo::contract::renderer::CullMode;
+    using aylo::contract::renderer::DepthMode;
+    using aylo::contract::renderer::MeshBlend;
+    const ParsedShader hull = parseShader(
+        "#pragma mesh\n#pragma cull front\n#pragma depth_bias 2 1.5\n#pragma depth notest\nvoid fragment() {}", "hull");
+    EXPECT_EQ(hull.renderState.cull, CullMode::kFront);
+    EXPECT_EQ(hull.renderState.depth, DepthMode::kNoTest);
+    EXPECT_EQ(hull.renderState.depthBias, 2.0F);
+    EXPECT_EQ(hull.renderState.depthBiasSlope, 1.5F);
+    EXPECT_EQ(hull.body, "\n\n\n\nvoid fragment() {}");
+
+    const ParsedShader plain = parseShader("#pragma mesh\nvoid fragment() {}", "plain");
+    EXPECT_EQ(plain.renderState, aylo::contract::renderer::RenderState{});  // back faces culled, opaque, depth written
+
+    // A blended shader that says nothing of depth tests it without writing it.
+    const ParsedShader glass = parseShader("#pragma mesh\n#pragma blend alpha\nvoid fragment() {}", "glass");
+    EXPECT_EQ(glass.renderState.blend, MeshBlend::kAlpha);
+    EXPECT_EQ(glass.renderState.depth, DepthMode::kTestNoWrite);
+}
+
+TEST(ShaderParser, NamesAWrongRenderStatePragmaAndItsLine) {
+    EXPECT_TRUE(errorOf("#pragma mesh\n#pragma cull sideways\nvoid fragment() {}").contains("line 2"));
+    EXPECT_TRUE(errorOf("#pragma mesh\n#pragma blend glow\nvoid fragment() {}").contains("'additive'"));
+    EXPECT_TRUE(errorOf("#pragma mesh\n#pragma depth maybe\nvoid fragment() {}").contains("'notest'"));
+    EXPECT_TRUE(errorOf("#pragma mesh\n#pragma depth_bias much\nvoid fragment() {}").contains("depth_bias"));
+    EXPECT_TRUE(errorOf("#pragma cull front\nvoid fragment() {}").contains("for a '#pragma mesh' shader"));
+}
