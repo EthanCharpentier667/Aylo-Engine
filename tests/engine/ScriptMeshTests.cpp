@@ -283,3 +283,54 @@ TEST(ScriptMesh, AMaterialChangesItsShadersRenderState) {
                   .find("'sideways' is not a render state cull"),
               std::string::npos);
 }
+
+TEST(ScriptMesh, AScriptGivesEachPartItsMaterialAndAMaterialItsNextPass) {
+    // manual/pages/materials.md, "Several materials on one model" and "Passes".
+    ClientScripts client;
+    client.state->shaders = true;
+    client.assets.writeTwoParts();
+    client.assets.write("models/plain.glsl", "#pragma mesh\nvoid fragment() {}\n");
+    ASSERT_EQ(client.run(R"(
+        local model = engine.assets.mesh("models/parts.gltf")
+        local plain = engine.assets.shader("models/plain.glsl")
+        local outline = engine.assets.material({ name = "outline", shader = plain })
+        local paint = engine.assets.material({ name = "paint", shader = plain, nextPass = outline })
+        local glass = engine.assets.material({ name = "glass", shader = plain })
+        local placed = false
+        engine.ecs.system("game.Place", {
+            phase = "Update",
+            side = "client",
+            query = {},
+            calls = { "aylo.mesh.findPart" },
+            run = function(ctx)
+                local glassPart = ctx.call("aylo.mesh.findPart", { mesh = model, name = "Glass" })
+                if placed or glassPart == 0 then
+                    return
+                end
+                placed = true
+                local materials = { paint, paint }
+                materials[glassPart] = glass
+                ctx.commands:spawn({
+                    ["aylo.Transform3D"] = { position = vector.create(7, 0, 0) },
+                    ["aylo.MeshRenderer"] = { mesh = model, material = paint, materials = materials },
+                })
+            end,
+        })
+    )"),
+              "");
+    for (int frame = 0; frame < 6; ++frame) {
+        client.app.runFrame();
+    }
+
+    const auto& draws = client.state->staticMeshDraws;
+    const auto& parts = client.state->staticMeshPartMaterials;
+    ASSERT_GE(draws.size(), 2U);
+    const std::size_t model = draws.size() - 2;
+    EXPECT_FLOAT_EQ(draws.at(model).world[3][0], 7.0F);
+    ASSERT_EQ(parts.at(model).size(), 2U);
+    EXPECT_NE(parts.at(model).at(0), parts.at(model).at(1));  // paint, then glass
+    EXPECT_TRUE(draws.back().listedPartsOnly);                // paint's outline, on the body only
+    ASSERT_EQ(parts.back().size(), 2U);
+    EXPECT_NE(parts.back().at(0), aylo::contract::renderer::MaterialId{});
+    EXPECT_EQ(parts.back().at(1), aylo::contract::renderer::MaterialId{});
+}
