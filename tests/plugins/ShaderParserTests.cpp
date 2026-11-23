@@ -251,3 +251,7 @@ TEST(ShaderParser, ReadsThatA3DShaderCastsNoShadow) {
     EXPECT_TRUE(parseShader("#pragma mesh\nvoid fragment() {}", "plain").castsShadows);
     EXPECT_TRUE(errorOf("#pragma shadow off\nvoid fragment() {}").contains("for a '#pragma mesh' shader"));
 }
+
+TEST(ShaderParser, ReservesTheDepthTexture) {
+    EXPECT_TRUE(errorOf("uniform float DEPTH_TEXTURE;\nvoid fragment() {}").contains("reserved"));
+}

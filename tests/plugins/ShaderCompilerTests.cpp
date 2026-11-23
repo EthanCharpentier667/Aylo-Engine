@@ -270,6 +270,29 @@ TEST(ShaderCompiler, SaysWhetherA3DShaderCastsShadowsAndCutsOut) {
     EXPECT_FALSE(glow.cutsOut);
 }
 
+TEST(ShaderCompiler, AScreenEffectReadsTheDepthAndTheCamera) {
+    // manual/pages/post-processing.md, "Depth and the 3D camera": fog, and edges from the rebuilt normals.
+    const CompiledShader fog = compileShader(
+        "#pragma screen\nuniform vec3 fogColor = vec3(0.5, 0.6, 0.7);\nuniform float density = 0.04;\n"
+        "void fragment() {\n    float distance = linearDepth(texture(DEPTH_TEXTURE, SCREEN_UV).r);\n"
+        "    COLOR.rgb = mix(fogColor, COLOR.rgb, exp(-density * distance));\n}\n",
+        "fog");
+    EXPECT_TRUE(fog.readsDepth);
+    const CompiledShader scan = compileShader(
+        "#pragma screen\nuniform float height = 1.0;\nvoid fragment() {\n"
+        "    vec3 world = worldPositionAt(SCREEN_UV);\n    vec3 n = normalAt(SCREEN_UV);\n"
+        "    float line = step(abs(world.y - height), 0.05) * step(0.5, n.y);\n"
+        "    COLOR.rgb += vec3(0.2, 1.0, 0.4) * line * (1.0 - step(30.0, distance(world, CAMERA_POSITION)));\n"
+        "    COLOR.rgb *= 1.0 + 0.0 * (VIEW_MATRIX * INV_VIEW_MATRIX * PROJECTION_MATRIX * "
+        "INV_PROJECTION_MATRIX)[0].x;\n"
+        "}\n",
+        "scan");
+    EXPECT_TRUE(scan.readsDepth);
+    EXPECT_FALSE(
+        compileShader("#pragma screen\nvoid fragment() { COLOR.rgb = 1.0 - COLOR.rgb; }\n", "invert").readsDepth);
+    EXPECT_FALSE(errorOf("void fragment() { COLOR.r = texture(DEPTH_TEXTURE, UV).r; }\n").empty());
+}
+
 TEST(ShaderCompiler, TheSurfaceBuiltinsAreOnlyForLitShaders) {
     EXPECT_FALSE(errorOf("#pragma mesh\nvoid fragment() { ALBEDO = vec3(1.0); }\n").empty());
 }
