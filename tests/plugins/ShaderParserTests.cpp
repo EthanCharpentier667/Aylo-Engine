@@ -230,3 +230,18 @@ TEST(ShaderParser, NamesAWrongRenderStatePragmaAndItsLine) {
     EXPECT_TRUE(errorOf("#pragma mesh\n#pragma depth_bias much\nvoid fragment() {}").contains("depth_bias"));
     EXPECT_TRUE(errorOf("#pragma cull front\nvoid fragment() {}").contains("for a '#pragma mesh' shader"));
 }
+
+TEST(ShaderParser, ReadsALitShaderAndItsLightFunction) {
+    const ParsedShader toon =
+        parseShader("#pragma mesh\n#pragma lit\nvoid fragment() {}\nvoid light() { DIFFUSE_LIGHT += ALBEDO; }", "toon");
+    EXPECT_TRUE(toon.lit);
+    EXPECT_TRUE(toon.hasLight);
+    EXPECT_TRUE(errorOf("#pragma lit\nvoid fragment() {}").contains("for a '#pragma mesh' shader"));
+    EXPECT_TRUE(errorOf("#pragma mesh\nvoid fragment() {}\nvoid light() {}").contains("needs '#pragma lit'"));
+    for (const std::string_view name :
+         {"ALBEDO", "ROUGHNESS", "LIGHT_DIR", "DIFFUSE_LIGHT", "SHADOW", "ALPHA_SCISSOR", "SPECULAR_LIGHT"}) {
+        EXPECT_TRUE(
+            errorOf(std::string{"uniform float "} + std::string{name} + ";\nvoid fragment() {}").contains("reserved"))
+            << name;
+    }
+}

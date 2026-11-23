@@ -179,3 +179,20 @@ TEST(ShaderAssembler, CompilesTheCutoutInOnlyWhenAMeshShaderWritesIt) {
     EXPECT_FALSE(
         assembleShader(plain, ShaderTarget::kMesh, ShaderStage::kFragment).contains("#define AYLO_ALPHA_SCISSOR"));
 }
+
+TEST(ShaderAssembler, LightsALitMeshShaderAndKeepsLightInTheFragmentStageOnly) {
+    const ParsedShader toon = parseShader(
+        "#pragma mesh\n#pragma lit\nvoid fragment() { ALBEDO = vec3(1.0); }\nvoid light() { DIFFUSE_LIGHT += ALBEDO; "
+        "}\n",
+        "toon");
+    const std::string fragment = assembleShader(toon, ShaderTarget::kMesh, ShaderStage::kFragment);
+    EXPECT_TRUE(fragment.contains("#define AYLO_LIT\n#define AYLO_CUSTOM_LIGHT\n")) << fragment;
+    EXPECT_TRUE(fragment.contains("float ayloDistribution("));  // lighting.glsl
+    EXPECT_TRUE(fragment.contains("void light() { DIFFUSE_LIGHT += ALBEDO; }"));
+    const std::string vertex = assembleShader(toon, ShaderTarget::kMesh, ShaderStage::kVertex);
+    EXPECT_FALSE(vertex.contains("void light()"));
+    EXPECT_FALSE(vertex.contains("AYLO_LIT"));
+    const ParsedShader plain = parseShader("#pragma mesh\n#pragma lit\nvoid fragment() {}\n", "plain");
+    EXPECT_FALSE(
+        assembleShader(plain, ShaderTarget::kMesh, ShaderStage::kFragment).contains("#define AYLO_CUSTOM_LIGHT"));
+}

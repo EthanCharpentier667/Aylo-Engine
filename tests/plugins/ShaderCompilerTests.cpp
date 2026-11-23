@@ -231,6 +231,30 @@ TEST(ShaderCompiler, CompilesTheManualsRenderStateShaders) {
               "");
 }
 
+TEST(ShaderCompiler, CompilesTheManualsLitShaders) {
+    // manual/pages/lighting.md: a painted surface, a normal changed, a toon light().
+    EXPECT_EQ(errorOf("#pragma mesh\n#pragma lit\nuniform sampler2D albedoMap;\nuniform vec3 tint = vec3(1.0);\n"
+                      "void fragment() {\n    ALBEDO = texture(albedoMap, UV).rgb * tint;\n    ROUGHNESS = 0.4;\n"
+                      "    METALLIC = 0.0;\n}\n"),
+              "");
+    EXPECT_EQ(errorOf("#pragma mesh\n#pragma lit\nvoid fragment() {\n"
+                      "    NORMAL = normalize(NORMAL + 0.15 * sin(WORLD_POSITION * 12.0));\n    METALLIC = 1.0;\n"
+                      "    ROUGHNESS = 0.25;\n}\n"),
+              "");
+    EXPECT_EQ(errorOf("#pragma mesh\n#pragma lit\nuniform float bands = 3.0;\nvoid fragment() { ROUGHNESS = 1.0; }\n"
+                      "void light() {\n"
+                      "    float lit = floor(max(dot(NORMAL, LIGHT_DIR), 0.0) * bands) / bands;\n"
+                      "    DIFFUSE_LIGHT += ALBEDO * LIGHT_COLOR * ATTENUATION * SHADOW * lit;\n}\n"),
+              "");
+    EXPECT_EQ(errorOf("#pragma mesh\n#pragma lit\n#pragma blend alpha\n"
+                      "void fragment() { ALPHA = 0.3; EMISSION = vec3(0.0, 2.0, 4.0); AO = 0.5; SPECULAR = 0.2; }\n"),
+              "");
+}
+
+TEST(ShaderCompiler, TheSurfaceBuiltinsAreOnlyForLitShaders) {
+    EXPECT_FALSE(errorOf("#pragma mesh\nvoid fragment() { ALBEDO = vec3(1.0); }\n").empty());
+}
+
 TEST(ShaderCompiler, CarriesTheRenderStateAndCompilesACutout) {
     const CompiledShader leaf = compileShader(
         "#pragma mesh\n#pragma cull none\nvoid fragment() { ALPHA_SCISSOR = 0.5; COLOR.a = UV.x; }\n", "leaf");
