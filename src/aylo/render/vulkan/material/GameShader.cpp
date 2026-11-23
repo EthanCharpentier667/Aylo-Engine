@@ -44,7 +44,9 @@ GameShader::GameShader(const core::Device& device, const contract::renderer::Com
     : _name{shader.name},
       _materialSize{shader.materialSize},
       _instanceValues{!shader.instanceValues.empty()},
-      _renderState{shader.renderState} {
+      _renderState{shader.renderState},
+      _castsShadows{shader.castsShadows},
+      _cutsOut{shader.cutsOut} {
     contract::renderer::validate(shader);
     for (const contract::renderer::ShaderVariant& variant : shader.variants) {
         Variant& created = _variants.at(static_cast<std::size_t>(variant.target));
@@ -87,6 +89,24 @@ const pipeline::GraphicsPipeline* GameShader::getPipeline(contract::renderer::Sh
         key, build(device, variant.vertex, variant.fragment, _instanceValues, layout, colorFormat, cache, key));
     device.setName(*pipeline.getPipeline(),
                    std::format("{} {} pipeline", _name, kTargetNames.at(static_cast<std::size_t>(target))));
+    return &pipeline;
+}
+
+const pipeline::GraphicsPipeline* GameShader::getShadowPipeline(const core::Device& device,
+                                                                contract::renderer::CullMode cull,
+                                                                const ShadowPipelineBuilder& build) {
+    Variant& variant = _variants.at(static_cast<std::size_t>(contract::renderer::ShaderTarget::kMesh));
+    if (*variant.vertex == nullptr || !_castsShadows) {
+        return nullptr;
+    }
+    for (const auto& [builtCull, pipeline] : variant.shadows) {
+        if (builtCull == cull) {
+            return &pipeline;
+        }
+    }
+    auto& [builtCull, pipeline] =
+        variant.shadows.emplace_back(cull, build(variant.vertex, variant.fragment, _cutsOut, cull));
+    device.setName(*pipeline.getPipeline(), std::format("{} shadow pipeline", _name));
     return &pipeline;
 }
 

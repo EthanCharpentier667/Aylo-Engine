@@ -74,6 +74,7 @@
 #include "rendering/MeshPass.hpp"
 #include "rendering/ParticleConstants.hpp"
 #include "rendering/ParticlePass.hpp"
+#include "rendering/ShadowPlan.hpp"
 #include "rendering/ShapeBatch.hpp"
 #include "rendering/ShapePass.hpp"
 #include "rendering/SpriteBatch.hpp"
@@ -434,8 +435,13 @@ class AYLO_RENDER_VULKAN_API VulkanRenderer final : public contract::renderer::I
     void recordWorld3D(const vk::raii::CommandBuffer& commandBuffer, std::size_t frameIndex,
                        const World3DTarget& target);
 
-    /// @brief Copies the frame's world (sprites, particles, shapes) into the frame's buffers, once, for recordWorld().
-    void uploadWorld(std::size_t frameIndex);
+    /// @brief Copies the frame's world (sprites, particles, shapes, meshes, lights) into the frame's buffers, once, for
+    /// recordWorld(), and plans the frame's shadow maps from the scene's 3D view, of @p viewSize in @p framebufferSize.
+    void uploadWorld(std::size_t frameIndex, glm::vec2 viewSize, glm::uvec2 framebufferSize);
+
+    /// @brief Records the frame's shadow maps into the atlas (rendering::ShadowPlan), then leaves it for the lit
+    /// shaders to read; without any, only makes it readable.
+    void recordShadows(const vk::raii::CommandBuffer& commandBuffer, std::size_t frameIndex);
 
     /// @brief Records the frame's world, uploaded, in the dynamic rendering scope already begun, seen through @p view
     /// with the frame uniforms of @p globals: what the scene and the preview both draw.
@@ -514,6 +520,7 @@ class AYLO_RENDER_VULKAN_API VulkanRenderer final : public contract::renderer::I
     std::vector<contract::renderer::Light3D> _lights3D;  ///< From setLights3D(); cleared by beginFrame().
     contract::renderer::Environment3D _environment3D;    ///< From setLights3D(); reset by beginFrame().
     std::vector<std::byte> _packedLights;                ///< _lights3D as the shaders read them, reused.
+    rendering::ShadowPlan _shadowPlan;                   ///< The frame's shadow maps, planned by uploadWorld().
     bool _lightsGiven{false};  ///< Whether setLights3D() was called this frame: models without a material are lit.
     std::vector<rendering::StaticMeshPass::Draw> _meshDraws;  ///< _staticMeshDraws found, for the upload; reused.
     std::filesystem::path _pipelineCachePath;     ///< Config::pipelineCache resolved by init(); empty: not kept.
@@ -588,9 +595,11 @@ class AYLO_RENDER_VULKAN_API VulkanRenderer final : public contract::renderer::I
     std::unique_ptr<rendering::Lines3DPass> _lines3DPass;        ///< Draws _lines3D first, in the 3D world.
     std::unique_ptr<rendering::StaticMeshPass> _staticMeshPass;  ///< Draws _staticMeshDraws, in the 3D world.
     std::unique_ptr<frame::FrameGlobals> _globals3D;             ///< The frame uniforms of the 3D world: its view.
-    std::unique_ptr<memory::Image> _sceneDepth;                  ///< The 3D world's depth buffer, the scene's size.
-    std::unique_ptr<memory::Image> _previewDepth;                ///< The preview's depth buffer, its size.
-    std::unique_ptr<frame::FrameGlobals> _previewGlobals3D;      ///< The frame uniforms of the preview's 3D view.
+    std::unique_ptr<memory::Image> _shadowAtlas;  ///< Every shadow map of the frame, in tiles (kShadowAtlasSize).
+    std::vector<std::unique_ptr<frame::FrameGlobals>> _shadowGlobals;  ///< The view of each shadow map, set 0.
+    std::unique_ptr<memory::Image> _sceneDepth;              ///< The 3D world's depth buffer, the scene's size.
+    std::unique_ptr<memory::Image> _previewDepth;            ///< The preview's depth buffer, its size.
+    std::unique_ptr<frame::FrameGlobals> _previewGlobals3D;  ///< The frame uniforms of the preview's 3D view.
     std::unique_ptr<rendering::ParticlePass> _particlePass;  ///< Draws _particleRanges at endFrame(), among _sprites.
     std::unique_ptr<particle::ParticleSimulationPass> _particleSimulation;  ///< Runs _simulations at endFrame().
     std::unique_ptr<postprocess::ScreenPass> _screenPass;  ///< Runs the screen effects and shows the result.

@@ -115,6 +115,52 @@ constexpr vk::Format kSceneFormat = vk::Format::eR16G16B16A16Sfloat;
 /// The format of the 3D world's depth buffer: supported as a depth attachment by every desktop GPU.
 constexpr vk::Format kDepthFormat = rendering::kWorld3DDepthFormat;
 
+/// @brief The shadow atlas, its contents discarded, to readable: what the previous frame's lit shaders read is waited
+/// for.
+constexpr rendering::ImageTransition kAtlasToShaderRead{.oldLayout = vk::ImageLayout::eUndefined,
+                                                        .newLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
+                                                        .srcStage = vk::PipelineStageFlagBits2::eFragmentShader,
+                                                        .dstStage = vk::PipelineStageFlagBits2::eFragmentShader,
+                                                        .dstAccess = vk::AccessFlagBits2::eShaderSampledRead,
+                                                        .aspect = vk::ImageAspectFlagBits::eDepth};
+/// @brief The shadow atlas, its contents discarded, to depth attachment for the frame's shadow maps.
+constexpr rendering::ImageTransition kAtlasToDepthAttachment{
+    .oldLayout = vk::ImageLayout::eUndefined,
+    .newLayout = vk::ImageLayout::eDepthAttachmentOptimal,
+    .srcStage = vk::PipelineStageFlagBits2::eFragmentShader,
+    .dstStage = vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests,
+    .dstAccess = vk::AccessFlagBits2::eDepthStencilAttachmentRead | vk::AccessFlagBits2::eDepthStencilAttachmentWrite,
+    .aspect = vk::ImageAspectFlagBits::eDepth};
+/// @brief The shadow atlas, drawn, to read by the lit shaders.
+constexpr rendering::ImageTransition kAtlasDrawnToShaderRead{
+    .oldLayout = vk::ImageLayout::eDepthAttachmentOptimal,
+    .newLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
+    .srcStage = vk::PipelineStageFlagBits2::eLateFragmentTests,
+    .srcAccess = vk::AccessFlagBits2::eDepthStencilAttachmentWrite,
+    .dstStage = vk::PipelineStageFlagBits2::eFragmentShader,
+    .dstAccess = vk::AccessFlagBits2::eShaderSampledRead,
+    .aspect = vk::ImageAspectFlagBits::eDepth};
+
+/// @return The camera the cascades of a frame seen through @p view are fitted to.
+rendering::ShadowCamera shadowCameraOf(const contract::renderer::View3D& view, glm::vec2 viewSize,
+                                       glm::uvec2 framebufferSize) {
+    const contract::renderer::CameraView3D shown{view, viewSize, framebufferSize};
+    const contract::renderer::Viewport& area = shown.getViewport();
+    rendering::ShadowCamera camera{.view = shown.getViewMatrix(),
+                                   .aspect = area.size.y > 0.0F ? area.size.x / area.size.y : 1.0F};
+    if (const auto* perspective = std::get_if<contract::renderer::Perspective>(&view.projection)) {
+        camera.verticalFov = perspective->fieldOfView;
+        camera.nearPlane = perspective->nearPlane;
+        camera.farPlane = perspective->farPlane;
+    } else if (const auto* orthographic = std::get_if<contract::renderer::Orthographic3D>(&view.projection)) {
+        camera.verticalFov = 0.0F;
+        camera.orthographicHeight = orthographic->height;
+        camera.nearPlane = orthographic->nearPlane;
+        camera.farPlane = orthographic->farPlane;
+    }
+    return camera;
+}
+
 /// @brief Texture sets per descriptor pool: a new pool is added each time this many textures are alive.
 constexpr std::uint32_t kTextureSetsPerPool = 64;
 /// @brief Most GPU particle systems' sets in one descriptor pool; a new pool is added when it is full.
@@ -276,8 +322,15 @@ void VulkanRenderer::init(contract::platform::IPlatform& platform) {
         *_device, shaderDirectory.is_absolute() ? shaderDirectory
                                                 : ::aylo::core::system::getExecutableDirectory() / shaderDirectory);
     _pipelineCachePath = resolvePipelineCachePath(_config.pipelineCache);
-    _pipelineCache =
-        std::make_unique<pipeline::PipelineCache>(*_device, readPipelineCache(_pipelineCachePath, *_physicalDevice));
+    try {
+        _pipelineCache = std::make_unique<pipeline::PipelineCache>(
+            *_device, readPipelineCache(_pipelineCachePath, *_physicalDevice));
+    } catch (const vk::SystemError& error) {
+        // A cache the driver cannot load (MoltenVK compiles the shaders it holds) is only lost time: start without it.
+        std::cerr << std::format("[vulkan] the pipeline cache could not be loaded ({}): starting without it\n",
+                                 error.what());
+        _pipelineCache = std::make_unique<pipeline::PipelineCache>(*_device, std::vector<std::byte>{});
+    }
     _globals = std::make_unique<frame::FrameGlobals>(*_device, *_allocator, kFramesInFlight);
     _overlayGlobals = std::make_unique<frame::FrameGlobals>(*_device, *_allocator, kFramesInFlight);
     _meshGlobals = std::make_unique<frame::FrameGlobals>(*_device, *_allocator, kFramesInFlight);
@@ -335,6 +388,8 @@ void VulkanRenderer::init(contract::platform::IPlatform& platform) {
         descriptor::DescriptorSetLayout::Builder{}
             .addBinding(rendering::kMeshDrawBinding, vk::DescriptorType::eStorageBuffer, materialStages)
             .addBinding(rendering::kLightsBinding, vk::DescriptorType::eStorageBuffer, materialStages)
+            .addBinding(rendering::kShadowTilesBinding, vk::DescriptorType::eStorageBuffer, materialStages)
+            .addBinding(rendering::kShadowAtlasBinding, vk::DescriptorType::eCombinedImageSampler, materialStages)
             .build(*_device));
     // Set 1 of a mesh holds its part's five textures (base colour, metallic-roughness, normal, occlusion, emissive): a
     // game mesh shader only reads the first, as TEXTURE.
@@ -355,9 +410,13 @@ void VulkanRenderer::init(contract::platform::IPlatform& platform) {
     _device->setName(*_meshLayout->getLayout(), "Static mesh pipeline layout");
     _device->setName(*_layout->getLayout(), "Shared pipeline layout");
     _device->setName(*_materialLayout->getLayout(), "Game shaders pipeline layout");
-    createPasses();
     constexpr std::array<std::byte, 4> kWhite{std::byte{0xFF}, std::byte{0xFF}, std::byte{0xFF}, std::byte{0xFF}};
     _fallbackTexture = createTexture(contract::renderer::TextureDesc{.size = {1, 1}}, kWhite);
+    _shadowAtlas = std::make_unique<memory::Image>(
+        *_device, *_allocator, vk::Extent2D{rendering::kShadowAtlasSize, rendering::kShadowAtlasSize}, kDepthFormat,
+        vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eSampled);
+    _device->setName(*_shadowAtlas->getImage(), "Shadow atlas");
+    createPasses();
     _startTime = std::chrono::steady_clock::now();
     _lastFrameTime = _startTime;
 }
@@ -409,9 +468,11 @@ void VulkanRenderer::createPasses() {
     auto lines3DPass =
         std::make_unique<rendering::Lines3DPass>(*_device, *_allocator, *_shaders, *_layout, kSceneFormat, kDepthFormat,
                                                  &_pipelineCache->getCache(), kFramesInFlight);
-    auto staticMeshPass = std::make_unique<rendering::StaticMeshPass>(*_device, *_allocator, *_shaders, *_meshLayout,
-                                                                      *_meshDrawSetLayout, kSceneFormat, kDepthFormat,
-                                                                      &_pipelineCache->getCache(), kFramesInFlight);
+    auto staticMeshPass = std::make_unique<rendering::StaticMeshPass>(
+        *_device, *_allocator, *_shaders, *_meshLayout, *_meshDrawSetLayout, kSceneFormat, kDepthFormat,
+        &_pipelineCache->getCache(), kFramesInFlight, *_shadowAtlas->getImageView(),
+        *_textures.find(_fallbackTexture)->image.getImageView(),
+        *_samplers->get(contract::renderer::TextureFilter::kNearest, false));
     auto screenPass = std::make_unique<postprocess::ScreenPass>(
         *_device, *_shaders, *_textureSetLayout, *_samplers->get(contract::renderer::TextureFilter::kLinear, false),
         kSceneFormat, _swapchain->getFormat(), &_pipelineCache->getCache());
@@ -618,7 +679,8 @@ void VulkanRenderer::endFrame() {
 
     // Rendering starts here, not in beginFrame(): work that cannot be recorded inside a rendering scope (compute
     // dispatches) is recorded above, before it. The world is uploaded once, for the preview and the scene.
-    uploadWorld(frameIndex);
+    uploadWorld(frameIndex, viewSize, framebufferSize);
+    recordShadows(commandBuffer, frameIndex);
     recordPreview(commandBuffer, frameIndex);
     // The scene goes to a floating-point image first, the screen effects run over it, and the result is copied where
     // it is shown: the tool's scene texture, or the window.
@@ -937,7 +999,7 @@ void VulkanRenderer::drawOverlay(const std::span<const contract::renderer::Overl
     }
 }
 
-void VulkanRenderer::uploadWorld(std::size_t frameIndex) {
+void VulkanRenderer::uploadWorld(std::size_t frameIndex, glm::vec2 viewSize, glm::uvec2 framebufferSize) {
     _spritePass->upload(frameIndex, _sprites);
     _particlePass->upload(frameIndex, _particleInstances);
     _shapePass->upload(frameIndex, _shapes);
@@ -976,13 +1038,67 @@ void VulkanRenderer::uploadWorld(std::size_t frameIndex) {
                 .material = material != contract::renderer::MaterialId{}
                                 ? findMaterial(material, contract::renderer::ShaderTarget::kMesh, frameIndex)
                                 : rendering::MaterialBinding{},
-                .instanceValues = draw.instanceValues});
+                .instanceValues = draw.instanceValues,
+                .castShadows = draw.castShadows,
+                .receiveShadows = draw.receiveShadows});
         }
     }
     _staticMeshPass->upload(frameIndex, _meshDraws);
     const glm::vec3 camera = _view3D ? _view3D->position : glm::vec3{0.0F};
-    rendering::packLights(_lights3D, _environment3D, camera, _packedLights);
+    const std::vector<contract::renderer::Light3D> selected = rendering::selectLights(_lights3D, camera);
+    _shadowPlan = rendering::ShadowPlan{};
+    if (_view3D) {
+        // The cascades follow the scene's camera; the preview, seen from elsewhere, reads the same maps.
+        _shadowPlan =
+            rendering::planShadows(selected, _environment3D, shadowCameraOf(*_view3D, viewSize, framebufferSize));
+    }
+    rendering::packLights(selected, _environment3D, _shadowPlan.firstTile, _shadowPlan.cascades, _packedLights);
     _staticMeshPass->uploadLights(frameIndex, _packedLights, _lightsGiven);
+    _staticMeshPass->uploadShadows(frameIndex, _shadowPlan.tiles);
+}
+
+void VulkanRenderer::recordShadows(const vk::raii::CommandBuffer& commandBuffer, std::size_t frameIndex) {
+    const vk::Image atlas = *_shadowAtlas->getImage();
+    if (_shadowPlan.tiles.empty()) {
+        // Lit shaders read it anyway: readable, its contents unused.
+        rendering::transitionImage(commandBuffer, atlas, kAtlasToShaderRead);
+        return;
+    }
+    const command::CommandLabel label{*_device, commandBuffer, "Shadow maps"};
+    rendering::transitionImage(commandBuffer, atlas, kAtlasToDepthAttachment);
+    const vk::Extent2D extent{rendering::kShadowAtlasSize, rendering::kShadowAtlasSize};
+    const auto depth = vk::RenderingAttachmentInfo{}
+                           .setImageView(*_shadowAtlas->getImageView())
+                           .setImageLayout(vk::ImageLayout::eDepthAttachmentOptimal)
+                           .setLoadOp(vk::AttachmentLoadOp::eClear)
+                           .setStoreOp(vk::AttachmentStoreOp::eStore)
+                           .setClearValue(vk::ClearDepthStencilValue{1.0F, 0});
+    commandBuffer.beginRendering(rendering::renderingInfo(extent, {}, &depth));
+    const rendering::StaticMeshPass::PartTextureSource textures{
+        .descriptors = _meshPartDescriptors.get(),
+        .layout = _meshPartSetLayout.get(),
+        .findTexture = [this](contract::renderer::TextureId texture) { return findTextureBinding(texture); },
+        .fallback = _fallbackTexture,
+        .framesInFlight = kFramesInFlight};
+    const auto size = static_cast<float>(rendering::kShadowAtlasSize);
+    for (std::size_t index = 0; index < _shadowPlan.tiles.size(); ++index) {
+        const rendering::ShadowTile& tile = _shadowPlan.tiles.at(index);
+        while (_shadowGlobals.size() <= index) {
+            _shadowGlobals.push_back(std::make_unique<frame::FrameGlobals>(*_device, *_allocator, kFramesInFlight));
+        }
+        rendering::FrameUniforms uniforms;
+        uniforms.viewProjection = tile.viewProjection;
+        _shadowGlobals.at(index)->update(frameIndex, uniforms);
+        _shadowGlobals.at(index)->bind(commandBuffer, *_meshLayout, frameIndex);
+        const vk::Viewport viewport{
+            tile.rect.x * size, tile.rect.y * size, tile.rect.z * size, tile.rect.w * size, 0.0F, 1.0F};
+        const vk::Rect2D scissor{
+            vk::Offset2D{static_cast<std::int32_t>(viewport.x), static_cast<std::int32_t>(viewport.y)},
+            vk::Extent2D{static_cast<std::uint32_t>(viewport.width), static_cast<std::uint32_t>(viewport.height)}};
+        _staticMeshPass->recordShadows(commandBuffer, frameIndex, tile, viewport, scissor, textures);
+    }
+    commandBuffer.endRendering();
+    rendering::transitionImage(commandBuffer, atlas, kAtlasDrawnToShaderRead);
 }
 
 void VulkanRenderer::recordWorld(const vk::raii::CommandBuffer& commandBuffer, std::size_t frameIndex,
@@ -1416,7 +1532,16 @@ rendering::MaterialBinding VulkanRenderer::findMaterial(contract::renderer::Mate
     return {.pipeline = pipeline,
             .set = found->prepare(*_device, frameIndex, findTexture, _fallbackTexture),
             .instanceValues = shader->hasInstanceValues(),
-            .state = state};
+            .state = state,
+            .shadowPipeline =
+                target == contract::renderer::ShaderTarget::kMesh
+                    ? shader->getShadowPipeline(
+                          *_device, state.cull,
+                          [this](const vk::raii::ShaderModule& vertex, const vk::raii::ShaderModule& fragment,
+                                 bool cutsOut, contract::renderer::CullMode cull) {
+                              return _staticMeshPass->createShadowPipeline(vertex, cutsOut ? &fragment : nullptr, cull);
+                          })
+                    : nullptr};
 }
 
 interop::vulkan::IVulkanSurfaceSource& VulkanRenderer::surfaceSourceOf(contract::platform::IPlatform& platform) {

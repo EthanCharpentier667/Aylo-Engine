@@ -21,6 +21,7 @@ struct MaterialBinding {
     vk::DescriptorSet set;                                 ///< Its set 2, for this frame.
     bool instanceValues = false;                           ///< Its pipeline reads the instance values binding.
     contract::renderer::RenderState state;  ///< How it is drawn (kMesh): its material's, or its shader's.
+    const pipeline::GraphicsPipeline* shadowPipeline = nullptr;  ///< kMesh: what draws it into a shadow map; none.
 };
 
 /// @brief Finds what a game material is drawn with this frame for a target, or a null pipeline if it cannot be drawn.

@@ -35,7 +35,7 @@ GpuLight toGpu(const Light3D& light) noexcept {
                     .direction = glm::vec4{glm::normalize(light.direction), static_cast<float>(light.kind)},
                     .color = glm::vec4{light.color, light.intensity},
                     .cone = glm::vec4{std::cos(inner), std::cos(light.outerCone), light.size * 0.5F},
-                    .right = glm::vec4{glm::normalize(light.right), light.castShadows ? 1.0F : 0.0F}};
+                    .right = glm::vec4{glm::normalize(light.right), 0.0F}};
 }
 
 /// @return Whether @p light lights anything.
@@ -46,32 +46,41 @@ bool lights(const Light3D& light) noexcept {
 
 }  // namespace
 
-void packLights(std::span<const Light3D> lights3D, const contract::renderer::Environment3D& environment,
-                const glm::vec3& camera, std::vector<std::byte>& bytes) {
-    std::vector<const Light3D*> kept;
+std::vector<Light3D> selectLights(std::span<const Light3D> lights3D, const glm::vec3& camera) {
+    std::vector<Light3D> kept;
     for (const Light3D& light : lights3D) {
         if (lights(light)) {
-            kept.push_back(&light);
+            kept.push_back(light);
         }
     }
     if (kept.size() > contract::renderer::kMaxLights3D) {
         // The sun lights everything: directional lights first, then the nearest others.
-        const auto farness = [&camera](const Light3D* light) {
-            const glm::vec3 offset = light->position - camera;
-            return light->kind == LightKind3D::kDirectional ? -1.0F : glm::dot(offset, offset);
+        const auto farness = [&camera](const Light3D& light) {
+            const glm::vec3 offset = light.position - camera;
+            return light.kind == LightKind3D::kDirectional ? -1.0F : glm::dot(offset, offset);
         };
         std::ranges::stable_sort(kept, {}, farness);
         kept.resize(contract::renderer::kMaxLights3D);
     }
+    return kept;
+}
+
+void packLights(std::span<const Light3D> selected, const contract::renderer::Environment3D& environment,
+                std::span<const std::int32_t> firstShadowTiles, std::uint32_t cascades, std::vector<std::byte>& bytes) {
     const GpuLightsHeader header{.ambient = glm::vec4{environment.ambient * environment.strength, 0.0F},
-                                 .count = glm::uvec4{static_cast<std::uint32_t>(kept.size()), 0U, 0U, 0U}};
-    bytes.resize(sizeof(GpuLightsHeader) + (kept.size() * sizeof(GpuLight)));
+                                 .count = glm::uvec4{static_cast<std::uint32_t>(selected.size()), cascades, 0U, 0U}};
+    bytes.resize(sizeof(GpuLightsHeader) + (selected.size() * sizeof(GpuLight)));
     std::memcpy(bytes.data(), &header, sizeof(header));
     std::size_t offset = sizeof(GpuLightsHeader);
-    for (const Light3D* light : kept) {
-        const GpuLight gpu = toGpu(*light);
+    std::size_t index = 0;
+    for (const Light3D& light : selected) {
+        GpuLight gpu = toGpu(light);
+        const std::int32_t tile =
+            index < firstShadowTiles.size() ? firstShadowTiles.subspan(index, 1).front() : std::int32_t{-1};
+        gpu.right.w = static_cast<float>(tile + 1);
         std::memcpy(std::span{bytes}.subspan(offset, sizeof(gpu)).data(), &gpu, sizeof(gpu));
         offset += sizeof(gpu);
+        ++index;
     }
 }
 

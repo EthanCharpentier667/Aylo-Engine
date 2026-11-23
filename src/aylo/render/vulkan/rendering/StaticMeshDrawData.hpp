@@ -38,8 +38,9 @@ static_assert(offsetof(StaticMeshDrawData, inverseModel) == 64 && offsetof(Stati
 /// @return What the shaders read for a draw of a mesh of @p bounds at @p world, with @p color and @p instance: the
 /// matrices the model matrix gives (its inverse; the normal matrix, which keeps normals perpendicular to a surface
 /// scaled unevenly). A matrix that cannot be inverted (a scale of 0) gets identity inverses, so nothing reads NaN.
+/// boundsMin.w: whether shadows fall on it.
 [[nodiscard]] AYLO_RENDER_VULKAN_API StaticMeshDrawData makeStaticMeshDrawData(
     const glm::mat4& world, const glm::vec4& color, const contract::renderer::StaticMeshBounds& bounds,
-    const contract::renderer::ShaderInstanceValues& instance) noexcept;
+    const contract::renderer::ShaderInstanceValues& instance, bool receiveShadows = true) noexcept;
 
 }  // namespace aylo::render::vulkan::rendering

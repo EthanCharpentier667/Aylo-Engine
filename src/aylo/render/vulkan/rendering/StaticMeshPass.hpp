@@ -34,6 +34,7 @@
 #include "render/vulkan/rendering/MaterialBinding.hpp"
 #include "render/vulkan/rendering/MeshDrawOrder.hpp"
 #include "render/vulkan/rendering/MeshPartTextures.hpp"
+#include "render/vulkan/rendering/ShadowPlan.hpp"
 #include "render/vulkan/rendering/StaticMeshConstants.hpp"
 #include "render/vulkan/rendering/StaticMeshDrawData.hpp"
 
@@ -62,6 +63,12 @@ inline constexpr std::uint32_t kMeshDrawSet = 3;
 inline constexpr std::uint32_t kMeshDrawBinding = 0;
 /// @brief The binding of the storage buffer of the frame's lights (LightData.hpp) in kMeshDrawSet.
 inline constexpr std::uint32_t kLightsBinding = 1;
+/// @brief The binding of the storage buffer of the frame's shadow maps (ShadowTile) in kMeshDrawSet.
+inline constexpr std::uint32_t kShadowTilesBinding = 2;
+/// @brief The binding of the shadow atlas in kMeshDrawSet.
+inline constexpr std::uint32_t kShadowAtlasBinding = 3;
+/// @brief Most shadow maps a frame has: the atlas cut in tiles of 512 texels.
+inline constexpr std::uint32_t kMaxShadowTiles = 64;
 
 /// @brief Draws static meshes in the 3D world: indexed triangles, with the depth test, each part with its material.
 ///
@@ -83,6 +90,8 @@ class AYLO_RENDER_VULKAN_API StaticMeshPass {
         glm::vec4 color{1.0F};                ///< The tint.
         MaterialBinding material;             ///< Its game material for ShaderTarget::kMesh; a null pipeline: none.
         contract::renderer::ShaderInstanceValues instanceValues{};  ///< Its material's instance values.
+        bool castShadows{true};                                     ///< Whether it is drawn into the shadow maps.
+        bool receiveShadows{true};                                  ///< Whether shadows fall on it.
     };
 
     /// @brief What the parts' textures are found and allocated with.
@@ -99,10 +108,12 @@ class AYLO_RENDER_VULKAN_API StaticMeshPass {
     /// @param colorFormat The format of the images drawn into: the scene's.
     /// @param depthFormat The format of the depth attachment.
     /// @throws vk::SystemError If the descriptor pool or a buffer cannot be created.
+    /// @param shadowAtlas The shadow atlas the lit shaders read (set 3, binding 3), with @p sampler.
+    /// @param fallback What the shadow pass binds there instead: an image it does not write (a white pixel).
     StaticMeshPass(const core::Device& device, const memory::Allocator& allocator, pipeline::ShaderCache& shaders,
                    const pipeline::PipelineLayout& layout, const descriptor::DescriptorSetLayout& drawSetLayout,
                    vk::Format colorFormat, vk::Format depthFormat, const vk::raii::PipelineCache* cache,
-                   std::size_t framesInFlight);
+                   std::size_t framesInFlight, vk::ImageView shadowAtlas, vk::ImageView fallback, vk::Sampler sampler);
     ~StaticMeshPass() = default;
     StaticMeshPass(const StaticMeshPass&) = delete;
     StaticMeshPass& operator=(const StaticMeshPass&) = delete;
@@ -136,6 +147,24 @@ class AYLO_RENDER_VULKAN_API StaticMeshPass {
     /// @throws vk::SystemError If a bigger buffer cannot be created.
     void uploadLights(std::size_t frameIndex, std::span<const std::byte> bytes, bool lit);
 
+    /// @brief Writes the frame's shadow maps @p tiles (at most kMaxShadowTiles) for the shaders to read.
+    void uploadShadows(std::size_t frameIndex, std::span<const ShadowTile> tiles);
+
+    /// @brief Records the draws of the last upload() of @p frameIndex that cast shadows into shadow map @p tile, inside
+    /// dynamic rendering with the atlas as depth attachment, @p viewport and @p scissor its tile; the frame's set 0
+    /// must hold the tile's view (FrameUniforms::viewProjection). A game material draws with its shadow pipeline (its
+    /// vertex(), and its fragment() if it cuts out), none for a blended one or one that says `#pragma shadow off`;
+    /// a model without one with the built-in one of its part (cut out for a mask part, none for a blended part).
+    void recordShadows(const vk::raii::CommandBuffer& commandBuffer, std::size_t frameIndex, const ShadowTile& tile,
+                       const vk::Viewport& viewport, const vk::Rect2D& scissor, const PartTextureSource& textures);
+
+    /// @return A pipeline drawing the static mesh vertices with @p vertex into a shadow map (depth only, the atlas's
+    /// format, a depth bias set per light), culling @p cull: with @p fragment when given (a shader that cuts out), else
+    /// the empty shadow fragment stage.
+    [[nodiscard]] pipeline::GraphicsPipeline createShadowPipeline(const vk::raii::ShaderModule& vertex,
+                                                                  const vk::raii::ShaderModule* fragment,
+                                                                  contract::renderer::CullMode cull) const;
+
     /// @brief Records the draws of the last upload() of @p frameIndex inside dynamic rendering with a depth
     /// attachment; the frame's set 0 (the 3D view) must be bound. A draw with a game material is drawn with its
     /// pipeline and set 2, the others with the built-in one of their part. The opaque draws go first, then the blended
@@ -146,12 +175,14 @@ class AYLO_RENDER_VULKAN_API StaticMeshPass {
   private:
     /// @brief What one frame in flight draws.
     struct Frame {
-        std::optional<memory::Buffer> buffer;  ///< Its StaticMeshDrawData; none until a frame draws a mesh.
-        std::optional<memory::Buffer> lights;  ///< Its lights (LightData.hpp), made with the pass.
-        bool lit{false};                       ///< Whether it has lights: the built-in material is lit.
-        vk::raii::DescriptorSet set{nullptr};  ///< kMeshDrawSet, pointing at buffer.
-        std::vector<Draw> draws;               ///< The draws of its last upload().
-        std::vector<MeshDrawKey> keys;         ///< Where each draw is and whether it is blended, to order them.
+        std::optional<memory::Buffer> buffer;        ///< Its StaticMeshDrawData; none until a frame draws a mesh.
+        std::optional<memory::Buffer> lights;        ///< Its lights (LightData.hpp), made with the pass.
+        bool lit{false};                             ///< Whether it has lights: the built-in material is lit.
+        vk::raii::DescriptorSet set{nullptr};        ///< kMeshDrawSet, pointing at buffer.
+        vk::raii::DescriptorSet shadowSet{nullptr};  ///< The same, the atlas replaced: for the shadow pass.
+        std::optional<memory::Buffer> shadowTiles;   ///< Its ShadowTile, kMaxShadowTiles of them.
+        std::vector<Draw> draws;                     ///< The draws of its last upload().
+        std::vector<MeshDrawKey> keys;               ///< Where each draw is and whether it is blended, to order them.
     };
 
     /// @brief Default vertex data, for meshes without their own: one buffer of the tangents, then the colours, then the
@@ -166,6 +197,20 @@ class AYLO_RENDER_VULKAN_API StaticMeshPass {
     /// @return The built-in pipeline for a part, @p lit or not, culling its back faces unless @p doubleSided, blended
     /// if @p blended; built the first time.
     const pipeline::GraphicsPipeline& builtInPipeline(bool lit, bool doubleSided, bool blended);
+
+    /// @return The built-in shadow pipeline of a part: cut out by its alpha if @p cutout, culling @p cull.
+    const pipeline::GraphicsPipeline& builtInShadowPipeline(bool cutout, contract::renderer::CullMode cull);
+
+    /// @return Set 1 of @p draw's part for frame @p frameIndex: its textures, made the first time.
+    [[nodiscard]] vk::DescriptorSet partTexturesOf(const Draw& draw, std::size_t frameIndex,
+                                                   const PartTextureSource& textures) const;
+
+    /// @return What draws @p draw (of part @p part) into a shadow map; nullptr if it casts none.
+    const pipeline::GraphicsPipeline* shadowPipelineOf(const Draw& draw,
+                                                       const contract::renderer::StaticMeshPart& part);
+
+    /// @brief Points binding @p binding of both of @p frame's sets at @p buffer.
+    void writeBuffer(Frame& frame, std::uint32_t binding, const memory::Buffer& buffer) const;
 
     /// @brief Makes the default vertex data cover @p vertices.
     void ensureDefaults(std::uint32_t vertices);
@@ -182,6 +227,8 @@ class AYLO_RENDER_VULKAN_API StaticMeshPass {
     const vk::raii::PipelineCache* _cache;    ///< Speeds up building them.
     /// The built-in pipelines, by lit, doubleSided and blended (builtInPipeline()).
     std::array<std::optional<pipeline::GraphicsPipeline>, 8> _builtIn;
+    /// The built-in shadow pipelines, by cut out and culled faces (builtInShadowPipeline()).
+    std::array<std::optional<pipeline::GraphicsPipeline>, 6> _builtInShadows;
     descriptor::DescriptorPool _pool;          ///< The frames' sets; declared before them.
     std::vector<Frame> _frames;                ///< One per frame in flight.
     Defaults _defaults;                        ///< Vertex data of meshes without their own.

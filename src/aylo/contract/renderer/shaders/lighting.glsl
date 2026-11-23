@@ -88,6 +88,109 @@ float ayloDistanceFalloff(float d, float range) {
     return falloff;
 }
 
+// The linear depth (distance along the light's view) of a depth `ndc` of shadow map `tile`.
+float ayloShadowLinear(AyloShadowTile tile, float ndc) {
+    const float near = tile.depth.x;
+    const float far = tile.depth.y;
+    return tile.depth.z > 0.5 ? (near * far) / max(far - (ndc * (far - near)), 1e-6) : near + (ndc * (far - near));
+}
+
+// 16 points of a Poisson disc, for the blocker search and the filter.
+const vec2 AYLO_POISSON[16] = vec2[](
+    vec2(-0.94201624, -0.39906216), vec2(0.94558609, -0.76890725), vec2(-0.09418410, -0.92938870),
+    vec2(0.34495938, 0.29387760), vec2(-0.91588581, 0.45771432), vec2(-0.81544232, -0.87912464),
+    vec2(-0.38277543, 0.27676845), vec2(0.97484398, 0.75648379), vec2(0.44323325, -0.97511554),
+    vec2(0.53742981, -0.47373420), vec2(-0.26496911, -0.41893023), vec2(0.79197514, 0.19090188),
+    vec2(-0.24188840, 0.99706507), vec2(-0.81409955, 0.91437590), vec2(0.19984126, 0.78641367),
+    vec2(0.14383161, -0.14100790));
+
+// The depth of the atlas's texel at `at` (0 to 1), kept between `lowest` and `highest`: read by texelFetch, the texel
+// as it is, so no sampler goes through the calls (which some translations to other APIs lose).
+float ayloShadowTexel(vec2 at, vec2 lowest, vec2 highest) {
+    const vec2 size = vec2(textureSize(ayloShadowAtlas, 0));
+    return texelFetch(ayloShadowAtlas, ivec2(clamp(at, lowest, highest) * size), 0).r;
+}
+
+// How lit `position` (normal n) is by shadow map `index`: 1 lit, 0 in shadow, between in a penumbra. Percentage-closer
+// soft shadows: the blockers found around it give a penumbra as wide as the light's size makes it, filtered by PCF.
+float ayloShadowMap(uint index, vec3 position, vec3 n) {
+    const AyloShadowTile tile = ayloShadows.tile[index];
+    const float texels = tile.rect.z / tile.size.z;  // the map's side, in texels
+    vec4 clip = tile.viewProjection * vec4(position, 1.0);
+    const float distance = tile.depth.z > 0.5 ? max(clip.w, 1e-4) : 1.0;
+    const float texelWorld = tile.depth.z > 0.5 ? (2.0 * tile.size.x * distance / texels) : (tile.size.x / texels);
+    // Along the normal by a few texels: a surface does not shadow itself (acne), whatever its slope.
+    clip = tile.viewProjection * vec4(position + (n * tile.bias.y * texelWorld * 1.5), 1.0);
+    const vec3 ndc = clip.xyz / clip.w;
+    const vec2 uv = (ndc.xy * 0.5) + 0.5;
+    if (any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0))) || ndc.z > 1.0 || ndc.z < 0.0) {
+        return 1.0;
+    }
+    const float receiver = ayloShadowLinear(tile, ndc.z) - (tile.bias.x * texelWorld);
+    const vec2 lowest = tile.rect.xy + (0.5 * tile.size.z);
+    const vec2 highest = tile.rect.xy + tile.rect.zw - (0.5 * tile.size.z);
+    const vec2 at = tile.rect.xy + (uv * tile.rect.zw);
+    // The blockers: what is nearer to the light than the receiver, around it.
+    const float search = 8.0 * tile.size.z;
+    float blockers = 0.0;
+    float blockerDepth = 0.0;
+    for (int i = 0; i < 16; ++i) {
+        const float depth = ayloShadowLinear(tile, ayloShadowTexel(at + (AYLO_POISSON[i] * search), lowest, highest));
+        if (depth < receiver) {
+            blockers += 1.0;
+            blockerDepth += depth;
+        }
+    }
+    if (blockers == 0.0) {
+        return 1.0;
+    }
+    blockerDepth /= blockers;
+    // The penumbra grows with the gap between the blocker and the receiver, and the light's size.
+    const float penumbraWorld = tile.depth.z > 0.5 ? (receiver - blockerDepth) * tile.size.y / max(blockerDepth, 1e-3)
+                                                   : (receiver - blockerDepth) * tile.size.y * 2.0;
+    const float radius = clamp(penumbraWorld / texelWorld, 1.0, 12.0) * tile.size.z;
+    float lit = 0.0;
+    for (int i = 0; i < 16; ++i) {
+        const float depth = ayloShadowLinear(tile, ayloShadowTexel(at + (AYLO_POISSON[i] * radius), lowest, highest));
+        lit += depth >= receiver ? 1.0 : 0.0;
+    }
+    return lit / 16.0;
+}
+
+// How lit `position` is by light `index`: its shadow map (the cascade at that distance from the camera, the cube face
+// it is in) if it casts shadows and the model receives them, else 1.
+float ayloShadowOf(uint index, vec3 position, vec3 n) {
+    const AyloLight light = ayloLights.light[index];
+    const uint first = uint(light.right.w + 0.5);
+    if (first == 0u || ayloMeshDraws[ayloPart.draw].boundsMin.w < 0.5) {
+        return 1.0;
+    }
+    const uint kind = uint(light.direction.w + 0.5);
+    uint tile = first - 1u;
+    if (kind == 0u) {
+        const float depth = -(ayloFrame.view * vec4(position, 1.0)).z;
+        uint cascade = 0u;
+        while (cascade < ayloLights.count.y && depth > ayloShadows.tile[tile + cascade].depth.w) {
+            ++cascade;
+        }
+        if (cascade == ayloLights.count.y) {
+            return 1.0;  // past the shadow distance
+        }
+        tile += cascade;
+    } else if (kind == 1u) {
+        const vec3 away = position - light.position.xyz;
+        const vec3 size = abs(away);
+        if (size.x >= size.y && size.x >= size.z) {
+            tile += away.x > 0.0 ? 0u : 1u;
+        } else if (size.y >= size.z) {
+            tile += away.y > 0.0 ? 2u : 3u;
+        } else {
+            tile += away.z > 0.0 ? 4u : 5u;
+        }
+    }
+    return ayloShadowMap(tile, position, n);
+}
+
 // The irradiance a rectangle of radiance 1, of corners c[4] around the point (relative to it), gives a surface of
 // normal n: its form factor times pi, by Lambert's formula, edge by edge (exact while the rectangle is above the
 // surface's horizon). Which side of the rectangle shines is checked by the caller.

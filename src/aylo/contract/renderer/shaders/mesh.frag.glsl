@@ -132,7 +132,7 @@ vec4 ayloLightSurface(vec3 position) {
     DIFFUSE_LIGHT = vec3(0.0);
     SPECULAR_LIGHT = vec3(0.0);
     for (uint index = 0u; index < ayloLights.count.x; ++index) {
-        SHADOW = 1.0;
+        SHADOW = ayloShadowOf(index, position, n);
         if (!ayloSetLight(index, position)) {
 #ifdef AYLO_CUSTOM_LIGHT
             // light() sees an area light as one coming from its centre, LIGHT_COLOR such that LIGHT_COLOR * n.l is the

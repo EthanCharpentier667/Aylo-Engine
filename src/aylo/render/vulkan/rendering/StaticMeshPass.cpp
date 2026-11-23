@@ -45,6 +45,8 @@
 #include "staticmesh.frag.h"
 #include "staticmesh.vert.h"
 #include "staticmesh_lit.frag.h"
+#include "staticmesh_shadow.frag.h"
+#include "staticmesh_shadow_cutout.frag.h"
 
 namespace aylo::render::vulkan::rendering {
 
@@ -71,8 +73,10 @@ constexpr std::size_t kInitialDraws = 64;
 /// @return A pool for one set of one storage buffer per frame in flight.
 descriptor::DescriptorPool createPool(const core::Device& device, std::size_t framesInFlight) {
     const auto frames = static_cast<std::uint32_t>(framesInFlight);
-    const std::array sizes{vk::DescriptorPoolSize{vk::DescriptorType::eStorageBuffer, frames * 2}};
-    return descriptor::DescriptorPool{device, frames, sizes};
+    // Two sets per frame (the pictures' and the shadow pass's), each with three buffers and the atlas.
+    const std::array sizes{vk::DescriptorPoolSize{vk::DescriptorType::eStorageBuffer, frames * 6},
+                           vk::DescriptorPoolSize{vk::DescriptorType::eCombinedImageSampler, frames * 2}};
+    return descriptor::DescriptorPool{device, frames * 2, sizes};
 }
 
 /// @return The blend preset of @p blend, for a fragment whose COLOR is premultiplied.
@@ -169,7 +173,8 @@ void validate(const contract::renderer::StaticMeshDesc& desc) {
 StaticMeshPass::StaticMeshPass(const core::Device& device, const memory::Allocator& allocator,
                                pipeline::ShaderCache& shaders, const pipeline::PipelineLayout& layout,
                                const descriptor::DescriptorSetLayout& drawSetLayout, vk::Format colorFormat,
-                               vk::Format depthFormat, const vk::raii::PipelineCache* cache, std::size_t framesInFlight)
+                               vk::Format depthFormat, const vk::raii::PipelineCache* cache, std::size_t framesInFlight,
+                               vk::ImageView shadowAtlas, vk::ImageView fallback, vk::Sampler sampler)
     : _device{&device},
       _allocator{&allocator},
       _shaders{&shaders},
@@ -185,7 +190,19 @@ StaticMeshPass::StaticMeshPass(const core::Device& device, const memory::Allocat
     for (std::size_t index = 0; index < _frames.size(); ++index) {
         Frame& frame = _frames.at(index);
         frame.set = _pool.allocate(drawSetLayout);
+        frame.shadowSet = _pool.allocate(drawSetLayout);
         device.setName(*frame.set, "Static mesh draws set");
+        device.setName(*frame.shadowSet, "Static mesh shadow draws set");
+        descriptor::DescriptorWriter{}
+            .writeImage(kShadowAtlasBinding, shadowAtlas, sampler, vk::ImageLayout::eShaderReadOnlyOptimal)
+            .update(device, *frame.set);
+        descriptor::DescriptorWriter{}
+            .writeImage(kShadowAtlasBinding, fallback, sampler, vk::ImageLayout::eShaderReadOnlyOptimal)
+            .update(device, *frame.shadowSet);
+        frame.shadowTiles.emplace(allocator, kMaxShadowTiles * sizeof(ShadowTile),
+                                  vk::BufferUsageFlagBits::eStorageBuffer, memory::Allocator::MemoryAccess::kStaging);
+        device.setName(*frame.shadowTiles->getBuffer(), "Shadow tiles");
+        writeBuffer(frame, kShadowTilesBinding, *frame.shadowTiles);
         uploadLights(index, noLights, false);
     }
 }
@@ -205,6 +222,139 @@ const pipeline::GraphicsPipeline& StaticMeshPass::builtInPipeline(bool lit, bool
         _device->setName(*slot->getPipeline(), lit ? "Static mesh lit pipeline" : "Static mesh pipeline");
     }
     return *slot;
+}
+
+void StaticMeshPass::writeBuffer(Frame& frame, std::uint32_t binding, const memory::Buffer& buffer) const {
+    for (const vk::raii::DescriptorSet* set : {&frame.set, &frame.shadowSet}) {
+        descriptor::DescriptorWriter{}
+            .writeBuffer(binding, *buffer.getBuffer(), 0, buffer.getSize(), vk::DescriptorType::eStorageBuffer)
+            .update(*_device, **set);
+    }
+}
+
+pipeline::GraphicsPipeline StaticMeshPass::createShadowPipeline(const vk::raii::ShaderModule& vertex,
+                                                                const vk::raii::ShaderModule* fragment,
+                                                                contract::renderer::CullMode cull) const {
+    const std::array bindings{
+        vk::VertexInputBindingDescription{0, sizeof(StaticMeshVertex), vk::VertexInputRate::eVertex},
+        vk::VertexInputBindingDescription{1, sizeof(glm::vec4), vk::VertexInputRate::eVertex},
+        vk::VertexInputBindingDescription{2, sizeof(glm::vec4), vk::VertexInputRate::eVertex},
+        vk::VertexInputBindingDescription{3, sizeof(glm::vec2), vk::VertexInputRate::eVertex}};
+    const std::array attributes{
+        vk::VertexInputAttributeDescription{0, 0, vk::Format::eR32G32B32Sfloat, offsetof(StaticMeshVertex, position)},
+        vk::VertexInputAttributeDescription{1, 0, vk::Format::eR32G32B32Sfloat, offsetof(StaticMeshVertex, normal)},
+        vk::VertexInputAttributeDescription{2, 0, vk::Format::eR32G32Sfloat, offsetof(StaticMeshVertex, uv)},
+        vk::VertexInputAttributeDescription{3, 1, vk::Format::eR32G32B32A32Sfloat, 0},
+        vk::VertexInputAttributeDescription{4, 2, vk::Format::eR32G32B32A32Sfloat, 0},
+        vk::VertexInputAttributeDescription{5, 3, vk::Format::eR32G32Sfloat, 0},
+    };
+    return pipeline::GraphicsPipeline::Builder{}
+        .setShaders(vertex, fragment != nullptr
+                                ? *fragment
+                                : _shaders->get("staticmesh_shadow.frag", aylo_shader_staticmesh_shadow_frag))
+        .setVertexInput(bindings, attributes)
+        .setCullMode(cullModeOf(cull))
+        .setDepth(kWorld3DDepthFormat, true)
+        .setDynamicDepthBias()
+        .setLayout(*_layout)
+        .build(*_device, _cache);
+}
+
+const pipeline::GraphicsPipeline& StaticMeshPass::builtInShadowPipeline(bool cutout,
+                                                                        contract::renderer::CullMode cull) {
+    std::optional<pipeline::GraphicsPipeline>& slot =
+        _builtInShadows.at((cutout ? 3U : 0U) + static_cast<std::size_t>(cull));
+    if (!slot) {
+        slot.emplace(createShadowPipeline(
+            _shaders->get("staticmesh.vert", aylo_shader_staticmesh_vert),
+            cutout ? &_shaders->get("staticmesh_shadow_cutout.frag", aylo_shader_staticmesh_shadow_cutout_frag)
+                   : nullptr,
+            cull));
+        _device->setName(*slot->getPipeline(), "Static mesh shadow pipeline");
+    }
+    return *slot;
+}
+
+vk::DescriptorSet StaticMeshPass::partTexturesOf(const Draw& draw, std::size_t frameIndex,
+                                                 const PartTextureSource& textures) const {
+    std::vector<std::unique_ptr<MeshPartTextures>>& sets = draw.mesh->partTextures;
+    if (sets.size() < draw.mesh->parts.size()) {
+        sets.resize(draw.mesh->parts.size());
+    }
+    std::unique_ptr<MeshPartTextures>& set = sets.at(draw.part);
+    if (!set) {
+        set = std::make_unique<MeshPartTextures>(*_device, *textures.descriptors, *textures.layout,
+                                                 textures.framesInFlight);
+    }
+    const contract::renderer::StaticMeshPart& part = draw.mesh->parts.at(draw.part);
+    const MeshPartTextureIds wanted{part.texture, part.metallicRoughnessTexture, part.normalTexture,
+                                    part.occlusionTexture, part.emissiveTexture};
+    return set->prepare(*_device, frameIndex, wanted, textures.findTexture, textures.fallback);
+}
+
+const pipeline::GraphicsPipeline* StaticMeshPass::shadowPipelineOf(const Draw& draw,
+                                                                   const contract::renderer::StaticMeshPart& part) {
+    if (draw.material.pipeline != nullptr) {
+        return contract::renderer::isTransparent(draw.material.state) ? nullptr : draw.material.shadowPipeline;
+    }
+    if (part.alphaMode == contract::renderer::AlphaMode::kBlend) {
+        return nullptr;
+    }
+    return &builtInShadowPipeline(
+        part.alphaMode == contract::renderer::AlphaMode::kMask,
+        part.doubleSided ? contract::renderer::CullMode::kNone : contract::renderer::CullMode::kBack);
+}
+
+void StaticMeshPass::uploadShadows(std::size_t frameIndex, std::span<const ShadowTile> tiles) {
+    Frame& frame = _frames.at(frameIndex);
+    if (frame.shadowTiles) {
+        frame.shadowTiles->write(std::as_bytes(tiles.first(std::min<std::size_t>(tiles.size(), kMaxShadowTiles))));
+    }
+}
+
+void StaticMeshPass::recordShadows(const vk::raii::CommandBuffer& commandBuffer, std::size_t frameIndex,
+                                   const ShadowTile& tile, const vk::Viewport& viewport, const vk::Rect2D& scissor,
+                                   const PartTextureSource& textures) {
+    const Frame& frame = _frames.at(frameIndex);
+    if (frame.draws.empty() || !frame.buffer) {
+        return;
+    }
+    commandBuffer.setViewport(0, viewport);
+    commandBuffer.setScissor(0, scissor);
+    // A constant bias of a few depth steps and one along the slope, both scaled by the light's.
+    commandBuffer.setDepthBias(1.25F * tile.bias.z, 0.0F, 1.75F * tile.bias.z);
+    const vk::PipelineLayout layout = *_layout->getLayout();
+    commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, layout, kMeshDrawSet, *frame.shadowSet, {});
+    const vk::ShaderStageFlags stages = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment;
+    const pipeline::GraphicsPipeline* boundPipeline = nullptr;
+    const GpuStaticMesh* boundMesh = nullptr;
+    for (std::uint32_t index = 0; index < frame.draws.size(); ++index) {
+        const Draw& draw = frame.draws.at(index);
+        if (!draw.castShadows || draw.mesh == nullptr || draw.part >= draw.mesh->parts.size()) {
+            continue;
+        }
+        const contract::renderer::StaticMeshPart& part = draw.mesh->parts.at(draw.part);
+        const pipeline::GraphicsPipeline* used = shadowPipelineOf(draw, part);
+        if (used == nullptr) {
+            continue;
+        }
+        if (used != boundPipeline) {
+            used->bind(commandBuffer);
+            boundPipeline = used;
+        }
+        if (draw.material.pipeline != nullptr) {
+            commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, layout, kMaterialSet, draw.material.set,
+                                             {});
+        }
+        if (draw.mesh != boundMesh) {
+            bindMesh(commandBuffer, *draw.mesh);
+            boundMesh = draw.mesh;
+        }
+        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, layout, kTextureSet,
+                                         partTexturesOf(draw, frameIndex, textures), {});
+        commandBuffer.pushConstants<StaticMeshConstants>(layout, stages, 0, StaticMeshConstants::of(part, index));
+        commandBuffer.drawIndexed(part.indexCount, 1, part.indexOffset, 0, 0);
+    }
 }
 
 void StaticMeshPass::ensureDefaults(std::uint32_t vertices) {
@@ -261,10 +411,7 @@ void StaticMeshPass::uploadLights(std::size_t frameIndex, std::span<const std::b
                              memory::Allocator::MemoryAccess::kStaging);
         const core::Device& device = _allocator->getDevice();
         device.setName(*frame.lights->getBuffer(), "Lights 3D");
-        descriptor::DescriptorWriter{}
-            .writeBuffer(kLightsBinding, *frame.lights->getBuffer(), 0, frame.lights->getSize(),
-                         vk::DescriptorType::eStorageBuffer)
-            .update(device, *frame.set);
+        writeBuffer(frame, kLightsBinding, *frame.lights);
     }
     frame.lights->write(bytes);
 }
@@ -324,7 +471,8 @@ void StaticMeshPass::upload(std::size_t frameIndex, std::span<const Draw> draws)
     for (const Draw& draw : draws) {
         const contract::renderer::StaticMeshBounds bounds =
             draw.mesh != nullptr ? draw.mesh->bounds : contract::renderer::StaticMeshBounds{};
-        _staging.push_back(makeStaticMeshDrawData(draw.world, draw.color, bounds, draw.instanceValues));
+        _staging.push_back(
+            makeStaticMeshDrawData(draw.world, draw.color, bounds, draw.instanceValues, draw.receiveShadows));
         const glm::vec3 center = glm::vec3{draw.world * glm::vec4{(bounds.min + bounds.max) * 0.5F, 1.0F}};
         const bool blendedPart = draw.mesh != nullptr && draw.part < draw.mesh->parts.size() &&
                                  draw.mesh->parts.at(draw.part).alphaMode == contract::renderer::AlphaMode::kBlend;
@@ -344,10 +492,7 @@ void StaticMeshPass::upload(std::size_t frameIndex, std::span<const Draw> draws)
                              vk::BufferUsageFlagBits::eStorageBuffer, memory::Allocator::MemoryAccess::kStaging);
         const core::Device& device = _allocator->getDevice();
         device.setName(*frame.buffer->getBuffer(), "Static mesh draws");
-        descriptor::DescriptorWriter{}
-            .writeBuffer(kMeshDrawBinding, *frame.buffer->getBuffer(), 0, frame.buffer->getSize(),
-                         vk::DescriptorType::eStorageBuffer)
-            .update(device, *frame.set);
+        writeBuffer(frame, kMeshDrawBinding, *frame.buffer);
     }
     frame.buffer->write(bytes);
 }
@@ -391,20 +536,8 @@ void StaticMeshPass::record(const vk::raii::CommandBuffer& commandBuffer, std::s
             bindMesh(commandBuffer, *draw.mesh);
             boundMesh = draw.mesh;
         }
-        std::vector<std::unique_ptr<MeshPartTextures>>& sets = draw.mesh->partTextures;
-        if (sets.size() < draw.mesh->parts.size()) {
-            sets.resize(draw.mesh->parts.size());
-        }
-        std::unique_ptr<MeshPartTextures>& set = sets.at(draw.part);
-        if (!set) {
-            set = std::make_unique<MeshPartTextures>(*_device, *textures.descriptors, *textures.layout,
-                                                     textures.framesInFlight);
-        }
-        const MeshPartTextureIds wanted{part.texture, part.metallicRoughnessTexture, part.normalTexture,
-                                        part.occlusionTexture, part.emissiveTexture};
-        commandBuffer.bindDescriptorSets(
-            vk::PipelineBindPoint::eGraphics, layout, kTextureSet,
-            set->prepare(*_device, frameIndex, wanted, textures.findTexture, textures.fallback), {});
+        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, layout, kTextureSet,
+                                         partTexturesOf(draw, frameIndex, textures), {});
         commandBuffer.pushConstants<StaticMeshConstants>(layout, stages, 0, StaticMeshConstants::of(part, index));
         commandBuffer.drawIndexed(part.indexCount, 1, part.indexOffset, 0, 0);
     }

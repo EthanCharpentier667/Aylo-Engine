@@ -34,7 +34,7 @@ struct AyloMeshDraw {
     mat4 inverseModel;  // The world's space to the model's.
     mat4 normal;        // The inverse transpose of the model matrix (its upper 3x3 is used): normals to the world.
     vec4 color;         // The draw's colour, straight alpha.
-    vec4 boundsMin;     // xyz: the smallest corner of the model's box, in its space.
+    vec4 boundsMin;     // xyz: the smallest corner of the model's box, in its space; w: 1 if shadows fall on it.
     vec4 boundsMax;     // xyz: the largest corner.
     vec4 instance[4];   // The draw's `instance uniform` values.
 };
@@ -48,11 +48,24 @@ struct AyloLight {
     vec4 direction;  // xyz: where it shines, unit; w: its kind (0 directional, 1 point, 2 spot, 3 area).
     vec4 color;      // rgb: linear colour; w: its intensity, in watts or lux.
     vec4 cone;       // x, y: cos of the spot's inner and outer half-angles; z, w: half the area's size.
-    vec4 right;      // xyz: the area's width axis, unit; w: 1 if it casts shadows.
+    vec4 right;      // xyz: the area's width axis, unit; w: its first shadow map + 1, 0 without.
 };
+// The frame's shadow maps (ShadowPlan.hpp in the Vulkan renderer, std430) at set 3, binding 2, tiles of the atlas at
+// binding 3: a directional light has one per cascade, a point light six (+X, -X, +Y, -Y, +Z, -Z).
+struct AyloShadowTile {
+    mat4 viewProjection;  // World to the light's clip space.
+    vec4 rect;            // xy: its corner in the atlas, zw: its size.
+    vec4 bias;            // x: depth bias, y: normal bias (texels), z: slope bias.
+    vec4 depth;           // x, y: near and far; z: 1 perspective, 0 orthographic; w: a cascade's far end.
+    vec4 size;            // x: world width (orthographic) or tan of half its angle; y: the light's size; z: a texel.
+};
+layout(set = 3, binding = 2, std430) readonly buffer AyloShadows {
+    AyloShadowTile tile[];
+} ayloShadows;
+layout(set = 3, binding = 3) uniform sampler2D ayloShadowAtlas;
 layout(set = 3, binding = 1, std430) readonly buffer AyloLights {
     vec4 ambient;  // rgb: the ambient light.
-    uvec4 count;   // x: how many lights follow.
+    uvec4 count;   // x: how many lights follow; y: the cascades of a directional light.
     AyloLight light[];
 } ayloLights;
 // The part being drawn: its material (glTF's metallic-roughness), with the draw's index.

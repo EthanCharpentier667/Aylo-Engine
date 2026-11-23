@@ -26,10 +26,11 @@ constexpr float kMinDeterminant = 1e-12F;
 
 StaticMeshDrawData makeStaticMeshDrawData(const glm::mat4& world, const glm::vec4& color,
                                           const contract::renderer::StaticMeshBounds& bounds,
-                                          const contract::renderer::ShaderInstanceValues& instance) noexcept {
+                                          const contract::renderer::ShaderInstanceValues& instance,
+                                          bool receiveShadows) noexcept {
     StaticMeshDrawData data{.model = world,
                             .color = color,
-                            .boundsMin = glm::vec4{bounds.min, 0.0F},
+                            .boundsMin = glm::vec4{bounds.min, receiveShadows ? 1.0F : 0.0F},
                             .boundsMax = glm::vec4{bounds.max, 0.0F},
                             .instance = instance};
     if (std::abs(glm::determinant(world)) > kMinDeterminant) {

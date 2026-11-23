@@ -10,6 +10,7 @@
 #include <array>
 #include <cstdint>
 #include <deque>
+#include <functional>
 #include <string>
 #include <utility>
 #include <vulkan/vulkan_raii.hpp>
@@ -60,6 +61,19 @@ class AYLO_RENDER_VULKAN_API GameShader {
     /// @return Whether it serves @p target.
     [[nodiscard]] bool serves(contract::renderer::ShaderTarget target) const noexcept;
 
+    /// @brief Builds a shadow map pipeline of the kMesh variant: its vertex module, its fragment module (used when the
+    /// shader cuts out), whether it cuts out, and the faces culled.
+    using ShadowPipelineBuilder = std::function<pipeline::GraphicsPipeline(
+        const vk::raii::ShaderModule& vertex, const vk::raii::ShaderModule& fragment, bool cutsOut,
+        contract::renderer::CullMode cull)>;
+
+    /// @return The pipeline that draws its kMesh variant into a shadow map culling @p cull, built by @p build the first
+    /// time; nullptr if it draws no mesh or says `#pragma shadow off`.
+    /// @throws vk::SystemError If the pipeline cannot be built.
+    [[nodiscard]] const pipeline::GraphicsPipeline* getShadowPipeline(const core::Device& device,
+                                                                      contract::renderer::CullMode cull,
+                                                                      const ShadowPipelineBuilder& build);
+
     /// @return The shader's own render state (its pragmas).
     [[nodiscard]] const contract::renderer::RenderState& getRenderState() const noexcept { return _renderState; }
 
@@ -81,12 +95,16 @@ class AYLO_RENDER_VULKAN_API GameShader {
         /// keeps the others where they are, as the frame's draws point to them.
         std::deque<std::pair<contract::renderer::RenderState, pipeline::GraphicsPipeline>> built;
         vk::Format format{vk::Format::eUndefined};  ///< The colour format `built` draws into.
+        /// The shadow map pipelines of a kMesh variant, by the faces they cull.
+        std::deque<std::pair<contract::renderer::CullMode, pipeline::GraphicsPipeline>> shadows;
     };
 
     std::string _name;                                                      ///< For messages.
     std::uint32_t _materialSize{0};                                         ///< Its material block.
     bool _instanceValues{false};                                            ///< It has `instance uniform`s.
     contract::renderer::RenderState _renderState;                           ///< Its pragmas.
+    bool _castsShadows{true};                                               ///< No `#pragma shadow off`.
+    bool _cutsOut{false};                                                   ///< It writes ALPHA_SCISSOR.
     std::array<Variant, contract::renderer::kShaderTargetCount> _variants;  ///< By ShaderTarget.
 };
 
