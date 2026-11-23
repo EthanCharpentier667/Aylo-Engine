@@ -147,3 +147,13 @@ TEST(ShaderAssembler, LeavesThePreludeAsItIsForTheDefaultShader) {
         }
     }
 }
+
+TEST(ShaderAssembler, AMeshReadsItsInstanceValuesFromItsDrawInBothStages) {
+    const ParsedShader shader =
+        parseShader("#pragma mesh\ninstance uniform float glow = 0.5;\nvoid fragment() { COLOR *= glow; }\n", "glow");
+    for (const ShaderStage stage : {ShaderStage::kVertex, ShaderStage::kFragment}) {
+        const std::string glsl = assembleShader(shader, ShaderTarget::kMesh, stage);
+        EXPECT_NE(glsl.find("    glow = ayloMeshDraws[ayloPart.draw].instance[0].x;\n"), std::string::npos) << glsl;
+        EXPECT_EQ(glsl.find("vec4 ayloInstance[4]"), std::string::npos) << glsl;
+    }
+}

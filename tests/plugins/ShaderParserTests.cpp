@@ -160,3 +160,11 @@ TEST(ShaderParser, ReservesTheScreenBuiltins) {
         EXPECT_NE(message.find("reserved"), std::string::npos) << name;
     }
 }
+
+TEST(ShaderParser, ReservesTheMeshBuiltins) {
+    for (const std::string_view name :
+         {"NORMAL", "MODEL_MATRIX", "INV_MODEL_MATRIX", "NORMAL_MATRIX", "AABB_MIN", "AABB_MAX"}) {
+        const std::string message = errorOf(std::string{"uniform vec3 "} + std::string{name} + ";\nvoid fragment() {}");
+        EXPECT_NE(message.find("reserved"), std::string::npos) << name;
+    }
+}

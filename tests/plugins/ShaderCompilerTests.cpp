@@ -144,6 +144,28 @@ TEST(ShaderCompiler, CompilesAMeshShaderForMeshesOnly) {
     EXPECT_EQ(shader.materialValues.size(), 2U);
 }
 
+TEST(ShaderCompiler, AMeshShaderReadsItsDrawsMatricesBoundsAndInstanceValuesInBothStages) {
+    // docs/Shaders.md: a mesh draw's data is in the frame's buffer of mesh draws, read by both stages.
+    const CompiledShader shader = compileShader(
+        "#pragma mesh\n"
+        "uniform sampler2D noise;\n"
+        "instance uniform float dissolve = 0.0;\n"
+        "void vertex() { VERTEX += NORMAL_MATRIX * NORMAL * dissolve; }\n"
+        "void fragment() {\n"
+        "    vec3 local = (INV_MODEL_MATRIX * MODEL_MATRIX * vec4(AABB_MIN, 1.0)).xyz;\n"
+        "    vec3 box = (local - AABB_MIN) / max(AABB_MAX - AABB_MIN, vec3(0.0001));\n"
+        "    if (texture(noise, box.xy).r < dissolve) { discard; }\n"
+        "}\n",
+        "dissolve");
+    ASSERT_EQ(shader.variants.size(), 1U);
+    EXPECT_EQ(shader.variants.front().fragment.front(), kSpirvMagic);
+    EXPECT_EQ(shader.instanceValues.size(), 1U);
+}
+
+TEST(ShaderCompiler, TheMeshDrawBuiltinsAreOnlyForMeshShaders) {
+    EXPECT_FALSE(errorOf("void fragment() { COLOR.rgb = AABB_MAX; }\n").empty());
+}
+
 TEST(ShaderCompiler, AShaderIsAScreenEffectOrAMeshShaderNotBoth) {
     EXPECT_THROW(static_cast<void>(compileShader("#pragma screen\n#pragma mesh\nvoid fragment() {}\n", "both")),
                  aylo::plugins::shader::exceptions::ShaderException);
