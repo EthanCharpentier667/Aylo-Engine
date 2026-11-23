@@ -11,6 +11,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <glm/ext/vector_float4.hpp>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -51,6 +52,46 @@ enum class ShaderTarget : std::uint8_t {
 inline constexpr std::size_t kShaderTargetCount = 6;
 static_assert(static_cast<std::size_t>(ShaderTarget::kMesh) + 1 == kShaderTargetCount,
               "kShaderTargetCount must count every ShaderTarget: kMesh is the last one");
+
+/// @brief Which faces of a 3D material are not drawn.
+enum class CullMode : std::uint8_t {
+    kBack,   ///< Its back faces (seen from behind): closed models, the default.
+    kFront,  ///< Its front faces: an inverted hull (outlines), the inside of a room.
+    kNone,   ///< None: both sides drawn (leaves, cloth, planes seen from both sides).
+};
+
+/// @brief How a 3D material's pixels combine with what is behind them. The fragment's COLOR is premultiplied.
+enum class MeshBlend : std::uint8_t {
+    kOpaque,         ///< Replaces it; drawn first, in any order.
+    kAlpha,          ///< Over it by COLOR.a (glass, smoke); drawn after the opaque, back to front.
+    kPremultiplied,  ///< The same factors as kAlpha (COLOR is premultiplied): kept for materials written so.
+    kAdditive,       ///< Added to it (fire, lasers, glows).
+    kMultiply,       ///< Multiplies it (stains, tinted glass, shadows faked on a decal).
+};
+
+/// @brief How a 3D material uses the depth buffer.
+enum class DepthMode : std::uint8_t {
+    kTestWrite,    ///< Hidden by what is in front, and hides what is behind: the default of an opaque material.
+    kTestNoWrite,  ///< Hidden by what is in front, hides nothing: the default of a blended one.
+    kNoTest,       ///< Always drawn, hides nothing (an x-ray silhouette, a gizmo).
+};
+
+/// @brief How a 3D material is drawn, besides its code: from the shader's pragmas (`#pragma cull front`), and
+/// replaced by a material (MaterialDesc::renderState).
+struct RenderState {
+    CullMode cull{CullMode::kBack};          ///< The faces not drawn.
+    MeshBlend blend{MeshBlend::kOpaque};     ///< How it is blended.
+    DepthMode depth{DepthMode::kTestWrite};  ///< How it uses depth.
+    float depthBias{0.0F};       ///< Added to the depth, in steps of the depth buffer: negative pulls it closer.
+    float depthBiasSlope{0.0F};  ///< Added to the depth times the surface's slope to the screen.
+
+    [[nodiscard]] bool operator==(const RenderState& other) const = default;
+};
+
+/// @return Whether @p state is blended: drawn after the opaque draws, back to front.
+[[nodiscard]] constexpr bool isTransparent(const RenderState& state) noexcept {
+    return state.blend != MeshBlend::kOpaque;
+}
 
 /// @brief The type of a value a shader declares (`uniform float flash;`), as the shader reads it (std140 in a
 /// material, std430 in an instance).
@@ -108,6 +149,7 @@ struct AYLO_CONTRACT_RENDERER_API CompiledShader {
     std::vector<ShaderValue> instanceValues;  ///< `instance uniform` values, in a drawing's ShaderInstanceValues.
     ShaderInstanceValues instanceDefaults{};  ///< The declared defaults of the instance values.
     std::vector<ShaderTexture> textures;      ///< `uniform sampler2D` textures, in slot order.
+    RenderState renderState;                  ///< How its kMesh variant is drawn (its pragmas); ignored by 2D targets.
 
     /// @return The variant for @p target, or nullptr if the shader does not serve it.
     [[nodiscard]] const ShaderVariant* findVariant(ShaderTarget target) const noexcept;
@@ -119,6 +161,7 @@ struct MaterialDesc {
     ShaderId shader;                ///< From IRenderer::createShader().
     std::vector<std::byte> values;  ///< The material's block: CompiledShader::materialSize bytes.
     std::array<TextureId, kShaderMaxTextures> textures{};  ///< By slot; an unused slot stays a default TextureId.
+    std::optional<RenderState> renderState;  ///< Replaces the shader's for its kMesh variant; none: the shader's.
 };
 
 /// @brief Checks @p shader can be created: at least one variant, no target twice, no empty stage, every value inside
