@@ -43,8 +43,11 @@ turn the entity to aim it. Its scale is ignored.
 | `innerConeAngle` | f32 | `0` | spot: the half-angle lit fully, in degrees |
 | `outerConeAngle` | f32 | `45` | spot: the half-angle past which nothing is lit, in degrees (at most 89.9) |
 | `size` | vec2 | `1, 1` | area: its width (along the entity's X) and height (along Y), in metres |
-| `castShadows` | bool | `false` | whether it casts shadows (in a later version) |
+| `castShadows` | bool | `false` | whether it casts shadows: see [Shadows](#shadows) |
 | `enabled` | bool | `true` | `false` turns it off without removing it |
+| `shadowSoftness` | f32 | `1` | `0`: hard shadows; `1`: as soft as a light of its size; more: softer |
+| `shadowBias` | f32 | `1` | raise it if a lit surface shows dark stripes (shadow acne) |
+| `shadowNormalBias` | f32 | `1` | the same, along the surface: raise it for stripes on slopes |
 
 | Kind | What it is | Where it is | Strength |
 |---|---|---|---|
@@ -70,6 +73,38 @@ needs no transform); with several, the one with the highest `priority` is used.
 | `ambient` | vec3 | `0, 0, 0` | linear RGB |
 | `strength` | f32 | `1` | multiplies `ambient` |
 | `priority` | i32 | `0` | among several, the highest one is used |
+| `shadowCascades` | u32 | `3` | directional lights: how many shadow maps share the view, 1 to 4 (more: sharper far away) |
+| `shadowResolution` | u32 | `1024` | texels of a side of one shadow map: `512`, `1024` or `2048` |
+| `shadowDistance` | f32 | `60` | directional lights: how far from the camera shadows fall, in metres |
+
+## Shadows
+
+A light with `castShadows = true` casts the shadows of the models in front of it onto the others, on lit materials
+and on models without a material. The sun's shadows follow the camera; a lamp's, a torch's and a window's stay with
+the light. They are soft where the caster is far from the surface, as real shadows are, by `shadowSoftness`: the sun's
+half a degree, a bulb of 10 cm, an area light's rectangle.
+
+```luau
+ctx.commands:spawn({
+	["aylo.Transform3D"] = { position = vector.create(0, 4, 0) },
+	["aylo.Light3D"] = { kind = "spot", power = 800, castShadows = true, shadowSoftness = 2 },
+})
+ctx.commands:spawn({ ["aylo.Environment3D"] = { shadowCascades = 4, shadowResolution = 2048, shadowDistance = 80 } })
+```
+
+| What | Shadow maps |
+|---|---|
+| directional | one per cascade over `shadowDistance`, sharper near the camera |
+| spot | one, the cone |
+| area | one, a wide cone along its facing |
+| point | six, all around |
+
+The shadow maps share one image of 4096 by 4096 texels: 4 maps at a `shadowResolution` of 2048, 16 at 1024, 64 at
+512. A light whose maps do not fit casts none (the lights come in the order the frame keeps them, the directional
+ones first). A model chooses with `castShadows` and `receiveShadows` on its [`aylo.MeshRenderer`](3d.md), and a
+shader with `#pragma shadow off` casts none (a glow, a hologram). A model's `vertex()` runs in its shadow too, so a
+waving flag casts a waving shadow, and a cutout (`ALPHA_SCISSOR`, a glTF mask) casts the shape of its cut. A blended
+model casts none.
 
 ## In the editor
 
@@ -83,6 +118,7 @@ spot light's cone, an area light's rectangle and the way it faces. A disabled li
 - The lights of a glTF file (`KHR_lights_punctual`) are not read: models are drawn as one mesh, without the nodes a light
   would sit on. Place your lights with entities.
 - Lights live on the client: the server spawns them as any component, and does nothing with them.
+- Shadows need a 3D camera: the sun's cascades are fitted to it. The Scene tab's preview reads the game camera's.
 
 ## See also
 

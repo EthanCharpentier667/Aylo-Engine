@@ -221,6 +221,7 @@ void fragment() { COLOR = vec4(0.2, 0.5, 1.0, 1.0) * 0.4; }  // premultiplied: r
 | `#pragma cull` | `back`: the faces seen from behind are not drawn; `front`: the faces seen from the front are not drawn; `none`: both sides drawn | `back` |
 | `#pragma blend` | `opaque`; `alpha` (or `premultiplied`, the same): over what is behind by `COLOR.a`; `additive`: added to it (fire, glows); `multiply`: multiplies it (stains, tinted glass) | `opaque` |
 | `#pragma depth` | `test write`: hidden by what is in front, hides what is behind; `test nowrite`: hidden, hides nothing; `notest`: always drawn | `test write`, and `test nowrite` with a `blend` other than `opaque` |
+| `#pragma shadow off` | (no value) | the models drawn with it cast no shadow |
 | `#pragma depth_bias` | a number, and optionally a slope factor: moves the depth by that many steps (negative is closer), to draw a decal on a wall without flicker | `0 0` |
 
 A model with a blended material is drawn after every opaque one, from the farthest to the nearest, so glass in front

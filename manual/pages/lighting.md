@@ -136,7 +136,7 @@ void light() {
 | `LIGHT_DIR` | `vec3` | unit, from the surface toward the light (toward the centre of an area light) |
 | `LIGHT_COLOR` | `vec3` | the light's colour times its strength here, facing it (W/m²): `LIGHT_COLOR * dot(NORMAL, LIGHT_DIR)` is what reaches the surface |
 | `ATTENUATION` | `float` | how much of it reaches this point: the distance, the range, a spot's cone |
-| `SHADOW` | `float` | `1` lit, `0` in shadow (always `1` until shadows come) |
+| `SHADOW` | `float` | `1` lit, `0` in shadow, between in a soft shadow's penumbra; see [Shadows](lights.md#shadows) |
 | `DIFFUSE_LIGHT` | `vec3` | what the lights gave so far by diffusion: add to it |
 | `SPECULAR_LIGHT` | `vec3` | what the lights gave so far by reflection: add to it |
 
