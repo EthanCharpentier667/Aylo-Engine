@@ -66,6 +66,7 @@ class AYLO_PLUGIN_GRAPHICS_API GraphicsPlugin : public ecs::Plugin {
     static constexpr std::string_view kBeginFrameSystem = "aylo.graphics.beginFrame";  ///< Render: starts the frame.
     static constexpr std::string_view kCameraSystem = "aylo.graphics.camera";          ///< Render: applies the camera.
     static constexpr std::string_view kCamera3DSystem = "aylo.graphics.camera3D";  ///< Render: applies the 3D camera.
+    static constexpr std::string_view kLights3DSystem = "aylo.graphics.lights3D";  ///< Render: gives the 3D lights.
     static constexpr std::string_view kLines3DSystem = "aylo.graphics.lines3D";    ///< Render: draws the 3D lines.
     static constexpr std::string_view kSpritesSystem = "aylo.graphics.sprites";    ///< Render: draws the sprites.
     static constexpr std::string_view kEndFrameSystem = "aylo.graphics.endFrame";  ///< Render: shows the frame.
