@@ -140,6 +140,14 @@ half-float image, reading the scene or the previous effect's output. Its built-i
 values, so the assembler writes the defaults into the vertex stage. The `SCREEN_*` names are reserved in every shader
 but only declared in a screen effect.
 
+A screen effect also reads the 3D world's depth (`DEPTH_TEXTURE`, set 3, binding 0, in the screen effects' layout
+`_screenLayout`) and the 3D camera (`VIEW_MATRIX`, `PROJECTION_MATRIX`, their inverses, `CAMERA_POSITION`: the effects'
+frame uniforms hold the 2D view-projection and the 3D camera), with the helpers `linearDepth()`, `viewPositionAt()`,
+`worldPositionAt()` and `normalAt()` (rebuilt from the depth of the neighbours: there is no normal buffer). The
+compiler marks a screen shader that names one of them (`CompiledShader::readsDepth`); only when an active effect does is
+the scene's depth stored and made readable after the 3D pass, else set 3 holds the white pixel (far). The names are
+reserved in every shader but only declared in a screen effect.
+
 The game chooses its effects with `aylo.shader.setScreenMaterials` (or the form `engine.screenEffects`), a list of
 materials kept in the client resource `aylo.ScreenMaterials`. The Render system `aylo.Shader.Screen`, after
 `aylo.Shader.Update`, hands the renderer the ones created (`IRenderer::setScreenMaterials()`) every frame, so a reload

@@ -158,6 +158,16 @@ A game cutout shader's `fragment()` writes a colour in the shadow pass, which ha
 layer warns that the write is unused, which is harmless. Shadows of the preview (the editor's Scene tab) are the scene
 camera's cascades.
 
+## Depth in screen effects (R3D-09)
+
+Screen effects get a set 3 (`_screenLayout`) holding the scene's 3D depth, and frame uniforms of their own
+(`_screenGlobals`) with the 2D view-projection and the 3D camera. The effects are resolved before the scene is recorded:
+when one reads depth (`CompiledShader::readsDepth`), the 3D pass stores its depth attachment and makes it readable;
+otherwise nothing changes and set 3 holds the white pixel, the far plane. The issue's optional normal buffer is not
+made: `normalAt()` rebuilds the normal from the depth of the nearest neighbours on each axis, which costs no
+attachment, no mesh pipeline variant and nothing to a game that does not use it. The positions are computed over the
+whole picture: a virtual resolution with bars offsets them.
+
 ## Transparency: sorting, not order-independent transparency (R3D-03)
 
 Blended 3D draws are drawn after the opaque ones, sorted back to front by the centre of their box, per picture. This is
