@@ -27,6 +27,7 @@
 #include "aylo/contract/renderer/shaders/CompiledShader.hpp"
 #include "aylo/ecs/app/App.hpp"
 #include "aylo/ecs/query/Query.hpp"
+#include "aylo/ecs/query/QueryTerms.hpp"
 #include "aylo/ecs/resource/Resources.hpp"
 #include "aylo/ecs/schedule/Phase.hpp"
 #include "aylo/ecs/system/ResourceParam.hpp"
@@ -42,6 +43,7 @@
 #include "plugins/mesh/MeshRenderer.hpp"
 #include "plugins/mesh/detail/Model.hpp"
 #include "plugins/mesh/detail/ModelLoader.hpp"
+#include "plugins/shader/MaterialInstance.hpp"
 #include "plugins/shader/ShaderAssets.hpp"
 #include "plugins/shader/ShaderHandles.hpp"
 #include "plugins/shader/ShaderPlugin.hpp"
@@ -136,19 +138,17 @@ void uploadMeshes(contract::renderer::IRenderer& renderer, MeshAssets& meshes,
     }
 }
 
-/// @brief Render: creates the meshes whose textures are ready, then draws each MeshRenderer whose mesh is loaded, at
-/// its GlobalTransform3D. One system, placed among the GraphicsPlugin's own, so no other plugin's use of the backend
-/// needs an order with it.
-/// @return The renderer's material for @p material, a material of a `#pragma mesh` shader; the default one for none,
-/// one not created yet, or one whose shader draws no mesh (warned about once).
-contract::renderer::MaterialId materialOf(core::asset::AssetId material, MeshAssets& meshes,
-                                          const shader::ShaderHandles& handles, const shader::ShaderAssets& shaders) {
+/// @return The material @p material was created as, a material of a `#pragma mesh` shader; nullptr (the default
+/// material) for none, one not created yet, or one whose shader draws no mesh (warned about once).
+const shader::ShaderHandles::Material* materialOf(core::asset::AssetId material, MeshAssets& meshes,
+                                                  const shader::ShaderHandles& handles,
+                                                  const shader::ShaderAssets& shaders) {
     if (material == core::asset::AssetId{}) {
-        return {};
+        return nullptr;
     }
     const shader::ShaderHandles::Material* created = handles.getMaterial(material);
     if (created == nullptr) {
-        return {};
+        return nullptr;
     }
     const contract::renderer::CompiledShader* compiled = shaders.get(created->shader);
     if (compiled != nullptr && compiled->findVariant(contract::renderer::ShaderTarget::kMesh) == nullptr) {
@@ -158,15 +158,20 @@ contract::renderer::MaterialId materialOf(core::asset::AssetId material, MeshAss
                 "'#pragma mesh' shader. It is drawn with the built-in one.\n",
                 compiled->name);
         }
-        return {};
+        return nullptr;
     }
-    return created->material;
+    return created;
 }
 
-void drawMeshes(ecs::NonSendMut<graphics::Backend> backend, ecs::ResMut<MeshAssets> meshes,
-                ecs::Res<graphics::TextureAssets> textures, ecs::Res<shader::ShaderHandles> handles,
-                ecs::Res<shader::ShaderAssets> shaders,
-                ecs::Query<const transform::GlobalTransform3D, const MeshRenderer> renderers) {
+/// @brief Render: creates the meshes whose textures are ready, then draws each MeshRenderer whose mesh is loaded, at
+/// its GlobalTransform3D, with its material and its MaterialInstance's values (or else its shader's defaults). One
+/// system, placed among the GraphicsPlugin's own, so no other plugin's use of the backend needs an order with it.
+void drawMeshes(
+    ecs::NonSendMut<graphics::Backend> backend, ecs::ResMut<MeshAssets> meshes,
+    ecs::Res<graphics::TextureAssets> textures, ecs::Res<shader::ShaderHandles> handles,
+    ecs::Res<shader::ShaderAssets> shaders,
+    ecs::Query<const transform::GlobalTransform3D, const MeshRenderer, ecs::Optional<const shader::MaterialInstance>>
+        renderers) {
     contract::renderer::IRenderer* renderer = rendererOf(*backend);
     if (renderer == nullptr) {
         return;
@@ -175,14 +180,18 @@ void drawMeshes(ecs::NonSendMut<graphics::Backend> backend, ecs::ResMut<MeshAsse
     if (!renderer->supports3D()) {
         return;
     }
-    for (auto [entity, global, model] : renderers) {
-        if (const std::optional<contract::renderer::StaticMeshId> mesh = meshes->getMesh(model.mesh)) {
-            renderer->drawStaticMesh(contract::renderer::StaticMeshDraw{
-                .mesh = *mesh,
-                .world = transform::toMatrix(global),
-                .color = model.color,
-                .material = materialOf(model.material, *meshes, *handles, *shaders)});
+    for (auto [entity, global, model, instance] : renderers) {
+        const std::optional<contract::renderer::StaticMeshId> mesh = meshes->getMesh(model.mesh);
+        if (!mesh) {
+            continue;
         }
+        contract::renderer::StaticMeshDraw draw{
+            .mesh = *mesh, .world = transform::toMatrix(global), .color = model.color};
+        if (const shader::ShaderHandles::Material* material = materialOf(model.material, *meshes, *handles, *shaders)) {
+            draw.material = material->material;
+            draw.instanceValues = instance != nullptr ? instance->values : material->instanceDefaults;
+        }
+        renderer->drawStaticMesh(draw);
     }
 }
 
