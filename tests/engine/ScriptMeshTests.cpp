@@ -371,3 +371,40 @@ TEST(ScriptMesh, AScriptDrawsALitModelUnderALight) {
     ASSERT_FALSE(client.state->staticMeshDraws.empty());
     EXPECT_NE(client.state->staticMeshDraws.back().material, aylo::contract::renderer::MaterialId{});
 }
+
+TEST(ScriptMesh, AScriptDrawsAModelWithItsGltfMaterialsAndReadsItsVertexData) {
+    // manual/pages/lighting.md, "Models from 3D tools" and "The vertices' data".
+    ClientScripts client;
+    client.state->shaders = true;
+    client.assets.writePanel();
+    client.assets.write("models/tinted.glsl",
+                        "#pragma mesh\n#pragma lit\n"
+                        "void fragment() { ALBEDO = COLOR.rgb * VERTEX_COLOR.rgb; AO = clamp(UV2.x, 0.0, 1.0); }\n");
+    ASSERT_EQ(client.run(R"(
+        local panel = engine.assets.mesh("models/panel.gltf")
+        local tinted = engine.assets.material({ name = "tinted", shader = engine.assets.shader("models/tinted.glsl") })
+        engine.ecs.system("game.Setup", {
+            phase = "Startup",
+            side = "client",
+            run = function(ctx)
+                ctx.commands:spawn({ ["aylo.Transform3D"] = {}, ["aylo.MeshRenderer"] = { mesh = panel } })
+                ctx.commands:spawn({
+                    ["aylo.Transform3D"] = { position = vector.create(3, 0, 0) },
+                    ["aylo.MeshRenderer"] = { mesh = panel, material = tinted },
+                })
+            end,
+        })
+    )"),
+              "");
+    testing::internal::CaptureStderr();
+    for (int frame = 0; frame < 4; ++frame) {
+        client.app.runFrame();
+    }
+    const std::string log = testing::internal::GetCapturedStderr();
+    EXPECT_EQ(log.find("tinted.glsl"), std::string::npos) << log;
+    ASSERT_EQ(client.state->createdStaticMeshes.size(), 1U);
+    const auto& created = client.state->createdStaticMeshes.at(0);
+    EXPECT_EQ(created.colors.size(), created.vertices.size());
+    EXPECT_EQ(created.parts.at(0).alphaMode, aylo::contract::renderer::AlphaMode::kMask);
+    EXPECT_GE(client.state->staticMeshDraws.size(), 2U);
+}
