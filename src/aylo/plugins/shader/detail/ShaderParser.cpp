@@ -71,6 +71,10 @@ constexpr auto kBuiltins = std::to_array<std::string_view>({"VERTEX",
                                                             "ATTENUATION",
                                                             "SHADOW",
                                                             "DIFFUSE_LIGHT",
+                                                            "TANGENT",
+                                                            "BINORMAL",
+                                                            "VERTEX_COLOR",
+                                                            "UV2",
                                                             "SPECULAR_LIGHT"});
 
 /// @return @p names quoted and joined, for a message.

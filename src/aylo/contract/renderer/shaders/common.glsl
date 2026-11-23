@@ -55,10 +55,26 @@ layout(set = 3, binding = 1, std430) readonly buffer AyloLights {
     uvec4 count;   // x: how many lights follow.
     AyloLight light[];
 } ayloLights;
+// The part being drawn: its material (glTF's metallic-roughness), with the draw's index.
 layout(push_constant) uniform AyloMeshPart {
-    vec4 baseColor;  // The part's base colour, straight alpha.
-    uint draw;       // The draw's index in ayloMeshDraws.
+    vec4 baseColor;    // The part's base colour, straight alpha.
+    vec4 emissive;     // rgb: the light it gives off; w: the normal map's scale.
+    vec4 surface;      // x: metallic, y: roughness, z: occlusion strength, w: alpha cutoff.
+    vec4 uvTransform;  // xy: offset, zw: scale of its texture coordinates.
+    uint draw;         // The draw's index in ayloMeshDraws.
+    uint flags;        // Which maps it has (ayloPartHas*), and its alpha mode in bits 4 and 5.
+    float uvRotation;  // The rotation of its texture coordinates, radians.
+    uint padding;
 } ayloPart;
+const uint ayloPartHasMetallicRoughness = 1u;
+const uint ayloPartHasNormal = 2u;
+const uint ayloPartHasOcclusion = 4u;
+const uint ayloPartHasEmissive = 8u;
+// The part's maps besides its base colour (TEXTURE), at set 1, bindings 1 to 4.
+layout(set = 1, binding = 1) uniform sampler2D ayloPartMetallicRoughness;
+layout(set = 1, binding = 2) uniform sampler2D ayloPartNormal;
+layout(set = 1, binding = 3) uniform sampler2D ayloPartOcclusion;
+layout(set = 1, binding = 4) uniform sampler2D ayloPartEmissive;
 
 vec3 VERTEX;               // Vertex stage: the vertex, in the model's space (its entity's transform places it).
 vec3 NORMAL;               // The surface's normal: in the model's space in the vertex stage, in the world's in fragment.
@@ -68,6 +84,10 @@ mat3 NORMAL_MATRIX;        // A normal of the model's space to the world's (norm
 vec3 AABB_MIN;             // The smallest corner of the model's box, in its space.
 vec3 AABB_MAX;             // The largest corner.
 vec3 WORLD_POSITION;       // The vertex (vertex stage, before vertex() moves it) or the pixel (fragment), in the world.
+vec3 TANGENT;              // Along U: in the model's space in the vertex stage, in the world's (unit) in the fragment.
+vec3 BINORMAL;             // Along V, as TANGENT.
+vec4 VERTEX_COLOR;         // The vertex's colour (white without one), linear.
+vec2 UV2;                  // The second set of texture coordinates (lightmaps); 0 without one.
 #define CAMERA_POSITION ayloFrame.cameraPosition.xyz  // The 3D camera, in the world.
 #define VIEW_MATRIX ayloFrame.view                     // World to camera space.
 #define PROJECTION_MATRIX ayloFrame.projection         // Camera to clip space.

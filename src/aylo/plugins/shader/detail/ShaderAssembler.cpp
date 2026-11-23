@@ -169,7 +169,7 @@ std::uint32_t firstVaryingLocation(ShaderTarget target) noexcept {
         case ShaderTarget::kShape:
             return 11;  // the shape's own end at 10
         case ShaderTarget::kMesh:
-            return 8;  // the normal is at 7, the world and local positions at 3 and 4
+            return 9;  // the world and local positions, tangent, vertex colour, normal and second UV take 3 to 8
         case ShaderTarget::kSprite:
         case ShaderTarget::kGlyph:
         case ShaderTarget::kParticle:

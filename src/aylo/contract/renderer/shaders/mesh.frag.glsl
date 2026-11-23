@@ -10,6 +10,9 @@
 // lighting.glsl's model or the shader's light() (AYLO_CUSTOM_LIGHT).
 layout(location = 3) in vec3 ayloWorldIn;
 layout(location = 4) in vec3 ayloLocalIn;
+layout(location = 5) in vec4 ayloTangentIn;  // In the world; w: the bitangent's sign.
+layout(location = 6) in vec4 ayloVertexColorIn;
+layout(location = 8) in vec2 ayloUv2In;
 layout(location = 7) in vec3 ayloNormalIn;  // In the world.
 vec3 LOCAL_POSITION;  // The pixel, in the model's space.
 vec3 VIEW_DIR;        // Unit, from the pixel to the camera (a perspective), or toward an orthographic camera.
@@ -169,7 +172,11 @@ void main() {
     VIEW_DIR = ayloFrame.cameraPosition.w > 0.5 ? normalize(ayloFrame.cameraPosition.xyz - ayloWorldIn)
                                                 : normalize(ayloFrame.inverseView[2].xyz);
     UV = ayloUvIn;
+    UV2 = ayloUv2In;
+    VERTEX_COLOR = ayloVertexColorIn;
     NORMAL = length(ayloNormalIn) > 0.0 ? normalize(ayloNormalIn) : ayloNormalIn;
+    TANGENT = length(ayloTangentIn.xyz) > 0.0 ? normalize(ayloTangentIn.xyz) : vec3(0.0);
+    BINORMAL = cross(NORMAL, TANGENT) * ayloTangentIn.w;
     COLOR = texture(TEXTURE, UV) * ayloColorIn;
 #ifdef AYLO_LIT
     // The surface starts as the part's colours and texture; a face seen from behind is lit from its side.
@@ -178,16 +185,49 @@ void main() {
     }
     ALBEDO = COLOR.a > 0.0 ? COLOR.rgb / COLOR.a : vec3(0.0);
     ALPHA = COLOR.a;
-    METALLIC = 0.0;
-    ROUGHNESS = 0.5;
+    METALLIC = ayloPart.surface.x;
+    ROUGHNESS = ayloPart.surface.y;
+    if ((ayloPart.flags & ayloPartHasMetallicRoughness) != 0u) {
+        const vec4 ayloMr = texture(ayloPartMetallicRoughness, UV);
+        METALLIC *= ayloMr.b;
+        ROUGHNESS *= ayloMr.g;
+    }
     SPECULAR = 0.5;
-    EMISSION = vec3(0.0);
+    EMISSION = ayloPart.emissive.rgb;
+    if ((ayloPart.flags & ayloPartHasEmissive) != 0u) {
+        EMISSION *= texture(ayloPartEmissive, UV).rgb;
+    }
     AO = 1.0;
+    if ((ayloPart.flags & ayloPartHasOcclusion) != 0u) {
+        AO = mix(1.0, texture(ayloPartOcclusion, UV).r, ayloPart.surface.z);
+    }
+    if ((ayloPart.flags & ayloPartHasNormal) != 0u && dot(TANGENT, TANGENT) > 0.0) {
+        // A tangent-space normal map, its X and Y scaled, turned to the world by the tangent frame.
+        vec3 ayloMapped = (texture(ayloPartNormal, UV).xyz * 2.0) - 1.0;
+        ayloMapped.xy *= ayloPart.emissive.w;
+        NORMAL = normalize(mat3(TANGENT, BINORMAL, NORMAL) * ayloMapped);
+    }
 #endif
 #ifdef AYLO_ALPHA_SCISSOR
     ALPHA_SCISSOR = 0.0;
 #endif
 #pragma aylo_main
+#ifdef AYLO_BUILTIN_MESH
+    // The built-in material follows the part's alpha mode: opaque ignores the alpha, a mask cuts it out.
+    const uint ayloAlphaMode = (ayloPart.flags >> 4u) & 3u;
+    if (ayloAlphaMode == 1u && COLOR.a < ayloPart.surface.w) {
+        discard;
+    }
+#ifdef AYLO_LIT
+    if (ayloAlphaMode != 2u) {
+        ALPHA = 1.0;
+    }
+#else
+    if (ayloAlphaMode != 2u && COLOR.a > 0.0) {
+        COLOR = vec4(COLOR.rgb / COLOR.a, 1.0);
+    }
+#endif
+#endif
 #ifdef AYLO_LIT
     NORMAL = length(NORMAL) > 0.0 ? normalize(NORMAL) : NORMAL;
     COLOR = ayloLightSurface(WORLD_POSITION);
