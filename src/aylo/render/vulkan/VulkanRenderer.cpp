@@ -19,6 +19,7 @@
 #include <glm/ext/vector_float2.hpp>
 #include <glm/ext/vector_float4.hpp>
 #include <glm/ext/vector_uint2.hpp>
+#include <glm/matrix.hpp>
 #include <iostream>
 #include <limits>
 #include <memory>
@@ -445,6 +446,8 @@ rendering::FrameUniforms VulkanRenderer::makeFrameUniforms(const contract::rende
         .deltaTime = std::chrono::duration<float>{now - _lastFrameTime}.count(),
         .framebufferSize = glm::vec2{static_cast<float>(extent.width), static_cast<float>(extent.height)},
         .viewProjection = view.getViewProjection(),
+        .projection = view.getViewProjection(),
+        .inverseProjection = glm::inverse(view.getViewProjection()),
     };
 }
 
@@ -776,7 +779,8 @@ void VulkanRenderer::recordWorld3D(const vk::raii::CommandBuffer& commandBuffer,
     rendering::FrameUniforms uniforms = makeFrameUniforms(
         contract::renderer::CameraView{contract::renderer::View{}, target.viewSize, target.framebufferSize},
         target.extent);
-    uniforms.viewProjection = view.getViewProjection();
+    rendering::setCamera(uniforms, view.getViewMatrix(), view.getProjection(),
+                         std::holds_alternative<contract::renderer::Perspective>(target.view->projection));
     target.globals->update(frameIndex, uniforms);
     const memory::Image& depth = acquireDepth(*target.depth, frameIndex, target.extent, target.depthName);
     rendering::transitionImage(commandBuffer, *depth.getImage(), rendering::kToDepthAttachment);
