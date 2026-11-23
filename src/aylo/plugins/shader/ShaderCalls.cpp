@@ -19,8 +19,11 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
+#include <vector>
 
 #include "aylo/contract/renderer/shaders/CompiledShader.hpp"
+#include "aylo/contract/renderer/shaders/ScreenEffect.hpp"
 #include "aylo/ecs/app/App.hpp"
 #include "aylo/ecs/app/PluginRegistry.hpp"
 #include "aylo/ecs/system/ResourceParam.hpp"
@@ -181,6 +184,46 @@ void setScreenMaterials(ecs::Res<MaterialAssets> materials, ecs::ResMut<ScreenMa
         }
     }
     screen->materials = arguments.materials;
+    screen->passes.clear();
+}
+
+void addScreenEffect(ecs::Res<MaterialAssets> materials, ecs::ResMut<ScreenMaterials> screen,
+                     const AddScreenEffectArguments& arguments) {
+    if (materials->get(arguments.material) == nullptr) {
+        throw exceptions::ShaderException{std::format("No material has the id {}", arguments.material.value)};
+    }
+    if (screen->passes.empty()) {
+        screen->materials.clear();  // passes replace the list of materials
+    }
+    screen->passes.push_back(ScreenMaterials::Pass{.material = arguments.material,
+                                                   .input = std::string{arguments.input.view()},
+                                                   .output = std::string{arguments.output.view()},
+                                                   .scale = arguments.scale,
+                                                   .size = glm::uvec2{arguments.width, arguments.height},
+                                                   .lowPrecision = arguments.lowPrecision});
+}
+
+void addScreenEffectInput(ecs::ResMut<ScreenMaterials> screen, const AddScreenEffectInputArguments& arguments) {
+    if (screen->passes.empty()) {
+        throw exceptions::ShaderException{"aylo.shader.addScreenEffectInput: there is no pass to give it to"};
+    }
+    screen->passes.back().inputs.emplace_back(std::string{arguments.sampler.view()},
+                                              std::string{arguments.target.view()});
+}
+
+void checkScreenEffects(ecs::ResMut<ScreenMaterials> screen) {
+    std::vector<contract::renderer::ScreenEffectPass> named;
+    for (const ScreenMaterials::Pass& pass : screen->passes) {
+        contract::renderer::ScreenEffectPass made{.input = pass.input, .output = pass.output};
+        for (const auto& [sampler, target] : pass.inputs) {
+            made.inputs.push_back(contract::renderer::ScreenEffectInput{.target = target});
+        }
+        named.push_back(std::move(made));
+    }
+    if (const std::optional<std::string> problem = contract::renderer::checkScreenEffects(named)) {
+        screen->passes.clear();
+        throw exceptions::ShaderException{std::format("The screen effects cannot run: {}", *problem)};
+    }
 }
 }  // namespace
 
@@ -203,6 +246,9 @@ void addShaderCalls(ecs::App& app) {
     app.addCall(std::string{kSetNextPassCall}, &setMaterialNextPass);
     app.addCall(std::string{kSetInstanceValueCall}, &setInstanceValue);
     app.addCall(std::string{kSetScreenMaterialsCall}, &setScreenMaterials);
+    app.addCall(std::string{kAddScreenEffectCall}, &addScreenEffect);
+    app.addCall(std::string{kAddScreenEffectInputCall}, &addScreenEffectInput);
+    app.addCall(std::string{kCheckScreenEffectsCall}, &checkScreenEffects);
 }
 
 }  // namespace aylo::plugins::shader

@@ -35,6 +35,12 @@ inline constexpr std::string_view kSetRenderStateCall =
     "aylo.shader.setMaterialRenderState";  ///< MaterialAssets::setRenderState().
 inline constexpr std::string_view kSetNextPassCall =
     "aylo.shader.setMaterialNextPass";  ///< MaterialAssets::setNextPass().
+inline constexpr std::string_view kAddScreenEffectCall =
+    "aylo.shader.addScreenEffect";  ///< A pass of ScreenMaterials, after the others.
+inline constexpr std::string_view kAddScreenEffectInputCall =
+    "aylo.shader.addScreenEffectInput";  ///< A texture of the last pass bound to a target.
+inline constexpr std::string_view kCheckScreenEffectsCall =
+    "aylo.shader.checkScreenEffects";  ///< Refuses passes that read what no earlier pass wrote.
 inline constexpr std::string_view kSetScreenMaterialsCall =
     "aylo.shader.setScreenMaterials";  ///< ScreenMaterials, replaced.
 
@@ -131,6 +137,28 @@ struct SetScreenMaterialsArguments {
         materials;  ///< From `aylo.shader.addMaterial`, in the order they run; empty: none.
 };
 AYLO_ECS_CALL_DATA(SetScreenMaterialsArguments, "aylo.shader.SetScreenMaterialsArguments", materials);
+
+/// @brief The arguments of `aylo.shader.addScreenEffect`: a pass added after the others
+/// (`aylo.shader.setScreenMaterials` with an empty list starts over).
+struct AddScreenEffectArguments {
+    core::asset::AssetId material;  ///< A material of a `#pragma screen` shader.
+    ecs::String input;              ///< The target it reads as TEXTURE: an earlier pass's output, "scene", or empty.
+    ecs::String output;             ///< The target it writes; empty: the chain.
+    float scale{1.0F};              ///< Its target's share of the screen.
+    std::uint32_t width{0};         ///< Its target's width in pixels; 0: by scale.
+    std::uint32_t height{0};        ///< Its target's height in pixels; 0: by scale.
+    bool lowPrecision{false};       ///< An 8-bit target instead of half float.
+};
+AYLO_ECS_CALL_DATA(AddScreenEffectArguments, "aylo.shader.AddScreenEffectArguments", material, input, output, scale,
+                   width, height, lowPrecision);
+
+/// @brief The arguments of `aylo.shader.addScreenEffectInput`: a `uniform sampler2D` of the last pass's shader bound to
+/// a target.
+struct AddScreenEffectInputArguments {
+    ecs::String sampler;  ///< As declared in the shader.
+    ecs::String target;   ///< An earlier pass's output, or "scene".
+};
+AYLO_ECS_CALL_DATA(AddScreenEffectInputArguments, "aylo.shader.AddScreenEffectInputArguments", sampler, target);
 
 /// @brief Registers the shader engine calls on @p app, for scripts: `aylo.shader.load`, `aylo.shader.addMaterial`,
 /// `aylo.shader.setMaterialValue`, `aylo.shader.setMaterialTexture`, `aylo.shader.setMaterialRenderState`,

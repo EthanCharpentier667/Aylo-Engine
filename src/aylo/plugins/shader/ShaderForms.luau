@@ -89,7 +89,8 @@ engine.assets.material = function(...)
 end
 
 -- engine.screenEffects({ material, ... }): the screen effects, materials of `#pragma screen` shaders run in this order
--- over the whole scene (aylo.shader.setScreenMaterials), replacing the previous ones; {} removes them. Where there is no
+-- over the whole scene (aylo.shader.setScreenMaterials), replacing the previous ones; {} removes them. A list of tables
+-- { material, input, inputs, output, scale, size, lowPrecision } is passes (aylo.shader.addScreenEffect). Where there is no
 -- screen to draw (a server), it does nothing, so a script shared by both sides can call it.
 engine.screenEffects = function(...)
 	local name = "engine.screenEffects"
@@ -101,5 +102,39 @@ engine.screenEffects = function(...)
 	if not engine.hasCall("aylo.shader.setScreenMaterials") then
 		return
 	end
-	forms.call(name, "aylo.shader.setScreenMaterials", { materials = materials })
+	-- A list of materials is a chain at full size; a list of tables is passes, each written as one call.
+	if #materials == 0 or type(materials[1]) ~= "table" then
+		forms.call(name, "aylo.shader.setScreenMaterials", { materials = materials })
+		return
+	end
+	forms.call(name, "aylo.shader.setScreenMaterials", { materials = {} })
+	for index, pass in materials do
+		local context = name .. ": pass " .. index
+		forms.table(context, pass, { "material", "input", "inputs", "output", "scale", "size", "lowPrecision" })
+		if pass.material == nil then
+			forms.fail(context, "expected a 'material'")
+		end
+		local size = forms.vec2(context, pass, "size")
+		if size ~= nil and not (forms.isCount(size.x) and forms.isCount(size.y)) then
+			forms.fail(context, "'size' must be whole numbers of pixels")
+		end
+		forms.call(name, "aylo.shader.addScreenEffect", {
+			material = pass.material,
+			input = forms.string(context, pass, "input"),
+			output = forms.string(context, pass, "output"),
+			scale = forms.number(context, pass, "scale"),
+			width = size and size.x or nil,
+			height = size and size.y or nil,
+			lowPrecision = forms.boolean(context, pass, "lowPrecision"),
+		})
+		if pass.inputs ~= nil then
+			for _, entry in forms.named(context .. ": 'inputs'", pass.inputs) do
+				if type(entry[2]) ~= "string" then
+					forms.fail(context, "'inputs." .. entry[1] .. "' must be the name of a target")
+				end
+				forms.call(name, "aylo.shader.addScreenEffectInput", { sampler = entry[1], target = entry[2] })
+			end
+		end
+	end
+	forms.call(name, "aylo.shader.checkScreenEffects", {})
 end
