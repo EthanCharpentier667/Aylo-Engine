@@ -39,6 +39,21 @@ inline constexpr std::string_view kTriangle = R"({
                 {"bufferView": 2, "componentType": 5123, "count": 3, "type": "SCALAR"}]
 })";
 
+/// @brief The triangle of kTriangle twice, as two parts whose materials are named "Body" and "Glass", in one file.
+inline constexpr std::string_view kTwoParts = R"({
+  "asset": {"version": "2.0"}, "scene": 0, "scenes": [{"nodes": [0]}],
+  "nodes": [{"mesh": 0}],
+  "meshes": [{"primitives": [{"attributes": {"POSITION": 0, "TEXCOORD_0": 1}, "indices": 2, "material": 0},
+                             {"attributes": {"POSITION": 0, "TEXCOORD_0": 1}, "indices": 2, "material": 1}]}],
+  "materials": [{"name": "Body"}, {"name": "Glass"}],
+  "buffers": [{"uri": "tri.bin", "byteLength": 68}],
+  "bufferViews": [{"buffer": 0, "byteOffset": 0, "byteLength": 36}, {"buffer": 0, "byteOffset": 36, "byteLength": 24},
+                  {"buffer": 0, "byteOffset": 60, "byteLength": 6}],
+  "accessors": [{"bufferView": 0, "componentType": 5126, "count": 3, "type": "VEC3", "min": [0, 0, 0], "max": [1, 1, 0]},
+                {"bufferView": 1, "componentType": 5126, "count": 3, "type": "VEC2"},
+                {"bufferView": 2, "componentType": 5123, "count": 3, "type": "SCALAR"}]
+})";
+
 /// @brief A Wavefront OBJ square of side 1 in the XY plane, facing +Z, its one face a quad, with the material "Orange"
 /// of quad.mtl.
 inline constexpr std::string_view kQuadObj = R"(mtllib quad.mtl
@@ -144,6 +159,12 @@ class AssetsFolder {
         write("models/tri.gltf", kTriangle);
         write("models/tri.bin", triangleBuffer());
         write("models/tex.png", aylo::test::plugins::twoPixelPng());
+    }
+
+    /// @brief Writes the two-part model and its buffer under models/: parts.gltf and tri.bin.
+    void writeTwoParts() const {
+        write("models/parts.gltf", kTwoParts);
+        write("models/tri.bin", triangleBuffer());
     }
 
     /// @brief Writes the OBJ square and its files under models/: quad.obj, quad.mtl and tex.png.

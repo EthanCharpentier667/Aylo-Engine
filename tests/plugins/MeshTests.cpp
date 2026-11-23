@@ -40,6 +40,7 @@
 #include "plugins/shader/MaterialAssets.hpp"
 #include "plugins/shader/MaterialInstance.hpp"
 #include "plugins/shader/ShaderAssets.hpp"
+#include "plugins/shader/ShaderHandles.hpp"
 #include "plugins/transform/Transform.hpp"
 
 namespace {
@@ -246,4 +247,56 @@ TEST(MeshPlugin, TwoModelsSharingAMaterialDrawWithTheirOwnInstanceValues) {
     const float second = draws.back().instanceValues.at(0).x;
     EXPECT_FLOAT_EQ(std::min(first, second), 0.5F);  // the shader's default, without a MaterialInstance
     EXPECT_FLOAT_EQ(std::max(first, second), 0.9F);
+}
+
+TEST(MeshPlugin, DrawsEachPartWithItsOwnMaterialAndThenTheNextPasses) {
+    AssetsFolder assets;
+    assets.writeTwoParts();
+    MeshApp fixture{assets};
+    fixture.state().shaders = true;
+    auto& resources = fixture.app().getWorld().getResources();
+    auto shaders = resources.getMut<aylo::plugins::shader::ShaderAssets>();
+    auto materials = resources.getMut<aylo::plugins::shader::MaterialAssets>();
+    const aylo::core::asset::AssetId shader = shaders->add("plain", "#pragma mesh\nvoid fragment() {}\n");
+    const aylo::core::asset::AssetId outline = materials->add("outline", {.shader = shader});
+    const aylo::core::asset::AssetId paint = materials->add("paint", {.shader = shader, .nextPass = outline});
+    const aylo::core::asset::AssetId glass = materials->add("glass", {.shader = shader});
+    fixture.app().getWorld().spawn(
+        aylo::plugins::transform::Transform3D{},
+        MeshRenderer{.mesh = fixture.meshes().load("models/parts.gltf"), .material = paint, .materials = {{}, glass}});
+    fixture.runFrames(4);
+
+    // The last frame: the model with paint on the body and glass on the other part, then paint's outline on the body.
+    const auto& draws = fixture.state().staticMeshDraws;
+    const auto& parts = fixture.state().staticMeshPartMaterials;
+    ASSERT_GE(draws.size(), 2U);
+    const auto* handles = &*resources.get<aylo::plugins::shader::ShaderHandles>();
+    const auto created = [handles](aylo::core::asset::AssetId id) { return handles->getMaterial(id)->material; };
+    const std::size_t model = draws.size() - 2;
+    EXPECT_EQ(draws.at(model).material, created(paint));
+    EXPECT_FALSE(draws.at(model).listedPartsOnly);
+    EXPECT_EQ(parts.at(model), (std::vector<aylo::contract::renderer::MaterialId>{{}, created(glass)}));
+    EXPECT_TRUE(draws.back().listedPartsOnly);
+    EXPECT_EQ(parts.back(), (std::vector<aylo::contract::renderer::MaterialId>{created(outline), {}}));
+}
+
+TEST(MeshPlugin, StopsAChainOfNextPassesThatLoopsAndSaysSo) {
+    AssetsFolder assets;
+    assets.writeTriangle();
+    MeshApp fixture{assets};
+    fixture.state().shaders = true;
+    auto& resources = fixture.app().getWorld().getResources();
+    auto materials = resources.getMut<aylo::plugins::shader::MaterialAssets>();
+    const aylo::core::asset::AssetId shader =
+        resources.getMut<aylo::plugins::shader::ShaderAssets>()->add("plain", "#pragma mesh\nvoid fragment() {}\n");
+    const aylo::core::asset::AssetId ping = materials->add("ping", {.shader = shader});
+    const aylo::core::asset::AssetId pong = materials->add("pong", {.shader = shader, .nextPass = ping});
+    materials->setNextPass(ping, pong);
+    fixture.app().getWorld().spawn(aylo::plugins::transform::Transform3D{},
+                                   MeshRenderer{.mesh = fixture.meshes().load("models/tri.gltf"), .material = ping});
+    testing::internal::CaptureStderr();
+    fixture.runFrames(4);
+    const std::string log = testing::internal::GetCapturedStderr();
+    EXPECT_NE(log.find("next passes chain more than 8"), std::string::npos) << log;
+    EXPECT_LE(fixture.state().staticMeshDraws.size(), 4U * 8U);
 }

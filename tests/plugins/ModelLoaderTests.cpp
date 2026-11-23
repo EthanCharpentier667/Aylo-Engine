@@ -129,3 +129,13 @@ TEST(ModelLoader, AFormatItDoesNotReadNamesTheFormatsItReads) {
         EXPECT_NE(message.find(".fbx"), std::string::npos) << message;
     }
 }
+
+TEST(ModelLoader, KeepsTheNameOfEachPartsMaterial) {
+    aylo::test::plugins::AssetsFolder assets;
+    assets.writeTwoParts();
+    const aylo::core::vfs::DirectorySource source{assets.root()};
+    const aylo::plugins::mesh::detail::Model model =
+        aylo::plugins::mesh::detail::loadModel("models/parts.gltf", source);
+    ASSERT_EQ(model.mesh.parts.size(), 2U);
+    EXPECT_EQ(model.partNames, (std::vector<std::string>{"Body", "Glass"}));
+}

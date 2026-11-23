@@ -207,3 +207,23 @@ TEST(MaterialFile, NamesAWrongRenderState) {
     EXPECT_TRUE(errorOf(R"({ "renderState": { "depthBias": "a lot" } })").contains("'depthBias' must be a number"));
     EXPECT_TRUE(errorOf(R"({ "renderState": { "stencil": "on" } })").contains("unknown render state 'stencil'"));
 }
+
+TEST_F(MaterialFileTest, LoadsItsNextPassAndRefusesALoop) {
+    write("materials/outline.material", R"({ "shader": "shaders/tint.glsl" })");
+    write("materials/paint.material", R"({ "shader": "shaders/tint.glsl", "nextPass": "materials/outline.material" })");
+    const AssetId paint = load("materials/paint.material");
+    const Material* material = _materials.get(paint);
+    ASSERT_NE(material, nullptr);
+    EXPECT_EQ(material->nextPass, AssetId::fromPath("materials/outline.material"));
+    EXPECT_EQ(aylo::plugins::shader::describeMaterial(paint, _shaders, _materials, _textures).nextPass,
+              "materials/outline.material");
+
+    write("materials/a.material", R"({ "nextPass": "materials/b.material" })");
+    write("materials/b.material", R"({ "nextPass": "materials/a.material" })");
+    try {
+        static_cast<void>(load("materials/a.material"));
+        FAIL() << "a loop of next passes loaded";
+    } catch (const AssetLoadException& error) {
+        EXPECT_TRUE(std::string_view{error.what()}.contains("loop back to 'materials/a.material'")) << error.what();
+    }
+}

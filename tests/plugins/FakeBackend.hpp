@@ -73,10 +73,12 @@ struct FakeBackendState {
     std::vector<aylo::contract::renderer::StaticMeshDesc> createdStaticMeshes;  ///< Every createStaticMesh() call.
     std::vector<aylo::contract::renderer::StaticMeshId> destroyedStaticMeshes;  ///< Every destroyStaticMesh() call.
     std::vector<aylo::contract::renderer::StaticMeshDraw> staticMeshDraws;      ///< Every drawStaticMesh() call.
-    std::vector<aylo::contract::renderer::Sprite> sprites;                      ///< Every draw(Sprite) call.
-    std::vector<aylo::contract::renderer::Shape> shapes;                        ///< Every draw(Shape) call.
-    std::vector<aylo::contract::renderer::Text> texts;                          ///< Every draw(Text) call.
-    bool gpuParticles{false};  ///< What supportsGpuParticles() returns.
+    std::vector<std::vector<aylo::contract::renderer::MaterialId>>
+        staticMeshPartMaterials;                            ///< The partMaterials of each of staticMeshDraws, copied.
+    std::vector<aylo::contract::renderer::Sprite> sprites;  ///< Every draw(Sprite) call.
+    std::vector<aylo::contract::renderer::Shape> shapes;    ///< Every draw(Shape) call.
+    std::vector<aylo::contract::renderer::Text> texts;      ///< Every draw(Text) call.
+    bool gpuParticles{false};                               ///< What supportsGpuParticles() returns.
     std::vector<aylo::contract::renderer::ParticleSystemDesc> createdParticleSystems;  ///< Every create call.
     std::vector<aylo::contract::renderer::ParticleSystemId> destroyedParticleSystems;  ///< Every destroy() call.
     std::vector<aylo::contract::renderer::ParticleEmission> simulations;               ///< Every simulate() call.
@@ -187,7 +189,9 @@ class FakeRenderer : public aylo::contract::renderer::IRenderer {
         _state->destroyedStaticMeshes.push_back(mesh);
     }
     void drawStaticMesh(const aylo::contract::renderer::StaticMeshDraw& draw) override {
+        _state->staticMeshPartMaterials.emplace_back(draw.partMaterials.begin(), draw.partMaterials.end());
         _state->staticMeshDraws.push_back(draw);
+        _state->staticMeshDraws.back().partMaterials = {};  // only valid during the call: see staticMeshPartMaterials
     }
     void draw(const aylo::contract::renderer::Sprite& sprite) override {
         _state->sprites.push_back(sprite);
