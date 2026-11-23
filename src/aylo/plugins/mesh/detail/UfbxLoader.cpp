@@ -163,6 +163,7 @@ class ModelBuilder {
         const std::optional<std::size_t> image = applyMaterial(material, made);
         _model.mesh.parts.push_back(made);
         _model.partImages.push_back(image);
+        _model.partNames.emplace_back(material != nullptr ? viewOf(material->name) : std::string_view{});
     }
 
     /// @brief Gives @p part the base colour and texture of @p material, if it has them; @return its image.

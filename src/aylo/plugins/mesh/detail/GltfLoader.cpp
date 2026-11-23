@@ -236,6 +236,8 @@ class ModelBuilder {
         const std::optional<std::size_t> image = applyMaterial(primitive.material, part);
         _model.mesh.parts.push_back(part);
         _model.partImages.push_back(image);
+        _model.partNames.emplace_back(
+            primitive.material != nullptr && primitive.material->name != nullptr ? primitive.material->name : "");
     }
 
     /// @return The index of @p image in the model's images, added the first time.

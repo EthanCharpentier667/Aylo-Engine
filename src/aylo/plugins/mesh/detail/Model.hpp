@@ -28,6 +28,7 @@ struct Model {
     contract::renderer::StaticMeshDesc mesh;  ///< The vertices, indices and parts; the parts' textures unset.
     std::vector<std::optional<std::size_t>> partImages;  ///< Per part: its base colour image in `images`, or none.
     std::vector<ModelImage> images;                      ///< The images the parts use.
+    std::vector<std::string> partNames;  ///< Per part: the name of its material in the file, or empty without one.
 };
 
 }  // namespace aylo::plugins::mesh::detail

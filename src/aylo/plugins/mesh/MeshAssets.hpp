@@ -48,8 +48,9 @@ class AYLO_PLUGIN_MESH_API MeshAssets {
         MeshState state{MeshState::kQueued};   ///< Where it is in its loading.
         std::shared_ptr<detail::Model> model;  ///< The file read, until the renderer created the mesh.
         std::vector<std::optional<core::asset::AssetId>> partTextures;  ///< Per part: its texture asset, or none.
-        contract::renderer::StaticMeshId mesh;                          ///< The renderer's id, once loaded.
-        std::string error;                                              ///< Why it failed to load.
+        std::vector<std::string> partNames;     ///< Per part: its material's name in the file, empty without one.
+        contract::renderer::StaticMeshId mesh;  ///< The renderer's id, once loaded.
+        std::string error;                      ///< Why it failed to load.
     };
 
     MeshAssets() = default;
