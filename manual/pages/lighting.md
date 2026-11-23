@@ -67,6 +67,51 @@ void fragment() {
 The picture is in linear light and may go past white: add the engine's tonemap as a
 [screen effect](post-processing.md) to bring it back, as a camera does.
 
+## Models from 3D tools
+
+A model's own materials are used as they are: a glTF file exported from Blender (or any glTF viewer's sample) looks as
+it does there, without a shader of yours. Every part keeps:
+
+| From the file | What it does |
+|---|---|
+| base colour and its texture | the albedo, times the vertex colours if the file has some |
+| metallic and roughness, and their texture (roughness in green, metallic in blue) | how metallic and rough it is |
+| normal map, and its scale | bumps the surface |
+| occlusion texture, and its strength | the ambient occlusion |
+| emissive colour, texture and strength (`KHR_materials_emissive_strength`) | the light it gives off |
+| alpha mode: opaque, mask (with its cutoff), blend | opaque ignores the alpha, mask cuts the part out, blend sees through it, drawn back to front |
+| double sided | both faces drawn and lit; otherwise its back faces are skipped |
+| texture transform (`KHR_texture_transform`, the base colour's) | moves, scales and turns every texture of the part |
+
+An FBX or OBJ file gives its base colour, metalness, roughness, emission, normal and occlusion maps the same way
+(ufbx turns every FBX shading model into these values); it is drawn from both sides, and see-through when its
+opacity is below 1. Normal maps use tangents: the file's, or ones the engine makes (MikkTSpace, as Blender and the
+baking tools do) when it has none. A model with no normal map carries no tangents.
+
+A `#pragma lit` shader of yours on such a model starts from the same surface: its `fragment()` changes only what it
+wants (a tint over the file's albedo, a wetter roughness).
+
+## The vertices' data
+
+| Name | Type | In `vertex()` | In `fragment()` |
+|---|---|---|---|
+| `TANGENT` | `vec3` | along the texture's U, in the model's space | in the world, unit |
+| `BINORMAL` | `vec3` | along V, in the model's space | in the world, unit |
+| `VERTEX_COLOR` | `vec4` | the vertex's colour (white without one), linear | blended between the vertices |
+| `UV2` | `vec2` | the second set of texture coordinates (`0, 0` without one): lightmaps, decals | the same |
+
+```glsl
+#pragma mesh
+#pragma lit
+uniform sampler2D lightmap;
+void fragment() {
+    ALBEDO = COLOR.rgb * VERTEX_COLOR.rgb;
+    AO = texture(lightmap, UV2).r;
+}
+```
+
+`TANGENT` is along X without a normal map in the file. `COLOR` already holds the vertex colours, multiplied in.
+
 ## Your own shading: `light()`
 
 A stylised game (toon bands, painterly, a custom fall-off) writes a `light()` function: it replaces the engine's
