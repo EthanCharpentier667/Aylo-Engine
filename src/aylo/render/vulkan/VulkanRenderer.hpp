@@ -491,7 +491,14 @@ class AYLO_RENDER_VULKAN_API VulkanRenderer final : public contract::renderer::I
     std::optional<contract::renderer::View> _view;         ///< From setView(); reset by beginFrame().
     std::optional<contract::renderer::View3D> _view3D;     ///< From setView3D(); reset by beginFrame().
     std::vector<rendering::LineVertex3D> _lines3D;  ///< The frame's 3D lines, in the world; cleared by beginFrame().
-    std::vector<contract::renderer::StaticMeshDraw> _staticMeshDraws;  ///< The frame's meshes; cleared by beginFrame().
+    /// @brief A static mesh draw of the frame, its part materials copied into _staticMeshPartMaterials.
+    struct StaticMeshRequest {
+        contract::renderer::StaticMeshDraw draw;  ///< As given, its partMaterials span cleared.
+        std::uint32_t firstPart{0};               ///< Its part materials in _staticMeshPartMaterials.
+        std::uint32_t partCount{0};               ///< How many.
+    };
+    std::vector<StaticMeshRequest> _staticMeshDraws;  ///< The frame's meshes; cleared by beginFrame().
+    std::vector<contract::renderer::MaterialId> _staticMeshPartMaterials;  ///< Their part materials, one after another.
     std::vector<rendering::StaticMeshPass::Draw> _meshDraws;  ///< _staticMeshDraws found, for the upload; reused.
     std::filesystem::path _pipelineCachePath;     ///< Config::pipelineCache resolved by init(); empty: not kept.
     contract::renderer::Color _clearColor{0.0F};  ///< From beginFrame(): what endFrame() clears with.

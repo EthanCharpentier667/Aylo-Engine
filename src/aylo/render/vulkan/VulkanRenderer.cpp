@@ -514,6 +514,7 @@ void VulkanRenderer::beginFrame(const contract::renderer::Color& clearColor) {
     _view3D.reset();
     _lines3D.clear();
     _staticMeshDraws.clear();
+    _staticMeshPartMaterials.clear();
     _sprites.clear();
     _particleInstances.clear();
     _particleRanges.clear();
@@ -756,7 +757,13 @@ void VulkanRenderer::destroyStaticMesh(contract::renderer::StaticMeshId mesh) {
 
 void VulkanRenderer::drawStaticMesh(const contract::renderer::StaticMeshDraw& draw) {
     if (_acquiredImage) {
-        _staticMeshDraws.push_back(draw);
+        StaticMeshRequest request{.draw = draw,
+                                  .firstPart = static_cast<std::uint32_t>(_staticMeshPartMaterials.size()),
+                                  .partCount = static_cast<std::uint32_t>(draw.partMaterials.size())};
+        request.draw.partMaterials = {};
+        _staticMeshPartMaterials.insert(_staticMeshPartMaterials.end(), draw.partMaterials.begin(),
+                                        draw.partMaterials.end());
+        _staticMeshDraws.push_back(request);
     }
 }
 
@@ -909,14 +916,31 @@ void VulkanRenderer::uploadWorld(std::size_t frameIndex) {
     }
     _lines3DPass->upload(frameIndex, _lines3D);
     _meshDraws.clear();
-    for (const contract::renderer::StaticMeshDraw& draw : _staticMeshDraws) {
-        if (const rendering::GpuStaticMesh* mesh = _staticMeshes.find(draw.mesh)) {
+    // One draw per part: each has its material, and a blended part is sorted on its own.
+    const std::span<const contract::renderer::MaterialId> partMaterials{_staticMeshPartMaterials};
+    for (const StaticMeshRequest& request : _staticMeshDraws) {
+        const contract::renderer::StaticMeshDraw& draw = request.draw;
+        const rendering::GpuStaticMesh* mesh = _staticMeshes.find(draw.mesh);
+        if (mesh == nullptr) {
+            continue;
+        }
+        const std::span<const contract::renderer::MaterialId> listed =
+            partMaterials.subspan(request.firstPart, request.partCount);
+        for (std::uint32_t part = 0; part < mesh->parts.size(); ++part) {
+            const contract::renderer::MaterialId own =
+                part < listed.size() ? listed.subspan(part, 1).front() : contract::renderer::MaterialId{};
+            if (draw.listedPartsOnly && own == contract::renderer::MaterialId{}) {
+                continue;
+            }
+            const contract::renderer::MaterialId material =
+                own != contract::renderer::MaterialId{} ? own : draw.material;
             _meshDraws.push_back(rendering::StaticMeshPass::Draw{
                 .mesh = mesh,
+                .part = part,
                 .world = draw.world,
                 .color = draw.color,
-                .material = draw.material != contract::renderer::MaterialId{}
-                                ? findMaterial(draw.material, contract::renderer::ShaderTarget::kMesh, frameIndex)
+                .material = material != contract::renderer::MaterialId{}
+                                ? findMaterial(material, contract::renderer::ShaderTarget::kMesh, frameIndex)
                                 : rendering::MaterialBinding{},
                 .instanceValues = draw.instanceValues});
         }

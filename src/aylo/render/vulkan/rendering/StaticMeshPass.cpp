@@ -247,6 +247,7 @@ void StaticMeshPass::record(const vk::raii::CommandBuffer& commandBuffer, std::s
     commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *_layout->getLayout(), kMeshDrawSet, *frame.set,
                                      {});
     const pipeline::GraphicsPipeline* boundPipeline = nullptr;
+    const GpuStaticMesh* boundMesh = nullptr;
     vk::DescriptorSet bound;
     for (const std::uint32_t index : _order) {
         const Draw& draw = frame.draws.at(index);
@@ -264,22 +265,28 @@ void StaticMeshPass::record(const vk::raii::CommandBuffer& commandBuffer, std::s
             commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, layout, kMaterialSet, draw.material.set,
                                              {});
         }
-        commandBuffer.bindVertexBuffers(0, *draw.mesh->vertices.getBuffer(), vk::DeviceSize{0});
-        commandBuffer.bindIndexBuffer(*draw.mesh->indices.getBuffer(), 0, vk::IndexType::eUint32);
-        for (const contract::renderer::StaticMeshPart& part : draw.mesh->parts) {
-            vk::DescriptorSet set =
-                part.texture != contract::renderer::TextureId{} ? findSet(part.texture) : vk::DescriptorSet{};
-            if (!set) {
-                set = whiteSet;
-            }
-            if (set != bound) {
-                commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, layout, kTextureSet, set, {});
-                bound = set;
-            }
-            const StaticMeshConstants constants{.baseColor = part.baseColor, .draw = static_cast<std::uint32_t>(index)};
-            commandBuffer.pushConstants<StaticMeshConstants>(layout, stages, 0, constants);
-            commandBuffer.drawIndexed(part.indexCount, 1, part.indexOffset, 0, 0);
+        if (draw.part >= draw.mesh->parts.size()) {
+            continue;
         }
+        if (draw.mesh != boundMesh) {
+            // The parts of one mesh follow each other: their buffers are bound once.
+            commandBuffer.bindVertexBuffers(0, *draw.mesh->vertices.getBuffer(), vk::DeviceSize{0});
+            commandBuffer.bindIndexBuffer(*draw.mesh->indices.getBuffer(), 0, vk::IndexType::eUint32);
+            boundMesh = draw.mesh;
+        }
+        const contract::renderer::StaticMeshPart& part = draw.mesh->parts.at(draw.part);
+        vk::DescriptorSet set =
+            part.texture != contract::renderer::TextureId{} ? findSet(part.texture) : vk::DescriptorSet{};
+        if (!set) {
+            set = whiteSet;
+        }
+        if (set != bound) {
+            commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, layout, kTextureSet, set, {});
+            bound = set;
+        }
+        const StaticMeshConstants constants{.baseColor = part.baseColor, .draw = index};
+        commandBuffer.pushConstants<StaticMeshConstants>(layout, stages, 0, constants);
+        commandBuffer.drawIndexed(part.indexCount, 1, part.indexOffset, 0, 0);
     }
 }
 

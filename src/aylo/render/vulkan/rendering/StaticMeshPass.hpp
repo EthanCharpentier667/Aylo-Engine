@@ -79,6 +79,7 @@ class AYLO_RENDER_VULKAN_API StaticMeshPass {
     /// @brief One mesh to draw this frame, found in the renderer's table.
     struct Draw {
         const GpuStaticMesh* mesh = nullptr;  ///< What to draw.
+        std::uint32_t part{0};                ///< Which of its parts.
         glm::mat4 world{1.0F};                ///< Where.
         glm::vec4 color{1.0F};                ///< The tint.
         MaterialBinding material;             ///< Its game material for ShaderTarget::kMesh; a null pipeline: none.
