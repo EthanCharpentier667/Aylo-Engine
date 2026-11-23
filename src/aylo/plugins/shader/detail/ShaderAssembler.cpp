@@ -70,6 +70,9 @@ constexpr auto kMeshVertex = std::to_array<char>({
 constexpr auto kMeshFragment = std::to_array<char>({
 #include "mesh.frag.glsl.h"
 });
+constexpr auto kLighting = std::to_array<char>({
+#include "lighting.glsl.h"
+});
 
 /// @brief Where a template takes the shader's declarations and body, and where its main() takes the instance values
 /// and the shader's call.
@@ -188,6 +191,32 @@ std::string declareVaryings(const ParsedShader& shader, ShaderTarget target, boo
     return glsl;
 }
 
+/// @return The `#define`s that choose what the prelude of @p stage of @p shader on @p target holds.
+std::string definesOf(const ParsedShader& shader, ShaderTarget target, ShaderStage stage) {
+    std::string defines;
+    if (!shader.instanceValues.empty()) {
+        defines += "#define AYLO_INSTANCE_VALUES\n";
+    }
+    if (target != ShaderTarget::kMesh) {
+        return defines;
+    }
+    defines += "#define AYLO_MESH\n";
+    if (stage == ShaderStage::kVertex) {
+        return defines;
+    }
+    // The cutout is only compiled in when the shader writes it: a discard can cost the early depth test.
+    if (shader.body.contains("ALPHA_SCISSOR")) {
+        defines += "#define AYLO_ALPHA_SCISSOR\n";
+    }
+    if (shader.lit) {
+        defines += "#define AYLO_LIT\n";
+        if (shader.hasLight) {
+            defines += "#define AYLO_CUSTOM_LIGHT\n";
+        }
+    }
+    return defines;
+}
+
 /// @return The template of @p target's vertex stage.
 std::string_view vertexTemplate(ShaderTarget target) noexcept {
     switch (target) {
@@ -302,17 +331,7 @@ std::string assembleShader(const ParsedShader& shader, ShaderTarget target, Shad
     const bool particle = target == ShaderTarget::kParticle;
     const bool mesh = target == ShaderTarget::kMesh;
     const bool vertex = stage == ShaderStage::kVertex;
-    std::string glsl{"#version 450\n"};
-    if (!shader.instanceValues.empty()) {
-        glsl += "#define AYLO_INSTANCE_VALUES\n";
-    }
-    if (mesh) {
-        glsl += "#define AYLO_MESH\n";
-        // The cutout is only compiled in when the shader writes it: a discard can cost the early depth test.
-        if (!vertex && shader.body.contains("ALPHA_SCISSOR")) {
-            glsl += "#define AYLO_ALPHA_SCISSOR\n";
-        }
-    }
+    std::string glsl = std::format("#version 450\n{}", definesOf(shader, target, stage));
     glsl += text(kCommon);
     if (particle) {
         glsl += text(kParticleConstants);
@@ -325,6 +344,9 @@ std::string assembleShader(const ParsedShader& shader, ShaderTarget target, Shad
     }
     if (!vertex) {
         glsl += text(kFragmentCommon);
+        if (mesh && shader.lit) {
+            glsl += text(kLighting);
+        }
         if (!particle && !mesh) {
             glsl += text(kInstanceInput);
         }
@@ -334,7 +356,8 @@ std::string assembleShader(const ParsedShader& shader, ShaderTarget target, Shad
         isEmpty(shader)
             ? std::string{}
             : std::format("{}{}\n#line 1\n{}\n", declareValues(shader), declareVaryings(shader, target, vertex),
-                          blankFunction(shader.body, vertex ? "fragment" : "vertex"));
+                          vertex ? blankFunction(blankFunction(shader.body, "fragment"), "light")
+                                 : blankFunction(shader.body, "vertex"));
     const bool calls = vertex ? shader.hasVertex : shader.hasFragment;
     const std::string_view call = vertex ? "    vertex();" : "    fragment();";
     const std::string mainCode =

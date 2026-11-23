@@ -34,30 +34,44 @@ namespace {
 using contract::renderer::ShaderValueType;
 
 /// @brief Names a shader cannot declare: the engine's built-ins (docs/Shaders.md).
-constexpr std::array<std::string_view, 25> kBuiltins{"VERTEX",
-                                                     "UV",
-                                                     "COLOR",
-                                                     "TEXTURE",
-                                                     "TIME",
-                                                     "SCREEN_TEXTURE",
-                                                     "SCREEN_UV",
-                                                     "NORMAL",
-                                                     "SCREEN_PIXEL_SIZE",
-                                                     "MODEL_MATRIX",
-                                                     "INV_MODEL_MATRIX",
-                                                     "NORMAL_MATRIX",
-                                                     "AABB_MIN",
-                                                     "AABB_MAX",
-                                                     "WORLD_POSITION",
-                                                     "LOCAL_POSITION",
-                                                     "VIEW_DIR",
-                                                     "CAMERA_POSITION",
-                                                     "VIEW_MATRIX",
-                                                     "PROJECTION_MATRIX",
-                                                     "INV_VIEW_MATRIX",
-                                                     "INV_PROJECTION_MATRIX",
-                                                     "FRONT_FACING",
-                                                     "FRAGCOORD"};
+constexpr auto kBuiltins = std::to_array<std::string_view>({"VERTEX",
+                                                            "UV",
+                                                            "COLOR",
+                                                            "TEXTURE",
+                                                            "TIME",
+                                                            "SCREEN_TEXTURE",
+                                                            "SCREEN_UV",
+                                                            "NORMAL",
+                                                            "SCREEN_PIXEL_SIZE",
+                                                            "MODEL_MATRIX",
+                                                            "INV_MODEL_MATRIX",
+                                                            "NORMAL_MATRIX",
+                                                            "AABB_MIN",
+                                                            "AABB_MAX",
+                                                            "WORLD_POSITION",
+                                                            "LOCAL_POSITION",
+                                                            "VIEW_DIR",
+                                                            "CAMERA_POSITION",
+                                                            "VIEW_MATRIX",
+                                                            "PROJECTION_MATRIX",
+                                                            "INV_VIEW_MATRIX",
+                                                            "INV_PROJECTION_MATRIX",
+                                                            "FRONT_FACING",
+                                                            "FRAGCOORD",
+                                                            "ALPHA_SCISSOR",
+                                                            "ALBEDO",
+                                                            "ALPHA",
+                                                            "METALLIC",
+                                                            "ROUGHNESS",
+                                                            "SPECULAR",
+                                                            "EMISSION",
+                                                            "AO",
+                                                            "LIGHT_DIR",
+                                                            "LIGHT_COLOR",
+                                                            "ATTENUATION",
+                                                            "SHADOW",
+                                                            "DIFFUSE_LIGHT",
+                                                            "SPECULAR_LIGHT"});
 
 /// @return @p names quoted and joined, for a message.
 std::string joinNames(std::span<const std::string_view> names) {
@@ -74,6 +88,7 @@ constexpr std::array<std::string_view, 5> kVaryingTypes{"float", "vec2", "vec3",
 /// @brief The line that makes a shader a screen effect (ParsedShader::screen).
 constexpr std::string_view kScreenPragma = "#pragma screen";
 constexpr std::string_view kMeshPragma = "#pragma mesh";
+constexpr std::string_view kLitPragma = "#pragma lit";
 
 /// @brief What the parser knows of a value type: its GLSL name, its components, its std430 size and alignment.
 struct TypeInfo {
@@ -382,6 +397,29 @@ struct Parser {
         return true;
     }
 
+    /// @brief Checks what only the whole shader tells, @p code being its code without comments and @p lastLine its
+    /// last line: its functions, its pragmas together, the depth mode a blended shader defaults to.
+    void finish(const std::string& code, std::uint32_t lastLine) {
+        if (renderStateLine && !shader.mesh) {
+            fail(shader.name, *renderStateLine, "a render state pragma is for a '#pragma mesh' shader");
+        }
+        if (!depthGiven && contract::renderer::isTransparent(shader.renderState)) {
+            shader.renderState.depth = contract::renderer::DepthMode::kTestNoWrite;
+        }
+        shader.hasVertex = definesFunction(code, "vertex");
+        shader.hasFragment = definesFunction(code, "fragment");
+        shader.hasLight = definesFunction(code, "light");
+        if (shader.lit && !shader.mesh) {
+            fail(shader.name, lastLine, "'#pragma lit' is for a '#pragma mesh' shader");
+        }
+        if (shader.hasLight && !shader.lit) {
+            fail(shader.name, lastLine, "'void light()' shades a lit surface: the shader needs '#pragma lit'");
+        }
+        if (!shader.hasVertex && !shader.hasFragment) {
+            fail(shader.name, lastLine, "the shader defines neither 'void vertex()' nor 'void fragment()'");
+        }
+    }
+
     /// @brief Reads the varying declared on @p code, line @p line: `varying <type> <name>;`.
     void addVarying(std::string_view code, std::uint32_t line) {
         const auto semicolon = code.find(';');
@@ -451,6 +489,11 @@ ParsedShader parseShader(std::string_view source, std::string_view name) {
         ++lineNumber;
         const std::string lineCode = removeComments(line, inComment);
         const std::string_view trimmed = trim(lineCode);
+        if (trimmed == kLitPragma) {
+            shader.body += '\n';
+            shader.lit = true;
+            continue;
+        }
         if (trimmed == kScreenPragma || trimmed == kMeshPragma) {
             shader.body += '\n';
             (trimmed == kScreenPragma ? shader.screen : shader.mesh) = true;
@@ -479,18 +522,7 @@ ParsedShader parseShader(std::string_view source, std::string_view name) {
     shader.materialSize = alignUp(parser.materialCursor, 16);
     shader.materialDefaults.resize(shader.materialSize);
     std::memcpy(shader.instanceDefaults.data(), parser.instanceBlock.data(), parser.instanceBlock.size());
-    if (parser.renderStateLine && !shader.mesh) {
-        fail(name, *parser.renderStateLine, "a render state pragma is for a '#pragma mesh' shader");
-    }
-    if (!parser.depthGiven && contract::renderer::isTransparent(shader.renderState)) {
-        shader.renderState.depth = contract::renderer::DepthMode::kTestNoWrite;
-    }
-    const std::string collapsed = collapseSpaces(code);
-    shader.hasVertex = definesFunction(collapsed, "vertex");
-    shader.hasFragment = definesFunction(collapsed, "fragment");
-    if (!shader.hasVertex && !shader.hasFragment) {
-        fail(name, lineNumber, "the shader defines neither 'void vertex()' nor 'void fragment()'");
-    }
+    parser.finish(collapseSpaces(code), lineNumber);
     return std::move(parser.shader);
 }
 
