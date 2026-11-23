@@ -45,7 +45,7 @@ TEST(StaticMeshDrawData, CarriesTheModelItsInverseTheColourTheBoundsAndTheInstan
     const glm::vec4 back = data.inverseModel * world * glm::vec4{3.0F, 4.0F, 5.0F, 1.0F};
     EXPECT_NEAR(glm::distance(back, glm::vec4{3.0F, 4.0F, 5.0F, 1.0F}), 0.0F, 1e-5F);
     EXPECT_EQ(data.color, glm::vec4{0.5F});
-    EXPECT_EQ(data.boundsMin, glm::vec4(-1.0F, -1.0F, -1.0F, 0.0F));
+    EXPECT_EQ(data.boundsMin, glm::vec4(-1.0F, -1.0F, -1.0F, 1.0F));  // w: shadows fall on it
     EXPECT_EQ(data.boundsMax, glm::vec4(1.0F, 1.0F, 1.0F, 0.0F));
     EXPECT_EQ(data.instance.at(1), glm::vec4{0.25F});
 }
@@ -83,4 +83,10 @@ TEST(StaticMeshConstants, CarryThePartsMaterialAndWhichMapsItHas) {
     EXPECT_FLOAT_EQ(constants.surface.x, 0.25F);
     EXPECT_FLOAT_EQ(constants.surface.w, 0.3F);
     EXPECT_FLOAT_EQ(constants.emissive.w, 0.5F);
+}
+
+TEST(StaticMeshDrawData, SaysWhetherShadowsFallOnTheModel) {
+    const StaticMeshDrawData data =
+        makeStaticMeshDrawData(glm::mat4{1.0F}, glm::vec4{1.0F}, StaticMeshBounds{}, {}, false);
+    EXPECT_FLOAT_EQ(data.boundsMin.w, 0.0F);
 }

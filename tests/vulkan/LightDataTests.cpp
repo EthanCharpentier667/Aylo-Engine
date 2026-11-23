@@ -9,6 +9,7 @@
 
 #include <cmath>
 #include <cstddef>
+#include <cstdint>
 #include <cstring>
 #include <glm/ext/vector_float3.hpp>
 #include <vector>
@@ -23,6 +24,7 @@ using aylo::contract::renderer::LightKind3D;
 using aylo::render::vulkan::rendering::GpuLight;
 using aylo::render::vulkan::rendering::GpuLightsHeader;
 using aylo::render::vulkan::rendering::packLights;
+using aylo::render::vulkan::rendering::selectLights;
 
 namespace {
 /// @return The header of @p bytes.
@@ -51,7 +53,9 @@ TEST(LightData, PacksTheAmbientAndEachLightAsTheShadersReadThem) {
                                               .size = {2.0F, 4.0F},
                                               .castShadows = true}};
     std::vector<std::byte> bytes;
-    packLights(lights, Environment3D{.ambient = {0.2F, 0.2F, 0.4F}, .strength = 0.5F}, glm::vec3{0.0F}, bytes);
+    const std::vector<std::int32_t> tiles{3};
+    packLights(selectLights(lights, glm::vec3{0.0F}), Environment3D{.ambient = {0.2F, 0.2F, 0.4F}, .strength = 0.5F},
+               tiles, 2, bytes);
     ASSERT_EQ(bytes.size(), sizeof(GpuLightsHeader) + sizeof(GpuLight));
     const GpuLightsHeader header = headerOf(bytes);
     EXPECT_EQ(header.count.x, 1U);
@@ -62,14 +66,15 @@ TEST(LightData, PacksTheAmbientAndEachLightAsTheShadersReadThem) {
     EXPECT_FLOAT_EQ(light.color.w, 300.0F);
     EXPECT_FLOAT_EQ(light.cone.x, std::cos(0.2F));
     EXPECT_FLOAT_EQ(light.cone.y, std::cos(0.5F));
-    EXPECT_FLOAT_EQ(light.cone.w, 2.0F);  // half the height
-    EXPECT_FLOAT_EQ(light.right.w, 1.0F);
+    EXPECT_FLOAT_EQ(light.cone.w, 2.0F);   // half the height
+    EXPECT_FLOAT_EQ(light.right.w, 4.0F);  // its first shadow map + 1
+    EXPECT_EQ(header.count.y, 2U);         // the cascades
 }
 
 TEST(LightData, LeavesOutALightThatLightsNothing) {
     const std::vector<Light3D> lights{Light3D{.intensity = 0.0F}, Light3D{.color = glm::vec3{0.0F}}, Light3D{}};
     std::vector<std::byte> bytes;
-    packLights(lights, Environment3D{}, glm::vec3{0.0F}, bytes);
+    packLights(selectLights(lights, glm::vec3{0.0F}), Environment3D{}, {}, 0, bytes);
     EXPECT_EQ(headerOf(bytes).count.x, 1U);
 }
 
@@ -80,7 +85,7 @@ TEST(LightData, PastTheCapKeepsTheSunsThenTheNearestLights) {
     }
     lights.push_back(Light3D{.kind = LightKind3D::kDirectional});
     std::vector<std::byte> bytes;
-    packLights(lights, Environment3D{}, glm::vec3{0.0F}, bytes);
+    packLights(selectLights(lights, glm::vec3{0.0F}), Environment3D{}, {}, 0, bytes);
     ASSERT_EQ(headerOf(bytes).count.x, kMaxLights3D);
     EXPECT_FLOAT_EQ(lightOf(bytes, 0).direction.w, 0.0F);  // the sun first
     float farthest = 0.0F;
