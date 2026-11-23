@@ -39,10 +39,16 @@ core::reload::ReloadOutcome ShaderReloadable::reload(const core::reload::ChangeS
             // A path in the assets' directory, as the game loaded the shader.
             const std::filesystem::path path = std::filesystem::path{file}.lexically_relative(_assets);
             const core::asset::AssetId id = core::asset::AssetId::fromPath(path);
-            if (_shaders->getEntry(id) == nullptr) {
-                continue;  // the game did not load it
+            if (_shaders->getEntry(id) != nullptr) {
+                (_shaders->reload(id) ? done : failed).push_back(path.generic_string());
             }
-            (_shaders->reload(id) ? done : failed).push_back(path.generic_string());
+            // The shaders that include it, once each.
+            for (const core::asset::AssetId includer : _shaders->getIncluders(path.generic_string())) {
+                const std::string name = _shaders->getEntry(includer)->path;
+                if (!std::ranges::contains(done, name) && !std::ranges::contains(failed, name)) {
+                    (_shaders->reload(includer) ? done : failed).push_back(name);
+                }
+            }
         }
     };
     reloadAll(changes.added);

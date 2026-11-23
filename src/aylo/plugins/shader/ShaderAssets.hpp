@@ -12,6 +12,7 @@
 #include <memory>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
@@ -86,6 +87,10 @@ class AYLO_PLUGIN_SHADER_API ShaderAssets {
     /// @return Whether the shader was replaced: false if it failed, or if @p id names no file (add()).
     bool reload(core::asset::AssetId id);
 
+    /// @return The shaders read from a file (load()) that include the file @p path (by `#include`, directly or through
+    /// another file), for a change of it to reload them.
+    [[nodiscard]] std::vector<core::asset::AssetId> getIncluders(std::string_view path) const;
+
     /// @brief Forgets the shader @p id names; the ShaderPlugin destroys it in the renderer.
     /// @return False, doing nothing, if no shader has this id.
     bool unload(core::asset::AssetId id);
@@ -100,17 +105,23 @@ class AYLO_PLUGIN_SHADER_API ShaderAssets {
     [[nodiscard]] std::vector<core::asset::AssetId> takeUnloaded();
 
   private:
-    /// @return The shader file @p name, read and compiled.
+    /// @return The shader file @p name, read and compiled; what it includes recorded for @p id.
     /// @throws std::exception If it cannot be read or compiled, with a message that names it.
-    [[nodiscard]] contract::renderer::CompiledShader compileFile(const std::string& name) const;
+    [[nodiscard]] contract::renderer::CompiledShader compileFile(core::asset::AssetId id, const std::string& name);
+
+    /// @return @p source, the shader @p id named @p name, compiled; what it includes recorded for @p id, even if it
+    /// fails, so fixing an included file reloads it.
+    [[nodiscard]] contract::renderer::CompiledShader compileSource(core::asset::AssetId id, std::string_view source,
+                                                                   const std::string& name);
 
     core::asset::AssetStore<contract::renderer::CompiledShader> _shaders{"Shader"};  ///< Every shader, by id.
     std::shared_ptr<const core::vfs::FileSource> _source{
         std::make_shared<core::vfs::DirectorySource>(std::filesystem::path{})};  ///< Where the files are read.
     std::unordered_set<core::asset::AssetId> _files;  ///< The shaders load() read from a file.
-    std::vector<core::asset::AssetId> _added;         ///< Compiled since the last takeAdded().
-    std::vector<core::asset::AssetId> _reloaded;      ///< Replaced since the last takeReloaded().
-    std::vector<core::asset::AssetId> _unloaded;      ///< Unloaded since the last takeUnloaded().
+    std::unordered_map<core::asset::AssetId, std::vector<std::string>> _includes;  ///< The files each shader includes.
+    std::vector<core::asset::AssetId> _added;     ///< Compiled since the last takeAdded().
+    std::vector<core::asset::AssetId> _reloaded;  ///< Replaced since the last takeReloaded().
+    std::vector<core::asset::AssetId> _unloaded;  ///< Unloaded since the last takeUnloaded().
 };
 AYLO_ECS_RESOURCE(ShaderAssets, "aylo.ShaderAssets");
 

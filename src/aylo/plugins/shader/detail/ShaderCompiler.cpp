@@ -16,6 +16,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <format>
+#include <iterator>
 #include <span>
 #include <string>
 #include <string_view>
@@ -23,6 +24,7 @@
 
 #include "aylo/contract/renderer/shaders/CompiledShader.hpp"
 #include "plugins/shader/detail/ShaderAssembler.hpp"
+#include "plugins/shader/detail/ShaderIncludes.hpp"
 #include "plugins/shader/detail/ShaderParser.hpp"
 #include "plugins/shader/exceptions/ShaderExceptions.hpp"
 
@@ -130,8 +132,11 @@ bool readsDepth(std::string_view body) {
 }
 }  // namespace
 
-contract::renderer::CompiledShader compileShader(std::string_view source, std::string_view name,
-                                                 std::span<const contract::renderer::ShaderTarget> targets) {
+namespace {
+
+/// @return compileShader() of @p source, its includes already expanded.
+contract::renderer::CompiledShader compileExpanded(std::string_view source, std::string_view name,
+                                                   std::span<const contract::renderer::ShaderTarget> targets) {
     const ParsedShader parsed = parseShader(source, name);
     contract::renderer::CompiledShader shader{
         .name = std::string{name},
@@ -173,6 +178,25 @@ contract::renderer::CompiledShader compileShader(std::string_view source, std::s
             .target = target, .vertex = compile(ShaderStage::kVertex), .fragment = compile(ShaderStage::kFragment)});
     }
     return shader;
+}
+
+}  // namespace
+
+contract::renderer::CompiledShader compileShader(std::string_view source, std::string_view name,
+                                                 std::span<const contract::renderer::ShaderTarget> targets,
+                                                 const IncludeReader& read, std::vector<std::string>* included) {
+    const ExpandedShader expanded = expandIncludes(source, name, read);
+    if (included != nullptr) {
+        included->assign(std::next(expanded.files.begin()), expanded.files.end());
+    }
+    if (expanded.files.size() == 1) {
+        return compileExpanded(expanded.text, name, targets);
+    }
+    try {
+        return compileExpanded(expanded.text, name, targets);
+    } catch (const exceptions::ShaderException& error) {
+        throw exceptions::ShaderException{expanded.locateLines(error.what())};
+    }
 }
 
 }  // namespace aylo::plugins::shader::detail
