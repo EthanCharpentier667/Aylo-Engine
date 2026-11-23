@@ -289,6 +289,41 @@ void drawRenderState(EditorState& state, const MaterialResources& resources, cor
         state.materialUnsaved = true;
     }
 }
+/// @brief The material drawn after this one on a model: a drop target for a `.material`, and a button to clear it.
+void drawNextPass(EditorState& state, const MaterialResources& resources, core::asset::AssetId id,
+                  const shader::Material& material, const cr::CompiledShader& compiled) {
+    if (compiled.findVariant(cr::ShaderTarget::kMesh) == nullptr) {
+        return;
+    }
+    const shader::MaterialAssets::Entry* next = resources.materials->getEntry(material.nextPass);
+    ImGui::TextUnformatted("Next pass");
+    ImGui::SameLine();
+    ImGui::Button(std::format("{}  {}", toUtf8(iconOf(AssetKind::kMaterial)),
+                              next != nullptr ? next->path : std::string{"(none: drop a .material here)"})
+                      .c_str());
+    if (const std::optional<std::string> dropped = droppedFile(AssetKind::kMaterial)) {
+        const core::asset::AssetId nextId = core::asset::AssetId::fromPath(*dropped);
+        try {
+            if (resources.materials->get(nextId) == nullptr) {
+                static_cast<void>(
+                    shader::loadMaterialFile(*dropped, *resources.shaders, *resources.materials, *resources.textures));
+            }
+            if (nextId != id) {
+                resources.materials->setNextPass(id, nextId);
+                state.materialUnsaved = true;
+            }
+        } catch (const core::asset::exceptions::AssetLoadException& error) {
+            state.status = error.what();
+        }
+    }
+    if (next != nullptr) {
+        ImGui::SameLine();
+        if (ImGui::SmallButton("Clear")) {
+            resources.materials->setNextPass(id, core::asset::AssetId{});
+            state.materialUnsaved = true;
+        }
+    }
+}
 }  // namespace
 
 void drawMaterialInspector(EditorState& state) {
@@ -312,6 +347,7 @@ void drawMaterialInspector(EditorState& state) {
     if (const cr::CompiledShader* compiled = resources.shaders->get(material.shader)) {
         drawValues(state, resources, *id, material, *compiled);
         drawRenderState(state, resources, *id, material, *compiled);
+        drawNextPass(state, resources, *id, material, *compiled);
     }
     ImGui::Separator();
     ImGui::BeginDisabled(!state.materialUnsaved);
