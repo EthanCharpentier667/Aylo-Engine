@@ -131,12 +131,15 @@ half-float image, reading the scene or the previous effect's output. Its built-i
 | Name                | Type        | What it is                                                                     |
 |---------------------|-------------|--------------------------------------------------------------------------------|
 | `COLOR`             | `vec4`      | Starts as the pixel of `SCREEN_TEXTURE` at `SCREEN_UV`; written as is, no blend |
-| `SCREEN_TEXTURE`    | `sampler2D` | The picture so far (half float, may exceed 1); `TEXTURE` is the same           |
+| `SCREEN_TEXTURE`    | `sampler2D` | The pass's input: the picture so far (half float, may exceed 1), or the target its `input` names; `TEXTURE` is the same |
+| `SCENE_TEXTURE`     | `sampler2D` | The scene before any effect (set 3, binding 1)                                 |
+| `PREVIOUS_FRAME`    | `sampler2D` | The last frame's result, before the overlay; black at first (set 3, binding 2) |
 | `SCREEN_UV`         | `vec2`      | The pixel on the screen, 0 to 1, top-left at (0, 0); `UV` is the same          |
-| `SCREEN_PIXEL_SIZE` | `vec2`      | One pixel in `SCREEN_UV` units                                                 |
+| `SCREEN_PIXEL_SIZE` | `vec2`      | One pixel of the target written, in `SCREEN_UV` units                          |
 | `TIME`              | `float`     | As everywhere                                                                  |
 
-`VERTEX` is in pixels of the screen in `vertex()`. An `instance uniform` keeps its declared default: no drawing carries
+`VERTEX` is in pixels of the target written in `vertex()` (a push constant `AyloScreenPass::targetSize` gives its
+size, as a pass may write a smaller target than the screen). An `instance uniform` keeps its declared default: no drawing carries
 values, so the assembler writes the defaults into the vertex stage. The `SCREEN_*` names are reserved in every shader
 but only declared in a screen effect.
 
@@ -152,6 +155,28 @@ The game chooses its effects with `aylo.shader.setScreenMaterials` (or the form 
 materials kept in the client resource `aylo.ScreenMaterials`. The Render system `aylo.Shader.Screen`, after
 `aylo.Shader.Update`, hands the renderer the ones created (`IRenderer::setScreenMaterials()`) every frame, so a reload
 or a late material follows. The renderer skips a material whose shader does not serve `kScreen`.
+
+**Passes.** `engine.screenEffects` also takes a list of passes, written as `aylo.shader.addScreenEffect` and
+`aylo.shader.addScreenEffectInput` calls and checked by `aylo.shader.checkScreenEffects`
+(`contract::renderer::checkScreenEffects()`: a pass reads only `"scene"` or what an earlier pass wrote). They are kept in
+`ScreenMaterials::passes` by name; the system turns each sampler name into its slot in the material's shader and calls
+`IRenderer::setScreenEffects()` with `ScreenEffectPass`es (whose default runs the chain of the passes without output,
+for a renderer that has no targets). The Vulkan renderer:
+
+- keeps three images of the picture's size: the scene (never written by an effect: `SCENE_TEXTURE`) and two the chain
+  takes turns on. A pass without `output` writes the next of these; a pass with one writes a named target
+  (`_effectTargets`), made at `size` or `scale` times the picture, half float or 8-bit (`lowPrecision`), made again when
+  its size or format changes and released (deletion queue) when no pass names it;
+- records each pass in its own rendering scope (`ScreenPass::recordPass()`), the target transitioned to an attachment
+  and back to shader read, which orders the passes;
+- gives a pass with `inputs` a copy of its material's set for this frame, with the targets in place of those textures
+  (`GameMaterial::writeCopy()`);
+- builds a screen shader's pipeline per colour format (`GameShader::Built`), for the 8-bit targets;
+- keeps the last result in `_previousFrame` only while an effect reads `PREVIOUS_FRAME` (`CompiledShader::readsPreviousFrame`),
+  copied before the overlay;
+- runs no effect while the list is refused or one of its materials is not ready, so a target is never read unwritten.
+
+Targets are not aliased in memory: a game uses a handful, of at most the screen's size.
 
 The plugin gives two effects written in the same dialect, compiled from `shader/builtin/` (`BuiltinShaders`): a path
 starting with `@aylo/` names one of them instead of a file. `@aylo/bloom.glsl` (one pass, 64 samples on a spiral, with

@@ -168,6 +168,17 @@ made: `normalAt()` rebuilds the normal from the depth of the nearest neighbours 
 attachment, no mesh pipeline variant and nothing to a game that does not use it. The positions are computed over the
 whole picture: a virtual resolution with bars offsets them.
 
+## Screen passes (R3D-10)
+
+The effects form a list of passes, not a free graph: a pass reads the chain, `"scene"` or a target an earlier pass
+wrote, which makes the order of the list the order of execution and every error ("reads a later target") checkable
+before recording. `TEXTURE` of a pass without `input` is the chain (what the passes without output left), so a branch
+such as a glow's blurs does not break the effects around it; the issue's example reads the scene through
+`SCENE_TEXTURE` and gets the same picture. Targets are kept between frames and not aliased (the issue's "aliased where
+lifetimes allow"): a game names a handful of them and aliasing would need a lifetime analysis for little memory. The
+optional `.effect` file format is left out: a script shares a chain as a Luau module.
+`docs/Shaders.md` (*Screen effects*) describes the implementation.
+
 ## Transparency: sorting, not order-independent transparency (R3D-03)
 
 Blended 3D draws are drawn after the opaque ones, sorted back to front by the centre of their box, per picture. This is
