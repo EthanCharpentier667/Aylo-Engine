@@ -71,6 +71,24 @@ a perspective and 0 for an orthographic projection; identity and the 2D view-pro
 `VIEW_MATRIX`, `PROJECTION_MATRIX`, `INV_VIEW_MATRIX`, `INV_PROJECTION_MATRIX` and `CAMERA_POSITION`. The mesh
 templates pass the world and model-space positions at locations 3 and 4: `WORLD_POSITION` (in the vertex stage, the
 vertex before `vertex()`), `LOCAL_POSITION`, and `VIEW_DIR` (toward the camera, or along the orthographic camera's +Z).
+A 3D shader also says how it is drawn, with pragmas of its first lines, read by the parser into
+`CompiledShader::renderState` (`contract::renderer::RenderState`):
+
+| Pragma | Values | Default |
+|---|---|---|
+| `#pragma cull` | `back`, `front`, `none` | `back` |
+| `#pragma blend` | `opaque`, `alpha`, `premultiplied` (the same factors as `alpha`: `COLOR` is premultiplied), `additive`, `multiply` | `opaque` |
+| `#pragma depth` | `test write`, `test nowrite`, `notest` | `test write`, or `test nowrite` for a blended shader |
+| `#pragma depth_bias` | a number of depth steps, and a slope factor | `0 0` |
+
+An unknown value is an error naming its line, and so is one of these pragmas in a shader that is not `#pragma mesh`. A
+material replaces parts of it (`Material::renderState`, a `RenderStateOverride`: from a `.material` file's
+`renderState`, the call `aylo.shader.setMaterialRenderState`, or the Inspector); `ShaderHandles` merges it with the
+shader's into `MaterialDesc::renderState`. `ALPHA_SCISSOR`, written in `fragment()`, makes a cutout: a pixel whose
+alpha is below it is discarded, the others are opaque. The assembler compiles the test in (`AYLO_ALPHA_SCISSOR`) only
+when the shader names it, since a `discard` can cost the early depth test. The built-in mesh shader keeps its own state
+(no culling, premultiplied blending, depth written) until R3D-07 reads glTF's `doubleSided`.
+
 `FRONT_FACING` is `gl_FrontFacing`: the projection puts Y down in clip space and the screen too, so a triangle
 counter-clockwise in the world is counter-clockwise on screen, the pipelines' default front face. `FRAGCOORD`
 (`gl_FragCoord`) is in every fragment stage. The

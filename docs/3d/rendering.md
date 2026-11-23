@@ -64,6 +64,26 @@ flowchart LR
 
 R3D-01, R3D-03, R3D-05, R3D-09, R3D-10 and R3D-11 can start at once.
 
+## Transparency: sorting, not order-independent transparency (R3D-03)
+
+Blended 3D draws are drawn after the opaque ones, sorted back to front by the centre of their box, per picture. This is
+what Godot and Unity's built-in pipelines do, and it is exact for separate objects, which is most of a game's glass,
+smoke and effects. It is wrong only inside one draw (a mesh whose triangles overlap themselves) and between two draws
+that intersect.
+
+Order-independent transparency was evaluated and is **not retained for now**:
+
+- **Weighted blended OIT** (McGuire and Bavoil, 2013) needs two more targets (an RGBA16F accumulation and an R8 or
+  R16F revealage) and a composite pass, and changes what a blended material looks like: its weights approximate the
+  order, so colours shift with the depth range, and additive and multiply blends do not fit it. A game could not keep
+  the exact result of sorting where sorting is right.
+- **Per-pixel linked lists** are exact but need a storage buffer of fragments, an atomic counter and a resolve pass,
+  with a memory bound per frame that a full-screen smoke blows; they also cost on tile-based GPUs (Apple, mobile).
+
+Both stay possible later as an opt-in (`#pragma blend oit`): the parser rejects unknown blend values today, so adding
+one breaks no shader. Until then, an intersecting pair is fixed by splitting a mesh, or by `#pragma depth test write`
+on the denser one.
+
 ## Not in this plan
 
 Reflection probes, global illumination, screen-space reflections, volumetrics, clustered or

@@ -201,9 +201,13 @@ storage buffer per frame in flight, grown by doubling and never shrunk, once per
 record the same draws. Each part is one indexed draw whose push constants are its base colour and its draw's index
 (`StaticMeshConstants`, 32 bytes); the meshes live in `_staticMeshes`, host-visible buffers written once
 by `createStaticMesh()` and freed through the deletion queue. A draw with a game material
-(`StaticMeshDraw::material`) is drawn with the pipeline of its shader's `kMesh` variant
+(`StaticMeshDraw::material`) is drawn with the pipeline of its shader's `kMesh` variant for its render state (`GameShader` keeps one pipeline per state its
+materials ask for, in a deque so a frame's pointers stay valid; the culling, blending, depth test and write and depth
+bias come from `RenderState`, the front face is counter-clockwise, which the projection keeps on screen: `FrontFaceTests`)
 (`StaticMeshPass::createMaterialPipeline()`: the same vertices and depth test, against `kWorld3DDepthFormat`) and its
-set 2, found by `findMaterial()`; the others with the built-in pipeline. The 2D world then draws in a second scope that keeps the image (`loadedColorAttachment`), so
+set 2, found by `findMaterial()`; the others with the built-in pipeline. `StaticMeshPass::record()` draws the opaque draws first, in their order, then
+the blended ones back to front from the picture's camera (`orderMeshDraws()`: by distance to the centre of their box,
+or along the view for an orthographic camera), per picture, since the scene and the preview have their own camera. The 2D world then draws in a second scope that keeps the image (`loadedColorAttachment`), so
 it lies over the 3D world; the screen effects and the overlay follow as before. Without a 3D view, nothing changes. The
 2D pipelines have no depth attachment, which is why the two worlds draw in two scopes.
 
