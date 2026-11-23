@@ -174,3 +174,36 @@ TEST(ScriptCamera3D, AScriptMakesALightCastShadowsAndSetsThem) {
     EXPECT_EQ(client.state->environments.back().shadowResolution, 2048U);
     EXPECT_FLOAT_EQ(client.state->environments.back().shadowDistance, 80.0F);
 }
+
+TEST(ScriptCamera3D, AScriptGivesThe3DWorldASky) {
+    // manual/pages/lights.md, "The sky".
+    ClientScripts client;
+    ASSERT_EQ(client.run(R"(
+        engine.ecs.system("game.Sky", {
+            phase = "Startup",
+            side = "client",
+            run = function(ctx)
+                ctx.commands:spawn({
+                    ["aylo.Environment3D"] = {
+                        skyGradient = true,
+                        skyTop = vector.create(0.2, 0.4, 1.0),
+                        skyHorizon = vector.create(0.9, 0.8, 0.7),
+                        skyIntensity = 1.5,
+                        skyRotation = math.rad(90),
+                    },
+                })
+            end,
+        })
+    )"),
+              "");
+    client.app.runFrame();
+    client.app.runFrame();
+    ASSERT_FALSE(client.state->environments.empty());
+    const auto& sky = client.state->environments.back();
+    EXPECT_EQ(sky.sky, aylo::contract::renderer::SkyKind::kGradient);
+    EXPECT_FLOAT_EQ(sky.skyTop.z, 1.0F);
+    EXPECT_FLOAT_EQ(sky.skyHorizon.x, 0.9F);
+    EXPECT_FLOAT_EQ(sky.skyIntensity, 1.5F);
+    EXPECT_NEAR(sky.skyRotation, 1.5708F, 1e-4F);
+    EXPECT_TRUE(sky.lightingFromSky);
+}
