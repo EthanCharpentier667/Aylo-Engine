@@ -50,6 +50,7 @@
 #include "aylo/ecs/system/EventWriter.hpp"
 #include "aylo/ecs/system/ResourceParam.hpp"
 #include "aylo/ecs/system/Side.hpp"
+#include "core/asset/AssetId.hpp"
 #include "core/config/Settings.hpp"
 #include "plugins/AssetDirectory.hpp"
 #include "plugins/graphics/BackendRegistry.hpp"
@@ -310,10 +311,35 @@ contract::renderer::Light3D toLight(const transform::GlobalTransform3D& global, 
         .shadowNormalBias = std::max(light.shadowNormalBias, 0.0F)};
 }
 
+/// @return @p shown as the renderer takes it: its sky an image if it names a loaded one, else a gradient if it asks for
+/// one, else none.
+contract::renderer::Environment3D toEnvironment(const graphics::Environment3D& shown, const TextureAssets& textures) {
+    contract::renderer::Environment3D environment{.ambient = shown.ambient,
+                                                  .strength = shown.strength,
+                                                  .shadowCascades = shown.shadowCascades,
+                                                  .shadowResolution = shown.shadowResolution,
+                                                  .shadowDistance = shown.shadowDistance,
+                                                  .skyTop = shown.skyTop,
+                                                  .skyHorizon = shown.skyHorizon,
+                                                  .skyBottom = shown.skyBottom,
+                                                  .skyIntensity = shown.skyIntensity,
+                                                  .skyRotation = shown.skyRotation,
+                                                  .lightingFromSky = shown.lightingFromSky};
+    if (shown.skyTexture != core::asset::AssetId{}) {
+        if (const std::optional<contract::renderer::TextureId> texture = textures.getTexture(shown.skyTexture)) {
+            environment.sky = contract::renderer::SkyKind::kTexture;
+            environment.skyTexture = *texture;
+        }
+    } else if (shown.skyGradient) {
+        environment.sky = contract::renderer::SkyKind::kGradient;
+    }
+    return environment;
+}
+
 /// @brief Render: gives the renderer the enabled lights of the 3D world, in the world's space, and the ambient light of
-/// the Environment3D with the highest priority. Nothing when no light and no environment exist, so a game without them
-/// costs nothing.
-void applyLights3D(ecs::NonSendMut<plugins::graphics::Backend> backend,
+/// the Environment3D with the highest priority, with its sky (its image once loaded). Nothing when no light and no
+/// environment exist, so a game without them costs nothing.
+void applyLights3D(ecs::NonSendMut<plugins::graphics::Backend> backend, ecs::Res<TextureAssets> textures,
                    ecs::Query<const transform::GlobalTransform3D, const graphics::Light3D> lights,
                    ecs::Query<const graphics::Environment3D> environments) {
     std::vector<contract::renderer::Light3D> given;
@@ -326,11 +352,7 @@ void applyLights3D(ecs::NonSendMut<plugins::graphics::Backend> backend,
     std::int32_t environmentPriority = 0;
     for (auto [entity, shown] : environments) {
         if (!environment || shown.priority > environmentPriority) {
-            environment = contract::renderer::Environment3D{.ambient = shown.ambient,
-                                                            .strength = shown.strength,
-                                                            .shadowCascades = shown.shadowCascades,
-                                                            .shadowResolution = shown.shadowResolution,
-                                                            .shadowDistance = shown.shadowDistance};
+            environment = toEnvironment(shown, *textures);
             environmentPriority = shown.priority;
         }
     }

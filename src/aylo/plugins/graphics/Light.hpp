@@ -17,7 +17,9 @@
 #include "aylo/ecs/component/ComponentTraits.hpp"
 #include "aylo/ecs/type/Field.hpp"
 #include "aylo/ecs/type/FieldTypeOf.hpp"
-#include "plugins/GlmReflection.hpp"  // IWYU pragma: keep
+#include "core/asset/AssetId.hpp"
+#include "plugins/AssetIdReflection.hpp"  // IWYU pragma: keep
+#include "plugins/GlmReflection.hpp"      // IWYU pragma: keep
 
 namespace aylo::plugins::graphics {
 
@@ -82,8 +84,18 @@ struct Environment3D {
     std::uint32_t shadowCascades = 3;       ///< Directional lights: cascades of shadow maps, 1 to 4.
     std::uint32_t shadowResolution = 1024;  ///< Texels of a side of a shadow map: 512, 1024 or 2048.
     float shadowDistance = 60.0F;           ///< Directional lights: how far from the camera they cast shadows.
+    core::asset::AssetId skyTexture;        ///< An equirectangular sky image (from TextureAssets), .hdr or not; none:
+                                            ///< the gradient if skyGradient, else no sky.
+    bool skyGradient = false;               ///< Without skyTexture: a sky of three colours.
+    glm::vec3 skyTop{0.25F, 0.45F, 0.85F};  ///< The gradient straight up, linear.
+    glm::vec3 skyHorizon{0.75F, 0.85F, 0.95F};  ///< The gradient at the horizon, linear.
+    glm::vec3 skyBottom{0.3F, 0.28F, 0.25F};    ///< The gradient straight down, linear.
+    float skyIntensity = 1.0F;                  ///< Multiplies the sky, drawn and as light.
+    float skyRotation = 0.0F;                   ///< Turns the sky around the vertical axis, in radians.
+    bool lightingFromSky = true;                ///< Whether the sky lights the 3D world, added to ambient.
 };
 AYLO_ECS_COMPONENT(Environment3D, "aylo.Environment3D", ambient, strength, priority, shadowCascades, shadowResolution,
-                   shadowDistance);
+                   shadowDistance, skyTexture, skyGradient, skyTop, skyHorizon, skyBottom, skyIntensity, skyRotation,
+                   lightingFromSky);
 
 }  // namespace aylo::plugins::graphics
