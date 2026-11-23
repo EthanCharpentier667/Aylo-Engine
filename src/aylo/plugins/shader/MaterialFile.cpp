@@ -29,6 +29,7 @@
 #include "plugins/graphics/TextureAssets.hpp"
 #include "plugins/shader/Material.hpp"
 #include "plugins/shader/MaterialAssets.hpp"
+#include "plugins/shader/RenderStateNames.hpp"
 #include "plugins/shader/ShaderAssets.hpp"
 
 namespace aylo::plugins::shader {
@@ -125,6 +126,71 @@ std::vector<MaterialFile::Texture> readTextures(const nlohmann::ordered_json& te
 }
 }  // namespace
 
+namespace {
+/// @return The text of the key @p key of @p state, a string.
+std::string_view stringOf(const nlohmann::ordered_json& value, std::string_view key, std::string_view path) {
+    if (!value.is_string()) {
+        fail(path, std::format("render state '{}' must be a name", key));
+    }
+    return value.get_ref<const std::string&>();
+}
+
+/// @return The render state the object @p state changes.
+RenderStateOverride readRenderState(const nlohmann::ordered_json& state, std::string_view path) {
+    if (!state.is_object()) {
+        fail(path, "'renderState' must be an object (cull, blend, depth, depthBias, depthBiasSlope)");
+    }
+    RenderStateOverride read;
+    for (const auto& [key, value] : state.items()) {
+        if (key == "cull") {
+            read.cull = cullModeNamed(stringOf(value, key, path));
+            if (!read.cull) {
+                fail(path, R"(render state 'cull' is "back", "front" or "none")");
+            }
+        } else if (key == "blend") {
+            read.blend = blendNamed(stringOf(value, key, path));
+            if (!read.blend) {
+                fail(path, R"(render state 'blend' is "opaque", "alpha", "premultiplied", "additive" or "multiply")");
+            }
+        } else if (key == "depth") {
+            read.depth = depthModeNamed(stringOf(value, key, path));
+            if (!read.depth) {
+                fail(path, R"(render state 'depth' is "test write", "test nowrite" or "notest")");
+            }
+        } else if (key == "depthBias" || key == "depthBiasSlope") {
+            if (!value.is_number()) {
+                fail(path, std::format("render state '{}' must be a number", key));
+            }
+            (key == "depthBias" ? read.depthBias : read.depthBiasSlope) = value.get<float>();
+        } else {
+            fail(path, std::format("unknown render state '{}' (cull, blend, depth, depthBias, depthBiasSlope)", key));
+        }
+    }
+    return read;
+}
+
+/// @return @p state as the object of a file.
+nlohmann::ordered_json writeRenderState(const RenderStateOverride& state) {
+    nlohmann::ordered_json written = nlohmann::ordered_json::object();
+    if (state.cull) {
+        written.emplace("cull", nameOf(*state.cull));
+    }
+    if (state.blend) {
+        written.emplace("blend", nameOf(*state.blend));
+    }
+    if (state.depth) {
+        written.emplace("depth", nameOf(*state.depth));
+    }
+    if (state.depthBias) {
+        written.emplace("depthBias", *state.depthBias);
+    }
+    if (state.depthBiasSlope) {
+        written.emplace("depthBiasSlope", *state.depthBiasSlope);
+    }
+    return written;
+}
+}  // namespace
+
 MaterialFile MaterialFile::parse(std::string_view text, std::string_view path) {
     const nlohmann::ordered_json root = nlohmann::ordered_json::parse(text, nullptr, false);
     if (root.is_discarded() || !root.is_object()) {
@@ -141,8 +207,10 @@ MaterialFile MaterialFile::parse(std::string_view text, std::string_view path) {
             file.values = readValues(value, path);
         } else if (key == "textures") {
             file.textures = readTextures(value, path);
+        } else if (key == "renderState") {
+            file.renderState = readRenderState(value, path);
         } else {
-            fail(path, std::format("unknown key '{}' (shader, values, textures)", key));
+            fail(path, std::format("unknown key '{}' (shader, values, textures, renderState)", key));
         }
     }
     return file;
@@ -165,6 +233,9 @@ std::string MaterialFile::write() const {
     root.emplace("shader", shader);
     root.emplace("values", std::move(written));
     root.emplace("textures", std::move(images));
+    if (!renderState.empty()) {
+        root.emplace("renderState", writeRenderState(renderState));
+    }
     return root.dump(2) + "\n";
 }
 
@@ -196,6 +267,7 @@ core::asset::AssetId loadMaterialFile(const std::filesystem::path& path, ShaderA
     for (const MaterialFile::Texture& texture : file.textures) {
         material.setTexture(texture.name, textures.load(texture.path));
     }
+    material.renderState = file.renderState;
     return materials.define(name, std::move(material));
 }
 
@@ -217,6 +289,7 @@ MaterialFile describeMaterial(core::asset::AssetId id, const ShaderAssets& shade
             file.textures.push_back(MaterialFile::Texture{.name = texture.name, .path = image->path});
         }
     }
+    file.renderState = material->renderState;
     return file;
 }
 

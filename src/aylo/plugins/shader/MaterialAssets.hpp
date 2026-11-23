@@ -75,6 +75,10 @@ class AYLO_PLUGIN_SHADER_API MaterialAssets {
     /// @return False, doing nothing, if no material has this id.
     bool setTexture(core::asset::AssetId id, const std::string& name, core::asset::AssetId texture);
 
+    /// @brief Changes what the material @p id changes of its 3D shader's render state, as setValue().
+    /// @return False, doing nothing, if no material has this id.
+    bool setRenderState(core::asset::AssetId id, const RenderStateOverride& renderState);
+
     /// @brief Forgets the material @p id names; the ShaderPlugin destroys it in the renderer.
     /// @return False, doing nothing, if no material has this id.
     bool unload(core::asset::AssetId id);

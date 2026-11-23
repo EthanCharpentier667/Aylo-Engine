@@ -13,6 +13,7 @@
 #include <glm/ext/vector_float2.hpp>
 #include <glm/ext/vector_float3.hpp>
 #include <glm/ext/vector_float4.hpp>
+#include <optional>
 #include <string>
 #include <variant>
 #include <vector>
@@ -25,6 +26,36 @@ namespace aylo::plugins::shader {
 
 /// @brief A value of a material, of one of the types a shader declares: float, vec2, vec3, vec4 or int.
 using MaterialValue = std::variant<float, glm::vec2, glm::vec3, glm::vec4, std::int32_t>;
+
+/// @brief What a material changes of its 3D shader's render state (contract::renderer::RenderState): each part it
+/// sets replaces the shader's pragma, the others keep it.
+struct RenderStateOverride {
+    std::optional<contract::renderer::CullMode> cull;    ///< Replaces `#pragma cull`.
+    std::optional<contract::renderer::MeshBlend> blend;  ///< Replaces `#pragma blend`.
+    std::optional<contract::renderer::DepthMode> depth;  ///< Replaces `#pragma depth`.
+    std::optional<float> depthBias;                      ///< Replaces the first number of `#pragma depth_bias`.
+    std::optional<float> depthBiasSlope;                 ///< Replaces its slope factor.
+
+    /// @return Whether it changes nothing.
+    [[nodiscard]] bool empty() const noexcept { return !cull && !blend && !depth && !depthBias && !depthBiasSlope; }
+
+    /// @return @p state with what this sets replaced. A blend set to a blended mode without a depth mode, over an
+    /// opaque shader's default, stops writing depth, as the pragma does.
+    [[nodiscard]] contract::renderer::RenderState applyTo(contract::renderer::RenderState state) const noexcept {
+        const bool wasDefaultDepth = state.depth == contract::renderer::DepthMode::kTestWrite;
+        state.cull = cull.value_or(state.cull);
+        state.blend = blend.value_or(state.blend);
+        state.depth = depth.value_or(state.depth);
+        if (!depth && blend && wasDefaultDepth && contract::renderer::isTransparent(state)) {
+            state.depth = contract::renderer::DepthMode::kTestNoWrite;
+        }
+        state.depthBias = depthBias.value_or(state.depthBias);
+        state.depthBiasSlope = depthBiasSlope.value_or(state.depthBiasSlope);
+        return state;
+    }
+
+    [[nodiscard]] bool operator==(const RenderStateOverride& other) const = default;
+};
 
 /// @brief A shader and the values of its `uniform`s and textures, by name: what a game describes, shared by every
 /// drawing that uses it. The values it does not set keep the shader's defaults.
@@ -45,9 +76,10 @@ struct AYLO_PLUGIN_SHADER_API Material {
         core::asset::AssetId texture;  ///< From TextureAssets::load().
     };
 
-    core::asset::AssetId shader;    ///< From ShaderAssets::load() or add().
-    std::vector<Value> values;      ///< The values set; a name set twice keeps the last.
-    std::vector<Texture> textures;  ///< The textures set; a name set twice keeps the last.
+    core::asset::AssetId shader;      ///< From ShaderAssets::load() or add().
+    std::vector<Value> values;        ///< The values set; a name set twice keeps the last.
+    std::vector<Texture> textures;    ///< The textures set; a name set twice keeps the last.
+    RenderStateOverride renderState;  ///< What it changes of its 3D shader's render state.
 
     /// @brief Sets the value @p name, replacing a previous one.
     /// @return This material, to chain.

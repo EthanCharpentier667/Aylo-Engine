@@ -8,6 +8,7 @@
 #pragma once
 
 #include <cstdint>
+#include <limits>
 #include <string_view>
 #include <vector>
 
@@ -30,6 +31,8 @@ inline constexpr std::string_view kSetTextureCall =
     "aylo.shader.setMaterialTexture";  ///< MaterialAssets::setTexture().
 inline constexpr std::string_view kSetInstanceValueCall =
     "aylo.shader.setInstanceValue";  ///< An entity's MaterialInstance (InstanceValueRequests).
+inline constexpr std::string_view kSetRenderStateCall =
+    "aylo.shader.setMaterialRenderState";  ///< MaterialAssets::setRenderState().
 inline constexpr std::string_view kSetScreenMaterialsCall =
     "aylo.shader.setScreenMaterials";  ///< ScreenMaterials, replaced.
 
@@ -92,6 +95,19 @@ struct SetInstanceValueArguments {
 AYLO_ECS_CALL_DATA(SetInstanceValueArguments, "aylo.shader.SetInstanceValueArguments", entity, material, name, size, x,
                    y, z, w);
 
+/// @brief The arguments of `aylo.shader.setMaterialRenderState`: what a material changes of its 3D shader's render
+/// state, replacing what it changed before. An empty name or a NaN number keeps the shader's.
+struct SetMaterialRenderStateArguments {
+    core::asset::AssetId material;  ///< The material, from `aylo.shader.addMaterial`.
+    ecs::String cull;               ///< "back", "front", "none", or empty.
+    ecs::String blend;              ///< "opaque", "alpha", "premultiplied", "additive", "multiply", or empty.
+    ecs::String depth;              ///< "test write", "test nowrite", "notest", or empty.
+    float depthBias{std::numeric_limits<float>::quiet_NaN()};       ///< In steps of the depth buffer; NaN: keep.
+    float depthBiasSlope{std::numeric_limits<float>::quiet_NaN()};  ///< Times the slope; NaN: keep.
+};
+AYLO_ECS_CALL_DATA(SetMaterialRenderStateArguments, "aylo.shader.SetMaterialRenderStateArguments", material, cull,
+                   blend, depth, depthBias, depthBiasSlope);
+
 /// @brief The arguments of `aylo.shader.setMaterialTexture`.
 struct SetMaterialTextureArguments {
     core::asset::AssetId material;  ///< The material, from `aylo.shader.addMaterial`.
@@ -108,8 +124,8 @@ struct SetScreenMaterialsArguments {
 AYLO_ECS_CALL_DATA(SetScreenMaterialsArguments, "aylo.shader.SetScreenMaterialsArguments", materials);
 
 /// @brief Registers the shader engine calls on @p app, for scripts: `aylo.shader.load`, `aylo.shader.addMaterial`,
-/// `aylo.shader.setMaterialValue`, `aylo.shader.setMaterialTexture`, `aylo.shader.setInstanceValue` and
-/// `aylo.shader.setScreenMaterials`. They throw a
+/// `aylo.shader.setMaterialValue`, `aylo.shader.setMaterialTexture`, `aylo.shader.setMaterialRenderState`,
+/// `aylo.shader.setInstanceValue` and `aylo.shader.setScreenMaterials`. They throw a
 /// ShaderException naming what is wrong (an unknown material, a size that is not 1 to 4). Called by the ShaderPlugin.
 void addShaderCalls(ecs::App& app);
 

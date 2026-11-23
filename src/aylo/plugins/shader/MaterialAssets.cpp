@@ -77,6 +77,18 @@ bool MaterialAssets::setTexture(core::asset::AssetId id, const std::string& name
     return true;
 }
 
+bool MaterialAssets::setRenderState(core::asset::AssetId id, const RenderStateOverride& renderState) {
+    const Entry* entry = _materials.getEntry(id);
+    if (entry == nullptr || !entry->value) {
+        return false;
+    }
+    Material material = *entry->value;
+    material.renderState = renderState;
+    static_cast<void>(_materials.store(id, entry->path, std::move(material)));
+    markChanged(id);
+    return true;
+}
+
 bool MaterialAssets::unload(core::asset::AssetId id) {
     if (!_materials.unload(id)) {
         return false;

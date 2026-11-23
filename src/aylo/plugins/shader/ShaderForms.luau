@@ -41,7 +41,7 @@ engine.assets.material = function(...)
 		end
 		return forms.call(form, "aylo.shader.loadMaterial", { path = path })
 	end
-	local spec = forms.table(form, (...), { "name", "shader", "values", "textures" })
+	local spec = forms.table(form, (...), { "name", "shader", "values", "textures", "renderState" })
 	local name = forms.string(form, spec, "name")
 	if name == nil or name == "" or spec.shader == nil then
 		forms.fail(form, "expected a 'name' and a 'shader'")
@@ -69,6 +69,18 @@ engine.assets.material = function(...)
 	for _, fields in textures do
 		fields.material = material
 		forms.call(form, "aylo.shader.setMaterialTexture", fields)
+	end
+	if spec.renderState ~= nil then
+		local context = form .. ": 'renderState'"
+		local state = forms.table(context, spec.renderState, { "cull", "blend", "depth", "depthBias", "depthBiasSlope" })
+		forms.call(form, "aylo.shader.setMaterialRenderState", {
+			material = material,
+			cull = forms.string(context, state, "cull"),
+			blend = forms.string(context, state, "blend"),
+			depth = forms.string(context, state, "depth"),
+			depthBias = forms.number(context, state, "depthBias"),
+			depthBiasSlope = forms.number(context, state, "depthBiasSlope"),
+		})
 	end
 	return material
 end

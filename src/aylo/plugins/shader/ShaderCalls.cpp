@@ -16,6 +16,7 @@
 #include <glm/ext/vector_float2.hpp>
 #include <glm/ext/vector_float3.hpp>
 #include <glm/ext/vector_float4.hpp>
+#include <optional>
 #include <string>
 #include <string_view>
 
@@ -29,6 +30,7 @@
 #include "plugins/shader/Material.hpp"
 #include "plugins/shader/MaterialAssets.hpp"
 #include "plugins/shader/MaterialFile.hpp"
+#include "plugins/shader/RenderStateNames.hpp"
 #include "plugins/shader/ScreenMaterials.hpp"
 #include "plugins/shader/ShaderAssets.hpp"
 #include "plugins/shader/exceptions/ShaderExceptions.hpp"
@@ -125,6 +127,38 @@ void setInstanceValue(ecs::Res<ShaderAssets> shaders, ecs::Res<MaterialAssets> m
                                                       .value = readValue(arguments, integer)});
 }
 
+/// @return The value named @p name of a render state part, through @p named; nothing for an empty name.
+/// @throws exceptions::ShaderException If @p name names none.
+template <typename Named>
+auto readRenderPart(std::string_view name, std::string_view part, Named named) -> decltype(named(name)) {
+    if (name.empty()) {
+        return std::nullopt;
+    }
+    auto value = named(name);
+    if (!value) {
+        throw exceptions::ShaderException{std::format("'{}' is not a render state {}", name, part)};
+    }
+    return value;
+}
+
+MaterialResult setMaterialRenderState(ecs::ResMut<MaterialAssets> materials,
+                                      const SetMaterialRenderStateArguments& arguments) {
+    RenderStateOverride state;
+    state.cull = readRenderPart(arguments.cull.view(), "cull", &cullModeNamed);
+    state.blend = readRenderPart(arguments.blend.view(), "blend", &blendNamed);
+    state.depth = readRenderPart(arguments.depth.view(), "depth", &depthModeNamed);
+    if (!std::isnan(arguments.depthBias)) {
+        state.depthBias = arguments.depthBias;
+    }
+    if (!std::isnan(arguments.depthBiasSlope)) {
+        state.depthBiasSlope = arguments.depthBiasSlope;
+    }
+    if (!materials->setRenderState(arguments.material, state)) {
+        throw exceptions::ShaderException{std::format("No material has the id {}", arguments.material.value)};
+    }
+    return MaterialResult{.material = arguments.material};
+}
+
 void setScreenMaterials(ecs::Res<MaterialAssets> materials, ecs::ResMut<ScreenMaterials> screen,
                         const SetScreenMaterialsArguments& arguments) {
     for (const core::asset::AssetId material : arguments.materials) {
@@ -151,6 +185,7 @@ void addShaderCalls(ecs::App& app) {
     app.addCall(std::string{kLoadMaterialCall}, &loadMaterial);
     app.addCall(std::string{kSetValueCall}, &setMaterialValue);
     app.addCall(std::string{kSetTextureCall}, &setMaterialTexture);
+    app.addCall(std::string{kSetRenderStateCall}, &setMaterialRenderState);
     app.addCall(std::string{kSetInstanceValueCall}, &setInstanceValue);
     app.addCall(std::string{kSetScreenMaterialsCall}, &setScreenMaterials);
 }
