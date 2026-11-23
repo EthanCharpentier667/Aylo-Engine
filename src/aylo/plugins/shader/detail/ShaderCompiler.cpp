@@ -128,7 +128,9 @@ contract::renderer::CompiledShader compileShader(std::string_view source, std::s
                                               .materialDefaults = parsed.materialDefaults,
                                               .instanceDefaults = parsed.instanceDefaults,
                                               .textures = parsed.textures,
-                                              .renderState = parsed.renderState};
+                                              .renderState = parsed.renderState,
+                                              .castsShadows = parsed.castsShadows,
+                                              .cutsOut = parsed.body.contains("ALPHA_SCISSOR")};
     for (const DeclaredValue& declared : parsed.materialValues) {
         shader.materialValues.push_back(declared.value);
     }

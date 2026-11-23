@@ -93,6 +93,7 @@ constexpr std::array<std::string_view, 5> kVaryingTypes{"float", "vec2", "vec3",
 constexpr std::string_view kScreenPragma = "#pragma screen";
 constexpr std::string_view kMeshPragma = "#pragma mesh";
 constexpr std::string_view kLitPragma = "#pragma lit";
+constexpr std::string_view kShadowOffPragma = "#pragma shadow off";
 
 /// @brief What the parser knows of a value type: its GLSL name, its components, its std430 size and alignment.
 struct TypeInfo {
@@ -493,6 +494,12 @@ ParsedShader parseShader(std::string_view source, std::string_view name) {
         ++lineNumber;
         const std::string lineCode = removeComments(line, inComment);
         const std::string_view trimmed = trim(lineCode);
+        if (trimmed == kShadowOffPragma) {
+            shader.body += '\n';
+            shader.castsShadows = false;
+            parser.renderStateLine = parser.renderStateLine.value_or(lineNumber);
+            continue;
+        }
         if (trimmed == kLitPragma) {
             shader.body += '\n';
             shader.lit = true;

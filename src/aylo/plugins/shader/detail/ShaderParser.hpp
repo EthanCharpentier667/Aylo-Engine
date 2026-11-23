@@ -49,10 +49,11 @@ struct ParsedShader {
     std::vector<DeclaredVarying> varyings;                        ///< `varying` values, in declaration order.
     bool hasVertex{false};                                        ///< Whether it defines `void vertex()`.
     bool hasFragment{false};                                      ///< Whether it defines `void fragment()`.
-    bool screen{false};    ///< Whether it says `#pragma screen`: a screen effect, drawn over the whole scene.
-    bool mesh{false};      ///< Whether it says `#pragma mesh`: a 3D shader, drawn on static meshes.
-    bool lit{false};       ///< Whether it says `#pragma lit`: a 3D shader the engine lights from its surface.
-    bool hasLight{false};  ///< Whether it defines `void light()`: the shading of one light, for a lit shader.
+    bool screen{false};       ///< Whether it says `#pragma screen`: a screen effect, drawn over the whole scene.
+    bool mesh{false};         ///< Whether it says `#pragma mesh`: a 3D shader, drawn on static meshes.
+    bool lit{false};          ///< Whether it says `#pragma lit`: a 3D shader the engine lights from its surface.
+    bool hasLight{false};     ///< Whether it defines `void light()`: the shading of one light, for a lit shader.
+    bool castsShadows{true};  ///< False with `#pragma shadow off`: a 3D shader whose models cast no shadow.
     contract::renderer::RenderState renderState;  ///< From `#pragma cull`, `blend`, `depth` and `depth_bias`.
     std::string body;  ///< The source, every declaration line left empty, so line numbers stay the game's.
 };
