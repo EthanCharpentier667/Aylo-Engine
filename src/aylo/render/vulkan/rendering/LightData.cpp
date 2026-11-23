@@ -66,9 +66,12 @@ std::vector<Light3D> selectLights(std::span<const Light3D> lights3D, const glm::
 }
 
 void packLights(std::span<const Light3D> selected, const contract::renderer::Environment3D& environment,
-                std::span<const std::int32_t> firstShadowTiles, std::uint32_t cascades, std::vector<std::byte>& bytes) {
-    const GpuLightsHeader header{.ambient = glm::vec4{environment.ambient * environment.strength, 0.0F},
-                                 .count = glm::uvec4{static_cast<std::uint32_t>(selected.size()), cascades, 0U, 0U}};
+                std::span<const std::int32_t> firstShadowTiles, std::uint32_t cascades, std::vector<std::byte>& bytes,
+                std::uint32_t skyLevels) {
+    const float skyLight = skyLevels > 0 ? environment.skyIntensity : 0.0F;
+    const GpuLightsHeader header{
+        .ambient = glm::vec4{environment.ambient * environment.strength, skyLight},
+        .count = glm::uvec4{static_cast<std::uint32_t>(selected.size()), cascades, skyLevels, 0U}};
     bytes.resize(sizeof(GpuLightsHeader) + (selected.size() * sizeof(GpuLight)));
     std::memcpy(bytes.data(), &header, sizeof(header));
     std::size_t offset = sizeof(GpuLightsHeader);

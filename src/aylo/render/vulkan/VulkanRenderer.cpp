@@ -393,6 +393,8 @@ void VulkanRenderer::init(contract::platform::IPlatform& platform) {
             .addBinding(rendering::kLightsBinding, vk::DescriptorType::eStorageBuffer, materialStages)
             .addBinding(rendering::kShadowTilesBinding, vk::DescriptorType::eStorageBuffer, materialStages)
             .addBinding(rendering::kShadowAtlasBinding, vk::DescriptorType::eCombinedImageSampler, materialStages)
+            .addBinding(rendering::kSkySpecularBinding, vk::DescriptorType::eCombinedImageSampler, materialStages)
+            .addBinding(rendering::kSkyDiffuseBinding, vk::DescriptorType::eCombinedImageSampler, materialStages)
             .build(*_device));
     // Set 1 of a mesh holds its part's five textures (base colour, metallic-roughness, normal, occlusion, emissive): a
     // game mesh shader only reads the first, as TEXTURE.
@@ -530,6 +532,12 @@ void VulkanRenderer::createPasses() {
     } else {
         _staticMeshPass = std::move(staticMeshPass);
     }
+    _skyWritten.fill(0);  // the new pass's sets point at no sky yet
+    if (!_environmentMaps) {
+        // Its formats are the 3D pass's, which no swapchain changes.
+        _environmentMaps = std::make_unique<rendering::EnvironmentMaps>(
+            *_device, *_allocator, *_shaders, kSceneFormat, kDepthFormat, &_pipelineCache->getCache(), kFramesInFlight);
+    }
     if (_lines3DPass) {
         _deletionQueue.defer(frameIndex, std::exchange(_lines3DPass, std::move(lines3DPass)));
     } else {
@@ -572,10 +580,14 @@ contract::renderer::TextureId VulkanRenderer::createTexture(const contract::rend
                         desc.size.y, maxSize));
     }
     const bool data = desc.encoding == contract::renderer::TextureEncoding::kLinear;
-    memory::Image image{*_device, *_allocator, vk::Extent2D{desc.size.x, desc.size.y},
-                        data ? kDataTextureFormat : kTextureFormat,
+    const bool hdr = desc.encoding == contract::renderer::TextureEncoding::kHdr;
+    vk::Format format = data ? kDataTextureFormat : kTextureFormat;
+    if (hdr) {
+        format = vk::Format::eR32G32B32A32Sfloat;
+    }
+    memory::Image image{*_device, *_allocator, vk::Extent2D{desc.size.x, desc.size.y}, format,
                         vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst};
-    if (data) {
+    if (data || hdr) {
         _uploader->upload(pixels, image);
     } else {
         // Premultiplied once here, so the shaders and the blending can assume it (rendering/Blend.hpp).
@@ -702,6 +714,7 @@ void VulkanRenderer::endFrame() {
     // dispatches) is recorded above, before it. The world is uploaded once, for the preview and the scene.
     uploadWorld(frameIndex, viewSize, framebufferSize);
     recordShadows(commandBuffer, frameIndex);
+    updateSky(commandBuffer, frameIndex);
     recordPreview(commandBuffer, frameIndex);
     // The scene goes to a floating-point image first, the screen effects run over it, and the result is copied where
     // it is shown: the tool's scene texture, or the window.
@@ -1113,6 +1126,14 @@ void VulkanRenderer::recordWorld3D(const vk::raii::CommandBuffer& commandBuffer,
         .position = glm::vec3{glm::column(cameraToWorld, 3)},
         .forward = -glm::normalize(glm::vec3{glm::column(cameraToWorld, 2)}),
         .perspective = std::holds_alternative<contract::renderer::Perspective>(target.view->projection)};
+    if (_environmentMaps->hasSky()) {
+        // First, behind everything: the models drawn after cover it.
+        commandBuffer.setViewport(0, viewport);
+        commandBuffer.setScissor(0, scissor);
+        _environmentMaps->recordSky(commandBuffer, glm::inverse(view.getProjection() * view.getViewMatrix()),
+                                    _environment3D.skyIntensity);
+        target.globals->bind(commandBuffer, *_layout, frameIndex);  // the sky bound a set 0 of its own
+    }
     _staticMeshPass->record(
         commandBuffer, frameIndex, viewport, scissor, viewpoint,
         rendering::StaticMeshPass::PartTextureSource{
@@ -1275,9 +1296,39 @@ void VulkanRenderer::uploadWorld(std::size_t frameIndex, glm::vec2 viewSize, glm
         _shadowPlan =
             rendering::planShadows(selected, _environment3D, shadowCameraOf(*_view3D, viewSize, framebufferSize));
     }
-    rendering::packLights(selected, _environment3D, _shadowPlan.firstTile, _shadowPlan.cascades, _packedLights);
+    rendering::packLights(selected, _environment3D, _shadowPlan.firstTile, _shadowPlan.cascades, _packedLights,
+                          skyLightLevels());
     _staticMeshPass->uploadLights(frameIndex, _packedLights, _lightsGiven);
     _staticMeshPass->uploadShadows(frameIndex, _shadowPlan.tiles);
+}
+
+std::uint32_t VulkanRenderer::skyLightLevels() const {
+    return _environment3D.lightingFromSky && skyImage() != vk::ImageView{} ? rendering::kSkySpecularLevels : 0U;
+}
+
+vk::ImageView VulkanRenderer::skyImage() const {
+    switch (_environment3D.sky) {
+        case contract::renderer::SkyKind::kGradient:
+            return *_textures.find(_fallbackTexture)->image.getImageView();  // not read: the gradient needs no image
+        case contract::renderer::SkyKind::kTexture: {
+            const texture::Texture* texture = _textures.find(_environment3D.skyTexture);
+            return texture != nullptr ? *texture->image.getImageView() : vk::ImageView{};
+        }
+        case contract::renderer::SkyKind::kNone:
+            break;
+    }
+    return {};
+}
+
+void VulkanRenderer::updateSky(const vk::raii::CommandBuffer& commandBuffer, std::size_t frameIndex) {
+    _environmentMaps->update(commandBuffer, frameIndex, _environment3D, skyImage(),
+                             *_samplers->get(contract::renderer::TextureFilter::kLinear, true));
+    const std::uint64_t version = _environmentMaps->getVersion();
+    if (version != 0 && _skyWritten.at(frameIndex) != version) {
+        _staticMeshPass->setSky(frameIndex, _environmentMaps->getSpecular(), _environmentMaps->getDiffuse(),
+                                _environmentMaps->getSampler());
+        _skyWritten.at(frameIndex) = version;
+    }
 }
 
 void VulkanRenderer::recordShadows(const vk::raii::CommandBuffer& commandBuffer, std::size_t frameIndex) {

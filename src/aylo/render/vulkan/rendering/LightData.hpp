@@ -33,7 +33,7 @@ struct GpuLight {
 
 /// @brief The start of the buffer of lights: the C++ side of the head of `AyloLights`, 32 bytes, the lights after it.
 struct GpuLightsHeader {
-    glm::vec4 ambient{0.0F};  ///< rgb: the ambient light, its strength applied; w: unused.
+    glm::vec4 ambient{0.0F};  ///< rgb: the ambient light, its strength applied; w: the sky's intensity as light.
     glm::uvec4 count{0U};     ///< x: how many lights follow; y: the cascades of a directional light.
 };
 
@@ -49,10 +49,12 @@ static_assert(sizeof(GpuLightsHeader) == 32, "GpuLightsHeader must match the hea
 
 /// @brief Writes @p selected (selectLights()) and @p environment as the buffer of lights reads them into @p bytes
 /// (cleared first): the header, then the lights. @p firstShadowTiles gives each light its first shadow map, -1 for
-/// none (empty: none), and @p cascades the cascades of a directional light.
+/// none (empty: none), and @p cascades the cascades of a directional light. @p skyLevels is the levels of the sky's
+/// reflection when the sky lights the world (EnvironmentMaps), 0 when it does not: the header then carries them and the
+/// sky's intensity.
 AYLO_RENDER_VULKAN_API void packLights(std::span<const contract::renderer::Light3D> selected,
                                        const contract::renderer::Environment3D& environment,
                                        std::span<const std::int32_t> firstShadowTiles, std::uint32_t cascades,
-                                       std::vector<std::byte>& bytes);
+                                       std::vector<std::byte>& bytes, std::uint32_t skyLevels = 0);
 
 }  // namespace aylo::render::vulkan::rendering

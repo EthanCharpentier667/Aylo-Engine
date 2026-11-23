@@ -67,6 +67,10 @@ inline constexpr std::uint32_t kLightsBinding = 1;
 inline constexpr std::uint32_t kShadowTilesBinding = 2;
 /// @brief The binding of the shadow atlas in kMeshDrawSet.
 inline constexpr std::uint32_t kShadowAtlasBinding = 3;
+/// @brief Binding of set 3 holding the sky's reflection, prefiltered for roughness in its mips (EnvironmentMaps).
+inline constexpr std::uint32_t kSkySpecularBinding = 4;
+/// @brief Binding of set 3 holding the sky's irradiance.
+inline constexpr std::uint32_t kSkyDiffuseBinding = 5;
 /// @brief Most shadow maps a frame has: the atlas cut in tiles of 512 texels.
 inline constexpr std::uint32_t kMaxShadowTiles = 64;
 
@@ -146,6 +150,10 @@ class AYLO_RENDER_VULKAN_API StaticMeshPass {
     /// @param lit Whether the frame has lights: models without a material are then drawn lit (staticmesh_lit.frag).
     /// @throws vk::SystemError If a bigger buffer cannot be created.
     void uploadLights(std::size_t frameIndex, std::span<const std::byte> bytes, bool lit);
+
+    /// @brief Points frame @p frameIndex's set 3 at the sky's maps, read through @p sampler: call it when they are
+    /// made again, once the frame's last use of its set is done.
+    void setSky(std::size_t frameIndex, vk::ImageView specular, vk::ImageView diffuse, vk::Sampler sampler);
 
     /// @brief Writes the frame's shadow maps @p tiles (at most kMaxShadowTiles) for the shaders to read.
     void uploadShadows(std::size_t frameIndex, std::span<const ShadowTile> tiles);

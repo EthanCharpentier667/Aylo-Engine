@@ -7,6 +7,7 @@
 
 #include "Image.hpp"
 
+#include <cstdint>
 #include <stdexcept>
 #include <vk_mem_alloc_raii.hpp>
 #include <vulkan/vulkan_raii.hpp>
@@ -21,15 +22,18 @@ namespace {
 /// @return A 2D image of @p extent, after checking it.
 /// @throws std::invalid_argument If a side of @p extent is 0, which Vulkan does not allow.
 vma::raii::Image createImage(const Allocator& allocator, vk::Extent2D extent, vk::Format format,
-                             vk::ImageUsageFlags usage) {
+                             vk::ImageUsageFlags usage, std::uint32_t mipLevels) {
     if (extent.width == 0 || extent.height == 0) {
         throw std::invalid_argument("Image extent must not be 0");
+    }
+    if (mipLevels == 0) {
+        throw std::invalid_argument("Image must have a mip level");
     }
     return allocator.createImage(vk::ImageCreateInfo{}
                                      .setImageType(vk::ImageType::e2D)
                                      .setFormat(format)
                                      .setExtent(vk::Extent3D{extent, 1})
-                                     .setMipLevels(1)
+                                     .setMipLevels(mipLevels)
                                      .setArrayLayers(1)
                                      .setSamples(vk::SampleCountFlagBits::e1)
                                      .setTiling(vk::ImageTiling::eOptimal)
@@ -51,22 +55,24 @@ vk::ImageAspectFlags aspectOf(vk::Format format) {
 }
 
 /// @return A view of every texel of @p image, of the aspect its format has.
-vk::raii::ImageView createView(const core::Device& device, vk::Image image, vk::Format format) {
-    return vk::raii::ImageView{device.getDevice(),
-                               vk::ImageViewCreateInfo{}
-                                   .setImage(image)
-                                   .setViewType(vk::ImageViewType::e2D)
-                                   .setFormat(format)
-                                   .setSubresourceRange(vk::ImageSubresourceRange{aspectOf(format), 0, 1, 0, 1})};
+vk::raii::ImageView createView(const core::Device& device, vk::Image image, vk::Format format,
+                               std::uint32_t mipLevels) {
+    return vk::raii::ImageView{
+        device.getDevice(), vk::ImageViewCreateInfo{}
+                                .setImage(image)
+                                .setViewType(vk::ImageViewType::e2D)
+                                .setFormat(format)
+                                .setSubresourceRange(vk::ImageSubresourceRange{aspectOf(format), 0, mipLevels, 0, 1})};
 }
 
 }  // namespace
 
 Image::Image(const core::Device& device, const Allocator& allocator, vk::Extent2D extent, vk::Format format,
-             vk::ImageUsageFlags usage)
-    : _image{createImage(allocator, extent, format, usage)},
-      _view{createView(device, *_image, format)},
+             vk::ImageUsageFlags usage, std::uint32_t mipLevels)
+    : _image{createImage(allocator, extent, format, usage, mipLevels)},
+      _view{createView(device, *_image, format, mipLevels)},
       _extent{extent},
-      _format{format} {}
+      _format{format},
+      _mipLevels{mipLevels} {}
 
 }  // namespace aylo::render::vulkan::memory

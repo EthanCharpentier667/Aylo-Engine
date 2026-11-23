@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <array>
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
@@ -71,6 +72,7 @@
 #include "postprocess/ScreenPass.hpp"
 #include "presentation/Swapchain.hpp"
 #include "rendering/DrawList.hpp"
+#include "rendering/EnvironmentMaps.hpp"
 #include "rendering/Lines3DPass.hpp"
 #include "rendering/MaterialBinding.hpp"
 #include "rendering/MeshPass.hpp"
@@ -481,6 +483,17 @@ class AYLO_RENDER_VULKAN_API VulkanRenderer final : public contract::renderer::I
 
     /// @brief Records the frame's shadow maps into the atlas (rendering::ShadowPlan), then leaves it for the lit
     /// shaders to read; without any, only makes it readable.
+    /// @return The image the sky is made from: the sky's texture (null until it is loaded), the fallback for a gradient
+    /// (not read), null without a sky.
+    [[nodiscard]] vk::ImageView skyImage() const;
+
+    /// @return The levels of the sky's reflection when it lights the world this frame (packLights()), else 0.
+    [[nodiscard]] std::uint32_t skyLightLevels() const;
+
+    /// @brief Makes the sky's maps again if the sky changed (EnvironmentMaps::update()), and points frame
+    /// @p frameIndex's mesh set at them if they changed since it last did.
+    void updateSky(const vk::raii::CommandBuffer& commandBuffer, std::size_t frameIndex);
+
     void recordShadows(const vk::raii::CommandBuffer& commandBuffer, std::size_t frameIndex);
 
     /// @brief Records the frame's world, uploaded, in the dynamic rendering scope already begun, seen through @p view
@@ -636,15 +649,17 @@ class AYLO_RENDER_VULKAN_API VulkanRenderer final : public contract::renderer::I
     std::unique_ptr<ScreenTarget> _previousFrame;  ///< The last result, kept when an effect reads PREVIOUS_FRAME.
     std::vector<std::vector<vk::raii::DescriptorSet>> _effectSets;  ///< Per frame, per pass: set 2 with targets bound.
     std::unique_ptr<frame::FrameGlobals> _screenGlobals;  ///< The screen effects' uniforms: the 2D view, the 3D camera.
-    std::unique_ptr<pipeline::PipelineLayout> _meshLayout;       ///< Every static mesh pipeline's: sets 0 to 3.
-    std::unique_ptr<rendering::SpritePass> _spritePass;          ///< Draws _sprites at endFrame().
-    std::unique_ptr<rendering::SpritePass> _overlaySpritePass;   ///< Draws _overlaySprites, with buffers of its own.
-    std::unique_ptr<rendering::ShapePass> _overlayShapePass;     ///< Draws _overlayShapes, with buffers of its own.
-    std::unique_ptr<rendering::ShapePass> _shapePass;            ///< Draws _shapes at endFrame(), after the sprites.
-    std::unique_ptr<rendering::MeshPass> _meshPass;              ///< Draws _mesh at endFrame(), over everything.
-    std::unique_ptr<rendering::Lines3DPass> _lines3DPass;        ///< Draws _lines3D first, in the 3D world.
-    std::unique_ptr<rendering::StaticMeshPass> _staticMeshPass;  ///< Draws _staticMeshDraws, in the 3D world.
-    std::unique_ptr<frame::FrameGlobals> _globals3D;             ///< The frame uniforms of the 3D world: its view.
+    std::unique_ptr<pipeline::PipelineLayout> _meshLayout;         ///< Every static mesh pipeline's: sets 0 to 3.
+    std::unique_ptr<rendering::SpritePass> _spritePass;            ///< Draws _sprites at endFrame().
+    std::unique_ptr<rendering::SpritePass> _overlaySpritePass;     ///< Draws _overlaySprites, with buffers of its own.
+    std::unique_ptr<rendering::ShapePass> _overlayShapePass;       ///< Draws _overlayShapes, with buffers of its own.
+    std::unique_ptr<rendering::ShapePass> _shapePass;              ///< Draws _shapes at endFrame(), after the sprites.
+    std::unique_ptr<rendering::MeshPass> _meshPass;                ///< Draws _mesh at endFrame(), over everything.
+    std::unique_ptr<rendering::Lines3DPass> _lines3DPass;          ///< Draws _lines3D first, in the 3D world.
+    std::unique_ptr<rendering::StaticMeshPass> _staticMeshPass;    ///< Draws _staticMeshDraws, in the 3D world.
+    std::unique_ptr<rendering::EnvironmentMaps> _environmentMaps;  ///< The sky and its light.
+    std::array<std::uint64_t, kFramesInFlight> _skyWritten{};      ///< Per frame: the sky maps' version its set reads.
+    std::unique_ptr<frame::FrameGlobals> _globals3D;               ///< The frame uniforms of the 3D world: its view.
     std::unique_ptr<memory::Image> _shadowAtlas;  ///< Every shadow map of the frame, in tiles (kShadowAtlasSize).
     std::vector<std::unique_ptr<frame::FrameGlobals>> _shadowGlobals;  ///< The view of each shadow map, set 0.
     std::unique_ptr<memory::Image> _sceneDepth;              ///< The 3D world's depth buffer, the scene's size.

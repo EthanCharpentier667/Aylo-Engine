@@ -73,9 +73,10 @@ constexpr std::size_t kInitialDraws = 64;
 /// @return A pool for one set of one storage buffer per frame in flight.
 descriptor::DescriptorPool createPool(const core::Device& device, std::size_t framesInFlight) {
     const auto frames = static_cast<std::uint32_t>(framesInFlight);
-    // Two sets per frame (the pictures' and the shadow pass's), each with three buffers and the atlas.
+    // Two sets per frame (the pictures' and the shadow pass's), each with three buffers, the atlas and the sky's two
+    // maps.
     const std::array sizes{vk::DescriptorPoolSize{vk::DescriptorType::eStorageBuffer, frames * 6},
-                           vk::DescriptorPoolSize{vk::DescriptorType::eCombinedImageSampler, frames * 2}};
+                           vk::DescriptorPoolSize{vk::DescriptorType::eCombinedImageSampler, frames * 6}};
     return descriptor::DescriptorPool{device, frames * 2, sizes};
 }
 
@@ -193,11 +194,16 @@ StaticMeshPass::StaticMeshPass(const core::Device& device, const memory::Allocat
         frame.shadowSet = _pool.allocate(drawSetLayout);
         device.setName(*frame.set, "Static mesh draws set");
         device.setName(*frame.shadowSet, "Static mesh shadow draws set");
+        // No sky at first: the fallback, which the shaders do not read while the lights say no sky.
         descriptor::DescriptorWriter{}
             .writeImage(kShadowAtlasBinding, shadowAtlas, sampler, vk::ImageLayout::eShaderReadOnlyOptimal)
+            .writeImage(kSkySpecularBinding, fallback, sampler, vk::ImageLayout::eShaderReadOnlyOptimal)
+            .writeImage(kSkyDiffuseBinding, fallback, sampler, vk::ImageLayout::eShaderReadOnlyOptimal)
             .update(device, *frame.set);
         descriptor::DescriptorWriter{}
             .writeImage(kShadowAtlasBinding, fallback, sampler, vk::ImageLayout::eShaderReadOnlyOptimal)
+            .writeImage(kSkySpecularBinding, fallback, sampler, vk::ImageLayout::eShaderReadOnlyOptimal)
+            .writeImage(kSkyDiffuseBinding, fallback, sampler, vk::ImageLayout::eShaderReadOnlyOptimal)
             .update(device, *frame.shadowSet);
         frame.shadowTiles.emplace(allocator, kMaxShadowTiles * sizeof(ShadowTile),
                                   vk::BufferUsageFlagBits::eStorageBuffer, memory::Allocator::MemoryAccess::kStaging);
@@ -398,6 +404,14 @@ void StaticMeshPass::bindMesh(const vk::raii::CommandBuffer& commandBuffer, cons
                                                 mesh.uv2 ? 0 : capacity * 2 * sizeof(glm::vec4)};
     commandBuffer.bindVertexBuffers(0, buffers, offsets);
     commandBuffer.bindIndexBuffer(*mesh.indices.getBuffer(), 0, vk::IndexType::eUint32);
+}
+
+void StaticMeshPass::setSky(std::size_t frameIndex, vk::ImageView specular, vk::ImageView diffuse,
+                            vk::Sampler sampler) {
+    descriptor::DescriptorWriter{}
+        .writeImage(kSkySpecularBinding, specular, sampler, vk::ImageLayout::eShaderReadOnlyOptimal)
+        .writeImage(kSkyDiffuseBinding, diffuse, sampler, vk::ImageLayout::eShaderReadOnlyOptimal)
+        .update(*_device, *_frames.at(frameIndex).set);
 }
 
 void StaticMeshPass::uploadLights(std::size_t frameIndex, std::span<const std::byte> bytes, bool lit) {

@@ -21,6 +21,8 @@ float ROUGHNESS;  // 0: mirror, 1: rough.
 float SPECULAR;   // A dielectric's reflectance: 0.5 is 4%, the glTF default.
 vec3 EMISSION;    // Light it gives off, added as it is (linear, may exceed 1).
 float AO;         // Ambient occlusion: how much of the ambient light reaches it.
+vec3 ENV_DIFFUSE;   // The light around (ambient and sky) a white matte surface facing NORMAL shows; set before light().
+vec3 ENV_SPECULAR;  // The light around seen in the mirror direction, blurred by ROUGHNESS; set before light().
 
 // One light, for a shader's light(): it adds what that light gives to DIFFUSE_LIGHT and SPECULAR_LIGHT.
 vec3 LIGHT_DIR;       // Unit, from the surface toward the light.
@@ -74,6 +76,28 @@ vec3 ayloEnvironmentBrdf(vec3 f0, float roughness, float nov) {
     const float a004 = (min(r.x * r.x, exp2(-9.28 * nov)) * r.x) + r.y;
     const vec2 ab = (vec2(-1.04, 1.04) * a004) + r.zw;
     return (f0 * ab.x) + ab.y;
+}
+
+// Where `direction` is in an equirectangular sky map: the zenith at its top, -Z at its centre.
+vec2 ayloEquirectUv(vec3 direction) {
+    return vec2((atan(direction.x, -direction.z) / (2.0 * AYLO_PI)) + 0.5, acos(clamp(direction.y, -1.0, 1.0)) / AYLO_PI);
+}
+
+// The sky's light reaching a surface facing `n` by diffusion (its irradiance over pi), 0 without a sky.
+vec3 ayloSkyDiffuse(vec3 n) {
+    if (ayloLights.count.z == 0u) {
+        return vec3(0.0);
+    }
+    return textureLod(ayloSkyDiffuseMap, ayloEquirectUv(n), 0.0).rgb * ayloLights.ambient.w;
+}
+
+// The sky seen along `direction` through a surface of `roughness`, 0 without a sky.
+vec3 ayloSkySpecular(vec3 direction, float roughness) {
+    if (ayloLights.count.z == 0u) {
+        return vec3(0.0);
+    }
+    const float level = clamp(roughness, 0.0, 1.0) * float(ayloLights.count.z - 1u);
+    return textureLod(ayloSkySpecularMap, ayloEquirectUv(direction), level).rgb * ayloLights.ambient.w;
 }
 
 // The fall-off of a point or spot light with its distance d, kept finite near it and brought to 0 at its range (0: none),

@@ -131,6 +131,8 @@ vec4 ayloLightSurface(vec3 position) {
     const vec3 v = VIEW_DIR;
     DIFFUSE_LIGHT = vec3(0.0);
     SPECULAR_LIGHT = vec3(0.0);
+    ENV_DIFFUSE = ayloLights.ambient.rgb + ayloSkyDiffuse(n);
+    ENV_SPECULAR = ayloLights.ambient.rgb + ayloSkySpecular(reflect(-v, n), ROUGHNESS);
     for (uint index = 0u; index < ayloLights.count.x; ++index) {
         SHADOW = ayloShadowOf(index, position, n);
         if (!ayloSetLight(index, position)) {
@@ -158,8 +160,8 @@ vec4 ayloLightSurface(vec3 position) {
     }
     const vec3 f0 = mix(vec3(0.08 * SPECULAR), ALBEDO, METALLIC);
     const float nov = clamp(abs(dot(n, v)), 1e-4, 1.0);
-    const vec3 ambient = ayloLights.ambient.rgb * AO *
-                         (((1.0 - METALLIC) * ALBEDO) + ayloEnvironmentBrdf(f0, ROUGHNESS, nov));
+    const vec3 ambient = AO * ((((1.0 - METALLIC) * ALBEDO) * ENV_DIFFUSE) +
+                               (ayloEnvironmentBrdf(f0, ROUGHNESS, nov) * ENV_SPECULAR));
     const vec3 rgb = DIFFUSE_LIGHT + SPECULAR_LIGHT + ambient + EMISSION;
     return vec4(rgb * ALPHA, ALPHA);
 }

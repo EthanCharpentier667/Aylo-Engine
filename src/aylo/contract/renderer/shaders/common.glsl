@@ -63,9 +63,13 @@ layout(set = 3, binding = 2, std430) readonly buffer AyloShadows {
     AyloShadowTile tile[];
 } ayloShadows;
 layout(set = 3, binding = 3) uniform sampler2D ayloShadowAtlas;
+// The sky's light (EnvironmentMaps.hpp in the Vulkan renderer), equirectangular: its reflection, prefiltered for
+// roughness in `count.z` mips, at binding 4; its irradiance at binding 5. Read only while `count.z` is not 0.
+layout(set = 3, binding = 4) uniform sampler2D ayloSkySpecularMap;
+layout(set = 3, binding = 5) uniform sampler2D ayloSkyDiffuseMap;
 layout(set = 3, binding = 1, std430) readonly buffer AyloLights {
-    vec4 ambient;  // rgb: the ambient light.
-    uvec4 count;   // x: how many lights follow; y: the cascades of a directional light.
+    vec4 ambient;  // rgb: the ambient light; w: the sky's intensity as light.
+    uvec4 count;   // x: how many lights follow; y: the cascades of a directional light; z: the sky's mips, 0: no sky.
     AyloLight light[];
 } ayloLights;
 // The part being drawn: its material (glTF's metallic-roughness), with the draw's index.

@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <vk_mem_alloc_raii.hpp>
 #include <vulkan/vulkan_raii.hpp>
 
@@ -18,9 +19,9 @@ namespace aylo::render::vulkan::memory {
 
 /// @brief A 2D image, its memory and a view of it, allocated by the Allocator: textures, render targets...
 ///
-/// @details One mip level, one layer, the color aspect (the depth aspect for a depth format, a depth buffer), in device
-/// local memory (MemoryAccess::kGpuOnly). It starts in the UNDEFINED layout: fill a texture with Uploader::upload(),
-/// which leaves it ready to be sampled.
+/// @details One mip level unless asked for more, one layer, the color aspect (the depth aspect for a depth format, a
+/// depth buffer), in device local memory (MemoryAccess::kGpuOnly). It starts in the UNDEFINED layout: fill a texture
+/// with Uploader::upload(), which leaves it ready to be sampled.
 /// @warning Destroy it before the Allocator and the Device, and only once the GPU is done with it (see
 /// core::DeletionQueue).
 class AYLO_RENDER_VULKAN_API Image {
@@ -30,10 +31,11 @@ class AYLO_RENDER_VULKAN_API Image {
     /// @param extent Its size, in texels; neither side 0.
     /// @param format Its texel format, e.g. eR8G8B8A8Srgb.
     /// @param usage How it is used: eSampled, eColorAttachment... plus eTransferDst to receive an upload.
-    /// @throws std::invalid_argument If a side of @p extent is 0.
+    /// @param mipLevels Its mip levels, each half the one before; the view sees them all.
+    /// @throws std::invalid_argument If a side of @p extent is 0, or @p mipLevels is 0.
     /// @throws vk::SystemError If the image, its memory or its view cannot be created.
     Image(const core::Device& device, const Allocator& allocator, vk::Extent2D extent, vk::Format format,
-          vk::ImageUsageFlags usage);
+          vk::ImageUsageFlags usage, std::uint32_t mipLevels = 1);
     ~Image() = default;
     Image(const Image&) = delete;
     Image& operator=(const Image&) = delete;
@@ -48,6 +50,8 @@ class AYLO_RENDER_VULKAN_API Image {
     [[nodiscard]] vk::Extent2D getExtent() const noexcept { return _extent; }
     /// @return Its texel format.
     [[nodiscard]] vk::Format getFormat() const noexcept { return _format; }
+    /// @return Its mip levels.
+    [[nodiscard]] std::uint32_t getMipLevels() const noexcept { return _mipLevels; }
 
   private:
     // The view is declared after the image, so it is destroyed before it.
@@ -55,6 +59,7 @@ class AYLO_RENDER_VULKAN_API Image {
     vk::raii::ImageView _view;  ///< The view of the whole image.
     vk::Extent2D _extent;       ///< In texels.
     vk::Format _format;         ///< Texel format.
+    std::uint32_t _mipLevels;   ///< Mip levels, 1 or more.
 };
 
 }  // namespace aylo::render::vulkan::memory
