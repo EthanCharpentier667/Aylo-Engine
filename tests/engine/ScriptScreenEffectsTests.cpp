@@ -161,3 +161,33 @@ TEST(ScriptScreenEffects, OnAServerAMaterialFileOnlyGivesItsId) {
     )"),
               "");
 }
+
+TEST(ScriptScreenEffects, AScriptFogsThe3DWorldByItsDepth) {
+    // manual/pages/post-processing.md, "Depth and the 3D camera".
+    const std::filesystem::path assets =
+        std::filesystem::temp_directory_path() / std::format("aylo_fog_script_{:08x}", std::random_device{}());
+    std::filesystem::create_directories(assets / "shaders");
+    std::ofstream{assets / "shaders/fog.glsl"} << R"(#pragma screen
+uniform vec3 fogColor = vec3(0.5, 0.6, 0.7);
+uniform float density = 0.04;
+void fragment() {
+    float distance = linearDepth(texture(DEPTH_TEXTURE, SCREEN_UV).r);
+    COLOR.rgb = mix(fogColor, COLOR.rgb, exp(-density * distance));
+}
+)";
+    {
+        Scripts client{aylo::ecs::RunMode::kClient, assets};
+        ASSERT_EQ(client.run(R"(
+            local fog = engine.assets.material({ name = "fog", shader = engine.assets.shader("shaders/fog.glsl"),
+                                                 values = { density = 0.08 } })
+            engine.screenEffects({ fog })
+        )"),
+                  "");
+        client.app.runFrame();
+        ASSERT_EQ(client.state->createdShaders.size(), 1U);
+        EXPECT_TRUE(client.state->createdShaders.front().readsDepth);
+        ASSERT_FALSE(client.state->screenMaterials.empty());
+        EXPECT_EQ(client.state->screenMaterials.back().size(), 1U);
+    }
+    std::filesystem::remove_all(assets);
+}
