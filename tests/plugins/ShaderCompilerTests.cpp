@@ -166,6 +166,65 @@ TEST(ShaderCompiler, TheMeshDrawBuiltinsAreOnlyForMeshShaders) {
     EXPECT_FALSE(errorOf("void fragment() { COLOR.rgb = AABB_MAX; }\n").empty());
 }
 
+TEST(ShaderCompiler, AVaryingReachesTheFragmentStageOfEveryTarget) {
+    // Every drawing target and the screen: the varyings' locations stay clear of each template's own.
+    const CompiledShader drawn = compileShader(
+        "varying vec2 wave;\nvarying float age;\nvarying vec4 a;\nvarying vec3 b;\nvarying int seed;\n"
+        "void vertex() { wave = VERTEX * 0.01; age = TIME; a = COLOR; b = vec3(UV, 1.0); seed = 3; }\n"
+        "void fragment() { COLOR.rgb *= 0.5 + 0.5 * sin(wave.x + age) + a.rgb * b * float(seed); }\n",
+        "wave");
+    EXPECT_EQ(drawn.variants.size(), aylo::plugins::shader::detail::kDrawingTargets.size());
+    const CompiledShader screen = compileShader(
+        "#pragma screen\nvarying vec2 centre;\nvoid vertex() { centre = UV - 0.5; }\n"
+        "void fragment() { COLOR.rgb *= 1.0 - length(centre); }\n",
+        "vignette");
+    EXPECT_EQ(screen.variants.size(), 1U);
+    const CompiledShader mesh = compileShader(
+        "#pragma mesh\nvarying vec3 objectPosition;\nvoid vertex() { objectPosition = VERTEX; }\n"
+        "void fragment() { COLOR.rgb *= 0.5 + 0.5 * fract(objectPosition.y * 4.0); }\n",
+        "stripes");
+    EXPECT_EQ(mesh.variants.size(), 1U);
+}
+
+TEST(ShaderCompiler, AMeshShaderReadsTheViewBuiltins) {
+    // The example of #100: a rim light from the view direction, on front faces only.
+    const CompiledShader shader = compileShader(
+        "#pragma mesh\n"
+        "void vertex() { VERTEX += (INV_MODEL_MATRIX * vec4(WORLD_POSITION, 1.0)).xyz * 0.0; }\n"
+        "void fragment() {\n"
+        "    float rim = 1.0 - max(dot(NORMAL, VIEW_DIR), 0.0);\n"
+        "    COLOR.rgb += pow(rim, 3.0) * vec3(0.3, 0.6, 1.0) * (FRONT_FACING ? 1.0 : 0.0);\n"
+        "    vec4 clip = PROJECTION_MATRIX * VIEW_MATRIX * vec4(WORLD_POSITION, 1.0);\n"
+        "    vec4 back = INV_VIEW_MATRIX * INV_PROJECTION_MATRIX * clip;\n"
+        "    COLOR.rgb *= step(0.0, back.w) + distance(CAMERA_POSITION, LOCAL_POSITION) * 0.0;\n"
+        "    COLOR.a *= FRAGCOORD.z;\n"
+        "}\n",
+        "rim");
+    ASSERT_EQ(shader.variants.size(), 1U);
+}
+
+TEST(ShaderCompiler, CompilesTheManuals3DShaders) {
+    // manual/pages/materials.md, "3D materials": burn.glsl and rim.glsl.
+    EXPECT_EQ(errorOf("#pragma mesh\nuniform sampler2D noise;\ninstance uniform float dissolve = 0.0;\n\n"
+                      "void fragment() {\n"
+                      "    vec3 box = (LOCAL_POSITION - AABB_MIN) / max(AABB_MAX - AABB_MIN, vec3(0.0001));\n"
+                      "    if (texture(noise, box.xy).r < dissolve) { discard; }\n"
+                      "}\n"),
+              "");
+    EXPECT_EQ(errorOf("#pragma mesh\nuniform vec3 rimColor = vec3(0.3, 0.6, 1.0);\n\n"
+                      "void fragment() {\n"
+                      "    float rim = 1.0 - max(dot(NORMAL, VIEW_DIR), 0.0);\n"
+                      "    COLOR.rgb += pow(rim, 3.0) * rimColor * COLOR.a * (FRONT_FACING ? 1.0 : 0.0);\n"
+                      "}\n"),
+              "");
+}
+
+TEST(ShaderCompiler, The3DViewBuiltinsAreOnlyForMeshShadersButFragcoordIsEverywhere) {
+    EXPECT_FALSE(errorOf("void fragment() { COLOR.rgb = WORLD_POSITION; }\n").empty());
+    EXPECT_FALSE(errorOf("void fragment() { COLOR.rgb = VIEW_DIR; }\n").empty());
+    EXPECT_TRUE(errorOf("void fragment() { COLOR.r = FRAGCOORD.x; }\n").empty());
+}
+
 TEST(ShaderCompiler, AShaderIsAScreenEffectOrAMeshShaderNotBoth) {
     EXPECT_THROW(static_cast<void>(compileShader("#pragma screen\n#pragma mesh\nvoid fragment() {}\n", "both")),
                  aylo::plugins::shader::exceptions::ShaderException);

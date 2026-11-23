@@ -168,3 +168,36 @@ TEST(ShaderParser, ReservesTheMeshBuiltins) {
         EXPECT_NE(message.find("reserved"), std::string::npos) << name;
     }
 }
+
+TEST(ShaderParser, ReadsVaryingsAndBlanksTheirLines) {
+    const ParsedShader shader =
+        parseShader("varying vec3 position;\nvarying int seed;\nvoid vertex() { position = vec3(VERTEX, 0.0); }", "v");
+    ASSERT_EQ(shader.varyings.size(), 2U);
+    EXPECT_EQ(shader.varyings.at(0).type, "vec3");
+    EXPECT_EQ(shader.varyings.at(0).name, "position");
+    EXPECT_EQ(shader.varyings.at(1).type, "int");
+    EXPECT_EQ(shader.varyings.at(1).line, 2U);
+    EXPECT_EQ(shader.body, "\n\nvoid vertex() { position = vec3(VERTEX, 0.0); }");
+}
+
+TEST(ShaderParser, RejectsAVaryingItCannotPass) {
+    EXPECT_NE(errorOf("varying mat4 m;\nvoid fragment() {}").find("line 1"), std::string::npos);  // a type it has not
+    EXPECT_NE(errorOf("varying vec3 a[2];\nvoid fragment() {}"), "");                             // an array
+    EXPECT_NE(errorOf("varying vec3 a\nvoid fragment() {}"), "");                                 // no ';'
+    EXPECT_NE(errorOf("varying vec3 UV;\nvoid fragment() {}").find("reserved"), std::string::npos);
+    EXPECT_NE(errorOf("uniform float a;\nvarying float a;\nvoid fragment() {}").find("twice"), std::string::npos);
+    std::string many;
+    for (int index = 0; index <= 5; ++index) {
+        many += "varying float v" + std::to_string(index) + ";\n";
+    }
+    EXPECT_NE(errorOf(many + "void fragment() {}").find("more than 5 varyings"), std::string::npos);
+}
+
+TEST(ShaderParser, ReservesThe3DViewBuiltins) {
+    for (const std::string_view name :
+         {"WORLD_POSITION", "LOCAL_POSITION", "VIEW_DIR", "CAMERA_POSITION", "VIEW_MATRIX", "PROJECTION_MATRIX",
+          "INV_VIEW_MATRIX", "INV_PROJECTION_MATRIX", "FRONT_FACING", "FRAGCOORD"}) {
+        const std::string message = errorOf(std::string{"uniform vec3 "} + std::string{name} + ";\nvoid fragment() {}");
+        EXPECT_NE(message.find("reserved"), std::string::npos) << name;
+    }
+}

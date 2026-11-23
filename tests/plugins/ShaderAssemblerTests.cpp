@@ -157,3 +157,16 @@ TEST(ShaderAssembler, AMeshReadsItsInstanceValuesFromItsDrawInBothStages) {
         EXPECT_EQ(glsl.find("vec4 ayloInstance[4]"), std::string::npos) << glsl;
     }
 }
+
+TEST(ShaderAssembler, DeclaresTheVaryingsOutInTheVertexStageAndInInTheFragmentStage) {
+    const ParsedShader shader =
+        parseShader("varying vec2 wave;\nvarying int seed;\nvoid fragment() { COLOR.r = wave.x; }\n", "v");
+    const std::string vertex = assembleShader(shader, ShaderTarget::kSprite, ShaderStage::kVertex);
+    EXPECT_NE(vertex.find("layout(location = 7) out vec2 wave;\nlayout(location = 8) flat out int seed;\n"),
+              std::string::npos)
+        << vertex;
+    const std::string fragment = assembleShader(shader, ShaderTarget::kShape, ShaderStage::kFragment);
+    EXPECT_NE(fragment.find("layout(location = 11) in vec2 wave;\nlayout(location = 12) flat in int seed;\n"),
+              std::string::npos)
+        << fragment;
+}
