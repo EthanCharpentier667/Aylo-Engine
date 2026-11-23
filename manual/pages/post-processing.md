@@ -31,10 +31,13 @@ order of the list, each one reading what the previous one wrote.
 
 | Form or call | Arguments | What it does |
 |---|---|---|
-| `engine.screenEffects(materials)` | a list of material ids | Sets the screen effects, in their order, replacing the previous ones. `{}` removes them all. Does nothing on a server |
-| `aylo.shader.setScreenMaterials` | `materials`: a list of material ids | The call behind the form, for a system (list it in its `calls`). Absent on a server |
+| `engine.screenEffects(materials)` | a list of material ids, or a list of passes ([Several passes](#several-passes)) | Sets the screen effects, in their order, replacing the previous ones. `{}` removes them all. Does nothing on a server |
+| `aylo.shader.setScreenMaterials` | `materials`: a list of material ids | The call behind the form, for a system (list it in its `calls`). Replaces the effects, passes included. Absent on a server |
+| `aylo.shader.addScreenEffect` | `material`; `input`, `output`: strings (default `""`); `scale`: number (default `1`); `width`, `height`: whole numbers (default `0`: by `scale`); `lowPrecision`: boolean (default `false`) | Adds a pass after the others. Call `setScreenMaterials` with `{}` first to start over. Absent on a server |
+| `aylo.shader.addScreenEffectInput` | `sampler`: a `uniform sampler2D` of the last pass's shader; `target`: a target's name | Binds that texture of the last pass added to a target. Absent on a server |
+| `aylo.shader.checkScreenEffects` | none | Fails, and removes the passes, if one reads a target no pass before it writes. Absent on a server |
 
-Both return nothing. Without effects, the default, your scene is shown as drawn.
+They return nothing. Without effects, the default, your scene is shown as drawn.
 
 A material in the list whose shader did not compile, or whose shader is not a screen shader, is skipped: the other
 effects still run.
@@ -104,9 +107,11 @@ What a screen effect can read and write:
 | Name | Type | What it is |
 |---|---|---|
 | `COLOR` | `vec4` | Starts as this pixel of the picture so far. What you leave in it is written as is: no blending |
-| `SCREEN_TEXTURE` | `sampler2D` | The picture so far: the scene for the first effect, then what the previous effect wrote. `TEXTURE` is the same |
+| `SCREEN_TEXTURE` | `sampler2D` | The picture so far: the scene for the first effect, then what the previous effect wrote (a pass with an `input` reads that target instead). `TEXTURE` is the same |
+| `SCENE_TEXTURE` | `sampler2D` | The scene as drawn, before any effect |
+| `PREVIOUS_FRAME` | `sampler2D` | The last frame once every effect ran, before the interface; black on the first frame. Kept only while an effect reads it |
 | `SCREEN_UV` | `vec2` | Where this pixel is on the screen, from `(0, 0)` at the top-left corner to `(1, 1)` at the bottom-right. `UV` is the same |
-| `SCREEN_PIXEL_SIZE` | `vec2` | The size of one pixel in `SCREEN_UV` units: `1 / the screen's size in pixels` |
+| `SCREEN_PIXEL_SIZE` | `vec2` | The size of one pixel in `SCREEN_UV` units: `1 / the size in pixels of what this effect writes` (the screen, or a smaller target) |
 | `TIME` | `float` | Seconds since the renderer started |
 
 The colours are in floating point: a colour may be above `1` before a tonemap brings it back. Read other pixels with
@@ -118,7 +123,7 @@ Declare values with `uniform <type> <name> = <default>;`, one per line, outside 
 `uniform sampler2D <name>;` is an extra texture you give in `textures`, for a font of glyphs or a noise. An
 `instance uniform` keeps its default in a screen effect, since no entity holds its own values: use a `uniform`.
 
-The names above, and those starting with `aylo`, are the engine's: you cannot declare them. `SCREEN_TEXTURE`,
+The names above (and those of [Depth and the 3D camera](#depth-and-the-3d-camera)), and those starting with `aylo`, are the engine's: you cannot declare them. `SCREEN_TEXTURE`,
 `SCREEN_UV` and `SCREEN_PIXEL_SIZE` only exist in a screen effect, and a sprite whose material is a screen effect is
 drawn as if it had none.
 
@@ -155,6 +160,102 @@ leaves them as they are. The depth is kept for the effects only when one of them
 pays nothing. `normalAt()` rebuilds the normal from the depth of the neighbouring pixels, so it is the shape of what
 was drawn, not a normal map's. With a `virtualResolution` that puts bars around the picture, the positions assume the 3D
 view fills the screen.
+
+## Several passes
+
+Some effects need more than one step: a glow is blurred in a smaller image, then added back; a blur is made of a
+horizontal pass, then a vertical one. Give `engine.screenEffects` a list of **passes** instead of materials. A pass is a
+table: its material, and where it reads and writes.
+
+```glsl
+// assets/shaders/bright.glsl: keeps what is brighter than the threshold
+#pragma screen
+uniform float threshold = 0.8;
+void fragment() { COLOR.rgb = max(COLOR.rgb - threshold, 0.0); }
+```
+
+```glsl
+// assets/shaders/blur.glsl: averages three pixels along `direction`
+#pragma screen
+uniform vec2 direction = vec2(1.0, 0.0);
+void fragment() {
+    vec2 step = direction * SCREEN_PIXEL_SIZE;
+    COLOR.rgb = (texture(TEXTURE, SCREEN_UV - step).rgb + COLOR.rgb + texture(TEXTURE, SCREEN_UV + step).rgb) / 3.0;
+}
+```
+
+```glsl
+// assets/shaders/composite.glsl: the scene, plus the blurred glow
+#pragma screen
+uniform sampler2D glow;          // bound to a target by the pass
+uniform float strength = 0.4;
+void fragment() { COLOR.rgb = texture(SCENE_TEXTURE, SCREEN_UV).rgb + texture(glow, SCREEN_UV).rgb * strength; }
+```
+
+```luau
+local function material(name, shader, values)
+	return engine.assets.material({ name = name, shader = engine.assets.shader(shader), values = values })
+end
+local brightPass = material("game.bright", "shaders/bright.glsl")
+local blurX = material("game.blurX", "shaders/blur.glsl", { direction = { x = 1, y = 0 } })
+local blurY = material("game.blurY", "shaders/blur.glsl", { direction = { x = 0, y = 1 } })
+local composite = material("game.composite", "shaders/composite.glsl")
+
+engine.screenEffects({
+	{ material = brightPass, output = "bright", scale = 0.5 },
+	{ material = blurX, input = "bright", output = "blurA", scale = 0.5 },
+	{ material = blurY, input = "blurA", output = "blurB", scale = 0.5 },
+	{ material = composite, inputs = { glow = "blurB" } },
+})
+```
+
+The first three passes write **targets**, images named by their `output`, at half the screen's size: four times fewer
+pixels to blur. The last pass has no `output`, so it writes the picture shown, and reads the last blur as its `glow`.
+
+| Key | Type | Default | What it does |
+|---|---|---|---|
+| `material` | material id | required | The material of a `#pragma screen` shader |
+| `input` | string | the picture so far | What the pass reads as `TEXTURE` (and starts `COLOR` from): a target an earlier pass wrote, or `"scene"` for the scene before any effect |
+| `inputs` | table `{ sampler = target }` | none | Binds each `uniform sampler2D` of the shader, by name, to a target or `"scene"`, in place of the material's texture |
+| `output` | string | none | The target the pass writes. Without it, the pass writes the picture shown, which the next pass without `input` reads |
+| `scale` | number | `1` | The target's size as a share of the screen's: `0.5` is half its width and half its height |
+| `size` | `{ x = width, y = height }` | none | The target's size in pixels, in place of `scale` |
+| `lowPrecision` | boolean | `false` | An 8-bit target: half the memory, but colours are cut between 0 and 1. Leave it off for what can be brighter than white |
+
+The rules:
+
+- A pass reads only what an earlier pass wrote. A pass that reads a later target, or its own, is an error, and no pass
+  of the list is kept.
+- The passes without `output` form the chain you know from a list of materials: each reads what the previous one wrote.
+  The picture shown is what the last of them wrote, or the scene if none.
+- Targets are made when a pass first writes them, made again when the window changes size, and freed when no pass names
+  them any more.
+- A list of materials still works: it is the same as passes with only a `material`.
+
+### Trails from the last frame
+
+`PREVIOUS_FRAME` holds what the screen showed one frame ago. Mixing it in leaves a fading trail behind anything that
+moves:
+
+```glsl
+// assets/shaders/trails.glsl
+#pragma screen
+uniform float keep = 0.9;  // How much of the last frame stays: closer to 1, longer trails.
+void fragment() {
+    vec3 last = texture(PREVIOUS_FRAME, SCREEN_UV).rgb;
+    COLOR.rgb = max(COLOR.rgb, last * keep);
+}
+```
+
+```luau
+local trails = engine.assets.material({ name = "game.trails", shader = engine.assets.shader("shaders/trails.glsl") })
+engine.screenEffects({ trails })
+```
+
+The last frame is kept only while an effect reads it. It is taken before the [user interface](ui.md) is drawn, so the
+interface leaves no trail.
+
+## Hot reload
 
 A shader file under `assets/shaders/` is compiled again when you save it, in a game with [hot reload](hot-reload.md) on.
 A screen effect follows: you see the change on the next frame, and a typo keeps the last version on screen.
@@ -220,6 +321,9 @@ hit is over.
 |---|---|
 | `engine.screenEffects: expected a list of materials` | The argument is not a table |
 | `engine.screenEffects: engine call 'aylo.shader.setScreenMaterials': No material has the id <id>` | An id in the list is not a material: a typo, or a shader id given instead of its material |
+| `engine.screenEffects: engine call 'aylo.shader.checkScreenEffects': The screen effects cannot run: pass 2 reads 'blur', which no pass before it writes` | A pass reads a target that only a later pass writes, or a typo in a target's name |
+| `engine.screenEffects: pass 1: expected a 'material'` | A pass without its `material` |
+| `engine.screenEffects: pass 1: unexpected 'scales', expected 'material', 'input', 'inputs', 'output', 'scale', 'size', 'lowPrecision'` | A key a pass does not have |
 | `[ShaderAssets] Shader '@aylo/vignette.glsl': the engine has no such shader (@aylo/bloom.glsl, @aylo/tonemap.glsl)` | A name after `@aylo/` the engine does not have (printed, the shader is recorded as failed) |
 | `[ShaderAssets] Shader 'shaders/x.glsl' (sprite fragment): line 3: 'SCREEN_UV' : undeclared identifier` | A shader that uses the screen names without the `#pragma screen` line |
 
@@ -229,7 +333,8 @@ hit is over.
   part of the scene, and gets them.
 - A scene the [editor](editor.md) draws into a panel gets the effects too.
 - Each effect reads and writes the whole screen once, so a long list costs more on a slow GPU. The engine's bloom reads
-  64 pixels for each pixel.
+  64 pixels for each pixel. A pass with `scale = 0.5` writes a quarter of the pixels.
+- A sampler named in `inputs` that the shader does not declare is ignored.
 - A renderer that cannot run game shaders shows the scene as drawn.
 
 ## See also
