@@ -191,3 +191,83 @@ void fragment() {
     }
     std::filesystem::remove_all(assets);
 }
+
+TEST(ScriptScreenEffects, AScriptBlursAtHalfSizeAndMixesTheGlowIn) {
+    // manual/pages/post-processing.md, "Several passes": the issue's three-pass half-size blur, mixed into the picture.
+    const std::filesystem::path assets =
+        std::filesystem::temp_directory_path() / std::format("aylo_passes_script_{:08x}", std::random_device{}());
+    std::filesystem::create_directories(assets / "shaders");
+    std::ofstream{assets / "shaders/bright.glsl"} << R"(#pragma screen
+uniform float threshold = 0.8;
+void fragment() { COLOR.rgb = max(COLOR.rgb - threshold, 0.0); }
+)";
+    std::ofstream{assets / "shaders/blur.glsl"} << R"(#pragma screen
+uniform vec2 direction = vec2(1.0, 0.0);
+void fragment() {
+    vec2 step = direction * SCREEN_PIXEL_SIZE;
+    COLOR.rgb = (texture(TEXTURE, SCREEN_UV - step).rgb + COLOR.rgb + texture(TEXTURE, SCREEN_UV + step).rgb) / 3.0;
+}
+)";
+    std::ofstream{assets / "shaders/composite.glsl"} << R"(#pragma screen
+uniform sampler2D glow;
+uniform float strength = 0.4;
+void fragment() { COLOR.rgb = texture(SCENE_TEXTURE, SCREEN_UV).rgb + texture(glow, SCREEN_UV).rgb * strength; }
+)";
+    {
+        Scripts client{aylo::ecs::RunMode::kClient, assets};
+        ASSERT_EQ(client.run(R"(
+            local function material(name, shader, values)
+                return engine.assets.material({ name = name, shader = engine.assets.shader(shader), values = values })
+            end
+            local brightPass = material("bright", "shaders/bright.glsl")
+            local blurX = material("blurX", "shaders/blur.glsl", { direction = { x = 1, y = 0 } })
+            local blurY = material("blurY", "shaders/blur.glsl", { direction = { x = 0, y = 1 } })
+            local composite = material("composite", "shaders/composite.glsl")
+            engine.screenEffects({
+                { material = brightPass, output = "bright", scale = 0.5 },
+                { material = blurX, input = "bright", output = "blurA", scale = 0.5 },
+                { material = blurY, input = "blurA", output = "blurB", scale = 0.5, lowPrecision = true },
+                { material = composite, inputs = { glow = "blurB" } },
+            })
+        )"),
+                  "");
+        client.app.runFrame();
+        ASSERT_FALSE(client.state->screenEffects.empty());
+        const auto& passes = client.state->screenEffects.back();
+        ASSERT_EQ(passes.size(), 4U);
+        EXPECT_EQ(passes.at(1).input, "bright");
+        EXPECT_TRUE(passes.at(2).lowPrecision);
+        ASSERT_EQ(passes.at(3).inputs.size(), 1U);
+        EXPECT_EQ(passes.at(3).inputs.front().target, "blurB");
+
+        // Back to a list of materials: a chain at full size again.
+        ASSERT_EQ(client.run(R"(engine.screenEffects({ engine.assetId("bright") }))"), "");
+        client.app.runFrame();
+        ASSERT_FALSE(client.state->screenMaterials.empty());
+        EXPECT_EQ(client.state->screenMaterials.back().size(), 1U);
+    }
+    std::filesystem::remove_all(assets);
+}
+
+TEST(ScriptScreenEffects, APassReadingALaterTargetIsAnError) {
+    Scripts client{aylo::ecs::RunMode::kClient};
+    const std::string error = client.run(R"(
+        local tonemap = engine.assets.material({ name = "t", shader = engine.assets.shader("@aylo/tonemap.glsl") })
+        engine.screenEffects({ { material = tonemap, input = "blur" }, { material = tonemap, output = "blur" } })
+    )");
+    EXPECT_TRUE(error.contains("pass 1 reads 'blur', which no pass before it writes")) << error;
+    const std::string field = client.run(R"(
+        local tonemap = engine.assets.material({ name = "t2", shader = engine.assets.shader("@aylo/tonemap.glsl") })
+        engine.screenEffects({ { material = tonemap, scale = "half" } })
+    )");
+    EXPECT_TRUE(field.contains("engine.screenEffects: pass 1: 'scale' must be a number")) << field;
+}
+
+TEST(ScriptScreenEffects, AServerIgnoresThePasses) {
+    Scripts server{aylo::ecs::RunMode::kServer};
+    EXPECT_EQ(server.run(R"(
+        local tonemap = engine.assets.material({ name = "t", shader = engine.assets.shader("@aylo/tonemap.glsl") })
+        engine.screenEffects({ { material = tonemap, output = "half", scale = 0.5 }, { material = tonemap } })
+    )"),
+              "");
+}
