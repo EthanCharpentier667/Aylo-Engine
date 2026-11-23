@@ -11,9 +11,13 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <format>
+#include <glm/ext/vector_float2.hpp>
 #include <glm/ext/vector_float3.hpp>
 #include <glm/ext/vector_float4.hpp>
+#include <memory>
+#include <optional>
 #include <span>
 #include <stdexcept>
 #include <utility>
@@ -36,6 +40,7 @@
 #include "render/vulkan/pipeline/ShaderCache.hpp"
 #include "render/vulkan/rendering/LightData.hpp"
 #include "render/vulkan/rendering/MeshDrawOrder.hpp"
+#include "render/vulkan/rendering/MeshPartTextures.hpp"
 #include "render/vulkan/rendering/StaticMeshDrawData.hpp"
 #include "staticmesh.frag.h"
 #include "staticmesh.vert.h"
@@ -50,9 +55,15 @@ using contract::renderer::StaticMeshVertex;
 static_assert(sizeof(StaticMeshVertex) == 32 && offsetof(StaticMeshVertex, normal) == 12 &&
                   offsetof(StaticMeshVertex, uv) == 24,
               "StaticMeshVertex must stay tightly packed: the pipeline's attribute offsets assume it");
-static_assert(sizeof(StaticMeshConstants) == 32 && offsetof(StaticMeshConstants, draw) == 16,
+static_assert(sizeof(StaticMeshConstants) == 80 && offsetof(StaticMeshConstants, draw) == 64 &&
+                  offsetof(StaticMeshConstants, uvRotation) == 72,
               "StaticMeshConstants must match AyloMeshPart of common.glsl");
 static_assert(sizeof(StaticMeshConstants) <= kMaxPushConstantsSize, "The push constants must fit the shared range");
+
+/// @brief Vertices the default vertex data covers at first; it doubles from there.
+constexpr std::uint32_t kInitialDefaultVertices = 4096;
+/// @brief Bytes of default data per vertex: a tangent, a colour, a second UV.
+constexpr std::size_t kDefaultVertexBytes = (2 * sizeof(glm::vec4)) + sizeof(glm::vec2);
 
 /// @brief Draws a buffer of mesh draws holds when it is first made: it doubles from there.
 constexpr std::size_t kInitialDraws = 64;
@@ -100,12 +111,19 @@ pipeline::GraphicsPipeline buildPipeline(const core::Device& device, const vk::r
                                          vk::Format colorFormat, vk::Format depthFormat,
                                          const vk::raii::PipelineCache* cache,
                                          const contract::renderer::RenderState* state) {
+    // The vertices, then the tangents, the colours and the second UVs, each in a buffer of its own.
     const std::array bindings{
-        vk::VertexInputBindingDescription{0, sizeof(StaticMeshVertex), vk::VertexInputRate::eVertex}};
+        vk::VertexInputBindingDescription{0, sizeof(StaticMeshVertex), vk::VertexInputRate::eVertex},
+        vk::VertexInputBindingDescription{1, sizeof(glm::vec4), vk::VertexInputRate::eVertex},
+        vk::VertexInputBindingDescription{2, sizeof(glm::vec4), vk::VertexInputRate::eVertex},
+        vk::VertexInputBindingDescription{3, sizeof(glm::vec2), vk::VertexInputRate::eVertex}};
     const std::array attributes{
         vk::VertexInputAttributeDescription{0, 0, vk::Format::eR32G32B32Sfloat, offsetof(StaticMeshVertex, position)},
         vk::VertexInputAttributeDescription{1, 0, vk::Format::eR32G32B32Sfloat, offsetof(StaticMeshVertex, normal)},
         vk::VertexInputAttributeDescription{2, 0, vk::Format::eR32G32Sfloat, offsetof(StaticMeshVertex, uv)},
+        vk::VertexInputAttributeDescription{3, 1, vk::Format::eR32G32B32A32Sfloat, 0},
+        vk::VertexInputAttributeDescription{4, 2, vk::Format::eR32G32B32A32Sfloat, 0},
+        vk::VertexInputAttributeDescription{5, 3, vk::Format::eR32G32Sfloat, 0},
     };
     pipeline::GraphicsPipeline::Builder builder;
     builder.setShaders(vertex, fragment)
@@ -124,16 +142,6 @@ pipeline::GraphicsPipeline buildPipeline(const core::Device& device, const vk::r
     return builder.build(device, cache);
 }
 
-/// @return The built-in static mesh pipeline, unlit or @p lit.
-pipeline::GraphicsPipeline createPipeline(const core::Device& device, pipeline::ShaderCache& shaders,
-                                          const pipeline::PipelineLayout& layout, vk::Format colorFormat,
-                                          vk::Format depthFormat, const vk::raii::PipelineCache* cache, bool lit) {
-    return buildPipeline(device, shaders.get("staticmesh.vert", aylo_shader_staticmesh_vert),
-                         lit ? shaders.get("staticmesh_lit.frag", aylo_shader_staticmesh_lit_frag)
-                             : shaders.get("staticmesh.frag", aylo_shader_staticmesh_frag),
-                         layout, colorFormat, depthFormat, cache, nullptr);
-}
-
 /// @throws std::invalid_argument If an index of @p desc names no vertex, or a part goes past its indices.
 void validate(const contract::renderer::StaticMeshDesc& desc) {
     if (desc.vertices.empty() || desc.indices.empty()) {
@@ -150,6 +158,10 @@ void validate(const contract::renderer::StaticMeshDesc& desc) {
             throw std::invalid_argument("A static mesh part goes past its indices");
         }
     }
+    const auto fits = [&desc](std::size_t count) { return count == 0 || count == desc.vertices.size(); };
+    if (!fits(desc.tangents.size()) || !fits(desc.colors.size()) || !fits(desc.uv2.size())) {
+        throw std::invalid_argument("A static mesh's tangents, colours and second UVs are empty or one per vertex");
+    }
 }
 
 }  // namespace
@@ -158,14 +170,15 @@ StaticMeshPass::StaticMeshPass(const core::Device& device, const memory::Allocat
                                pipeline::ShaderCache& shaders, const pipeline::PipelineLayout& layout,
                                const descriptor::DescriptorSetLayout& drawSetLayout, vk::Format colorFormat,
                                vk::Format depthFormat, const vk::raii::PipelineCache* cache, std::size_t framesInFlight)
-    : _allocator{&allocator},
+    : _device{&device},
+      _allocator{&allocator},
+      _shaders{&shaders},
       _layout{&layout},
-      _pipeline{createPipeline(device, shaders, layout, colorFormat, depthFormat, cache, false)},
-      _litPipeline{createPipeline(device, shaders, layout, colorFormat, depthFormat, cache, true)},
+      _colorFormat{colorFormat},
+      _depthFormat{depthFormat},
+      _cache{cache},
       _pool{createPool(device, framesInFlight)},
       _frames(framesInFlight) {
-    device.setName(*_pipeline.getPipeline(), "Static mesh pipeline");
-    device.setName(*_litPipeline.getPipeline(), "Static mesh lit pipeline");
     device.setName(*_pool.getPool(), "Static mesh draws pool");
     // No light at first: the header alone, so the binding is valid before the first frame sets lights.
     const std::array<std::byte, sizeof(GpuLightsHeader)> noLights{};
@@ -175,6 +188,66 @@ StaticMeshPass::StaticMeshPass(const core::Device& device, const memory::Allocat
         device.setName(*frame.set, "Static mesh draws set");
         uploadLights(index, noLights, false);
     }
+}
+
+const pipeline::GraphicsPipeline& StaticMeshPass::builtInPipeline(bool lit, bool doubleSided, bool blended) {
+    const std::size_t index = (lit ? 4U : 0U) + (doubleSided ? 2U : 0U) + (blended ? 1U : 0U);
+    std::optional<pipeline::GraphicsPipeline>& slot = _builtIn.at(index);
+    if (!slot) {
+        const contract::renderer::RenderState state{
+            .cull = doubleSided ? contract::renderer::CullMode::kNone : contract::renderer::CullMode::kBack,
+            .blend = blended ? contract::renderer::MeshBlend::kPremultiplied : contract::renderer::MeshBlend::kOpaque,
+            .depth = blended ? contract::renderer::DepthMode::kTestNoWrite : contract::renderer::DepthMode::kTestWrite};
+        slot.emplace(buildPipeline(*_device, _shaders->get("staticmesh.vert", aylo_shader_staticmesh_vert),
+                                   lit ? _shaders->get("staticmesh_lit.frag", aylo_shader_staticmesh_lit_frag)
+                                       : _shaders->get("staticmesh.frag", aylo_shader_staticmesh_frag),
+                                   *_layout, _colorFormat, _depthFormat, _cache, &state));
+        _device->setName(*slot->getPipeline(), lit ? "Static mesh lit pipeline" : "Static mesh pipeline");
+    }
+    return *slot;
+}
+
+void StaticMeshPass::ensureDefaults(std::uint32_t vertices) {
+    if (_defaults.buffer && _defaults.capacity >= vertices) {
+        return;
+    }
+    std::uint32_t capacity = std::max(_defaults.capacity, kInitialDefaultVertices);
+    while (capacity < vertices) {
+        capacity *= 2;
+    }
+    if (_defaults.buffer) {
+        _defaults.retired.push_back(std::move(*_defaults.buffer));
+    }
+    std::vector<std::byte> bytes(capacity * kDefaultVertexBytes);
+    const glm::vec4 tangent{1.0F, 0.0F, 0.0F, 1.0F};
+    const glm::vec4 color{1.0F};
+    for (std::uint32_t vertex = 0; vertex < capacity; ++vertex) {
+        std::memcpy(std::span{bytes}.subspan(vertex * sizeof(glm::vec4), sizeof(glm::vec4)).data(), &tangent,
+                    sizeof(tangent));
+        std::memcpy(std::span{bytes}.subspan((capacity + vertex) * sizeof(glm::vec4), sizeof(glm::vec4)).data(), &color,
+                    sizeof(color));
+    }
+    _defaults.buffer.emplace(*_allocator, bytes.size(), vk::BufferUsageFlagBits::eVertexBuffer,
+                             memory::Allocator::MemoryAccess::kStaging);
+    _defaults.buffer->write(bytes);
+    _defaults.capacity = capacity;
+    _device->setName(*_defaults.buffer->getBuffer(), "Static mesh default vertex data");
+}
+
+void StaticMeshPass::bindMesh(const vk::raii::CommandBuffer& commandBuffer, const GpuStaticMesh& mesh) {
+    ensureDefaults(static_cast<std::uint32_t>(mesh.vertices.getSize() / sizeof(StaticMeshVertex)));
+    if (!_defaults.buffer) {
+        return;
+    }
+    const vk::Buffer defaults = *_defaults.buffer->getBuffer();
+    const vk::DeviceSize capacity = _defaults.capacity;
+    const std::array buffers{*mesh.vertices.getBuffer(), mesh.tangents ? *mesh.tangents->getBuffer() : defaults,
+                             mesh.colors ? *mesh.colors->getBuffer() : defaults,
+                             mesh.uv2 ? *mesh.uv2->getBuffer() : defaults};
+    const std::array<vk::DeviceSize, 4> offsets{0, 0, mesh.colors ? 0 : capacity * sizeof(glm::vec4),
+                                                mesh.uv2 ? 0 : capacity * 2 * sizeof(glm::vec4)};
+    commandBuffer.bindVertexBuffers(0, buffers, offsets);
+    commandBuffer.bindIndexBuffer(*mesh.indices.getBuffer(), 0, vk::IndexType::eUint32);
 }
 
 void StaticMeshPass::uploadLights(std::size_t frameIndex, std::span<const std::byte> bytes, bool lit) {
@@ -220,10 +293,24 @@ GpuStaticMesh StaticMeshPass::upload(const memory::Allocator& allocator,
         parts.push_back(contract::renderer::StaticMeshPart{
             .indexOffset = 0, .indexCount = static_cast<std::uint32_t>(desc.indices.size())});
     }
-    return GpuStaticMesh{.vertices = std::move(vertices),
-                         .bounds = contract::renderer::computeBounds(desc),
-                         .indices = std::move(indices),
-                         .parts = std::move(parts)};
+    GpuStaticMesh mesh{.vertices = std::move(vertices),
+                       .bounds = contract::renderer::computeBounds(desc),
+                       .indices = std::move(indices),
+                       .parts = std::move(parts)};
+    const auto extra = [&allocator](std::span<const std::byte> bytes, const char* name) {
+        std::optional<memory::Buffer> buffer;
+        if (!bytes.empty()) {
+            buffer.emplace(allocator, bytes.size(), vk::BufferUsageFlagBits::eVertexBuffer,
+                           memory::Allocator::MemoryAccess::kStaging);
+            buffer->write(bytes);
+            allocator.getDevice().setName(*buffer->getBuffer(), name);
+        }
+        return buffer;
+    };
+    mesh.tangents = extra(std::as_bytes(std::span{desc.tangents}), "Static mesh tangents");
+    mesh.colors = extra(std::as_bytes(std::span{desc.colors}), "Static mesh colours");
+    mesh.uv2 = extra(std::as_bytes(std::span{desc.uv2}), "Static mesh second UVs");
+    return mesh;
 }
 
 void StaticMeshPass::upload(std::size_t frameIndex, std::span<const Draw> draws) {
@@ -239,9 +326,12 @@ void StaticMeshPass::upload(std::size_t frameIndex, std::span<const Draw> draws)
             draw.mesh != nullptr ? draw.mesh->bounds : contract::renderer::StaticMeshBounds{};
         _staging.push_back(makeStaticMeshDrawData(draw.world, draw.color, bounds, draw.instanceValues));
         const glm::vec3 center = glm::vec3{draw.world * glm::vec4{(bounds.min + bounds.max) * 0.5F, 1.0F}};
+        const bool blendedPart = draw.mesh != nullptr && draw.part < draw.mesh->parts.size() &&
+                                 draw.mesh->parts.at(draw.part).alphaMode == contract::renderer::AlphaMode::kBlend;
         frame.keys.push_back(MeshDrawKey{.center = center,
-                                         .transparent = draw.material.pipeline != nullptr &&
-                                                        contract::renderer::isTransparent(draw.material.state)});
+                                         .transparent = draw.material.pipeline != nullptr
+                                                            ? contract::renderer::isTransparent(draw.material.state)
+                                                            : blendedPart});
     }
     const std::span<const std::byte> bytes = std::as_bytes(std::span{_staging});
     if (!frame.buffer || frame.buffer->getSize() < bytes.size()) {
@@ -264,7 +354,7 @@ void StaticMeshPass::upload(std::size_t frameIndex, std::span<const Draw> draws)
 
 void StaticMeshPass::record(const vk::raii::CommandBuffer& commandBuffer, std::size_t frameIndex,
                             const vk::Viewport& viewport, const vk::Rect2D& scissor, const MeshViewpoint& viewpoint,
-                            const SetFinder& findSet, vk::DescriptorSet whiteSet) {
+                            const PartTextureSource& textures) {
     const Frame& frame = _frames.at(frameIndex);
     if (frame.draws.empty() || !frame.buffer) {
         return;
@@ -274,19 +364,20 @@ void StaticMeshPass::record(const vk::raii::CommandBuffer& commandBuffer, std::s
     commandBuffer.setScissor(0, scissor);
     const vk::ShaderStageFlags stages = vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment;
     // Every mesh pipeline shares the static mesh layout: the draws' set stays bound across them.
-    commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *_layout->getLayout(), kMeshDrawSet, *frame.set,
-                                     {});
+    const vk::PipelineLayout layout = *_layout->getLayout();
+    commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, layout, kMeshDrawSet, *frame.set, {});
     const pipeline::GraphicsPipeline* boundPipeline = nullptr;
     const GpuStaticMesh* boundMesh = nullptr;
-    vk::DescriptorSet bound;
     for (const std::uint32_t index : _order) {
         const Draw& draw = frame.draws.at(index);
-        if (draw.mesh == nullptr) {
+        if (draw.mesh == nullptr || draw.part >= draw.mesh->parts.size()) {
             continue;
         }
-        const pipeline::GraphicsPipeline& builtIn = frame.lit ? _litPipeline : _pipeline;
-        const pipeline::GraphicsPipeline& used = draw.material.pipeline != nullptr ? *draw.material.pipeline : builtIn;
-        const vk::PipelineLayout layout = *used.getLayout().getLayout();
+        const contract::renderer::StaticMeshPart& part = draw.mesh->parts.at(draw.part);
+        const pipeline::GraphicsPipeline& used =
+            draw.material.pipeline != nullptr
+                ? *draw.material.pipeline
+                : builtInPipeline(frame.lit, part.doubleSided, part.alphaMode == contract::renderer::AlphaMode::kBlend);
         if (&used != boundPipeline) {
             used.bind(commandBuffer);
             boundPipeline = &used;
@@ -295,27 +386,26 @@ void StaticMeshPass::record(const vk::raii::CommandBuffer& commandBuffer, std::s
             commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, layout, kMaterialSet, draw.material.set,
                                              {});
         }
-        if (draw.part >= draw.mesh->parts.size()) {
-            continue;
-        }
         if (draw.mesh != boundMesh) {
             // The parts of one mesh follow each other: their buffers are bound once.
-            commandBuffer.bindVertexBuffers(0, *draw.mesh->vertices.getBuffer(), vk::DeviceSize{0});
-            commandBuffer.bindIndexBuffer(*draw.mesh->indices.getBuffer(), 0, vk::IndexType::eUint32);
+            bindMesh(commandBuffer, *draw.mesh);
             boundMesh = draw.mesh;
         }
-        const contract::renderer::StaticMeshPart& part = draw.mesh->parts.at(draw.part);
-        vk::DescriptorSet set =
-            part.texture != contract::renderer::TextureId{} ? findSet(part.texture) : vk::DescriptorSet{};
+        std::vector<std::unique_ptr<MeshPartTextures>>& sets = draw.mesh->partTextures;
+        if (sets.size() < draw.mesh->parts.size()) {
+            sets.resize(draw.mesh->parts.size());
+        }
+        std::unique_ptr<MeshPartTextures>& set = sets.at(draw.part);
         if (!set) {
-            set = whiteSet;
+            set = std::make_unique<MeshPartTextures>(*_device, *textures.descriptors, *textures.layout,
+                                                     textures.framesInFlight);
         }
-        if (set != bound) {
-            commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, layout, kTextureSet, set, {});
-            bound = set;
-        }
-        const StaticMeshConstants constants{.baseColor = part.baseColor, .draw = index};
-        commandBuffer.pushConstants<StaticMeshConstants>(layout, stages, 0, constants);
+        const MeshPartTextureIds wanted{part.texture, part.metallicRoughnessTexture, part.normalTexture,
+                                        part.occlusionTexture, part.emissiveTexture};
+        commandBuffer.bindDescriptorSets(
+            vk::PipelineBindPoint::eGraphics, layout, kTextureSet,
+            set->prepare(*_device, frameIndex, wanted, textures.findTexture, textures.fallback), {});
+        commandBuffer.pushConstants<StaticMeshConstants>(layout, stages, 0, StaticMeshConstants::of(part, index));
         commandBuffer.drawIndexed(part.indexCount, 1, part.indexOffset, 0, 0);
     }
 }

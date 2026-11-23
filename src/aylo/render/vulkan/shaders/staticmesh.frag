@@ -11,6 +11,7 @@
 #extension GL_GOOGLE_include_directive : require
 
 #define AYLO_MESH
+#define AYLO_BUILTIN_MESH
 #include "common.glsl"
 #include "fragment_common.glsl"
 #include "mesh.frag.glsl"

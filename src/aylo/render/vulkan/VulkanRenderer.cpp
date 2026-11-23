@@ -137,6 +137,9 @@ material::GameShader::PipelineBuilder pipelineBuilderOf(contract::renderer::Shad
     return &rendering::SpritePass::createMaterialPipeline;
 }
 
+/// @brief Static mesh part sets (one per part and frame in flight) in one descriptor pool.
+constexpr std::uint32_t kMeshPartSetsPerPool = 128;
+
 /// @brief Material sets (one per material and frame in flight) in one descriptor pool.
 constexpr std::uint32_t kMaterialSetsPerPool = 64;
 
@@ -333,7 +336,19 @@ void VulkanRenderer::init(contract::platform::IPlatform& platform) {
             .addBinding(rendering::kMeshDrawBinding, vk::DescriptorType::eStorageBuffer, materialStages)
             .addBinding(rendering::kLightsBinding, vk::DescriptorType::eStorageBuffer, materialStages)
             .build(*_device));
-    const std::array meshSetLayouts{*_globals->getSetLayout().getLayout(), *_textureSetLayout->getLayout(),
+    // Set 1 of a mesh holds its part's five textures (base colour, metallic-roughness, normal, occlusion, emissive): a
+    // game mesh shader only reads the first, as TEXTURE.
+    descriptor::DescriptorSetLayout::Builder partSet;
+    for (std::uint32_t binding = 0; binding < rendering::kMeshPartTextureCount; ++binding) {
+        partSet.addBinding(binding, vk::DescriptorType::eCombinedImageSampler, materialStages);
+    }
+    _meshPartSetLayout = std::make_unique<descriptor::DescriptorSetLayout>(partSet.build(*_device));
+    const std::array partSizes{vk::DescriptorPoolSize{vk::DescriptorType::eCombinedImageSampler,
+                                                      kMeshPartSetsPerPool * rendering::kMeshPartTextureCount}};
+    _meshPartDescriptors = std::make_unique<descriptor::DescriptorAllocator>(*_device, kMeshPartSetsPerPool, partSizes,
+                                                                             "Static mesh part sets");
+    _device->setName(*_meshPartSetLayout->getLayout(), "Static mesh part set layout");
+    const std::array meshSetLayouts{*_globals->getSetLayout().getLayout(), *_meshPartSetLayout->getLayout(),
                                     *_materialSetLayout->getLayout(), *_meshDrawSetLayout->getLayout()};
     _meshLayout = std::make_unique<pipeline::PipelineLayout>(*_device, meshSetLayouts, pushConstants);
     _device->setName(*_meshDrawSetLayout->getLayout(), "Static mesh draws set layout");
@@ -827,8 +842,12 @@ void VulkanRenderer::recordWorld3D(const vk::raii::CommandBuffer& commandBuffer,
         .perspective = std::holds_alternative<contract::renderer::Perspective>(target.view->projection)};
     _staticMeshPass->record(
         commandBuffer, frameIndex, viewport, scissor, viewpoint,
-        [this](contract::renderer::TextureId texture) { return findTextureSet(texture); },
-        findTextureSet(_fallbackTexture));
+        rendering::StaticMeshPass::PartTextureSource{
+            .descriptors = _meshPartDescriptors.get(),
+            .layout = _meshPartSetLayout.get(),
+            .findTexture = [this](contract::renderer::TextureId texture) { return findTextureBinding(texture); },
+            .fallback = _fallbackTexture,
+            .framesInFlight = kFramesInFlight});
     _lines3DPass->record(commandBuffer, frameIndex, viewport, scissor, target.lineVertices);
     commandBuffer.endRendering();
 }
@@ -1292,6 +1311,16 @@ void VulkanRenderer::recordSpritesAndParticles(const vk::raii::CommandBuffer& co
     }
 }
 
+std::optional<material::GameMaterial::TextureBinding> VulkanRenderer::findTextureBinding(
+    contract::renderer::TextureId texture) const {
+    const texture::Texture* found = _textures.find(texture);
+    if (found == nullptr) {
+        return std::nullopt;
+    }
+    return material::GameMaterial::TextureBinding{.view = *found->image.getImageView(),
+                                                  .sampler = *_samplers->get(found->desc.filter, found->desc.repeat)};
+}
+
 vk::DescriptorSet VulkanRenderer::findTextureSet(contract::renderer::TextureId texture) const {
     const texture::Texture* found = _textures.find(texture);
     return found != nullptr ? *found->set : vk::DescriptorSet{};
@@ -1383,15 +1412,7 @@ rendering::MaterialBinding VulkanRenderer::findMaterial(contract::renderer::Mate
     if (pipeline == nullptr) {
         return {};
     }
-    const auto findTexture =
-        [this](contract::renderer::TextureId texture) -> std::optional<material::GameMaterial::TextureBinding> {
-        const texture::Texture* found = _textures.find(texture);
-        if (found == nullptr) {
-            return std::nullopt;
-        }
-        return material::GameMaterial::TextureBinding{
-            .view = *found->image.getImageView(), .sampler = *_samplers->get(found->desc.filter, found->desc.repeat)};
-    };
+    const auto findTexture = [this](contract::renderer::TextureId texture) { return findTextureBinding(texture); };
     return {.pipeline = pipeline,
             .set = found->prepare(*_device, frameIndex, findTexture, _fallbackTexture),
             .instanceValues = shader->hasInstanceValues(),
