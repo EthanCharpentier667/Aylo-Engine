@@ -249,3 +249,37 @@ TEST(ScriptMesh, AScriptDrawsAModelWithARimShaderAndAVarying) {
     ASSERT_FALSE(client.state->staticMeshDraws.empty());
     EXPECT_NE(client.state->staticMeshDraws.back().material, aylo::contract::renderer::MaterialId{});
 }
+
+TEST(ScriptMesh, AMaterialChangesItsShadersRenderState) {
+    // manual/pages/materials.md, "How a 3D material is drawn".
+    ClientScripts client;
+    client.state->shaders = true;
+    client.assets.write("models/hull.glsl",
+                        "#pragma mesh\n#pragma cull front\nvoid vertex() { VERTEX += NORMAL * 0.05; }\n"
+                        "void fragment() { COLOR = vec4(0.0, 0.0, 0.0, 1.0); }\n");
+    ASSERT_EQ(client.run(R"(
+        engine.assets.material({
+            name = "glassHull",
+            shader = engine.assets.shader("models/hull.glsl"),
+            renderState = { blend = "alpha", depthBias = -1 },
+        })
+    )"),
+              "");
+    client.app.runFrame();
+
+    ASSERT_FALSE(client.state->createdMaterials.empty());
+    const auto& state = client.state->createdMaterials.back().renderState;
+    ASSERT_TRUE(state.has_value());
+    EXPECT_EQ(state->cull, aylo::contract::renderer::CullMode::kFront);  // the shader's, kept
+    EXPECT_EQ(state->blend, aylo::contract::renderer::MeshBlend::kAlpha);
+    EXPECT_EQ(state->depth, aylo::contract::renderer::DepthMode::kTestNoWrite);  // blended: no depth write
+    EXPECT_FLOAT_EQ(state->depthBias, -1.0F);
+
+    EXPECT_NE(client
+                  .run(R"(
+        engine.assets.material({ name = "odd", shader = engine.assets.shader("models/hull.glsl"),
+                                 renderState = { cull = "sideways" } })
+    )")
+                  .find("'sideways' is not a render state cull"),
+              std::string::npos);
+}
