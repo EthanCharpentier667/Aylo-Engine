@@ -11,6 +11,7 @@
 #include <ufbx.h>
 
 #include <algorithm>
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <exception>
@@ -29,6 +30,7 @@
 #include <vector>
 
 #include "Model.hpp"
+#include "Tangents.hpp"
 #include "aylo/contract/renderer/drawing/StaticMesh.hpp"
 #include "core/asset/exceptions/AssetExceptions.hpp"
 #include "core/vfs/FileSource.hpp"
@@ -101,6 +103,13 @@ class ModelBuilder {
             throw core::asset::exceptions::AssetLoadException{
                 std::format("Mesh '{}': it has no triangles to draw", _path)};
         }
+        // Tangents are only for normal maps: MikkTSpace makes them for a model that has one (FBX files are baked so).
+        const bool normalMaps = std::ranges::any_of(_model.partMaps, [](const auto& maps) {
+            return maps.at(static_cast<std::size_t>(PartMap::kNormal)).has_value();
+        });
+        if (normalMaps) {
+            generateMissingTangents(_model.mesh, std::vector<bool>(_model.mesh.vertices.size(), false));
+        }
         return std::move(_model);
     }
 
@@ -163,6 +172,8 @@ class ModelBuilder {
         const std::optional<std::size_t> image = applyMaterial(material, made);
         _model.mesh.parts.push_back(made);
         _model.partImages.push_back(image);
+        _model.partMaps.push_back(mapsOf(material, made));
+        _model.partNames.emplace_back(material != nullptr ? viewOf(material->name) : std::string_view{});
     }
 
     /// @brief Gives @p part the base colour and texture of @p material, if it has them; @return its image.
@@ -193,6 +204,52 @@ class ModelBuilder {
             texture = texture->file_textures.data[0];  // NOLINT(*-pointer-arithmetic)
         }
         return imageOf(*texture);
+    }
+
+    /// @return The image of @p map, if it has a texture made of one.
+    std::optional<std::size_t> imageOfMap(const ufbx_material_map& map) {
+        const ufbx_texture* texture = map.texture;
+        if (texture == nullptr || !map.texture_enabled) {
+            return std::nullopt;
+        }
+        if (texture->type != UFBX_TEXTURE_FILE) {
+            if (texture->file_textures.count == 0) {
+                return std::nullopt;
+            }
+            texture = texture->file_textures.data[0];  // NOLINT(*-pointer-arithmetic)
+        }
+        return imageOf(*texture);
+    }
+
+    /// @brief Gives @p part @p material's PBR values besides its base colour (ufbx maps every shading model to them):
+    /// metalness, roughness, emission, its sides and its opacity.
+    /// @return The images of its maps.
+    std::array<std::optional<std::size_t>, kPartMapCount> mapsOf(const ufbx_material* material,
+                                                                 contract::renderer::StaticMeshPart& part) {
+        std::array<std::optional<std::size_t>, kPartMapCount> maps{};
+        if (material == nullptr) {
+            return maps;
+        }
+        const ufbx_material_pbr_maps& pbr = material->pbr;
+        part.metallic = pbr.metalness.has_value ? static_cast<float>(pbr.metalness.value_real) : 0.0F;
+        part.roughness = pbr.roughness.has_value ? static_cast<float>(pbr.roughness.value_real) : 0.5F;
+        if (pbr.emission_color.has_value) {
+            const auto strength =
+                static_cast<float>(pbr.emission_factor.has_value ? pbr.emission_factor.value_real : 1.0);
+            part.emissive = glm::vec3{static_cast<float>(pbr.emission_color.value_vec4.x),
+                                      static_cast<float>(pbr.emission_color.value_vec4.y),
+                                      static_cast<float>(pbr.emission_color.value_vec4.z)} *
+                            strength;
+        }
+        part.doubleSided = !material->features.double_sided.enabled ? part.doubleSided : true;
+        if (part.baseColor.w < 1.0F) {
+            part.alphaMode = contract::renderer::AlphaMode::kBlend;
+        }
+        // The roughness and the metalness of an FBX are two images: only a glTF-style packed one is read.
+        maps.at(static_cast<std::size_t>(PartMap::kNormal)) = imageOfMap(pbr.normal_map);
+        maps.at(static_cast<std::size_t>(PartMap::kOcclusion)) = imageOfMap(pbr.ambient_occlusion);
+        maps.at(static_cast<std::size_t>(PartMap::kEmissive)) = imageOfMap(pbr.emission_color);
+        return maps;
     }
 
     /// @return The index of @p texture's image in the model's images, added the first time; none if it names no file.

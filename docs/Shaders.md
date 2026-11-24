@@ -45,6 +45,11 @@ One declaration per line, outside any function:
 - `uniform <type> <name> = <default>;`: a value of the **material**.
 - `instance uniform <type> <name> = <default>;`: a value of **each drawing**.
 - `uniform sampler2D <name>;`: an extra texture of the material, readable in both stages.
+- `varying <type> <name>;`: a value `vertex()` writes and `fragment()` reads, interpolated (`float`, `vec2` to `vec4`;
+  an `int` is `flat`). At most 5 (`kShaderMaxVaryings`). The assembler declares each `out` in the vertex stage and `in`
+  in the fragment stage, from the first location the target leaves free (`firstVaryingLocation()`: 7 for sprites,
+  glyphs, particles and the screen, 9 for meshes, 11 for shapes), so the last one is at most 15: the 16 locations
+  every device offers.
 
 The types are `float`, `vec2`, `vec3`, `vec4` and `int`. A default is a number or a `vecN(...)` of numbers (one number
 fills every component), and 0 when omitted. A shader cannot declare a built-in, nor a name starting with `aylo`, which
@@ -56,9 +61,50 @@ A shader is compiled for every target that draws something (`kDrawingTargets`), 
 failure in one fails the shader. A shader whose first lines hold `#pragma screen` is a **screen effect** instead, and is
 compiled for `kScreen` only (see *Screen effects* below). One whose first lines hold `#pragma mesh` is a **3D shader**,
 compiled for `kMesh` only: the parts of a static mesh (`MeshRenderer::material`), with `VERTEX` and `NORMAL` as `vec3`
-(`AYLO_MESH` in `common.glsl`; the templates are `mesh.vert.glsl` and `mesh.frag.glsl`, whose push constants are the
-static mesh pass's world matrix and colours). A mesh has no drawing to carry instance values, so, as in a screen
-effect, their defaults are written into both stages. Both pragmas in one shader is an error.
+(`AYLO_MESH` in `common.glsl`; the templates are `mesh.vert.glsl` and `mesh.frag.glsl`). Each draw of a mesh is an
+`AyloMeshDraw` in a storage buffer of the frame (set 3, binding 0, std430: the model matrix, its inverse, the normal
+matrix, the draw's colour, the model's bounds and the draw's instance values), indexed by the push constants
+`AyloMeshPart` (the part's base colour and the draw's index). Both stages fill `MODEL_MATRIX`, `INV_MODEL_MATRIX`,
+`NORMAL_MATRIX`, `AABB_MIN` and `AABB_MAX` from it (`ayloLoadMeshDraw()`), and read the instance values from it.
+The 3D camera of the frame is in `AyloFrame` (`view`, `projection`, their inverses, `cameraPosition`, whose `w` is 1 for
+a perspective and 0 for an orthographic projection; identity and the 2D view-projection in 2D frames): a mesh reads it as
+`VIEW_MATRIX`, `PROJECTION_MATRIX`, `INV_VIEW_MATRIX`, `INV_PROJECTION_MATRIX` and `CAMERA_POSITION`. The mesh
+templates pass the world and model-space positions at locations 3 and 4: `WORLD_POSITION` (in the vertex stage, the
+vertex before `vertex()`), `LOCAL_POSITION`, and `VIEW_DIR` (toward the camera, or along the orthographic camera's +Z).
+A 3D shader also says how it is drawn, with pragmas of its first lines, read by the parser into
+`CompiledShader::renderState` (`contract::renderer::RenderState`):
+
+| Pragma | Values | Default |
+|---|---|---|
+| `#pragma cull` | `back`, `front`, `none` | `back` |
+| `#pragma blend` | `opaque`, `alpha`, `premultiplied` (the same factors as `alpha`: `COLOR` is premultiplied), `additive`, `multiply` | `opaque` |
+| `#pragma depth` | `test write`, `test nowrite`, `notest` | `test write`, or `test nowrite` for a blended shader |
+| `#pragma depth_bias` | a number of depth steps, and a slope factor | `0 0` |
+
+An unknown value is an error naming its line, and so is one of these pragmas in a shader that is not `#pragma mesh`. A
+material replaces parts of it (`Material::renderState`, a `RenderStateOverride`: from a `.material` file's
+`renderState`, the call `aylo.shader.setMaterialRenderState`, or the Inspector); `ShaderHandles` merges it with the
+shader's into `MaterialDesc::renderState`. `ALPHA_SCISSOR`, written in `fragment()`, makes a cutout: a pixel whose
+alpha is below it is discarded, the others are opaque. The assembler compiles the test in (`AYLO_ALPHA_SCISSOR`) only
+when the shader names it, since a `discard` can cost the early depth test. The built-in mesh shader keeps its own state
+(no culling, premultiplied blending, depth written) until R3D-07 reads glTF's `doubleSided`.
+
+A material's next pass (`Material::nextPass`, a `.material` file's `nextPass`, the call
+`aylo.shader.setMaterialNextPass`) is drawn after it on the same parts of a model. `loadMaterialFile()` reads the next
+passes of a file as files of their own and refuses a chain that loops or holds more than `kMaxMaterialPasses` (8); the
+mesh plugin follows the chain each frame, one `drawStaticMesh()` per pass with `listedPartsOnly`, and cuts a chain of
+materials made in code at 8 with one warning. Passes only apply to models.
+
+`#pragma lit` makes a 3D shader lit: its `fragment()` writes the surface (`ALBEDO`, `ALPHA`, `METALLIC`, `ROUGHNESS`,
+`SPECULAR`, `NORMAL`, `EMISSION`, `AO`) and the engine lights it after (`lighting.glsl`, added to the fragment stage
+with `AYLO_LIT`); an optional `void light()` replaces the shading of each light (`AYLO_CUSTOM_LIGHT`), and is blanked
+from the vertex stage as `fragment()` is. The model and its units are in `docs/3d/rendering.md` (Lit materials).
+
+`FRONT_FACING` is `gl_FrontFacing`: the projection puts Y down in clip space and the screen too, so a triangle
+counter-clockwise in the world is counter-clockwise on screen, the pipelines' default front face. `FRAGCOORD`
+(`gl_FragCoord`) is in every fragment stage. The
+built-in mesh shader (`staticmesh.*` in the Vulkan backend) is these templates with no game code. Both pragmas in one
+shader is an error.
 
 | Target      | Drawn on                    | `UV`                                    | `COLOR` in `fragment()` before the shader  |
 |-------------|-----------------------------|-----------------------------------------|--------------------------------------------|
@@ -85,24 +131,80 @@ half-float image, reading the scene or the previous effect's output. Its built-i
 | Name                | Type        | What it is                                                                     |
 |---------------------|-------------|--------------------------------------------------------------------------------|
 | `COLOR`             | `vec4`      | Starts as the pixel of `SCREEN_TEXTURE` at `SCREEN_UV`; written as is, no blend |
-| `SCREEN_TEXTURE`    | `sampler2D` | The picture so far (half float, may exceed 1); `TEXTURE` is the same           |
+| `SCREEN_TEXTURE`    | `sampler2D` | The pass's input: the picture so far (half float, may exceed 1), or the target its `input` names; `TEXTURE` is the same |
+| `SCENE_TEXTURE`     | `sampler2D` | The scene before any effect (set 3, binding 1)                                 |
+| `PREVIOUS_FRAME`    | `sampler2D` | The last frame's result, before the overlay; black at first (set 3, binding 2) |
 | `SCREEN_UV`         | `vec2`      | The pixel on the screen, 0 to 1, top-left at (0, 0); `UV` is the same          |
-| `SCREEN_PIXEL_SIZE` | `vec2`      | One pixel in `SCREEN_UV` units                                                 |
+| `SCREEN_PIXEL_SIZE` | `vec2`      | One pixel of the target written, in `SCREEN_UV` units                          |
 | `TIME`              | `float`     | As everywhere                                                                  |
 
-`VERTEX` is in pixels of the screen in `vertex()`. An `instance uniform` keeps its declared default: no drawing carries
+`VERTEX` is in pixels of the target written in `vertex()` (a push constant `AyloScreenPass::targetSize` gives its
+size, as a pass may write a smaller target than the screen). An `instance uniform` keeps its declared default: no drawing carries
 values, so the assembler writes the defaults into the vertex stage. The `SCREEN_*` names are reserved in every shader
 but only declared in a screen effect.
+
+A screen effect also reads the 3D world's depth (`DEPTH_TEXTURE`, set 3, binding 0, in the screen effects' layout
+`_screenLayout`) and the 3D camera (`VIEW_MATRIX`, `PROJECTION_MATRIX`, their inverses, `CAMERA_POSITION`: the effects'
+frame uniforms hold the 2D view-projection and the 3D camera), with the helpers `linearDepth()`, `viewPositionAt()`,
+`worldPositionAt()` and `normalAt()` (rebuilt from the depth of the neighbours: there is no normal buffer). The
+compiler marks a screen shader that names one of them (`CompiledShader::readsDepth`); only when an active effect does is
+the scene's depth stored and made readable after the 3D pass, else set 3 holds the white pixel (far). The names are
+reserved in every shader but only declared in a screen effect.
 
 The game chooses its effects with `aylo.shader.setScreenMaterials` (or the form `engine.screenEffects`), a list of
 materials kept in the client resource `aylo.ScreenMaterials`. The Render system `aylo.Shader.Screen`, after
 `aylo.Shader.Update`, hands the renderer the ones created (`IRenderer::setScreenMaterials()`) every frame, so a reload
 or a late material follows. The renderer skips a material whose shader does not serve `kScreen`.
 
+**Passes.** `engine.screenEffects` also takes a list of passes, written as `aylo.shader.addScreenEffect` and
+`aylo.shader.addScreenEffectInput` calls and checked by `aylo.shader.checkScreenEffects`
+(`contract::renderer::checkScreenEffects()`: a pass reads only `"scene"` or what an earlier pass wrote). They are kept in
+`ScreenMaterials::passes` by name; the system turns each sampler name into its slot in the material's shader and calls
+`IRenderer::setScreenEffects()` with `ScreenEffectPass`es (whose default runs the chain of the passes without output,
+for a renderer that has no targets). The Vulkan renderer:
+
+- keeps three images of the picture's size: the scene (never written by an effect: `SCENE_TEXTURE`) and two the chain
+  takes turns on. A pass without `output` writes the next of these; a pass with one writes a named target
+  (`_effectTargets`), made at `size` or `scale` times the picture, half float or 8-bit (`lowPrecision`), made again when
+  its size or format changes and released (deletion queue) when no pass names it;
+- records each pass in its own rendering scope (`ScreenPass::recordPass()`), the target transitioned to an attachment
+  and back to shader read, which orders the passes;
+- gives a pass with `inputs` a copy of its material's set for this frame, with the targets in place of those textures
+  (`GameMaterial::writeCopy()`);
+- builds a screen shader's pipeline per colour format (`GameShader::Built`), for the 8-bit targets;
+- keeps the last result in `_previousFrame` only while an effect reads `PREVIOUS_FRAME` (`CompiledShader::readsPreviousFrame`),
+  copied before the overlay;
+- runs no effect while the list is refused or one of its materials is not ready, so a target is never read unwritten.
+
+Targets are not aliased in memory: a game uses a handful, of at most the screen's size.
+
 The plugin gives two effects written in the same dialect, compiled from `shader/builtin/` (`BuiltinShaders`): a path
 starting with `@aylo/` names one of them instead of a file. `@aylo/bloom.glsl` (one pass, 64 samples on a spiral, with
 `threshold`, `softKnee`, `intensity`, `radius`) and `@aylo/tonemap.glsl` (`exposure`, and `mode` 0 none, 1 Reinhard,
 2 ACES). The manual's page is `manual/pages/post-processing.md`.
+
+**Standard effects.** The other shaders of `shader/builtin/` are the standard effects (`manual/pages/screen-effects.md`),
+with no renderer code of their own: a mip-chain bloom (`bloom_prefilter` with Karis-weighted taps, `bloom_down` 13 taps,
+`bloom_up` a 3x3 tent added to the level's down step, `bloom_composite`), Kuwahara (classic in one pass; anisotropic:
+`kuwahara_tensor`, two `blur` passes, `kuwahara_anisotropic` with eight polynomially weighted sectors), `sharpen`,
+`chromatic_aberration`, `film_grain` (on `@aylo/noise.glsl`), `vignette`, `fxaa`, `ssao` (+ `blur`, `ssao_apply`) and
+`fog` (on the depth). Their passes are built in Luau by `engine.effects.<name>` (`ShaderForms.luau`): each call makes
+materials of its own (`@aylo/effects/<effect>/<n>`) and targets of its own (`@aylo/<effect><n>/...`), so an effect may
+be used twice. `engine.screenEffects` takes a mixed list (materials, shader names, passes, `engine.effects` results)
+and sends a plain chain through `setScreenMaterials` when no pass has more than a material. A helper function of a
+screen shader takes what it reads (`sampler2D`, UV) as parameters: the functions go into the vertex stage too, where
+`SCREEN_UV` does not exist. `listBuiltinShaders()` names them all in messages.
+
+### Libraries
+
+The engine's libraries (`@aylo/noise.glsl`, `@aylo/color.glsl`, `@aylo/math.glsl`) are written in a part of GLSL that
+C++ also compiles: no swizzle of several components, no `out` parameter, no array, no preprocessor line. The test
+`ShaderLibraries` includes them in C++ over a thin layer on glm (`tests/plugins/GlslShim.hpp`) and checks their values:
+the noises' ranges, means, spread and continuity, Perlin noise's zero on the lattice, Voronoi against its metrics, the
+colour conversions and blend modes against their formulas. Their names carry no `aylo` prefix: they are the game's to
+call. The hashes are PCG (O'Neill), the noises written for the engine from the published algorithms (Perlin 1985 and
+2002, simplex 2001, Worley 1996); no code comes from another engine. `ShaderIncludes.TheEnginesLibrariesCompileInEveryTarget`
+compiles every function in each kind of shader. The manual's page is `manual/pages/shader-libraries.md`.
 
 ## Using a shader
 
@@ -202,6 +304,8 @@ engine.settings.hotReload = true
 - An edit that does not compile prints the error and keeps the last version on screen. A shader that failed at load
   is created at the first save that compiles.
 - A `MaterialInstance` keeps its bytes: if a save moves or retypes an `instance uniform`, set its values again.
+- Saving a file a shader includes compiles again every shader the game loaded that includes it, directly or through
+  another file. Only the files under `assets/shaders` are watched.
 
 ## Limits
 
@@ -251,14 +355,33 @@ A backend feeds these resources:
 | Particle instances                  | Attributes 0 to 5                                                 |
 | A particle draw's constants         | A push constant block, instance values at offset 48               |
 | A screen effect                     | No vertex input: 3 vertices; set 1 binding 0 is the picture so far |
+| A static mesh's vertices            | Attributes 0 to 2: position, normal, UV (`StaticMeshVertex`)      |
+| The frame's lights (meshes)          | Set 3, binding 1 (std430, `AyloLights`: ambient, count, `AyloLight`s) |
+| The sky's light (meshes)             | Set 3, bindings 4 (reflection, a mip a roughness) and 5 (irradiance), equirectangular; read while `count.z` (the mips) is not 0, times `ambient.w` |
+| The shadow maps (meshes)            | Set 3, binding 2 (std430, `AyloShadowTile`s), the atlas at binding 3 |
+| A static mesh's draws               | Set 3, binding 0 (std430, `AyloMeshDraw`), indexed by the push constants `AyloMeshPart` (base colour, draw index) |
 
 Instance values only exist for a shader that declares some: the assembler then defines `AYLO_INSTANCE_VALUES`.
+A script gives an entity its own with the call `aylo.shader.setInstanceValue` (`entity`, `material`, `name`, a value):
+it queues the value in the client resource `aylo.InstanceValueRequests`, and the Render system
+`aylo.Shader.InstanceValues` (before `aylo.Shader.Update`) writes the frame's values into the entities'
+`MaterialInstance`, adding one from the shader's defaults to an entity without it, so several values given to a new
+entity in one frame all count (`InstanceValues.hpp`).
 
 SPIR-V is the format every backend starts from. A backend for another API translates it, for example with SPIRV-Cross,
 mapping each set and binding to its own resources.
 
 ## How a shader is compiled
 
+0. **The includes** (`detail/ShaderIncludes`, `expandIncludes()`) replace each `#include "path"` line by the file it
+   names: `@aylo/<lib>.glsl` is a library of the engine (`findBuiltinLibrary()`, `shader/builtin/noise.glsl`,
+   `color.glsl`, `math.glsl`, embedded like the built-in shaders), any other path is read through the shaders'
+   `FileSource`, next to the including file first, then from the assets' root. Each file is included once (a second
+   include is skipped), a file including itself is an error, and the nesting stops at `kMaxIncludeDepth` (16). The
+   expanded text keeps, for each of its lines, the file and line it came from (`ExpandedShader::lines`), and
+   `compileShader()` rewrites the "line N:" of a parser or glslang error with it ("line 2 of 'shaders/lib.glsl'").
+   Declarations in an included file are the shader's, as the parser sees one text. `ShaderAssets` records the files a
+   shader includes (`getIncluders()`), so the `ShaderReloadable` compiles again the shaders that include a changed file.
 1. **The parser** (`detail/ShaderParser`) reads the declarations and lays the values out. It leaves their lines empty,
    so an error keeps the line of the file.
 2. **The assembler** (`detail/ShaderAssembler`) builds the complete GLSL 450 of each stage of each target. Each stage

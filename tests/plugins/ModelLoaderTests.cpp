@@ -129,3 +129,60 @@ TEST(ModelLoader, AFormatItDoesNotReadNamesTheFormatsItReads) {
         EXPECT_NE(message.find(".fbx"), std::string::npos) << message;
     }
 }
+
+TEST(ModelLoader, KeepsTheNameOfEachPartsMaterial) {
+    aylo::test::plugins::AssetsFolder assets;
+    assets.writeTwoParts();
+    const aylo::core::vfs::DirectorySource source{assets.root()};
+    const aylo::plugins::mesh::detail::Model model =
+        aylo::plugins::mesh::detail::loadModel("models/parts.gltf", source);
+    ASSERT_EQ(model.mesh.parts.size(), 2U);
+    EXPECT_EQ(model.partNames, (std::vector<std::string>{"Body", "Glass"}));
+}
+
+TEST(ModelLoader, ReadsAGltfMaterialWithEveryMapAndTheVertexData) {
+    using aylo::contract::renderer::AlphaMode;
+    using aylo::plugins::mesh::detail::PartMap;
+    aylo::test::plugins::AssetsFolder assets;
+    assets.writePanel();
+    const aylo::core::vfs::DirectorySource source{assets.root()};
+    const aylo::plugins::mesh::detail::Model model =
+        aylo::plugins::mesh::detail::loadModel("models/panel.gltf", source);
+    ASSERT_EQ(model.mesh.parts.size(), 2U);
+    const aylo::contract::renderer::StaticMeshPart& panel = model.mesh.parts.at(0);
+    EXPECT_EQ(panel.alphaMode, AlphaMode::kMask);
+    EXPECT_FLOAT_EQ(panel.alphaCutoff, 0.4F);
+    EXPECT_FALSE(panel.doubleSided);
+    EXPECT_FLOAT_EQ(panel.metallic, 0.5F);
+    EXPECT_FLOAT_EQ(panel.roughness, 1.0F);  // glTF's default factor
+    EXPECT_FLOAT_EQ(panel.normalScale, 0.8F);
+    EXPECT_FLOAT_EQ(panel.occlusionStrength, 0.7F);
+    EXPECT_FLOAT_EQ(panel.emissive.x, 2.0F);  // the factor times the emissive strength
+    EXPECT_FLOAT_EQ(panel.uvTransform.z, 2.0F);
+    EXPECT_FLOAT_EQ(panel.uvRotation, 0.3F);
+    ASSERT_EQ(model.partMaps.size(), 2U);
+    for (const PartMap map : {PartMap::kMetallicRoughness, PartMap::kNormal, PartMap::kOcclusion, PartMap::kEmissive}) {
+        EXPECT_TRUE(model.partMaps.at(0).at(static_cast<std::size_t>(map)).has_value());
+        EXPECT_FALSE(model.partMaps.at(1).at(static_cast<std::size_t>(map)).has_value());
+    }
+    const aylo::contract::renderer::StaticMeshPart& glass = model.mesh.parts.at(1);
+    EXPECT_EQ(glass.alphaMode, AlphaMode::kBlend);
+    EXPECT_TRUE(glass.doubleSided);
+    // The colours and second UVs of the first primitive, defaults for the second; tangents made for the normal map.
+    ASSERT_EQ(model.mesh.colors.size(), model.mesh.vertices.size());
+    EXPECT_FLOAT_EQ(model.mesh.colors.at(0).y, 0.0F);
+    EXPECT_FLOAT_EQ(model.mesh.colors.back().y, 1.0F);
+    EXPECT_EQ(model.mesh.uv2.size(), model.mesh.vertices.size());
+    ASSERT_EQ(model.mesh.tangents.size(), model.mesh.vertices.size());
+    EXPECT_NEAR(model.mesh.tangents.at(0).x, 1.0F, 1e-4F);  // U runs along +X
+}
+
+TEST(ModelLoader, AModelWithoutTheNewDataKeepsNone) {
+    aylo::test::plugins::AssetsFolder assets;
+    assets.writeTriangle();
+    const aylo::core::vfs::DirectorySource source{assets.root()};
+    const aylo::plugins::mesh::detail::Model model = aylo::plugins::mesh::detail::loadModel("models/tri.gltf", source);
+    EXPECT_TRUE(model.mesh.tangents.empty());
+    EXPECT_TRUE(model.mesh.colors.empty());
+    EXPECT_TRUE(model.mesh.uv2.empty());
+}

@@ -193,12 +193,24 @@ scene's size, made again when it changes, `acquireDepth()`) cleared to 1. `rende
 (line list, depth test and writes, premultiplied blending, `shaders/lines3d.*`), with `_globals3D`: frame uniforms
 whose `viewProjection` is the 3D view's (`CameraView3D`, Vulkan's clip space). The 3D world is drawn in the letterboxed
 viewport of the 2D view. `rendering::StaticMeshPass` draws the static meshes there first, before the lines
-(`shaders/staticmesh.*`: triangles, depth test and writes, no culling, the world matrix and the colours as push
-constants, the base colour texture at set 1); the meshes live in `_staticMeshes`, host-visible buffers written once
+(`shaders/staticmesh.*`, the shaders ABI's mesh stages with no game code: triangles, depth test and writes, no
+culling, the base colour texture at set 1). Every mesh pipeline uses `_meshLayout`: the game shaders' sets 0 to 2 and
+set 3, the frame's draws. `uploadWorld()` turns the frame's `StaticMeshDraw`s into `rendering::StaticMeshDrawData`
+(model matrix, inverse, normal matrix, colour, bounds, instance values; `makeStaticMeshDrawData()`) in a host-visible
+storage buffer per frame in flight, grown by doubling and never shrunk, once per frame; the scene and the preview
+record the same draws. Each part is one indexed draw whose push constants are its base colour and its draw's index
+(`StaticMeshConstants`, 32 bytes); the meshes live in `_staticMeshes`, host-visible buffers written once
 by `createStaticMesh()` and freed through the deletion queue. A draw with a game material
-(`StaticMeshDraw::material`) is drawn with the pipeline of its shader's `kMesh` variant
+(`StaticMeshDraw::material`) is drawn with the pipeline of its shader's `kMesh` variant for its render state (`GameShader` keeps one pipeline per state its
+materials ask for, in a deque so a frame's pointers stay valid; the culling, blending, depth test and write and depth
+bias come from `RenderState`, the front face is counter-clockwise, which the projection keeps on screen: `FrontFaceTests`)
 (`StaticMeshPass::createMaterialPipeline()`: the same vertices and depth test, against `kWorld3DDepthFormat`) and its
-set 2, found by `findMaterial()`; the others with the built-in pipeline. The 2D world then draws in a second scope that keeps the image (`loadedColorAttachment`), so
+set 2, found by `findMaterial()`; the others with the built-in pipeline. `uploadWorld()` turns each `StaticMeshDraw` into one draw per part, each with its material
+(`StaticMeshDraw::partMaterials`, copied by `drawStaticMesh()` since the span only lives during the call; a pass with
+`listedPartsOnly` skips the parts it does not name), so a blended part is sorted on its own; the parts of one mesh bind
+its buffers once. `StaticMeshPass::record()` draws the opaque draws first, in their order, then
+the blended ones back to front from the picture's camera (`orderMeshDraws()`: by distance to the centre of their box,
+or along the view for an orthographic camera), per picture, since the scene and the preview have their own camera. The 2D world then draws in a second scope that keeps the image (`loadedColorAttachment`), so
 it lies over the 3D world; the screen effects and the overlay follow as before. Without a 3D view, nothing changes. The
 2D pipelines have no depth attachment, which is why the two worlds draw in two scopes.
 

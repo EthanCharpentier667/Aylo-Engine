@@ -11,8 +11,11 @@
 #include <array>
 #include <cstdint>
 #include <glm/common.hpp>
+#include <glm/ext/quaternion_float.hpp>
 #include <glm/ext/vector_float2.hpp>
+#include <glm/ext/vector_float3.hpp>
 #include <glm/ext/vector_uint2.hpp>
+#include <glm/geometric.hpp>
 #include <glm/trigonometric.hpp>
 #include <iostream>
 #include <memory>
@@ -29,6 +32,7 @@
 #include "aylo/contract/platform/WindowConfig.hpp"
 #include "aylo/contract/platform/event/Event.hpp"
 #include "aylo/contract/renderer/drawing/BlendMode.hpp"
+#include "aylo/contract/renderer/drawing/Light3D.hpp"
 #include "aylo/contract/renderer/drawing/Lines3D.hpp"
 #include "aylo/contract/renderer/drawing/Overlay.hpp"
 #include "aylo/contract/renderer/drawing/Texture.hpp"
@@ -46,12 +50,14 @@
 #include "aylo/ecs/system/EventWriter.hpp"
 #include "aylo/ecs/system/ResourceParam.hpp"
 #include "aylo/ecs/system/Side.hpp"
+#include "core/asset/AssetId.hpp"
 #include "core/config/Settings.hpp"
 #include "plugins/AssetDirectory.hpp"
 #include "plugins/graphics/BackendRegistry.hpp"
 #include "plugins/graphics/Camera.hpp"
 #include "plugins/graphics/CursorCapture.hpp"
 #include "plugins/graphics/GraphicsResources.hpp"
+#include "plugins/graphics/Light.hpp"
 #include "plugins/graphics/Lines3D.hpp"
 #include "plugins/graphics/OverlayQueue.hpp"
 #include "plugins/graphics/PlatformEventFilter.hpp"
@@ -284,6 +290,86 @@ void applyCamera3D(ecs::NonSendMut<plugins::graphics::Backend> backend,
     }
 }
 
+/// @return @p light as the renderer takes it, placed and turned by @p global: it shines along -Z.
+contract::renderer::Light3D toLight(const transform::GlobalTransform3D& global, const graphics::Light3D& light) {
+    const glm::quat rotation{global.rotation.w, global.rotation.x, global.rotation.y, global.rotation.z};
+    const float outer = glm::radians(std::clamp(light.outerConeAngle, 0.0F, 89.9F));
+    return contract::renderer::Light3D{
+        .kind = static_cast<contract::renderer::LightKind3D>(light.kind),
+        .position = global.position,
+        .direction = glm::normalize(rotation * glm::vec3{0.0F, 0.0F, -1.0F}),
+        .right = glm::normalize(rotation * glm::vec3{1.0F, 0.0F, 0.0F}),
+        .color = light.color,
+        .intensity = light.kind == graphics::LightKind::kDirectional ? light.intensity : light.power,
+        .range = std::max(light.range, 0.0F),
+        .innerCone = std::min(glm::radians(std::max(light.innerConeAngle, 0.0F)), outer),
+        .outerCone = outer,
+        .size = glm::max(light.size, glm::vec2{0.0F}),
+        .castShadows = light.castShadows,
+        .shadowSoftness = std::max(light.shadowSoftness, 0.0F),
+        .shadowBias = std::max(light.shadowBias, 0.0F),
+        .shadowNormalBias = std::max(light.shadowNormalBias, 0.0F)};
+}
+
+/// @return @p shown as the renderer takes it: its sky an image if it names a loaded one, else a gradient if it asks for
+/// one, else none.
+contract::renderer::Environment3D toEnvironment(const graphics::Environment3D& shown, const TextureAssets& textures) {
+    contract::renderer::Environment3D environment{.ambient = shown.ambient,
+                                                  .strength = shown.strength,
+                                                  .shadowCascades = shown.shadowCascades,
+                                                  .shadowResolution = shown.shadowResolution,
+                                                  .shadowDistance = shown.shadowDistance,
+                                                  .skyTop = shown.skyTop,
+                                                  .skyHorizon = shown.skyHorizon,
+                                                  .skyBottom = shown.skyBottom,
+                                                  .skyIntensity = shown.skyIntensity,
+                                                  .skyRotation = shown.skyRotation,
+                                                  .lightingFromSky = shown.lightingFromSky};
+    if (shown.skyTexture != core::asset::AssetId{}) {
+        if (const std::optional<contract::renderer::TextureId> texture = textures.getTexture(shown.skyTexture)) {
+            environment.sky = contract::renderer::SkyKind::kTexture;
+            environment.skyTexture = *texture;
+        }
+    } else if (shown.skyGradient) {
+        environment.sky = contract::renderer::SkyKind::kGradient;
+    }
+    return environment;
+}
+
+/// @brief Render: gives the renderer the enabled lights of the 3D world, in the world's space, and the ambient light of
+/// the Environment3D with the highest priority, with its sky (its image once loaded). Nothing when no light and no
+/// environment exist, so a game without them costs nothing.
+void applyLights3D(ecs::NonSendMut<plugins::graphics::Backend> backend, ecs::Res<TextureAssets> textures,
+                   ecs::Query<const transform::GlobalTransform3D, const graphics::Light3D> lights,
+                   ecs::Query<const graphics::Environment3D> environments) {
+    std::vector<contract::renderer::Light3D> given;
+    for (auto [entity, global, light] : lights) {
+        if (light.enabled) {
+            given.push_back(toLight(global, light));
+        }
+    }
+    std::optional<contract::renderer::Environment3D> environment;
+    std::int32_t environmentPriority = 0;
+    for (auto [entity, shown] : environments) {
+        if (!environment || shown.priority > environmentPriority) {
+            environment = toEnvironment(shown, *textures);
+            environmentPriority = shown.priority;
+        }
+    }
+    if ((given.empty() && !environment) || !isStarted(*backend)) {
+        return;
+    }
+    if (!backend->renderer->supportsLights3D()) {
+        if (!backend->warnedNoLights) {
+            std::cerr << "[graphics] This renderer does not light the 3D world: its lights are ignored "
+                         "(docs/3d/rendering.md).\n";
+            backend->warnedNoLights = true;
+        }
+        return;
+    }
+    backend->renderer->setLights3D(given, environment.value_or(contract::renderer::Environment3D{}));
+}
+
 /// @brief Render: draws every Lines3D at its entity's GlobalTransform3D.
 void drawLines3D(ecs::NonSendMut<plugins::graphics::Backend> backend,
                  ecs::Query<const transform::GlobalTransform3D, const graphics::Lines3D> sets) {
@@ -416,6 +502,8 @@ void GraphicsPlugin::build(ecs::App& app) {
     static_cast<void>(app.getWorld().getComponents().registerType<graphics::Camera2D>());
     static_cast<void>(app.getWorld().getComponents().registerType<graphics::Camera3D>());
     static_cast<void>(app.getWorld().getComponents().registerType<graphics::Lines3D>());
+    static_cast<void>(app.getWorld().getComponents().registerType<graphics::Light3D>());
+    static_cast<void>(app.getWorld().getComponents().registerType<graphics::Environment3D>());
     addTextureCalls(app);
     addWindowCalls(app);
 
@@ -435,8 +523,11 @@ void GraphicsPlugin::build(ecs::App& app) {
     app.addSystem(ecs::Phase::kRender, std::string{kCamera3DSystem}, &applyCamera3D)
         .after(std::string{kBeginFrameSystem})
         .setSide(ecs::Side::kClient);
-    app.addSystem(ecs::Phase::kRender, std::string{kLines3DSystem}, &drawLines3D)
+    app.addSystem(ecs::Phase::kRender, std::string{kLights3DSystem}, &applyLights3D)
         .after(std::string{kCamera3DSystem})
+        .setSide(ecs::Side::kClient);
+    app.addSystem(ecs::Phase::kRender, std::string{kLines3DSystem}, &drawLines3D)
+        .after(std::string{kLights3DSystem})
         .setSide(ecs::Side::kClient);
     app.addSystem(ecs::Phase::kRender, std::string{kCameraSystem}, &applyCamera)
         .after(std::string{kLines3DSystem})

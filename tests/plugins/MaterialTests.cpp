@@ -158,3 +158,24 @@ TEST(MaterialInstance, RejectsAMaterialValueAnUnknownNameOrTheWrongType) {
     EXPECT_THROW(instance.set(shader, "missing", 1.0F), ShaderException);
     EXPECT_THROW(instance.set(shader, "flash", glm::vec4{1.0F}), ShaderException);
 }
+
+TEST(RenderStateOverride, ReplacesOnlyWhatItSets) {
+    using aylo::contract::renderer::CullMode;
+    using aylo::contract::renderer::DepthMode;
+    using aylo::contract::renderer::MeshBlend;
+    using aylo::contract::renderer::RenderState;
+    const RenderState shader{.cull = CullMode::kBack, .depthBias = 1.0F};
+    aylo::plugins::shader::RenderStateOverride change;
+    EXPECT_TRUE(change.empty());
+    change.cull = CullMode::kNone;
+    const RenderState changed = change.applyTo(shader);
+    EXPECT_EQ(changed.cull, CullMode::kNone);
+    EXPECT_EQ(changed.depthBias, 1.0F);
+    EXPECT_EQ(changed.depth, DepthMode::kTestWrite);
+
+    // A blend over an opaque shader stops writing depth, unless the material says how it uses depth.
+    change.blend = MeshBlend::kAlpha;
+    EXPECT_EQ(change.applyTo(shader).depth, DepthMode::kTestNoWrite);
+    change.depth = DepthMode::kTestWrite;
+    EXPECT_EQ(change.applyTo(shader).depth, DepthMode::kTestWrite);
+}

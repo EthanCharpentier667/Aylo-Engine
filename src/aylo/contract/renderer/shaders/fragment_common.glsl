@@ -10,6 +10,7 @@ layout(location = 0) in vec2 ayloUvIn;
 layout(location = 1) in vec4 ayloColorIn;  // Premultiplied.
 layout(location = 2) flat in uint ayloBlendIn;
 layout(location = 0) out vec4 ayloFragColor;
+#define FRAGCOORD gl_FragCoord  // The pixel: xy in framebuffer pixels from the top-left corner (centres at .5), z depth.
 
 const uint ayloBlendAdditive = 1u;
 const uint ayloBlendCutout = 2u;

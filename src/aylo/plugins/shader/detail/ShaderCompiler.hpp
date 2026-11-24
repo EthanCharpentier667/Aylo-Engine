@@ -10,12 +10,14 @@
 #include <array>
 #include <cstdint>
 #include <span>
+#include <string>
 #include <string_view>
 #include <vector>
 
 #include "aylo/contract/renderer/shaders/CompiledShader.hpp"
 #include "plugins/shader/Export.hpp"
 #include "plugins/shader/detail/ShaderAssembler.hpp"
+#include "plugins/shader/detail/ShaderIncludes.hpp"
 
 namespace aylo::plugins::shader::detail {
 
@@ -45,8 +47,13 @@ inline constexpr std::array<contract::renderer::ShaderTarget, 1> kMeshTargets{co
 /// @details glslang's process-wide state is set up by the first compilation, once, and torn down at exit: glslang
 /// wants it exactly once per process.
 /// @param name Names the shader in messages: its file, or its name.
-/// @throws exceptions::ShaderException If the parser cannot read a declaration or glslang rejects a stage.
+/// @param read Reads the game files its `#include`s name (expandIncludes()); empty: only the engine's libraries.
+/// @param included Filled, if given, with the files it included (their names, the engine's libraries too), for a
+/// reload to follow them.
+/// @throws exceptions::ShaderException If an include fails, the parser cannot read a declaration or glslang rejects a
+/// stage: a line in an included file is named with that file.
 [[nodiscard]] AYLO_PLUGIN_SHADER_API contract::renderer::CompiledShader compileShader(
-    std::string_view source, std::string_view name, std::span<const contract::renderer::ShaderTarget> targets = {});
+    std::string_view source, std::string_view name, std::span<const contract::renderer::ShaderTarget> targets = {},
+    const IncludeReader& read = {}, std::vector<std::string>* included = nullptr);
 
 }  // namespace aylo::plugins::shader::detail

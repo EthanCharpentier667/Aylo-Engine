@@ -39,7 +39,9 @@ changing what a 2D game is, and the tasks that bring it, in order. Decided with 
 | `aylo.Camera2D` | `priority` (and the projection's zoom) | graphics (renamed, D3-02) |
 | `aylo.Camera3D` | `projection` (`"perspective"`, `"orthographic"`), `fieldOfView` (degrees), `orthographicHeight`, `near`, `far`, `priority` | graphics, D3-02 |
 | `aylo.Lines3D`... | debug lines in the 3D world | graphics, D3-02 |
-| `aylo.MeshRenderer` | `mesh` asset id, `color` vec4 | mesh (new plugin), D3-03 |
+| `aylo.MeshRenderer` | `mesh` asset id, `color` vec4, `material`, `materials` (one per part, R3D-04) | mesh (new plugin), D3-03 |
+| `aylo.Light3D` | `kind` (`"directional"`, `"point"`, `"spot"`, `"area"`), `color`, `power` (W), `intensity` (lux), `range`, `innerConeAngle`, `outerConeAngle`, `size`, `castShadows`, `enabled` | graphics, R3D-05 |
+| `aylo.Environment3D` | `ambient`, `strength`, `priority` | graphics, R3D-05 |
 | `aylo.Collider3D` | `shape` (`"box"`, `"sphere"`, `"capsule"`), `size` vec3, `radius`, `halfHeight`, `offset` vec3, `sensor`, `friction`, `restitution`, `layer`, `mask` | physics, D3-04 |
 | `aylo.Velocity3D` | `linear` vec3, `angular` vec3 | physics, D3-04 |
 
@@ -79,9 +81,9 @@ metres, Y up. FBX and OBJ count V from the bottom of a texture, so V is turned t
 files a model names (an OBJ's `.mtl`) are read only through the game's `FileSource`, never from the disk at large; a
 missing `.mtl` leaves the model white instead of failing it. A texture named by an absolute path (the artist's machine)
 is looked for by its name next to the model. Assimp was set aside: one library for some forty formats, but heavy to
-build, and weaker than these two on glTF materials, skins and animations. The first version is unlit:
-each primitive is drawn with its base colour factor and base colour texture; the nodes of the file are flattened into
-one mesh, their transforms baked in. Lighting, materials, skins and animations come later.
+build, and weaker than these two on glTF materials, skins and animations. The nodes of the file are
+flattened into one mesh, their transforms baked in. Each part keeps its file's material, drawn unlit or lit
+(`docs/3d/rendering.md`, R3D-06 and R3D-07); skins and animations come later.
 
 ## Physics
 

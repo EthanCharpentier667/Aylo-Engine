@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <array>
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
@@ -19,6 +20,7 @@
 #include <span>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 #include <vulkan/vulkan_raii.hpp>
@@ -27,6 +29,7 @@
 #include "aylo/contract/platform/IPlatform.hpp"
 #include "aylo/contract/renderer/IRenderer.hpp"
 #include "aylo/contract/renderer/drawing/Color.hpp"
+#include "aylo/contract/renderer/drawing/Light3D.hpp"
 #include "aylo/contract/renderer/drawing/Lines3D.hpp"
 #include "aylo/contract/renderer/drawing/Mesh.hpp"
 #include "aylo/contract/renderer/drawing/Overlay.hpp"
@@ -39,6 +42,7 @@
 #include "aylo/contract/renderer/particle/Particle.hpp"
 #include "aylo/contract/renderer/particle/ParticleSystemDesc.hpp"
 #include "aylo/contract/renderer/shaders/CompiledShader.hpp"
+#include "aylo/contract/renderer/shaders/ScreenEffect.hpp"
 #include "aylo/contract/renderer/stats/FrameStats.hpp"
 #include "aylo/contract/renderer/view/CameraView.hpp"
 #include "aylo/contract/renderer/view/ScenePreview.hpp"
@@ -68,11 +72,13 @@
 #include "postprocess/ScreenPass.hpp"
 #include "presentation/Swapchain.hpp"
 #include "rendering/DrawList.hpp"
+#include "rendering/EnvironmentMaps.hpp"
 #include "rendering/Lines3DPass.hpp"
 #include "rendering/MaterialBinding.hpp"
 #include "rendering/MeshPass.hpp"
 #include "rendering/ParticleConstants.hpp"
 #include "rendering/ParticlePass.hpp"
+#include "rendering/ShadowPlan.hpp"
 #include "rendering/ShapeBatch.hpp"
 #include "rendering/ShapePass.hpp"
 #include "rendering/SpriteBatch.hpp"
@@ -212,6 +218,13 @@ class AYLO_RENDER_VULKAN_API VulkanRenderer final : public contract::renderer::I
     /// the frame.
     void drawLines3D(const contract::renderer::Lines3D& lines) override;
 
+    /// @return True: the 3D world's lights reach the mesh shaders (set 3, binding 1).
+    [[nodiscard]] bool supportsLights3D() const noexcept override;
+
+    /// @brief Sets the frame's lights and ambient light; the last call of a frame applies.
+    void setLights3D(std::span<const contract::renderer::Light3D> lights,
+                     const contract::renderer::Environment3D& environment) override;
+
     /// @brief Uploads a static mesh (rendering::StaticMeshPass::upload()), kept until destroyStaticMesh().
     /// @throws std::invalid_argument If an index or a part goes past the vertices or the indices.
     [[nodiscard]] contract::renderer::StaticMeshId createStaticMesh(
@@ -294,6 +307,11 @@ class AYLO_RENDER_VULKAN_API VulkanRenderer final : public contract::renderer::I
     /// each effect runs over it (postprocess::ScreenPass), in the window and in a tool's scene texture alike.
     void setScreenMaterials(std::span<const contract::renderer::MaterialId> materials) override;
 
+    /// @brief Sets the screen effects as passes, from the next frame recorded (see IRenderer::setScreenEffects()):
+    /// named targets are made and resized as their passes ask, the picture before the effects stays readable
+    /// (SCENE_TEXTURE), and the last result is kept when an effect reads PREVIOUS_FRAME.
+    void setScreenEffects(std::span<const contract::renderer::ScreenEffectPass> passes) override;
+
     /// @brief Adds @p mesh to the frame's meshes, drawn by endFrame() in the window, over the scene and the overlay,
     /// by rendering::MeshPass. Does nothing if beginFrame() skipped the frame.
     void drawMesh(const contract::renderer::Mesh& mesh) override;
@@ -321,6 +339,12 @@ class AYLO_RENDER_VULKAN_API VulkanRenderer final : public contract::renderer::I
     [[nodiscard]] contract::renderer::FrameStats getFrameStats() const override;
 
   private:
+    /// @brief A target of the screen effects: an image and the set that samples it.
+    struct ScreenTarget {
+        memory::Image image;          ///< Drawn into, then sampled.
+        vk::raii::DescriptorSet set;  ///< Samples image (the texture set layout).
+    };
+
     /// @brief Overlay draws that share a kind and a clip, recorded at endFrame().
     struct OverlayRun {
         bool shapes = false;                                 ///< Batches of _overlayShapes, or of _overlaySprites.
@@ -352,6 +376,32 @@ class AYLO_RENDER_VULKAN_API VulkanRenderer final : public contract::renderer::I
     /// @brief Builds the sprite, particle and shape passes for the swapchain's image format, deferring the previous
     /// ones (their pipelines render into the old format) to the deletion queue.
     void createPasses();
+
+    /// @return The named target @p name of @p extent and @p format, made or made again if its size or format changed
+    /// (the old one deferred to @p frameIndex).
+    ScreenTarget& acquireScreenTarget(std::unique_ptr<ScreenTarget>& slot, std::size_t frameIndex, vk::Extent2D extent,
+                                      vk::Format format, const std::string& name);
+
+    /// @brief Records the screen effects over @p targets (the scene in the first image), of @p extent.
+    /// @return The index of the image of @p targets holding the result, in SHADER_READ_ONLY_OPTIMAL.
+    /// @return The size of @p pass's target, for a picture of @p extent.
+    [[nodiscard]] static vk::Extent2D sizeOf(const contract::renderer::ScreenEffectPass& pass, vk::Extent2D extent);
+
+    /// @return Set 2 of the pass @p index: its material's set, or a copy of it with the targets @p pass binds.
+    vk::DescriptorSet effectMaterialSet(std::size_t frameIndex, std::size_t index,
+                                        const contract::renderer::ScreenEffectPass& pass,
+                                        const rendering::MaterialBinding& effect,
+                                        const postprocess::ScreenPass::Targets& targets);
+
+    /// @brief Writes set 3 of the effects for @p frameIndex (depth, scene, previous frame), making the previous frame's
+    /// image when @p keepPrevious asks for it.
+    void writeScreenSet(const vk::raii::CommandBuffer& commandBuffer, std::size_t frameIndex,
+                        const postprocess::ScreenPass::Targets& targets, vk::Extent2D extent, bool keepDepth,
+                        bool keepPrevious);
+
+    std::size_t recordScreenEffects(const vk::raii::CommandBuffer& commandBuffer, std::size_t frameIndex,
+                                    const postprocess::ScreenPass::Targets& targets, vk::Extent2D extent,
+                                    std::span<const rendering::MaterialBinding> effects, bool keepDepth);
 
     /// @return The images the scene is drawn into and the screen effects take turns on, for a scene of @p extent: the
     /// current ones, or new ones when the size changed (the old are deferred to @p frameIndex).
@@ -419,6 +469,7 @@ class AYLO_RENDER_VULKAN_API VulkanRenderer final : public contract::renderer::I
         std::unique_ptr<memory::Image>* depth;   ///< Its depth buffer.
         const char* depthName;                   ///< The depth buffer's debug name.
         std::size_t lineVertices;                ///< How many of the uploaded line vertices it draws.
+        bool keepDepth = false;  ///< Whether its depth is kept and left readable (a screen effect reads it).
     };
 
     /// @brief Records a picture of the frame's 3D world into its target, cleared to the clear colour, with its own
@@ -426,8 +477,24 @@ class AYLO_RENDER_VULKAN_API VulkanRenderer final : public contract::renderer::I
     void recordWorld3D(const vk::raii::CommandBuffer& commandBuffer, std::size_t frameIndex,
                        const World3DTarget& target);
 
-    /// @brief Copies the frame's world (sprites, particles, shapes) into the frame's buffers, once, for recordWorld().
-    void uploadWorld(std::size_t frameIndex);
+    /// @brief Copies the frame's world (sprites, particles, shapes, meshes, lights) into the frame's buffers, once, for
+    /// recordWorld(), and plans the frame's shadow maps from the scene's 3D view, of @p viewSize in @p framebufferSize.
+    void uploadWorld(std::size_t frameIndex, glm::vec2 viewSize, glm::uvec2 framebufferSize);
+
+    /// @brief Records the frame's shadow maps into the atlas (rendering::ShadowPlan), then leaves it for the lit
+    /// shaders to read; without any, only makes it readable.
+    /// @return The image the sky is made from: the sky's texture (null until it is loaded), the fallback for a gradient
+    /// (not read), null without a sky.
+    [[nodiscard]] vk::ImageView skyImage() const;
+
+    /// @return The levels of the sky's reflection when it lights the world this frame (packLights()), else 0.
+    [[nodiscard]] std::uint32_t skyLightLevels() const;
+
+    /// @brief Makes the sky's maps again if the sky changed (EnvironmentMaps::update()), and points frame
+    /// @p frameIndex's mesh set at them if they changed since it last did.
+    void updateSky(const vk::raii::CommandBuffer& commandBuffer, std::size_t frameIndex);
+
+    void recordShadows(const vk::raii::CommandBuffer& commandBuffer, std::size_t frameIndex);
 
     /// @brief Records the frame's world, uploaded, in the dynamic rendering scope already begun, seen through @p view
     /// with the frame uniforms of @p globals: what the scene and the preview both draw.
@@ -443,6 +510,10 @@ class AYLO_RENDER_VULKAN_API VulkanRenderer final : public contract::renderer::I
     /// @brief Records the frame's meshes into the window, in the dynamic rendering scope already begun.
     void recordMeshes(const vk::raii::CommandBuffer& commandBuffer, std::size_t frameIndex, glm::uvec2 framebufferSize);
 
+    /// @return How @p texture is sampled, or nothing if it no longer exists.
+    [[nodiscard]] std::optional<material::GameMaterial::TextureBinding> findTextureBinding(
+        contract::renderer::TextureId texture) const;
+
     /// @return The descriptor set of @p texture, or a null handle if it no longer exists.
     [[nodiscard]] vk::DescriptorSet findTextureSet(contract::renderer::TextureId texture) const;
 
@@ -451,7 +522,8 @@ class AYLO_RENDER_VULKAN_API VulkanRenderer final : public contract::renderer::I
     /// exists, or if its shader does not serve @p target.
     [[nodiscard]] rendering::MaterialBinding findMaterial(contract::renderer::MaterialId material,
                                                           contract::renderer::ShaderTarget target,
-                                                          std::size_t frameIndex);
+                                                          std::size_t frameIndex,
+                                                          vk::Format colorFormat = vk::Format::eUndefined);
 
     /// @brief Checks that @p desc fits @p shader: values of its block's size, and textures that exist.
     /// @throws std::invalid_argument Naming @p function if not.
@@ -491,7 +563,20 @@ class AYLO_RENDER_VULKAN_API VulkanRenderer final : public contract::renderer::I
     std::optional<contract::renderer::View> _view;         ///< From setView(); reset by beginFrame().
     std::optional<contract::renderer::View3D> _view3D;     ///< From setView3D(); reset by beginFrame().
     std::vector<rendering::LineVertex3D> _lines3D;  ///< The frame's 3D lines, in the world; cleared by beginFrame().
-    std::vector<contract::renderer::StaticMeshDraw> _staticMeshDraws;  ///< The frame's meshes; cleared by beginFrame().
+    /// @brief A static mesh draw of the frame, its part materials copied into _staticMeshPartMaterials.
+    struct StaticMeshRequest {
+        contract::renderer::StaticMeshDraw draw;  ///< As given, its partMaterials span cleared.
+        std::uint32_t firstPart{0};               ///< Its part materials in _staticMeshPartMaterials.
+        std::uint32_t partCount{0};               ///< How many.
+    };
+    std::vector<StaticMeshRequest> _staticMeshDraws;  ///< The frame's meshes; cleared by beginFrame().
+    std::vector<contract::renderer::MaterialId> _staticMeshPartMaterials;  ///< Their part materials, one after another.
+    std::vector<contract::renderer::Light3D> _lights3D;  ///< From setLights3D(); cleared by beginFrame().
+    contract::renderer::Environment3D _environment3D;    ///< From setLights3D(); reset by beginFrame().
+    std::vector<std::byte> _packedLights;                ///< _lights3D as the shaders read them, reused.
+    rendering::ShadowPlan _shadowPlan;                   ///< The frame's shadow maps, planned by uploadWorld().
+    bool _lightsGiven{false};  ///< Whether setLights3D() was called this frame: models without a material are lit.
+    std::vector<rendering::StaticMeshPass::Draw> _meshDraws;  ///< _staticMeshDraws found, for the upload; reused.
     std::filesystem::path _pipelineCachePath;     ///< Config::pipelineCache resolved by init(); empty: not kept.
     contract::renderer::Color _clearColor{0.0F};  ///< From beginFrame(): what endFrame() clears with.
     rendering::SpriteBatch _sprites;              ///< The frame's sprites; cleared by beginFrame().
@@ -517,7 +602,8 @@ class AYLO_RENDER_VULKAN_API VulkanRenderer final : public contract::renderer::I
     std::optional<glm::uvec2> _previewSize;         ///< The preview texture's size now; empty: no preview.
     contract::renderer::TextureId _previewTexture;  ///< The preview's texture in _textures.
     contract::renderer::FrameStats _stats;          ///< What the last frame drew.
-    std::vector<contract::renderer::MaterialId> _screenMaterials;  ///< From setScreenMaterials(), in their order.
+    std::vector<contract::renderer::ScreenEffectPass> _screenEffects;  ///< From setScreenEffects() (or materials).
+    std::string _screenEffectsProblem;  ///< Why the effects last refused to run, said once.
 
     // 2. Context: created by init(), in this order.
     std::optional<core::Instance> _instance;                ///< The VkInstance.
@@ -552,17 +638,33 @@ class AYLO_RENDER_VULKAN_API VulkanRenderer final : public contract::renderer::I
     std::unique_ptr<pipeline::PipelineLayout> _layout;  ///< The shared layout (rendering/ShaderLayout.hpp) of every
                                                         ///< pipeline: sets 0 and 1, and the push constants.
     std::unique_ptr<pipeline::PipelineLayout> _materialLayout;  ///< The game shaders' layout: the shared one and set 2.
-    std::unique_ptr<rendering::SpritePass> _spritePass;         ///< Draws _sprites at endFrame().
-    std::unique_ptr<rendering::SpritePass> _overlaySpritePass;  ///< Draws _overlaySprites, with buffers of its own.
-    std::unique_ptr<rendering::ShapePass> _overlayShapePass;    ///< Draws _overlayShapes, with buffers of its own.
-    std::unique_ptr<rendering::ShapePass> _shapePass;           ///< Draws _shapes at endFrame(), after the sprites.
-    std::unique_ptr<rendering::MeshPass> _meshPass;             ///< Draws _mesh at endFrame(), over everything.
-    std::unique_ptr<rendering::Lines3DPass> _lines3DPass;       ///< Draws _lines3D first, in the 3D world.
-    std::unique_ptr<rendering::StaticMeshPass> _staticMeshPass;  ///< Draws _staticMeshDraws, in the 3D world.
-    std::unique_ptr<frame::FrameGlobals> _globals3D;             ///< The frame uniforms of the 3D world: its view.
-    std::unique_ptr<memory::Image> _sceneDepth;                  ///< The 3D world's depth buffer, the scene's size.
-    std::unique_ptr<memory::Image> _previewDepth;                ///< The preview's depth buffer, its size.
-    std::unique_ptr<frame::FrameGlobals> _previewGlobals3D;      ///< The frame uniforms of the preview's 3D view.
+    std::unique_ptr<descriptor::DescriptorSetLayout> _meshDrawSetLayout;     ///< Set 3: the frame's mesh draws.
+    std::unique_ptr<descriptor::DescriptorSetLayout> _meshPartSetLayout;     ///< Set 1 of a mesh: its part's textures.
+    std::unique_ptr<descriptor::DescriptorAllocator> _meshPartDescriptors;   ///< Allocates the parts' sets.
+    std::unique_ptr<descriptor::DescriptorSetLayout> _screenDepthSetLayout;  ///< Set 3 of a screen effect: the depth.
+    std::unique_ptr<descriptor::DescriptorAllocator> _screenDepthDescriptors;  ///< Allocates the depth sets.
+    std::vector<vk::raii::DescriptorSet> _screenDepthSets;    ///< One per frame in flight, written each frame.
+    std::unique_ptr<pipeline::PipelineLayout> _screenLayout;  ///< Every screen effect's: sets 0 to 3.
+    std::unordered_map<std::string, std::unique_ptr<ScreenTarget>> _effectTargets;  ///< The passes' named outputs.
+    std::unique_ptr<ScreenTarget> _previousFrame;  ///< The last result, kept when an effect reads PREVIOUS_FRAME.
+    std::vector<std::vector<vk::raii::DescriptorSet>> _effectSets;  ///< Per frame, per pass: set 2 with targets bound.
+    std::unique_ptr<frame::FrameGlobals> _screenGlobals;  ///< The screen effects' uniforms: the 2D view, the 3D camera.
+    std::unique_ptr<pipeline::PipelineLayout> _meshLayout;         ///< Every static mesh pipeline's: sets 0 to 3.
+    std::unique_ptr<rendering::SpritePass> _spritePass;            ///< Draws _sprites at endFrame().
+    std::unique_ptr<rendering::SpritePass> _overlaySpritePass;     ///< Draws _overlaySprites, with buffers of its own.
+    std::unique_ptr<rendering::ShapePass> _overlayShapePass;       ///< Draws _overlayShapes, with buffers of its own.
+    std::unique_ptr<rendering::ShapePass> _shapePass;              ///< Draws _shapes at endFrame(), after the sprites.
+    std::unique_ptr<rendering::MeshPass> _meshPass;                ///< Draws _mesh at endFrame(), over everything.
+    std::unique_ptr<rendering::Lines3DPass> _lines3DPass;          ///< Draws _lines3D first, in the 3D world.
+    std::unique_ptr<rendering::StaticMeshPass> _staticMeshPass;    ///< Draws _staticMeshDraws, in the 3D world.
+    std::unique_ptr<rendering::EnvironmentMaps> _environmentMaps;  ///< The sky and its light.
+    std::array<std::uint64_t, kFramesInFlight> _skyWritten{};      ///< Per frame: the sky maps' version its set reads.
+    std::unique_ptr<frame::FrameGlobals> _globals3D;               ///< The frame uniforms of the 3D world: its view.
+    std::unique_ptr<memory::Image> _shadowAtlas;  ///< Every shadow map of the frame, in tiles (kShadowAtlasSize).
+    std::vector<std::unique_ptr<frame::FrameGlobals>> _shadowGlobals;  ///< The view of each shadow map, set 0.
+    std::unique_ptr<memory::Image> _sceneDepth;              ///< The 3D world's depth buffer, the scene's size.
+    std::unique_ptr<memory::Image> _previewDepth;            ///< The preview's depth buffer, its size.
+    std::unique_ptr<frame::FrameGlobals> _previewGlobals3D;  ///< The frame uniforms of the preview's 3D view.
     std::unique_ptr<rendering::ParticlePass> _particlePass;  ///< Draws _particleRanges at endFrame(), among _sprites.
     std::unique_ptr<particle::ParticleSimulationPass> _particleSimulation;  ///< Runs _simulations at endFrame().
     std::unique_ptr<postprocess::ScreenPass> _screenPass;  ///< Runs the screen effects and shows the result.

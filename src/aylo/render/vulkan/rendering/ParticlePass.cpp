@@ -73,7 +73,7 @@ void ParticlePass::upload(std::size_t frameIndex, std::span<const contract::rend
 pipeline::GraphicsPipeline ParticlePass::createMaterialPipeline(
     const core::Device& device, const vk::raii::ShaderModule& vertex, const vk::raii::ShaderModule& fragment,
     bool /*instanceValues*/, const pipeline::PipelineLayout& layout, vk::Format colorFormat,
-    const vk::raii::PipelineCache* cache) {
+    const vk::raii::PipelineCache* cache, const contract::renderer::RenderState& /*state*/) {
     const auto bindings = getParticleBindings();
     const auto attributes = getParticleAttributes();
     return pipeline::GraphicsPipeline::Builder{}

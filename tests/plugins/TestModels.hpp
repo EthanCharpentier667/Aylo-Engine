@@ -39,6 +39,67 @@ inline constexpr std::string_view kTriangle = R"({
                 {"bufferView": 2, "componentType": 5123, "count": 3, "type": "SCALAR"}]
 })";
 
+/// @brief The triangle of kTriangle twice, as two parts whose materials are named "Body" and "Glass", in one file.
+inline constexpr std::string_view kTwoParts = R"({
+  "asset": {"version": "2.0"}, "scene": 0, "scenes": [{"nodes": [0]}],
+  "nodes": [{"mesh": 0}],
+  "meshes": [{"primitives": [{"attributes": {"POSITION": 0, "TEXCOORD_0": 1}, "indices": 2, "material": 0},
+                             {"attributes": {"POSITION": 0, "TEXCOORD_0": 1}, "indices": 2, "material": 1}]}],
+  "materials": [{"name": "Body"}, {"name": "Glass"}],
+  "buffers": [{"uri": "tri.bin", "byteLength": 68}],
+  "bufferViews": [{"buffer": 0, "byteOffset": 0, "byteLength": 36}, {"buffer": 0, "byteOffset": 36, "byteLength": 24},
+                  {"buffer": 0, "byteOffset": 60, "byteLength": 6}],
+  "accessors": [{"bufferView": 0, "componentType": 5126, "count": 3, "type": "VEC3", "min": [0, 0, 0], "max": [1, 1, 0]},
+                {"bufferView": 1, "componentType": 5126, "count": 3, "type": "VEC2"},
+                {"bufferView": 2, "componentType": 5123, "count": 3, "type": "SCALAR"}]
+})";
+
+/// @brief A square of side 2 facing +Z with every map glTF has (base colour with KHR_texture_transform, normal,
+/// metallic-roughness, occlusion, emissive with KHR_materials_emissive_strength), a cutout alpha, one side, vertex
+/// colours and a second UV set, drawn again as a blended two-sided part "Glass". Its buffer is panel.bin.
+inline constexpr std::string_view kPanel = R"({
+  "asset": {"version": "2.0"}, "scene": 0, "scenes": [{"nodes": [0]}], "nodes": [{"mesh": 0}],
+  "meshes": [{"primitives": [
+    {"attributes": {"POSITION": 0, "NORMAL": 1, "TEXCOORD_0": 2, "COLOR_0": 3, "TEXCOORD_1": 4}, "indices": 5, "material": 0},
+    {"attributes": {"POSITION": 0, "NORMAL": 1, "TEXCOORD_0": 2}, "indices": 5, "material": 1}]}],
+  "materials": [
+    {"name": "Panel",
+     "pbrMetallicRoughness": {"baseColorTexture": {"index": 0, "extensions": {"KHR_texture_transform": {"scale": [2, 2], "rotation": 0.3}}},
+                              "metallicFactor": 0.5, "metallicRoughnessTexture": {"index": 0}},
+     "normalTexture": {"index": 0, "scale": 0.8}, "occlusionTexture": {"index": 0, "strength": 0.7},
+     "emissiveTexture": {"index": 0}, "emissiveFactor": [1, 0.5, 0], "alphaMode": "MASK", "alphaCutoff": 0.4,
+     "extensions": {"KHR_materials_emissive_strength": {"emissiveStrength": 2}}},
+    {"name": "Glass", "pbrMetallicRoughness": {"baseColorFactor": [0.3, 0.6, 1, 0.4], "roughnessFactor": 0.1},
+     "alphaMode": "BLEND", "doubleSided": true}],
+  "extensionsUsed": ["KHR_texture_transform", "KHR_materials_emissive_strength"],
+  "textures": [{"source": 0}], "images": [{"uri": "tex.png"}],
+  "buffers": [{"uri": "panel.bin", "byteLength": 236}],
+  "bufferViews": [{"buffer": 0, "byteOffset": 0, "byteLength": 48}, {"buffer": 0, "byteOffset": 48, "byteLength": 48},
+                  {"buffer": 0, "byteOffset": 96, "byteLength": 32}, {"buffer": 0, "byteOffset": 128, "byteLength": 64},
+                  {"buffer": 0, "byteOffset": 192, "byteLength": 32}, {"buffer": 0, "byteOffset": 224, "byteLength": 12}],
+  "accessors": [{"bufferView": 0, "componentType": 5126, "count": 4, "type": "VEC3", "min": [-1, -1, 0], "max": [1, 1, 0]},
+                {"bufferView": 1, "componentType": 5126, "count": 4, "type": "VEC3"},
+                {"bufferView": 2, "componentType": 5126, "count": 4, "type": "VEC2"},
+                {"bufferView": 3, "componentType": 5126, "count": 4, "type": "VEC4"},
+                {"bufferView": 4, "componentType": 5126, "count": 4, "type": "VEC2"},
+                {"bufferView": 5, "componentType": 5123, "count": 6, "type": "SCALAR"}]
+})";
+
+/// @return panel.bin: positions, normals, UVs, colours, second UVs and indices of kPanel.
+inline std::vector<std::byte> panelBuffer() {
+    const std::array<float, 59> floats{-1, -1, 0, 1, -1, 0, 1, 1, 0, -1, 1, 0,              // positions
+                                       0,  0,  1, 0, 0,  1, 0, 0, 1, 0,  0, 1,              // normals
+                                       0,  1,  1, 1, 1,  0, 0, 0,                           // UVs
+                                       1,  0,  0, 1, 0,  1, 0, 1, 0, 0,  1, 1, 1, 1, 1, 1,  // colours
+                                       0,  1,  1, 1, 1,  0, 0, 0,                           // second UVs
+                                       0,  0,  0};                                          // padding, cut below
+    std::vector<std::byte> bytes(224 + 12);
+    std::memcpy(bytes.data(), floats.data(), 224);
+    const std::array<std::uint16_t, 6> indices{0, 1, 2, 0, 2, 3};
+    std::memcpy(bytes.data() + 224, indices.data(), sizeof(indices));
+    return bytes;
+}
+
 /// @brief A Wavefront OBJ square of side 1 in the XY plane, facing +Z, its one face a quad, with the material "Orange"
 /// of quad.mtl.
 inline constexpr std::string_view kQuadObj = R"(mtllib quad.mtl
@@ -143,6 +204,19 @@ class AssetsFolder {
     void writeTriangle() const {
         write("models/tri.gltf", kTriangle);
         write("models/tri.bin", triangleBuffer());
+        write("models/tex.png", aylo::test::plugins::twoPixelPng());
+    }
+
+    /// @brief Writes the two-part model and its buffer under models/: parts.gltf and tri.bin.
+    void writeTwoParts() const {
+        write("models/parts.gltf", kTwoParts);
+        write("models/tri.bin", triangleBuffer());
+    }
+
+    /// @brief Writes the panel and its files under models/: panel.gltf, panel.bin and tex.png.
+    void writePanel() const {
+        write("models/panel.gltf", kPanel);
+        write("models/panel.bin", panelBuffer());
         write("models/tex.png", aylo::test::plugins::twoPixelPng());
     }
 

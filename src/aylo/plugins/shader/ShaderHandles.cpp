@@ -151,6 +151,9 @@ bool ShaderHandles::createMaterial(core::asset::AssetId id, const ShaderAssets& 
     try {
         contract::renderer::MaterialDesc desc{.shader = shaderId->second,
                                               .values = packMaterialValues(*compiled, *material)};
+        if (!material->renderState.empty()) {
+            desc.renderState = material->renderState.applyTo(compiled->renderState);
+        }
         const auto slots = resolveMaterialTextures(*compiled, *material);
         for (std::size_t slot = 0; slot < slots.size(); ++slot) {
             if (slots.at(slot) == core::asset::AssetId{}) {

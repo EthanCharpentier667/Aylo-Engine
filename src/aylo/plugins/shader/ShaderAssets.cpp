@@ -28,6 +28,7 @@
 #include "core/vfs/FileSource.hpp"
 #include "plugins/shader/BuiltinShaders.hpp"
 #include "plugins/shader/detail/ShaderCompiler.hpp"
+#include "plugins/shader/detail/ShaderIncludes.hpp"
 
 namespace aylo::plugins::shader {
 
@@ -51,7 +52,7 @@ core::asset::AssetId ShaderAssets::load(const std::filesystem::path& path) {
     }
     _files.insert(*id);
     try {
-        contract::renderer::CompiledShader compiled = compileFile(name);
+        contract::renderer::CompiledShader compiled = compileFile(*id, name);
         static_cast<void>(_shaders.store(*id, std::move(name), std::move(compiled)));
         _added.push_back(*id);
     } catch (const std::exception& error) {
@@ -67,7 +68,7 @@ core::asset::AssetId ShaderAssets::add(const std::string& name, std::string_view
         return core::asset::AssetId::fromPath(normalized);
     }
     try {
-        contract::renderer::CompiledShader compiled = detail::compileShader(source, normalized);
+        contract::renderer::CompiledShader compiled = compileSource(*id, source, normalized);
         static_cast<void>(_shaders.store(*id, std::move(normalized), std::move(compiled)));
         _added.push_back(*id);
     } catch (const std::exception& error) {
@@ -88,7 +89,7 @@ bool ShaderAssets::reload(core::asset::AssetId id) {
     std::string name = entry->path;
     const bool replaces = _shaders.get(id) != nullptr;
     try {
-        contract::renderer::CompiledShader compiled = compileFile(name);
+        contract::renderer::CompiledShader compiled = compileFile(id, name);
         std::cerr << "[ShaderAssets] Reloaded '" << name << "'\n";
         static_cast<void>(_shaders.store(id, std::move(name), std::move(compiled)));
     } catch (const std::exception& error) {
@@ -112,6 +113,7 @@ bool ShaderAssets::unload(core::asset::AssetId id) {
         return false;
     }
     _files.erase(id);
+    _includes.erase(id);
     std::erase(_reloaded, id);
     _unloaded.push_back(id);
     return true;
@@ -123,13 +125,36 @@ std::vector<core::asset::AssetId> ShaderAssets::takeReloaded() { return std::exc
 
 std::vector<core::asset::AssetId> ShaderAssets::takeUnloaded() { return std::exchange(_unloaded, {}); }
 
-contract::renderer::CompiledShader ShaderAssets::compileFile(const std::string& name) const {
+std::vector<core::asset::AssetId> ShaderAssets::getIncluders(std::string_view path) const {
+    std::vector<core::asset::AssetId> includers;
+    for (const auto& [id, files] : _includes) {
+        if (_files.contains(id) && std::ranges::contains(files, path)) {
+            includers.push_back(id);
+        }
+    }
+    return includers;
+}
+
+contract::renderer::CompiledShader ShaderAssets::compileSource(core::asset::AssetId id, std::string_view source,
+                                                               const std::string& name) {
+    const detail::IncludeReader read = [this](const std::string& path) -> std::optional<std::string> {
+        if (!_source->exists(path)) {
+            return std::nullopt;
+        }
+        return _source->read(path);
+    };
+    std::vector<std::string>& included = _includes[id];
+    included.clear();
+    return detail::compileShader(source, name, {}, read, &included);
+}
+
+contract::renderer::CompiledShader ShaderAssets::compileFile(core::asset::AssetId id, const std::string& name) {
     if (const std::optional<std::string_view> builtin = findBuiltinShader(name)) {
-        return detail::compileShader(*builtin, name);
+        return compileSource(id, *builtin, name);
     }
     if (name.starts_with(kBuiltinShaderPrefix)) {
         throw core::asset::exceptions::AssetLoadException{
-            std::format("Shader '{}': the engine has no such shader (@aylo/bloom.glsl, @aylo/tonemap.glsl)", name)};
+            std::format("Shader '{}': the engine has no such shader ({})", name, listBuiltinShaders())};
     }
     std::string text;
     try {
@@ -137,7 +162,7 @@ contract::renderer::CompiledShader ShaderAssets::compileFile(const std::string& 
     } catch (const core::asset::exceptions::AssetLoadException& error) {
         throw core::asset::exceptions::AssetLoadException{std::format("Shader '{}': {}", name, error.what())};
     }
-    return detail::compileShader(text, name);
+    return compileSource(id, text, name);
 }
 
 }  // namespace aylo::plugins::shader

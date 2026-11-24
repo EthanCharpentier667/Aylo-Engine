@@ -160,3 +160,100 @@ TEST(ShaderParser, ReservesTheScreenBuiltins) {
         EXPECT_NE(message.find("reserved"), std::string::npos) << name;
     }
 }
+
+TEST(ShaderParser, ReservesTheMeshBuiltins) {
+    for (const std::string_view name :
+         {"NORMAL", "MODEL_MATRIX", "INV_MODEL_MATRIX", "NORMAL_MATRIX", "AABB_MIN", "AABB_MAX"}) {
+        const std::string message = errorOf(std::string{"uniform vec3 "} + std::string{name} + ";\nvoid fragment() {}");
+        EXPECT_NE(message.find("reserved"), std::string::npos) << name;
+    }
+}
+
+TEST(ShaderParser, ReadsVaryingsAndBlanksTheirLines) {
+    const ParsedShader shader =
+        parseShader("varying vec3 position;\nvarying int seed;\nvoid vertex() { position = vec3(VERTEX, 0.0); }", "v");
+    ASSERT_EQ(shader.varyings.size(), 2U);
+    EXPECT_EQ(shader.varyings.at(0).type, "vec3");
+    EXPECT_EQ(shader.varyings.at(0).name, "position");
+    EXPECT_EQ(shader.varyings.at(1).type, "int");
+    EXPECT_EQ(shader.varyings.at(1).line, 2U);
+    EXPECT_EQ(shader.body, "\n\nvoid vertex() { position = vec3(VERTEX, 0.0); }");
+}
+
+TEST(ShaderParser, RejectsAVaryingItCannotPass) {
+    EXPECT_NE(errorOf("varying mat4 m;\nvoid fragment() {}").find("line 1"), std::string::npos);  // a type it has not
+    EXPECT_NE(errorOf("varying vec3 a[2];\nvoid fragment() {}"), "");                             // an array
+    EXPECT_NE(errorOf("varying vec3 a\nvoid fragment() {}"), "");                                 // no ';'
+    EXPECT_NE(errorOf("varying vec3 UV;\nvoid fragment() {}").find("reserved"), std::string::npos);
+    EXPECT_NE(errorOf("uniform float a;\nvarying float a;\nvoid fragment() {}").find("twice"), std::string::npos);
+    std::string many;
+    for (int index = 0; index <= 5; ++index) {
+        many += "varying float v" + std::to_string(index) + ";\n";
+    }
+    EXPECT_NE(errorOf(many + "void fragment() {}").find("more than 5 varyings"), std::string::npos);
+}
+
+TEST(ShaderParser, ReservesThe3DViewBuiltins) {
+    for (const std::string_view name :
+         {"WORLD_POSITION", "LOCAL_POSITION", "VIEW_DIR", "CAMERA_POSITION", "VIEW_MATRIX", "PROJECTION_MATRIX",
+          "INV_VIEW_MATRIX", "INV_PROJECTION_MATRIX", "FRONT_FACING", "FRAGCOORD"}) {
+        const std::string message = errorOf(std::string{"uniform vec3 "} + std::string{name} + ";\nvoid fragment() {}");
+        EXPECT_NE(message.find("reserved"), std::string::npos) << name;
+    }
+}
+
+TEST(ShaderParser, ReadsTheRenderStatePragmasOfA3DShader) {
+    using aylo::contract::renderer::CullMode;
+    using aylo::contract::renderer::DepthMode;
+    using aylo::contract::renderer::MeshBlend;
+    const ParsedShader hull = parseShader(
+        "#pragma mesh\n#pragma cull front\n#pragma depth_bias 2 1.5\n#pragma depth notest\nvoid fragment() {}", "hull");
+    EXPECT_EQ(hull.renderState.cull, CullMode::kFront);
+    EXPECT_EQ(hull.renderState.depth, DepthMode::kNoTest);
+    EXPECT_EQ(hull.renderState.depthBias, 2.0F);
+    EXPECT_EQ(hull.renderState.depthBiasSlope, 1.5F);
+    EXPECT_EQ(hull.body, "\n\n\n\nvoid fragment() {}");
+
+    const ParsedShader plain = parseShader("#pragma mesh\nvoid fragment() {}", "plain");
+    EXPECT_EQ(plain.renderState, aylo::contract::renderer::RenderState{});  // back faces culled, opaque, depth written
+
+    // A blended shader that says nothing of depth tests it without writing it.
+    const ParsedShader glass = parseShader("#pragma mesh\n#pragma blend alpha\nvoid fragment() {}", "glass");
+    EXPECT_EQ(glass.renderState.blend, MeshBlend::kAlpha);
+    EXPECT_EQ(glass.renderState.depth, DepthMode::kTestNoWrite);
+}
+
+TEST(ShaderParser, NamesAWrongRenderStatePragmaAndItsLine) {
+    EXPECT_TRUE(errorOf("#pragma mesh\n#pragma cull sideways\nvoid fragment() {}").contains("line 2"));
+    EXPECT_TRUE(errorOf("#pragma mesh\n#pragma blend glow\nvoid fragment() {}").contains("'additive'"));
+    EXPECT_TRUE(errorOf("#pragma mesh\n#pragma depth maybe\nvoid fragment() {}").contains("'notest'"));
+    EXPECT_TRUE(errorOf("#pragma mesh\n#pragma depth_bias much\nvoid fragment() {}").contains("depth_bias"));
+    EXPECT_TRUE(errorOf("#pragma cull front\nvoid fragment() {}").contains("for a '#pragma mesh' shader"));
+}
+
+TEST(ShaderParser, ReadsALitShaderAndItsLightFunction) {
+    const ParsedShader toon =
+        parseShader("#pragma mesh\n#pragma lit\nvoid fragment() {}\nvoid light() { DIFFUSE_LIGHT += ALBEDO; }", "toon");
+    EXPECT_TRUE(toon.lit);
+    EXPECT_TRUE(toon.hasLight);
+    EXPECT_TRUE(errorOf("#pragma lit\nvoid fragment() {}").contains("for a '#pragma mesh' shader"));
+    EXPECT_TRUE(errorOf("#pragma mesh\nvoid fragment() {}\nvoid light() {}").contains("needs '#pragma lit'"));
+    for (const std::string_view name :
+         {"ALBEDO", "ROUGHNESS", "LIGHT_DIR", "DIFFUSE_LIGHT", "SHADOW", "ALPHA_SCISSOR", "SPECULAR_LIGHT"}) {
+        EXPECT_TRUE(
+            errorOf(std::string{"uniform float "} + std::string{name} + ";\nvoid fragment() {}").contains("reserved"))
+            << name;
+    }
+}
+
+TEST(ShaderParser, ReadsThatA3DShaderCastsNoShadow) {
+    EXPECT_FALSE(parseShader("#pragma mesh\n#pragma shadow off\nvoid fragment() {}", "glow").castsShadows);
+    EXPECT_TRUE(parseShader("#pragma mesh\nvoid fragment() {}", "plain").castsShadows);
+    EXPECT_TRUE(errorOf("#pragma shadow off\nvoid fragment() {}").contains("for a '#pragma mesh' shader"));
+}
+
+TEST(ShaderParser, ReservesTheDepthTexture) {
+    EXPECT_TRUE(errorOf("uniform float DEPTH_TEXTURE;\nvoid fragment() {}").contains("reserved"));
+    EXPECT_TRUE(errorOf("uniform sampler2D SCENE_TEXTURE;\nvoid fragment() {}").contains("reserved"));
+    EXPECT_TRUE(errorOf("uniform sampler2D PREVIOUS_FRAME;\nvoid fragment() {}").contains("reserved"));
+}

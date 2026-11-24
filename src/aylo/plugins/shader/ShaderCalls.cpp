@@ -16,18 +16,24 @@
 #include <glm/ext/vector_float2.hpp>
 #include <glm/ext/vector_float3.hpp>
 #include <glm/ext/vector_float4.hpp>
+#include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
+#include <vector>
 
 #include "aylo/contract/renderer/shaders/CompiledShader.hpp"
+#include "aylo/contract/renderer/shaders/ScreenEffect.hpp"
 #include "aylo/ecs/app/App.hpp"
 #include "aylo/ecs/app/PluginRegistry.hpp"
 #include "aylo/ecs/system/ResourceParam.hpp"
 #include "core/asset/AssetId.hpp"
 #include "plugins/graphics/TextureAssets.hpp"
+#include "plugins/shader/InstanceValues.hpp"
 #include "plugins/shader/Material.hpp"
 #include "plugins/shader/MaterialAssets.hpp"
 #include "plugins/shader/MaterialFile.hpp"
+#include "plugins/shader/RenderStateNames.hpp"
 #include "plugins/shader/ScreenMaterials.hpp"
 #include "plugins/shader/ShaderAssets.hpp"
 #include "plugins/shader/exceptions/ShaderExceptions.hpp"
@@ -46,10 +52,23 @@ namespace {
     return declared != shader->materialValues.end() && declared->type == contract::renderer::ShaderValueType::kInt;
 }
 
+/// @return Whether the shader of @p material declares the `instance uniform` @p name as an `int`.
+[[nodiscard]] bool isInstanceInt(const ShaderAssets& shaders, const MaterialAssets& materials,
+                                 const core::asset::AssetId material, const std::string_view name) {
+    const Material* found = materials.get(material);
+    const contract::renderer::CompiledShader* shader = found != nullptr ? shaders.get(found->shader) : nullptr;
+    if (shader == nullptr) {
+        return false;
+    }
+    const auto declared = std::ranges::find(shader->instanceValues, name, &contract::renderer::ShaderValue::name);
+    return declared != shader->instanceValues.end() && declared->type == contract::renderer::ShaderValueType::kInt;
+}
+
 /// @return The value @p arguments describe; a script has one kind of number, so it is an `int` if @p integer says so
 /// and it is whole.
 /// @throws exceptions::ShaderException If its size is not 1 to 4.
-[[nodiscard]] MaterialValue readValue(const SetMaterialValueArguments& arguments, const bool integer) {
+template <typename Arguments>
+[[nodiscard]] MaterialValue readValue(const Arguments& arguments, const bool integer) {
     switch (arguments.size) {
         case 1:
             if (integer && std::trunc(arguments.x) == arguments.x) {
@@ -99,6 +118,64 @@ MaterialResult setMaterialTexture(ecs::ResMut<MaterialAssets> materials, const S
     return MaterialResult{.material = arguments.material};
 }
 
+void setInstanceValue(ecs::Res<ShaderAssets> shaders, ecs::Res<MaterialAssets> materials,
+                      ecs::ResMut<InstanceValueRequests> requests, const SetInstanceValueArguments& arguments) {
+    if (materials->get(arguments.material) == nullptr) {
+        throw exceptions::ShaderException{std::format("No material has the id {}", arguments.material.value)};
+    }
+    const bool integer = isInstanceInt(*shaders, *materials, arguments.material, arguments.name.view());
+    requests->requests.push_back(InstanceValueRequest{.entity = arguments.entity,
+                                                      .material = arguments.material,
+                                                      .name = std::string{arguments.name.view()},
+                                                      .value = readValue(arguments, integer)});
+}
+
+/// @return The value named @p name of a render state part, through @p named; nothing for an empty name.
+/// @throws exceptions::ShaderException If @p name names none.
+template <typename Named>
+auto readRenderPart(std::string_view name, std::string_view part, Named named) -> decltype(named(name)) {
+    if (name.empty()) {
+        return std::nullopt;
+    }
+    auto value = named(name);
+    if (!value) {
+        throw exceptions::ShaderException{std::format("'{}' is not a render state {}", name, part)};
+    }
+    return value;
+}
+
+MaterialResult setMaterialRenderState(ecs::ResMut<MaterialAssets> materials,
+                                      const SetMaterialRenderStateArguments& arguments) {
+    RenderStateOverride state;
+    state.cull = readRenderPart(arguments.cull.view(), "cull", &cullModeNamed);
+    state.blend = readRenderPart(arguments.blend.view(), "blend", &blendNamed);
+    state.depth = readRenderPart(arguments.depth.view(), "depth", &depthModeNamed);
+    if (!std::isnan(arguments.depthBias)) {
+        state.depthBias = arguments.depthBias;
+    }
+    if (!std::isnan(arguments.depthBiasSlope)) {
+        state.depthBiasSlope = arguments.depthBiasSlope;
+    }
+    if (!materials->setRenderState(arguments.material, state)) {
+        throw exceptions::ShaderException{std::format("No material has the id {}", arguments.material.value)};
+    }
+    return MaterialResult{.material = arguments.material};
+}
+
+MaterialResult setMaterialNextPass(ecs::ResMut<MaterialAssets> materials,
+                                   const SetMaterialNextPassArguments& arguments) {
+    if (arguments.nextPass != core::asset::AssetId{} && materials->get(arguments.nextPass) == nullptr) {
+        throw exceptions::ShaderException{std::format("No material has the id {}", arguments.nextPass.value)};
+    }
+    if (arguments.nextPass == arguments.material) {
+        throw exceptions::ShaderException{"A material cannot be its own next pass"};
+    }
+    if (!materials->setNextPass(arguments.material, arguments.nextPass)) {
+        throw exceptions::ShaderException{std::format("No material has the id {}", arguments.material.value)};
+    }
+    return MaterialResult{.material = arguments.material};
+}
+
 void setScreenMaterials(ecs::Res<MaterialAssets> materials, ecs::ResMut<ScreenMaterials> screen,
                         const SetScreenMaterialsArguments& arguments) {
     for (const core::asset::AssetId material : arguments.materials) {
@@ -107,6 +184,46 @@ void setScreenMaterials(ecs::Res<MaterialAssets> materials, ecs::ResMut<ScreenMa
         }
     }
     screen->materials = arguments.materials;
+    screen->passes.clear();
+}
+
+void addScreenEffect(ecs::Res<MaterialAssets> materials, ecs::ResMut<ScreenMaterials> screen,
+                     const AddScreenEffectArguments& arguments) {
+    if (materials->get(arguments.material) == nullptr) {
+        throw exceptions::ShaderException{std::format("No material has the id {}", arguments.material.value)};
+    }
+    if (screen->passes.empty()) {
+        screen->materials.clear();  // passes replace the list of materials
+    }
+    screen->passes.push_back(ScreenMaterials::Pass{.material = arguments.material,
+                                                   .input = std::string{arguments.input.view()},
+                                                   .output = std::string{arguments.output.view()},
+                                                   .scale = arguments.scale,
+                                                   .size = glm::uvec2{arguments.width, arguments.height},
+                                                   .lowPrecision = arguments.lowPrecision});
+}
+
+void addScreenEffectInput(ecs::ResMut<ScreenMaterials> screen, const AddScreenEffectInputArguments& arguments) {
+    if (screen->passes.empty()) {
+        throw exceptions::ShaderException{"aylo.shader.addScreenEffectInput: there is no pass to give it to"};
+    }
+    screen->passes.back().inputs.emplace_back(std::string{arguments.sampler.view()},
+                                              std::string{arguments.target.view()});
+}
+
+void checkScreenEffects(ecs::ResMut<ScreenMaterials> screen) {
+    std::vector<contract::renderer::ScreenEffectPass> named;
+    for (const ScreenMaterials::Pass& pass : screen->passes) {
+        contract::renderer::ScreenEffectPass made{.input = pass.input, .output = pass.output};
+        for (const auto& [sampler, target] : pass.inputs) {
+            made.inputs.push_back(contract::renderer::ScreenEffectInput{.target = target});
+        }
+        named.push_back(std::move(made));
+    }
+    if (const std::optional<std::string> problem = contract::renderer::checkScreenEffects(named)) {
+        screen->passes.clear();
+        throw exceptions::ShaderException{std::format("The screen effects cannot run: {}", *problem)};
+    }
 }
 }  // namespace
 
@@ -125,7 +242,13 @@ void addShaderCalls(ecs::App& app) {
     app.addCall(std::string{kLoadMaterialCall}, &loadMaterial);
     app.addCall(std::string{kSetValueCall}, &setMaterialValue);
     app.addCall(std::string{kSetTextureCall}, &setMaterialTexture);
+    app.addCall(std::string{kSetRenderStateCall}, &setMaterialRenderState);
+    app.addCall(std::string{kSetNextPassCall}, &setMaterialNextPass);
+    app.addCall(std::string{kSetInstanceValueCall}, &setInstanceValue);
     app.addCall(std::string{kSetScreenMaterialsCall}, &setScreenMaterials);
+    app.addCall(std::string{kAddScreenEffectCall}, &addScreenEffect);
+    app.addCall(std::string{kAddScreenEffectInputCall}, &addScreenEffectInput);
+    app.addCall(std::string{kCheckScreenEffectsCall}, &checkScreenEffects);
 }
 
 }  // namespace aylo::plugins::shader

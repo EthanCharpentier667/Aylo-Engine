@@ -54,6 +54,20 @@ vk::PipelineColorBlendAttachmentState blendAttachment(GraphicsPipeline::BlendMod
                 .setDstColorBlendFactor(Factor::eOneMinusSrcAlpha)
                 .setSrcAlphaBlendFactor(Factor::eOne)
                 .setDstAlphaBlendFactor(Factor::eOneMinusSrcAlpha);
+        case GraphicsPipeline::BlendMode::kPremultipliedAdditive:
+            return vk::PipelineColorBlendAttachmentState{state}
+                .setBlendEnable(vk::True)
+                .setSrcColorBlendFactor(Factor::eOne)
+                .setDstColorBlendFactor(Factor::eOne)
+                .setSrcAlphaBlendFactor(Factor::eZero)
+                .setDstAlphaBlendFactor(Factor::eOne);
+        case GraphicsPipeline::BlendMode::kMultiply:
+            return vk::PipelineColorBlendAttachmentState{state}
+                .setBlendEnable(vk::True)
+                .setSrcColorBlendFactor(Factor::eDstColor)
+                .setDstColorBlendFactor(Factor::eOneMinusSrcAlpha)
+                .setSrcAlphaBlendFactor(Factor::eZero)
+                .setDstAlphaBlendFactor(Factor::eOne);
     }
     throw std::logic_error("GraphicsPipeline: invalid blend mode");
 }
@@ -103,19 +117,37 @@ GraphicsPipeline::Builder& GraphicsPipeline::Builder::setDepth(vk::Format format
     return *this;
 }
 
+GraphicsPipeline::Builder& GraphicsPipeline::Builder::setDepthTest(bool test) {
+    _depthTest = test;
+    return *this;
+}
+
+GraphicsPipeline::Builder& GraphicsPipeline::Builder::setDepthBias(float constant, float slope) {
+    _depthBiasConstant = constant;
+    _depthBiasSlope = slope;
+    return *this;
+}
+
+GraphicsPipeline::Builder& GraphicsPipeline::Builder::setDynamicDepthBias() {
+    _dynamicDepthBias = true;
+    return *this;
+}
+
 GraphicsPipeline::Builder& GraphicsPipeline::Builder::setLayout(const PipelineLayout& layout) {
     _layout = &layout;
     return *this;
 }
 
 bool GraphicsPipeline::Builder::isComplete() const noexcept {
-    return _vertexShader != nullptr && _fragmentShader != nullptr && _colorFormat && _layout != nullptr;
+    return _vertexShader != nullptr && _fragmentShader != nullptr && (_colorFormat || _depthFormat) &&
+           _layout != nullptr;
 }
 
 GraphicsPipeline GraphicsPipeline::Builder::build(const core::Device& device,
                                                   const vk::raii::PipelineCache* cache) const {
-    if (!_colorFormat || !isComplete()) {
-        throw std::logic_error("GraphicsPipeline::Builder: the shaders, the color format and the layout are required");
+    if (!isComplete()) {
+        throw std::logic_error(
+            "GraphicsPipeline::Builder: the shaders, a color or depth format and the layout are required");
     }
     // Everything the create info points to lives in this scope, until the pipeline is created.
     const std::array stages{
@@ -129,20 +161,31 @@ GraphicsPipeline GraphicsPipeline::Builder::build(const core::Device& device,
             _attributes);
     const auto inputAssembly = vk::PipelineInputAssemblyStateCreateInfo{}.setTopology(_topology);
     const auto viewport = vk::PipelineViewportStateCreateInfo{}.setViewportCount(1).setScissorCount(1);
-    const auto rasterization = vk::PipelineRasterizationStateCreateInfo{}.setCullMode(_cullMode).setLineWidth(1.0F);
+    const bool depthBias = _dynamicDepthBias || _depthBiasConstant != 0.0F || _depthBiasSlope != 0.0F;
+    const auto rasterization = vk::PipelineRasterizationStateCreateInfo{}
+                                   .setCullMode(_cullMode)
+                                   .setFrontFace(vk::FrontFace::eCounterClockwise)
+                                   .setDepthBiasEnable(depthBias ? vk::True : vk::False)
+                                   .setDepthBiasConstantFactor(_depthBiasConstant)
+                                   .setDepthBiasSlopeFactor(_depthBiasSlope)
+                                   .setLineWidth(1.0F);
     const auto multisample =
         vk::PipelineMultisampleStateCreateInfo{}.setRasterizationSamples(vk::SampleCountFlagBits::e1);
     const auto depth = vk::PipelineDepthStencilStateCreateInfo{}
-                           .setDepthTestEnable(_depthFormat ? vk::True : vk::False)
+                           .setDepthTestEnable(_depthFormat && _depthTest ? vk::True : vk::False)
                            .setDepthWriteEnable(_depthWrite ? vk::True : vk::False)
                            .setDepthCompareOp(vk::CompareOp::eLessOrEqual);
     const vk::PipelineColorBlendAttachmentState attachment = blendAttachment(_blendMode);
-    const auto blend = vk::PipelineColorBlendStateCreateInfo{}.setAttachments(attachment);
-    const std::array dynamicStates{vk::DynamicState::eViewport, vk::DynamicState::eScissor};
-    const auto dynamic = vk::PipelineDynamicStateCreateInfo{}.setDynamicStates(dynamicStates);
-    const std::array colorFormats{*_colorFormat};
-    const vk::PipelineRenderingCreateInfo rendering =
-        rendering::pipelineRenderingInfo(colorFormats, _depthFormat.value_or(vk::Format::eUndefined));
+    const auto blend = _colorFormat ? vk::PipelineColorBlendStateCreateInfo{}.setAttachments(attachment)
+                                    : vk::PipelineColorBlendStateCreateInfo{};
+    const std::array dynamicStates{vk::DynamicState::eViewport, vk::DynamicState::eScissor,
+                                   vk::DynamicState::eDepthBias};
+    const auto dynamic = vk::PipelineDynamicStateCreateInfo{}
+                             .setDynamicStateCount(_dynamicDepthBias ? 3U : 2U)
+                             .setPDynamicStates(dynamicStates.data());
+    const std::array colorFormats{_colorFormat.value_or(vk::Format::eUndefined)};
+    const vk::PipelineRenderingCreateInfo rendering = rendering::pipelineRenderingInfo(
+        std::span{colorFormats}.first(_colorFormat ? 1 : 0), _depthFormat.value_or(vk::Format::eUndefined));
 
     const vk::GraphicsPipelineCreateInfo info = vk::GraphicsPipelineCreateInfo{}
                                                     .setPNext(&rendering)

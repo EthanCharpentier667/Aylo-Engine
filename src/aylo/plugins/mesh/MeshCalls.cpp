@@ -7,8 +7,11 @@
 
 #include "plugins/mesh/MeshCalls.hpp"
 
+#include <algorithm>
 #include <array>
+#include <cstdint>
 #include <filesystem>
+#include <iterator>
 #include <string>
 #include <string_view>
 
@@ -22,6 +25,17 @@ namespace {
 MeshResult loadMesh(ecs::ResMut<MeshAssets> meshes, const LoadMeshArguments& arguments) {
     return MeshResult{.mesh = meshes->load(std::filesystem::path{arguments.path.view()})};
 }
+
+FindPartResult findPart(ecs::Res<MeshAssets> meshes, const FindPartArguments& arguments) {
+    const MeshAssets::Entry* entry = meshes->get(arguments.mesh);
+    if (entry == nullptr) {
+        return FindPartResult{};
+    }
+    const auto found = std::ranges::find(entry->partNames, arguments.name.view());
+    return FindPartResult{.part = found == entry->partNames.end()
+                                      ? 0
+                                      : static_cast<std::int32_t>(std::distance(entry->partNames.begin(), found)) + 1};
+}
 }  // namespace
 
 void addMeshForms(ecs::PluginRegistry& registry) {
@@ -34,6 +48,7 @@ void addMeshForms(ecs::PluginRegistry& registry) {
 
 void addMeshCalls(ecs::App& app) {
     app.addCall(std::string{kLoadMeshCall}, &loadMesh);
+    app.addCall(std::string{kFindPartCall}, &findPart);
     addMeshForms(app.getPluginRegistry());
 }
 

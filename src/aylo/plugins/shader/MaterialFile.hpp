@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <cstddef>
 #include <filesystem>
 #include <string>
 #include <string_view>
@@ -14,6 +15,7 @@
 
 #include "aylo/plugins/shader/Export.hpp"
 #include "core/asset/AssetId.hpp"
+#include "plugins/shader/Material.hpp"
 
 namespace aylo::plugins::graphics {
 class TextureAssets;
@@ -24,6 +26,9 @@ namespace aylo::plugins::shader {
 class MaterialAssets;
 class ShaderAssets;
 
+/// @brief Most materials drawn on one model part: a material and the next passes it chains.
+inline constexpr std::size_t kMaxMaterialPasses = 8;
+
 /// @brief The extension of a material file.
 inline constexpr std::string_view kMaterialExtension = ".material";
 
@@ -33,7 +38,9 @@ inline constexpr std::string_view kMaterialExtension = ".material";
 ///   "textures": { "noise": "textures/noise.png" } }
 /// @endcode
 /// @details What it leaves out keeps the shader's default. A value is a number or 2 to 4 numbers; a whole number given
-/// to an `int` uniform is an int.
+/// to an `int` uniform is an int. `renderState` replaces parts of a 3D shader's render state:
+/// `{ "cull": "front", "blend": "alpha", "depth": "test nowrite", "depthBias": -2, "depthBiasSlope": -1 }`
+/// (RenderStateNames.hpp), each optional.
 struct AYLO_PLUGIN_SHADER_API MaterialFile {
     /// @brief One value, by name.
     struct Value {
@@ -46,9 +53,11 @@ struct AYLO_PLUGIN_SHADER_API MaterialFile {
         std::string path;  ///< The image, in the assets.
     };
 
-    std::string shader;             ///< The shader, in the assets or `@aylo/...`; empty: none yet.
-    std::vector<Value> values;      ///< In the order of the file.
-    std::vector<Texture> textures;  ///< In the order of the file.
+    std::string shader;               ///< The shader, in the assets or `@aylo/...`; empty: none yet.
+    std::vector<Value> values;        ///< In the order of the file.
+    std::vector<Texture> textures;    ///< In the order of the file.
+    RenderStateOverride renderState;  ///< What it changes of its 3D shader's render state; written only if any.
+    std::string nextPass;             ///< The `.material` drawn after it on the same model, in the assets; empty: none.
 
     /// @return The material read from @p text, a file named @p path for the messages.
     /// @throws core::asset::exceptions::AssetLoadException If it is not JSON or not a material: naming the file, the
@@ -59,11 +68,13 @@ struct AYLO_PLUGIN_SHADER_API MaterialFile {
     [[nodiscard]] std::string write() const;
 };
 
-/// @brief Reads the material file @p path (in the assets, as ShaderAssets reads its files), loads its shader and
-/// textures, and makes it the material known by @p path (MaterialAssets::define()): read again, it replaces itself, so
-/// what draws with it follows.
+/// @brief Reads the material file @p path (in the assets, as ShaderAssets reads its files), loads its shader,
+/// textures and next pass (a file of its own, read the same way: a chain of kMaxMaterialPasses at most), and makes it
+/// the material known by @p path (MaterialAssets::define()): read again, it replaces itself, so what draws with it
+/// follows.
 /// @return Its id.
-/// @throws core::asset::exceptions::AssetLoadException If it cannot be read or is not a material.
+/// @throws core::asset::exceptions::AssetLoadException If it cannot be read or is not a material, or its next passes
+/// loop back to it or chain more than kMaxMaterialPasses.
 AYLO_PLUGIN_SHADER_API core::asset::AssetId loadMaterialFile(const std::filesystem::path& path, ShaderAssets& shaders,
                                                              MaterialAssets& materials,
                                                              graphics::TextureAssets& textures);

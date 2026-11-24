@@ -147,3 +147,52 @@ TEST(ShaderAssembler, LeavesThePreludeAsItIsForTheDefaultShader) {
         }
     }
 }
+
+TEST(ShaderAssembler, AMeshReadsItsInstanceValuesFromItsDrawInBothStages) {
+    const ParsedShader shader =
+        parseShader("#pragma mesh\ninstance uniform float glow = 0.5;\nvoid fragment() { COLOR *= glow; }\n", "glow");
+    for (const ShaderStage stage : {ShaderStage::kVertex, ShaderStage::kFragment}) {
+        const std::string glsl = assembleShader(shader, ShaderTarget::kMesh, stage);
+        EXPECT_NE(glsl.find("    glow = ayloMeshDraws[ayloPart.draw].instance[0].x;\n"), std::string::npos) << glsl;
+        EXPECT_EQ(glsl.find("vec4 ayloInstance[4]"), std::string::npos) << glsl;
+    }
+}
+
+TEST(ShaderAssembler, DeclaresTheVaryingsOutInTheVertexStageAndInInTheFragmentStage) {
+    const ParsedShader shader =
+        parseShader("varying vec2 wave;\nvarying int seed;\nvoid fragment() { COLOR.r = wave.x; }\n", "v");
+    const std::string vertex = assembleShader(shader, ShaderTarget::kSprite, ShaderStage::kVertex);
+    EXPECT_NE(vertex.find("layout(location = 7) out vec2 wave;\nlayout(location = 8) flat out int seed;\n"),
+              std::string::npos)
+        << vertex;
+    const std::string fragment = assembleShader(shader, ShaderTarget::kShape, ShaderStage::kFragment);
+    EXPECT_NE(fragment.find("layout(location = 11) in vec2 wave;\nlayout(location = 12) flat in int seed;\n"),
+              std::string::npos)
+        << fragment;
+}
+
+TEST(ShaderAssembler, CompilesTheCutoutInOnlyWhenAMeshShaderWritesIt) {
+    const ParsedShader leaf = parseShader("#pragma mesh\nvoid fragment() { ALPHA_SCISSOR = 0.5; }\n", "leaf");
+    EXPECT_TRUE(
+        assembleShader(leaf, ShaderTarget::kMesh, ShaderStage::kFragment).contains("#define AYLO_ALPHA_SCISSOR"));
+    const ParsedShader plain = parseShader("#pragma mesh\nvoid fragment() { COLOR.r = 1.0; }\n", "plain");
+    EXPECT_FALSE(
+        assembleShader(plain, ShaderTarget::kMesh, ShaderStage::kFragment).contains("#define AYLO_ALPHA_SCISSOR"));
+}
+
+TEST(ShaderAssembler, LightsALitMeshShaderAndKeepsLightInTheFragmentStageOnly) {
+    const ParsedShader toon = parseShader(
+        "#pragma mesh\n#pragma lit\nvoid fragment() { ALBEDO = vec3(1.0); }\nvoid light() { DIFFUSE_LIGHT += ALBEDO; "
+        "}\n",
+        "toon");
+    const std::string fragment = assembleShader(toon, ShaderTarget::kMesh, ShaderStage::kFragment);
+    EXPECT_TRUE(fragment.contains("#define AYLO_LIT\n#define AYLO_CUSTOM_LIGHT\n")) << fragment;
+    EXPECT_TRUE(fragment.contains("float ayloDistribution("));  // lighting.glsl
+    EXPECT_TRUE(fragment.contains("void light() { DIFFUSE_LIGHT += ALBEDO; }"));
+    const std::string vertex = assembleShader(toon, ShaderTarget::kMesh, ShaderStage::kVertex);
+    EXPECT_FALSE(vertex.contains("void light()"));
+    EXPECT_FALSE(vertex.contains("AYLO_LIT"));
+    const ParsedShader plain = parseShader("#pragma mesh\n#pragma lit\nvoid fragment() {}\n", "plain");
+    EXPECT_FALSE(
+        assembleShader(plain, ShaderTarget::kMesh, ShaderStage::kFragment).contains("#define AYLO_CUSTOM_LIGHT"));
+}

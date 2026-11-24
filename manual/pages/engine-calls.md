@@ -377,11 +377,25 @@ On both sides, in every game. See [States](states.md).
 | `aylo.state.get` | `state` (a machine of `engine.ecs.state`) | its current value, `""` before its first frame |
 | `aylo.state.set` | `state`, `value` | nothing; the machine changes at the next frame. On a client, an error for a machine declared with `replicate = true` |
 
+### Models
+
+| Call | Arguments | Result |
+|---|---|---|
+| `aylo.mesh.load` | `path` (a `.gltf`, `.glb`, `.fbx` or `.obj`) | the model's id; prefer the `engine.assets.mesh` form |
+| `aylo.mesh.findPart` | `mesh`, `name` (the name of a part's material in the file) | the part's index from 1, for `aylo.MeshRenderer.materials`; 0 when no part has that name, or until the file is read. Client only: see [Several materials on one model](materials.md#several-materials-on-one-model) |
+
 ### Shaders and particles
 
 The shader plugin has `engine.assets.shader` and `engine.assets.material` forms, see [Setup forms](setup-forms.md),
 and the call `aylo.shader.setScreenMaterials` (`materials`, client), which sets the screen effects: see
 [Post-processing](post-processing.md), and its form `engine.screenEffects`.
+
+| Call | Arguments | Result |
+|---|---|---|
+| `aylo.shader.setMaterialRenderState` | `material`, and any of `cull`, `blend`, `depth` (names) and `depthBias`, `depthBiasSlope` (numbers) | the material; it replaces what the material changed of its 3D shader's render state before. Prefer the `renderState` key of `engine.assets.material`: see [How a 3D material is drawn](materials.md#how-a-3d-material-is-drawn) |
+| `aylo.shader.setMaterialNextPass` | `material`, `nextPass` (another material, or none to remove it) | the material; see [Passes](materials.md#passes). Prefer the `nextPass` key of `engine.assets.material` |
+| `aylo.shader.setInstanceValue` | `entity`, `material` (the one it is drawn with), `name` (an `instance uniform` of its shader), `x` (a number), or `x`, `y` (`z`, `w`) with `size` 2 to 4 for a vector | nothing; the value is used from the next frame. Client only: see [One value per drawing](materials.md#one-value-per-drawing) |
+
 Particle effects have the `engine.assets.particle` form, see [Particles](particles.md). It is made of the calls
 `aylo.particle.beginEffect`, `aylo.particle.addBurst`, `aylo.particle.addColorKey`, `aylo.particle.addCurveKey` and
 `aylo.particle.addEffect` (client); use the form rather than the calls.

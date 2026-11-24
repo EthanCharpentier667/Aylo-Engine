@@ -7,7 +7,10 @@
 
 #include <gtest/gtest.h>
 
+#include <array>
 #include <cmath>
+#include <cstddef>
+#include <cstring>
 #include <glm/ext/vector_float2.hpp>
 #include <glm/ext/vector_float3.hpp>
 #include <glm/ext/vector_float4.hpp>
@@ -16,10 +19,14 @@
 #include <glm/trigonometric.hpp>
 #include <memory>
 #include <optional>
+#include <span>
 #include <string>
 #include <variant>
+#include <vector>
 
 #include "FakeBackend.hpp"
+#include "aylo/contract/renderer/drawing/Light3D.hpp"
+#include "aylo/contract/renderer/drawing/Texture.hpp"
 #include "aylo/contract/renderer/view/CameraView3D.hpp"
 #include "aylo/contract/renderer/view/View3D.hpp"
 #include "aylo/ecs/app/App.hpp"
@@ -27,7 +34,10 @@
 #include "aylo/ecs/schedule/RunMode.hpp"
 #include "aylo/ecs/world/World.hpp"
 #include "plugins/graphics/Camera.hpp"
+#include "plugins/graphics/ImageDecoding.hpp"
+#include "plugins/graphics/Light.hpp"
 #include "plugins/graphics/Lines3D.hpp"
+#include "plugins/graphics/TextureAssets.hpp"
 #include "plugins/transform/Transform.hpp"
 
 namespace {
@@ -56,6 +66,16 @@ class BackendApp {
     std::shared_ptr<aylo::test::plugins::FakeBackendState> _state;
     aylo::ecs::App _app;
 };
+/// @return A Radiance .hdr image of two pixels, flat: (1, 0.5, 0.25), then black.
+std::vector<std::byte> twoPixelHdr() {
+    const std::string header = "#?RADIANCE\nFORMAT=32-bit_rle_rgbe\n\n-Y 1 +X 2\n";
+    std::vector<std::byte> bytes(header.size());
+    std::memcpy(bytes.data(), header.data(), header.size());
+    for (const unsigned value : {128U, 64U, 32U, 129U, 0U, 0U, 0U, 0U}) {
+        bytes.push_back(static_cast<std::byte>(value));
+    }
+    return bytes;
+}
 }  // namespace
 
 TEST(CameraView3D, TheCentreOfTheScreenLooksForward) {
@@ -188,4 +208,120 @@ TEST(Graphics3D, ARendererWithout3DIsToldOnceAndGetsNothing) {
     const std::size_t first = log.find(warning);
     ASSERT_NE(first, std::string::npos) << log;
     EXPECT_EQ(log.find(warning, first + 1), std::string::npos) << log;
+}
+
+TEST(Light3D, ReflectsItsFieldsWithTheKindByName) {
+    using aylo::plugins::graphics::Light3D;
+    EXPECT_EQ(aylo::ecs::ComponentTraits<Light3D>::kName, "aylo.Light3D");
+    const aylo::ecs::TypeInfo info = aylo::ecs::TypeTraits<Light3D>::makeTypeInfo();
+    ASSERT_EQ(info.fields.size(), 13U);
+    EXPECT_EQ(info.fields.at(0).name, "kind");
+    EXPECT_EQ(info.fields.at(10).name, "shadowSoftness");
+    ASSERT_EQ(info.fields.at(0).enumNames.size(), 4U);
+    EXPECT_EQ(info.fields.at(0).enumNames[3], "area");
+    EXPECT_EQ(aylo::ecs::ComponentTraits<aylo::plugins::graphics::Environment3D>::kName, "aylo.Environment3D");
+}
+
+TEST(Graphics3D, GivesTheRendererTheEnabledLightsInTheWorldAndTheAmbient) {
+    using aylo::plugins::graphics::Environment3D;
+    using aylo::plugins::graphics::Light3D;
+    using aylo::plugins::graphics::LightKind;
+    BackendApp app;
+    aylo::ecs::World& world = app.app().getWorld();
+    // A spot one metre up, turned a quarter to the left: it shines along -X.
+    world.spawn(Transform3D{.position = {0.0F, 1.0F, 0.0F},
+                            .rotation = {0.0F, std::sin(glm::radians(45.0F)), 0.0F, std::cos(glm::radians(45.0F))}},
+                Light3D{.kind = LightKind::kSpot, .power = 500.0F, .innerConeAngle = 10.0F, .outerConeAngle = 30.0F});
+    world.spawn(Transform3D{}, Light3D{.kind = LightKind::kDirectional, .intensity = 2.0F});
+    world.spawn(Transform3D{}, Light3D{.enabled = false});
+    world.spawn(Environment3D{.ambient = {0.1F, 0.1F, 0.2F}, .strength = 0.5F, .priority = 2});
+    world.spawn(Environment3D{.ambient = {1.0F, 0.0F, 0.0F}});
+
+    app.app().runFrame();
+    app.app().runFrame();
+
+    ASSERT_FALSE(app.state().lightFrames.empty());
+    const auto& lights = app.state().lightFrames.back();
+    ASSERT_EQ(lights.size(), 2U);
+    const auto& spot = lights.at(0);
+    EXPECT_EQ(spot.kind, aylo::contract::renderer::LightKind3D::kSpot);
+    EXPECT_FLOAT_EQ(spot.position.y, 1.0F);
+    EXPECT_NEAR(glm::distance(spot.direction, glm::vec3{-1.0F, 0.0F, 0.0F}), 0.0F, 1e-5F);
+    EXPECT_FLOAT_EQ(spot.intensity, 500.0F);
+    EXPECT_NEAR(spot.outerCone, glm::radians(30.0F), 1e-5F);
+    EXPECT_FLOAT_EQ(lights.at(1).intensity, 2.0F);  // a directional light's lux
+    EXPECT_EQ(app.state().environments.back().ambient, glm::vec3(0.1F, 0.1F, 0.2F));
+    EXPECT_FLOAT_EQ(app.state().environments.back().strength, 0.5F);
+}
+
+TEST(Graphics3D, AGameWithoutLightsGivesTheRendererNone) {
+    BackendApp app;
+    app.app().runFrame();
+    app.app().runFrame();
+    EXPECT_TRUE(app.state().lightFrames.empty());
+}
+
+TEST(Graphics3D, SaysOnceThatTheRendererDoesNotLight3D) {
+    BackendApp app;
+    app.state().lights3D = false;
+    app.app().getWorld().spawn(Transform3D{}, aylo::plugins::graphics::Light3D{});
+    testing::internal::CaptureStderr();
+    app.app().runFrame();
+    app.app().runFrame();
+    const std::string log = testing::internal::GetCapturedStderr();
+    EXPECT_EQ(log.find("does not light"), log.rfind("does not light")) << log;
+    EXPECT_NE(log.find("does not light"), std::string::npos) << log;
+    EXPECT_TRUE(app.state().lightFrames.empty());
+}
+
+TEST(Graphics3D, GivesTheRendererAGradientSky) {
+    using aylo::plugins::graphics::Environment3D;
+    BackendApp app;
+    app.app().getWorld().spawn(Environment3D{.skyGradient = true,
+                                             .skyTop = {0.1F, 0.2F, 0.9F},
+                                             .skyIntensity = 2.0F,
+                                             .skyRotation = 0.5F,
+                                             .lightingFromSky = false});
+    app.app().runFrame();
+    ASSERT_FALSE(app.state().environments.empty());
+    const aylo::contract::renderer::Environment3D& given = app.state().environments.back();
+    EXPECT_EQ(given.sky, aylo::contract::renderer::SkyKind::kGradient);
+    EXPECT_EQ(given.skyTop, glm::vec3(0.1F, 0.2F, 0.9F));
+    EXPECT_FLOAT_EQ(given.skyIntensity, 2.0F);
+    EXPECT_FLOAT_EQ(given.skyRotation, 0.5F);
+    EXPECT_FALSE(given.lightingFromSky);
+}
+
+TEST(Graphics3D, GivesTheRendererASkyImageOnceLoadedAsHdr) {
+    using aylo::plugins::graphics::Environment3D;
+    using aylo::plugins::graphics::TextureAssets;
+    BackendApp app;
+    const std::vector<std::byte> hdr = twoPixelHdr();
+    const aylo::core::asset::AssetId sky =
+        app.app().getWorld().getResources().getMut<TextureAssets>()->load(std::string{"skies/test.hdr"}, hdr);
+    app.app().getWorld().spawn(Environment3D{.skyTexture = sky, .skyGradient = true});
+    app.app().runFrame();
+    app.app().runFrame();
+    ASSERT_FALSE(app.state().createdTextures.empty());
+    EXPECT_EQ(app.state().createdTextures.back().encoding, aylo::contract::renderer::TextureEncoding::kHdr);
+    EXPECT_EQ(app.state().createdPixels.back().size(), 2U * 4U * sizeof(float));
+    ASSERT_FALSE(app.state().environments.empty());
+    const aylo::contract::renderer::Environment3D& given = app.state().environments.back();
+    EXPECT_EQ(given.sky, aylo::contract::renderer::SkyKind::kTexture);  // the image wins over the gradient
+    EXPECT_EQ(given.skyTexture, *app.app().getWorld().getResources().get<TextureAssets>()->getTexture(sky));
+}
+
+TEST(ImageDecoding, DecodesARadianceHdrImageAsFloats) {
+    const std::vector<std::byte> hdr = twoPixelHdr();
+    const aylo::plugins::graphics::DecodedImage image = aylo::plugins::graphics::decodeImage("test.hdr", hdr);
+    EXPECT_TRUE(image.hdr);
+    EXPECT_EQ(image.size, glm::uvec2(2, 1));
+    ASSERT_EQ(image.pixels.size(), 2U * 4U * sizeof(float));
+    std::array<float, 8> floats{};
+    std::memcpy(floats.data(), image.pixels.data(), image.pixels.size());
+    EXPECT_NEAR(floats.at(0), 1.0F, 1e-3F);
+    EXPECT_NEAR(floats.at(1), 0.5F, 1e-3F);
+    EXPECT_NEAR(floats.at(2), 0.25F, 1e-3F);
+    EXPECT_FLOAT_EQ(floats.at(3), 1.0F);
+    EXPECT_FLOAT_EQ(floats.at(4), 0.0F);
 }

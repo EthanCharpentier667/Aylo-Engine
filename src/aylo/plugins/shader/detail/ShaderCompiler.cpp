@@ -12,9 +12,11 @@
 #include <glslang/SPIRV/GlslangToSpv.h>
 
 #include <algorithm>
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <format>
+#include <iterator>
 #include <span>
 #include <string>
 #include <string_view>
@@ -22,6 +24,7 @@
 
 #include "aylo/contract/renderer/shaders/CompiledShader.hpp"
 #include "plugins/shader/detail/ShaderAssembler.hpp"
+#include "plugins/shader/detail/ShaderIncludes.hpp"
 #include "plugins/shader/detail/ShaderParser.hpp"
 #include "plugins/shader/exceptions/ShaderExceptions.hpp"
 
@@ -120,14 +123,32 @@ std::vector<std::uint32_t> compileStage(std::string_view glsl, ShaderStage stage
     return {spirv.begin(), spirv.end()};
 }
 
-contract::renderer::CompiledShader compileShader(std::string_view source, std::string_view name,
-                                                 std::span<const contract::renderer::ShaderTarget> targets) {
+namespace {
+/// @return Whether a screen effect's @p body reads the 3D depth: DEPTH_TEXTURE or a helper built on it.
+bool readsDepth(std::string_view body) {
+    constexpr std::array<std::string_view, 5> kNames{"DEPTH_TEXTURE", "linearDepth", "viewPositionAt",
+                                                     "worldPositionAt", "normalAt"};
+    return std::ranges::any_of(kNames, [body](std::string_view name) { return body.contains(name); });
+}
+}  // namespace
+
+namespace {
+
+/// @return compileShader() of @p source, its includes already expanded.
+contract::renderer::CompiledShader compileExpanded(std::string_view source, std::string_view name,
+                                                   std::span<const contract::renderer::ShaderTarget> targets) {
     const ParsedShader parsed = parseShader(source, name);
-    contract::renderer::CompiledShader shader{.name = std::string{name},
-                                              .materialSize = parsed.materialSize,
-                                              .materialDefaults = parsed.materialDefaults,
-                                              .instanceDefaults = parsed.instanceDefaults,
-                                              .textures = parsed.textures};
+    contract::renderer::CompiledShader shader{
+        .name = std::string{name},
+        .materialSize = parsed.materialSize,
+        .materialDefaults = parsed.materialDefaults,
+        .instanceDefaults = parsed.instanceDefaults,
+        .textures = parsed.textures,
+        .renderState = parsed.renderState,
+        .castsShadows = parsed.castsShadows,
+        .cutsOut = parsed.body.contains("ALPHA_SCISSOR"),
+        .readsDepth = parsed.screen && readsDepth(parsed.body),
+        .readsPreviousFrame = parsed.screen && parsed.body.contains("PREVIOUS_FRAME")};
     for (const DeclaredValue& declared : parsed.materialValues) {
         shader.materialValues.push_back(declared.value);
     }
@@ -157,6 +178,25 @@ contract::renderer::CompiledShader compileShader(std::string_view source, std::s
             .target = target, .vertex = compile(ShaderStage::kVertex), .fragment = compile(ShaderStage::kFragment)});
     }
     return shader;
+}
+
+}  // namespace
+
+contract::renderer::CompiledShader compileShader(std::string_view source, std::string_view name,
+                                                 std::span<const contract::renderer::ShaderTarget> targets,
+                                                 const IncludeReader& read, std::vector<std::string>* included) {
+    const ExpandedShader expanded = expandIncludes(source, name, read);
+    if (included != nullptr) {
+        included->assign(std::next(expanded.files.begin()), expanded.files.end());
+    }
+    if (expanded.files.size() == 1) {
+        return compileExpanded(expanded.text, name, targets);
+    }
+    try {
+        return compileExpanded(expanded.text, name, targets);
+    } catch (const exceptions::ShaderException& error) {
+        throw exceptions::ShaderException{expanded.locateLines(error.what())};
+    }
 }
 
 }  // namespace aylo::plugins::shader::detail

@@ -8,10 +8,12 @@
 #include <gtest/gtest.h>
 
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "FakeBackend.hpp"
 #include "aylo/contract/renderer/shaders/CompiledShader.hpp"
+#include "aylo/contract/renderer/shaders/ScreenEffect.hpp"
 #include "aylo/ecs/app/App.hpp"
 #include "aylo/ecs/resource/Resources.hpp"
 #include "aylo/ecs/schedule/RunMode.hpp"
@@ -88,4 +90,29 @@ TEST(ScreenMaterials, SkipsAnEffectWhoseMaterialIsNotCreated) {
     app.runFrame();
     ASSERT_FALSE(app.state().screenMaterials.empty());
     EXPECT_EQ(app.state().screenMaterials.back(), std::vector<MaterialId>{app.created(invert)});
+}
+
+TEST(ScreenMaterials, GivesTheRendererPassesWithTheirSamplersAsSlots) {
+    ScreenApp app;
+    const AssetId bright = app.addEffect("bright");
+    const AssetId glowShader = app.resources().getMut<aylo::plugins::shader::ShaderAssets>()->add(
+        "composite",
+        "#pragma screen\nuniform sampler2D noise;\nuniform sampler2D glow;\n"
+        "void fragment() { COLOR.rgb += texture(glow, SCREEN_UV).rgb + texture(noise, SCREEN_UV).rgb * 0.0; }\n");
+    const AssetId composite =
+        app.resources().getMut<aylo::plugins::shader::MaterialAssets>()->add("composite", {.shader = glowShader});
+    auto screen = app.resources().getMut<aylo::plugins::shader::ScreenMaterials>();
+    screen->passes = {{.material = bright, .output = "bright", .scale = 0.5F},
+                      {.material = composite, .inputs = {{"glow", "bright"}, {"missing", "bright"}}}};
+    app.runFrame();
+    ASSERT_FALSE(app.state().screenEffects.empty());
+    const std::vector<aylo::contract::renderer::ScreenEffectPass>& passes = app.state().screenEffects.back();
+    ASSERT_EQ(passes.size(), 2U);
+    EXPECT_EQ(passes.front().material, app.created(bright));
+    EXPECT_EQ(passes.front().output, "bright");
+    EXPECT_FLOAT_EQ(passes.front().scale, 0.5F);
+    // glow is the shader's second texture; a sampler the shader does not have is left out.
+    ASSERT_EQ(passes.back().inputs.size(), 1U);
+    EXPECT_EQ(passes.back().inputs.front().slot, 1U);
+    EXPECT_EQ(passes.back().inputs.front().target, "bright");
 }

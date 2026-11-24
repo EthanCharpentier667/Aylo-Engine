@@ -41,7 +41,14 @@ vk::raii::ShaderModule createModule(const core::Device& device, std::span<const 
 }  // namespace
 
 GameShader::GameShader(const core::Device& device, const contract::renderer::CompiledShader& shader)
-    : _name{shader.name}, _materialSize{shader.materialSize}, _instanceValues{!shader.instanceValues.empty()} {
+    : _name{shader.name},
+      _materialSize{shader.materialSize},
+      _instanceValues{!shader.instanceValues.empty()},
+      _renderState{shader.renderState},
+      _castsShadows{shader.castsShadows},
+      _cutsOut{shader.cutsOut},
+      _readsDepth{shader.readsDepth},
+      _readsPreviousFrame{shader.readsPreviousFrame} {
     contract::renderer::validate(shader);
     for (const contract::renderer::ShaderVariant& variant : shader.variants) {
         Variant& created = _variants.at(static_cast<std::size_t>(variant.target));
@@ -62,20 +69,47 @@ const pipeline::GraphicsPipeline* GameShader::getPipeline(contract::renderer::Sh
                                                           const core::Device& device,
                                                           const pipeline::PipelineLayout& layout,
                                                           vk::Format colorFormat, const vk::raii::PipelineCache* cache,
-                                                          PipelineBuilder build) {
+                                                          PipelineBuilder build,
+                                                          const contract::renderer::RenderState& state) {
     Variant& variant = _variants.at(static_cast<std::size_t>(target));
     if (*variant.vertex == nullptr) {
         return nullptr;
     }
-    if (!variant.built || variant.format != colorFormat) {
-        variant.built.reset();
-        variant.built.emplace(
-            build(device, variant.vertex, variant.fragment, _instanceValues, layout, colorFormat, cache));
-        variant.format = colorFormat;
-        device.setName(*variant.built->getPipeline(),
-                       std::format("{} {} pipeline", _name, kTargetNames.at(static_cast<std::size_t>(target))));
+    // A 2D target ignores the render state: one pipeline for all its materials. A format a pass writes is part of the
+    // key, so a screen effect writing a half-float and an 8-bit target keeps both.
+    const contract::renderer::RenderState key =
+        target == contract::renderer::ShaderTarget::kMesh ? state : contract::renderer::RenderState{};
+    for (const Built& built : variant.built) {
+        if (built.state == key && built.format == colorFormat) {
+            return &built.pipeline;
+        }
     }
-    return &*variant.built;
+    const Built& made = variant.built.emplace_back(Built{
+        .state = key,
+        .format = colorFormat,
+        .pipeline = build(device, variant.vertex, variant.fragment, _instanceValues, layout, colorFormat, cache, key)});
+    const pipeline::GraphicsPipeline& pipeline = made.pipeline;
+    device.setName(*pipeline.getPipeline(),
+                   std::format("{} {} pipeline", _name, kTargetNames.at(static_cast<std::size_t>(target))));
+    return &pipeline;
+}
+
+const pipeline::GraphicsPipeline* GameShader::getShadowPipeline(const core::Device& device,
+                                                                contract::renderer::CullMode cull,
+                                                                const ShadowPipelineBuilder& build) {
+    Variant& variant = _variants.at(static_cast<std::size_t>(contract::renderer::ShaderTarget::kMesh));
+    if (*variant.vertex == nullptr || !_castsShadows) {
+        return nullptr;
+    }
+    for (const auto& [builtCull, pipeline] : variant.shadows) {
+        if (builtCull == cull) {
+            return &pipeline;
+        }
+    }
+    auto& [builtCull, pipeline] =
+        variant.shadows.emplace_back(cull, build(variant.vertex, variant.fragment, _cutsOut, cull));
+    device.setName(*pipeline.getPipeline(), std::format("{} shadow pipeline", _name));
+    return &pipeline;
 }
 
 }  // namespace aylo::render::vulkan::material

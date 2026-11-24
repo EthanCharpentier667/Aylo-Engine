@@ -7,6 +7,7 @@
 
 #include "plugins/shader/MaterialFile.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <filesystem>
@@ -29,6 +30,7 @@
 #include "plugins/graphics/TextureAssets.hpp"
 #include "plugins/shader/Material.hpp"
 #include "plugins/shader/MaterialAssets.hpp"
+#include "plugins/shader/RenderStateNames.hpp"
 #include "plugins/shader/ShaderAssets.hpp"
 
 namespace aylo::plugins::shader {
@@ -125,6 +127,71 @@ std::vector<MaterialFile::Texture> readTextures(const nlohmann::ordered_json& te
 }
 }  // namespace
 
+namespace {
+/// @return The text of the key @p key of @p state, a string.
+std::string_view stringOf(const nlohmann::ordered_json& value, std::string_view key, std::string_view path) {
+    if (!value.is_string()) {
+        fail(path, std::format("render state '{}' must be a name", key));
+    }
+    return value.get_ref<const std::string&>();
+}
+
+/// @return The render state the object @p state changes.
+RenderStateOverride readRenderState(const nlohmann::ordered_json& state, std::string_view path) {
+    if (!state.is_object()) {
+        fail(path, "'renderState' must be an object (cull, blend, depth, depthBias, depthBiasSlope)");
+    }
+    RenderStateOverride read;
+    for (const auto& [key, value] : state.items()) {
+        if (key == "cull") {
+            read.cull = cullModeNamed(stringOf(value, key, path));
+            if (!read.cull) {
+                fail(path, R"(render state 'cull' is "back", "front" or "none")");
+            }
+        } else if (key == "blend") {
+            read.blend = blendNamed(stringOf(value, key, path));
+            if (!read.blend) {
+                fail(path, R"(render state 'blend' is "opaque", "alpha", "premultiplied", "additive" or "multiply")");
+            }
+        } else if (key == "depth") {
+            read.depth = depthModeNamed(stringOf(value, key, path));
+            if (!read.depth) {
+                fail(path, R"(render state 'depth' is "test write", "test nowrite" or "notest")");
+            }
+        } else if (key == "depthBias" || key == "depthBiasSlope") {
+            if (!value.is_number()) {
+                fail(path, std::format("render state '{}' must be a number", key));
+            }
+            (key == "depthBias" ? read.depthBias : read.depthBiasSlope) = value.get<float>();
+        } else {
+            fail(path, std::format("unknown render state '{}' (cull, blend, depth, depthBias, depthBiasSlope)", key));
+        }
+    }
+    return read;
+}
+
+/// @return @p state as the object of a file.
+nlohmann::ordered_json writeRenderState(const RenderStateOverride& state) {
+    nlohmann::ordered_json written = nlohmann::ordered_json::object();
+    if (state.cull) {
+        written.emplace("cull", nameOf(*state.cull));
+    }
+    if (state.blend) {
+        written.emplace("blend", nameOf(*state.blend));
+    }
+    if (state.depth) {
+        written.emplace("depth", nameOf(*state.depth));
+    }
+    if (state.depthBias) {
+        written.emplace("depthBias", *state.depthBias);
+    }
+    if (state.depthBiasSlope) {
+        written.emplace("depthBiasSlope", *state.depthBiasSlope);
+    }
+    return written;
+}
+}  // namespace
+
 MaterialFile MaterialFile::parse(std::string_view text, std::string_view path) {
     const nlohmann::ordered_json root = nlohmann::ordered_json::parse(text, nullptr, false);
     if (root.is_discarded() || !root.is_object()) {
@@ -141,8 +208,15 @@ MaterialFile MaterialFile::parse(std::string_view text, std::string_view path) {
             file.values = readValues(value, path);
         } else if (key == "textures") {
             file.textures = readTextures(value, path);
+        } else if (key == "renderState") {
+            file.renderState = readRenderState(value, path);
+        } else if (key == "nextPass") {
+            if (!value.is_string()) {
+                fail(path, "'nextPass' must be the path of a .material");
+            }
+            file.nextPass = value.get<std::string>();
         } else {
-            fail(path, std::format("unknown key '{}' (shader, values, textures)", key));
+            fail(path, std::format("unknown key '{}' (shader, values, textures, renderState, nextPass)", key));
         }
     }
     return file;
@@ -165,12 +239,20 @@ std::string MaterialFile::write() const {
     root.emplace("shader", shader);
     root.emplace("values", std::move(written));
     root.emplace("textures", std::move(images));
+    if (!renderState.empty()) {
+        root.emplace("renderState", writeRenderState(renderState));
+    }
+    if (!nextPass.empty()) {
+        root.emplace("nextPass", nextPass);
+    }
     return root.dump(2) + "\n";
 }
 
-core::asset::AssetId loadMaterialFile(const std::filesystem::path& path, ShaderAssets& shaders,
-                                      MaterialAssets& materials, graphics::TextureAssets& textures) {
-    const std::string name = path.generic_string();
+namespace {
+/// @return The material the file @p name describes, read through @p shaders' source, its shader and textures loaded;
+/// @p nextPass gets the path of its next pass, empty without one.
+Material readMaterial(const std::string& name, ShaderAssets& shaders, graphics::TextureAssets& textures,
+                      std::string& nextPass) {
     std::string text;
     try {
         text = shaders.getSource().read(name);
@@ -196,7 +278,38 @@ core::asset::AssetId loadMaterialFile(const std::filesystem::path& path, ShaderA
     for (const MaterialFile::Texture& texture : file.textures) {
         material.setTexture(texture.name, textures.load(texture.path));
     }
-    return materials.define(name, std::move(material));
+    material.renderState = file.renderState;
+    nextPass = file.nextPass.empty() ? std::string{} : std::filesystem::path{file.nextPass}.generic_string();
+    return material;
+}
+}  // namespace
+
+core::asset::AssetId loadMaterialFile(const std::filesystem::path& path, ShaderAssets& shaders,
+                                      MaterialAssets& materials, graphics::TextureAssets& textures) {
+    // The file and its next passes, read first and defined together, so a chain that fails defines none of them. A
+    // pass is named by its path, whose id is known before it is defined.
+    std::vector<std::pair<std::string, Material>> chain;
+    for (std::string name = path.generic_string(); !name.empty();) {
+        if (std::ranges::find(chain, name, &std::pair<std::string, Material>::first) != chain.end()) {
+            fail(chain.front().first, std::format("its next passes loop back to '{}'", name));
+        }
+        if (chain.size() == kMaxMaterialPasses) {
+            fail(chain.front().first, std::format("its next passes chain more than {} materials", kMaxMaterialPasses));
+        }
+        std::string next;
+        Material material = readMaterial(name, shaders, textures, next);
+        if (!next.empty()) {
+            material.nextPass = core::asset::AssetId::fromPath(next);
+        }
+        chain.emplace_back(std::move(name), std::move(material));
+        name = std::move(next);
+    }
+    core::asset::AssetId first;
+    for (auto& [name, material] : chain) {
+        const core::asset::AssetId id = materials.define(name, std::move(material));
+        first = first == core::asset::AssetId{} ? id : first;
+    }
+    return first;
 }
 
 MaterialFile describeMaterial(core::asset::AssetId id, const ShaderAssets& shaders, const MaterialAssets& materials,
@@ -216,6 +329,10 @@ MaterialFile describeMaterial(core::asset::AssetId id, const ShaderAssets& shade
         if (const graphics::TextureAssets::Entry* image = textures.get(texture.texture)) {
             file.textures.push_back(MaterialFile::Texture{.name = texture.name, .path = image->path});
         }
+    }
+    file.renderState = material->renderState;
+    if (const MaterialAssets::Entry* next = materials.getEntry(material->nextPass)) {
+        file.nextPass = next->path;
     }
     return file;
 }

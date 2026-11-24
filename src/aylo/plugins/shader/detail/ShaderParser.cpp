@@ -24,6 +24,7 @@
 #include <vector>
 
 #include "aylo/contract/renderer/shaders/CompiledShader.hpp"
+#include "plugins/shader/RenderStateNames.hpp"
 #include "plugins/shader/exceptions/ShaderExceptions.hpp"
 
 namespace aylo::plugins::shader::detail {
@@ -33,12 +34,71 @@ namespace {
 using contract::renderer::ShaderValueType;
 
 /// @brief Names a shader cannot declare: the engine's built-ins (docs/Shaders.md).
-constexpr std::array<std::string_view, 8> kBuiltins{
-    "VERTEX", "UV", "COLOR", "TEXTURE", "TIME", "SCREEN_TEXTURE", "SCREEN_UV", "SCREEN_PIXEL_SIZE"};
+constexpr auto kBuiltins = std::to_array<std::string_view>({"VERTEX",
+                                                            "UV",
+                                                            "COLOR",
+                                                            "TEXTURE",
+                                                            "TIME",
+                                                            "SCREEN_TEXTURE",
+                                                            "SCREEN_UV",
+                                                            "NORMAL",
+                                                            "SCREEN_PIXEL_SIZE",
+                                                            "MODEL_MATRIX",
+                                                            "INV_MODEL_MATRIX",
+                                                            "NORMAL_MATRIX",
+                                                            "AABB_MIN",
+                                                            "AABB_MAX",
+                                                            "WORLD_POSITION",
+                                                            "LOCAL_POSITION",
+                                                            "VIEW_DIR",
+                                                            "CAMERA_POSITION",
+                                                            "VIEW_MATRIX",
+                                                            "PROJECTION_MATRIX",
+                                                            "INV_VIEW_MATRIX",
+                                                            "INV_PROJECTION_MATRIX",
+                                                            "FRONT_FACING",
+                                                            "FRAGCOORD",
+                                                            "ALPHA_SCISSOR",
+                                                            "ALBEDO",
+                                                            "ALPHA",
+                                                            "METALLIC",
+                                                            "ROUGHNESS",
+                                                            "SPECULAR",
+                                                            "EMISSION",
+                                                            "AO",
+                                                            "ENV_DIFFUSE",
+                                                            "ENV_SPECULAR",
+                                                            "LIGHT_DIR",
+                                                            "LIGHT_COLOR",
+                                                            "ATTENUATION",
+                                                            "SHADOW",
+                                                            "DIFFUSE_LIGHT",
+                                                            "TANGENT",
+                                                            "BINORMAL",
+                                                            "VERTEX_COLOR",
+                                                            "UV2",
+                                                            "SPECULAR_LIGHT",
+                                                            "DEPTH_TEXTURE",
+                                                            "SCENE_TEXTURE",
+                                                            "PREVIOUS_FRAME"});
+
+/// @return @p names quoted and joined, for a message.
+std::string joinNames(std::span<const std::string_view> names) {
+    std::string joined;
+    for (const std::string_view name : names) {
+        joined += std::format("{}'{}'", joined.empty() ? "" : ", ", name);
+    }
+    return joined;
+}
+
+/// @brief The types a varying may have.
+constexpr std::array<std::string_view, 5> kVaryingTypes{"float", "vec2", "vec3", "vec4", "int"};
 
 /// @brief The line that makes a shader a screen effect (ParsedShader::screen).
 constexpr std::string_view kScreenPragma = "#pragma screen";
 constexpr std::string_view kMeshPragma = "#pragma mesh";
+constexpr std::string_view kLitPragma = "#pragma lit";
+constexpr std::string_view kShadowOffPragma = "#pragma shadow off";
 
 /// @brief What the parser knows of a value type: its GLSL name, its components, its std430 size and alignment.
 struct TypeInfo {
@@ -291,17 +351,130 @@ struct Parser {
         }
     }
 
+    std::optional<std::uint32_t> renderStateLine;  ///< The first render state pragma, if any.
+    bool depthGiven{false};                        ///< Whether a `#pragma depth` was read.
+
+    /// @return Whether @p code, a line stripped of its comments, is a render state pragma, read into the shader.
+    bool addRenderPragma(std::string_view code, std::uint32_t line) {
+        std::vector<std::string> words;
+        std::istringstream stream{std::string{code}};
+        for (std::string word; stream >> word;) {
+            words.push_back(std::move(word));
+        }
+        if (words.size() < 2 || words.at(0) != "#pragma") {
+            return false;
+        }
+        const std::string& kind = words.at(1);
+        std::string value;
+        for (std::size_t index = 2; index < words.size(); ++index) {
+            value += (index == 2 ? "" : " ") + words.at(index);
+        }
+        contract::renderer::RenderState& state = shader.renderState;
+        if (kind == "cull") {
+            const auto mode = cullModeNamed(value);
+            if (!mode) {
+                fail(shader.name, line,
+                     std::format("'#pragma cull' takes {}, not '{}'", joinNames(cullModeNames()), value));
+            }
+            state.cull = *mode;
+        } else if (kind == "blend") {
+            const auto mode = blendNamed(value);
+            if (!mode) {
+                fail(shader.name, line,
+                     std::format("'#pragma blend' takes {}, not '{}'", joinNames(blendNames()), value));
+            }
+            state.blend = *mode;
+        } else if (kind == "depth") {
+            const auto mode = depthModeNamed(value);
+            if (!mode) {
+                fail(shader.name, line,
+                     std::format("'#pragma depth' takes {}, not '{}'", joinNames(depthModeNames()), value));
+            }
+            state.depth = *mode;
+            depthGiven = true;
+        } else if (kind == "depth_bias") {
+            const std::optional<float> constant = words.size() >= 3 ? readNumber(words.at(2)) : std::nullopt;
+            const std::optional<float> slope = words.size() == 4 ? readNumber(words.at(3)) : std::optional{0.0F};
+            if (!constant || !slope || words.size() > 4) {
+                fail(shader.name, line, "'#pragma depth_bias' takes a number, and optionally a slope factor");
+            }
+            state.depthBias = *constant;
+            state.depthBiasSlope = *slope;
+        } else {
+            return false;
+        }
+        renderStateLine = renderStateLine.value_or(line);
+        return true;
+    }
+
+    /// @brief Checks what only the whole shader tells, @p code being its code without comments and @p lastLine its
+    /// last line: its functions, its pragmas together, the depth mode a blended shader defaults to.
+    void finish(const std::string& code, std::uint32_t lastLine) {
+        if (renderStateLine && !shader.mesh) {
+            fail(shader.name, *renderStateLine, "a render state pragma is for a '#pragma mesh' shader");
+        }
+        if (!depthGiven && contract::renderer::isTransparent(shader.renderState)) {
+            shader.renderState.depth = contract::renderer::DepthMode::kTestNoWrite;
+        }
+        shader.hasVertex = definesFunction(code, "vertex");
+        shader.hasFragment = definesFunction(code, "fragment");
+        shader.hasLight = definesFunction(code, "light");
+        if (shader.lit && !shader.mesh) {
+            fail(shader.name, lastLine, "'#pragma lit' is for a '#pragma mesh' shader");
+        }
+        if (shader.hasLight && !shader.lit) {
+            fail(shader.name, lastLine, "'void light()' shades a lit surface: the shader needs '#pragma lit'");
+        }
+        if (!shader.hasVertex && !shader.hasFragment) {
+            fail(shader.name, lastLine, "the shader defines neither 'void vertex()' nor 'void fragment()'");
+        }
+    }
+
+    /// @brief Reads the varying declared on @p code, line @p line: `varying <type> <name>;`.
+    void addVarying(std::string_view code, std::uint32_t line) {
+        const auto semicolon = code.find(';');
+        if (semicolon == std::string_view::npos || !trim(code.substr(semicolon + 1)).empty()) {
+            fail(shader.name, line, "a declaration ends with ';' and is alone on its line");
+        }
+        std::vector<std::string> words;
+        std::istringstream stream{std::string{code.substr(0, semicolon)}};
+        for (std::string word; stream >> word;) {
+            words.push_back(std::move(word));
+        }
+        if (words.size() != 3) {
+            fail(shader.name, line, "expected 'varying <type> <name>;'");
+        }
+        const std::string& type = words.at(1);
+        const std::string& name = words.at(2);
+        if (std::ranges::find(kVaryingTypes, type) == kVaryingTypes.end()) {
+            fail(shader.name, line, std::format("a varying is a float, vec2, vec3, vec4 or int, not '{}'", type));
+        }
+        if (!isIdentifier(name)) {
+            fail(shader.name, line, std::format("'{}' is not a name (arrays are not supported)", name));
+        }
+        checkName(name, line);
+        if (shader.varyings.size() == kShaderMaxVaryings) {
+            fail(shader.name, line, std::format("more than {} varyings", kShaderMaxVaryings));
+        }
+        shader.varyings.push_back(DeclaredVarying{.type = type, .name = name, .line = line});
+    }
+
+    /// @brief Checks @p name, declared on @p line, is neither reserved nor declared already, and records it.
+    void checkName(const std::string& name, std::uint32_t line) {
+        if (std::ranges::find(kBuiltins, name) != kBuiltins.end() || name.starts_with("aylo") ||
+            name.starts_with("gl_")) {
+            fail(shader.name, line, std::format("'{}' is reserved by the engine", name));
+        }
+        if (std::ranges::find(names, name) != names.end()) {
+            fail(shader.name, line, std::format("'{}' is declared twice", name));
+        }
+        names.push_back(name);
+    }
+
     /// @brief Reads the declaration on @p code, line @p line.
     void addDeclaration(std::string_view code, std::uint32_t line) {
         const Declaration declaration = readDeclaration(code, shader.name, line);
-        if (std::ranges::find(kBuiltins, declaration.name) != kBuiltins.end() || declaration.name.starts_with("aylo") ||
-            declaration.name.starts_with("gl_")) {
-            fail(shader.name, line, std::format("'{}' is reserved by the engine", declaration.name));
-        }
-        if (std::ranges::find(names, declaration.name) != names.end()) {
-            fail(shader.name, line, std::format("'{}' is declared twice", declaration.name));
-        }
-        names.push_back(declaration.name);
+        checkName(declaration.name, line);
         if (declaration.type == "sampler2D") {
             addTexture(declaration, line);
         } else {
@@ -326,9 +499,29 @@ ParsedShader parseShader(std::string_view source, std::string_view name) {
         ++lineNumber;
         const std::string lineCode = removeComments(line, inComment);
         const std::string_view trimmed = trim(lineCode);
+        if (trimmed == kShadowOffPragma) {
+            shader.body += '\n';
+            shader.castsShadows = false;
+            parser.renderStateLine = parser.renderStateLine.value_or(lineNumber);
+            continue;
+        }
+        if (trimmed == kLitPragma) {
+            shader.body += '\n';
+            shader.lit = true;
+            continue;
+        }
         if (trimmed == kScreenPragma || trimmed == kMeshPragma) {
             shader.body += '\n';
             (trimmed == kScreenPragma ? shader.screen : shader.mesh) = true;
+            continue;
+        }
+        if (trimmed.starts_with("#pragma ") && parser.addRenderPragma(trimmed, lineNumber)) {
+            shader.body += '\n';
+            continue;
+        }
+        if (trimmed.starts_with("varying ")) {
+            shader.body += '\n';
+            parser.addVarying(trimmed, lineNumber);
             continue;
         }
         if (trimmed.starts_with("uniform ") || trimmed.starts_with("instance ")) {
@@ -345,12 +538,7 @@ ParsedShader parseShader(std::string_view source, std::string_view name) {
     shader.materialSize = alignUp(parser.materialCursor, 16);
     shader.materialDefaults.resize(shader.materialSize);
     std::memcpy(shader.instanceDefaults.data(), parser.instanceBlock.data(), parser.instanceBlock.size());
-    const std::string collapsed = collapseSpaces(code);
-    shader.hasVertex = definesFunction(collapsed, "vertex");
-    shader.hasFragment = definesFunction(collapsed, "fragment");
-    if (!shader.hasVertex && !shader.hasFragment) {
-        fail(name, lineNumber, "the shader defines neither 'void vertex()' nor 'void fragment()'");
-    }
+    parser.finish(collapseSpaces(code), lineNumber);
     return std::move(parser.shader);
 }
 

@@ -11,6 +11,8 @@ local packages = {
     cgltf = {name = "cgltf", use = "glTF models", license = "MIT", project = "https://github.com/jkuhlmann/cgltf"},
     glfw = {name = "GLFW", use = "windows and input", license = "Zlib", project = "https://www.glfw.org"},
     glm = {name = "GLM", use = "mathematics", license = "MIT", project = "https://github.com/g-truc/glm"},
+    mikktspace = {name = "MikkTSpace", use = "tangents of 3D models", license = "Zlib",
+                  project = "https://github.com/mmikk/MikkTSpace"},
     glslang = {name = "glslang", use = "shader compiler", license = "BSD-3-Clause, Apache-2.0",
                project = "https://github.com/KhronosGroup/glslang"},
     imgui = {name = "Dear ImGui", use = "the editor's interface", license = "MIT",

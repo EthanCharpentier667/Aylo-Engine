@@ -11,6 +11,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <format>
+#include <glm/ext/vector_float2.hpp>
 #include <memory>
 #include <span>
 #include <string>
@@ -18,6 +19,7 @@
 #include <utility>
 #include <vulkan/vulkan_raii.hpp>
 
+#include "aylo/contract/renderer/shaders/CompiledShader.hpp"
 #include "render/vulkan/command/CommandLabel.hpp"
 #include "render/vulkan/descriptor/DescriptorWriter.hpp"
 #include "render/vulkan/rendering/DynamicRendering.hpp"
@@ -75,7 +77,7 @@ ScreenPass::ScreenPass(const core::Device& device, pipeline::ShaderCache& shader
 pipeline::GraphicsPipeline ScreenPass::createMaterialPipeline(
     const core::Device& device, const vk::raii::ShaderModule& vertex, const vk::raii::ShaderModule& fragment,
     bool /*instanceValues*/, const pipeline::PipelineLayout& layout, vk::Format colorFormat,
-    const vk::raii::PipelineCache* cache) {
+    const vk::raii::PipelineCache* cache, const contract::renderer::RenderState& /*state*/) {
     // The instance values of a screen effect are constants of its code: nothing to read.
     return pipeline::GraphicsPipeline::Builder{}
         .setShaders(vertex, fragment)
@@ -85,60 +87,60 @@ pipeline::GraphicsPipeline ScreenPass::createMaterialPipeline(
         .build(device, cache);
 }
 
+memory::Image ScreenPass::createImage(const memory::Allocator& allocator, vk::Extent2D extent, vk::Format format,
+                                      const std::string& name) const {
+    memory::Image image{*_device, allocator, extent, format,
+                        vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled};
+    _device->setName(*image.getImage(), name);
+    _device->setName(*image.getImageView(), name + " view");
+    return image;
+}
+
+void ScreenPass::writeSet(vk::DescriptorSet set, const memory::Image& image) const {
+    descriptor::DescriptorWriter{}
+        .writeImage(kSamplerBinding, *image.getImageView(), _sampler, vk::ImageLayout::eShaderReadOnlyOptimal)
+        .update(*_device, set);
+}
+
 std::unique_ptr<ScreenPass::Targets> ScreenPass::createTargets(const memory::Allocator& allocator,
                                                                descriptor::DescriptorAllocator& descriptors,
                                                                const descriptor::DescriptorSetLayout& textureSetLayout,
                                                                vk::Extent2D extent) const {
     const auto makeImage = [&](std::size_t index) {
-        memory::Image image{*_device, allocator, extent, _sceneFormat,
-                            vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled};
-        const std::string name = std::format("Screen {}", index);
-        _device->setName(*image.getImage(), name);
-        _device->setName(*image.getImageView(), name + " view");
-        return image;
+        return createImage(allocator, extent, _sceneFormat, std::format("Screen {}", index));
     };
     const auto makeSet = [&](const memory::Image& image, std::size_t index) {
         vk::raii::DescriptorSet set = descriptors.allocate(textureSetLayout);
-        descriptor::DescriptorWriter{}
-            .writeImage(kSamplerBinding, *image.getImageView(), _sampler, vk::ImageLayout::eShaderReadOnlyOptimal)
-            .update(*_device, *set);
+        writeSet(*set, image);
         _device->setName(*set, std::format("Screen {} set", index));
         return set;
     };
-    std::array images{makeImage(0), makeImage(1)};
-    std::array sets{makeSet(images.at(0), 0), makeSet(images.at(1), 1)};
+    std::array images{makeImage(0), makeImage(1), makeImage(2)};
+    std::array sets{makeSet(images.at(0), 0), makeSet(images.at(1), 1), makeSet(images.at(2), 2)};
     return std::make_unique<Targets>(Targets{.images = std::move(images), .sets = std::move(sets)});
 }
 
-std::size_t ScreenPass::recordEffects(const vk::raii::CommandBuffer& commandBuffer, const Targets& targets,
-                                      std::span<const rendering::MaterialBinding> effects,
-                                      const frame::FrameGlobals& globals, std::size_t frameIndex) const {
-    std::size_t current = 0;
-    for (const rendering::MaterialBinding& effect : effects) {
-        if (effect.pipeline == nullptr) {
-            continue;
-        }
-        const command::CommandLabel label{*_device, commandBuffer, "Screen effect"};
-        const std::size_t next = 1 - current;
-        const memory::Image& target = targets.images.at(next);
-        rendering::transitionImage(commandBuffer, *target.getImage(), rendering::kSceneToColorAttachment);
-        const vk::RenderingAttachmentInfo attachment =
-            rendering::colorAttachment(*target.getImageView(), vk::ClearColorValue{});
-        commandBuffer.beginRendering(rendering::renderingInfo(target.getExtent(), {&attachment, 1}));
-        coverAll(commandBuffer, target.getExtent());
-        effect.pipeline->bind(commandBuffer);
-        const pipeline::PipelineLayout& layout = effect.pipeline->getLayout();
-        globals.bind(commandBuffer, layout, frameIndex);
-        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *layout.getLayout(), kTextureSet,
-                                         *targets.sets.at(current), {});
-        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, *layout.getLayout(), kMaterialSet,
-                                         effect.set, {});
-        commandBuffer.draw(3, 1, 0, 0);
-        commandBuffer.endRendering();
-        rendering::transitionImage(commandBuffer, *target.getImage(), rendering::kSceneToShaderRead);
-        current = next;
-    }
-    return current;
+void ScreenPass::recordPass(const vk::raii::CommandBuffer& commandBuffer, const Pass& pass,
+                            const frame::FrameGlobals& globals, std::size_t frameIndex,
+                            vk::DescriptorSet screenSet) const {
+    const command::CommandLabel label{*_device, commandBuffer, "Screen effect"};
+    rendering::transitionImage(commandBuffer, pass.image, rendering::kSceneToColorAttachment);
+    const vk::RenderingAttachmentInfo attachment = rendering::colorAttachment(pass.view, vk::ClearColorValue{});
+    commandBuffer.beginRendering(rendering::renderingInfo(pass.extent, {&attachment, 1}));
+    coverAll(commandBuffer, pass.extent);
+    pass.pipeline->bind(commandBuffer);
+    const pipeline::PipelineLayout& layout = pass.pipeline->getLayout();
+    globals.bind(commandBuffer, layout, frameIndex);
+    const vk::PipelineLayout handle = *layout.getLayout();
+    commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, handle, kTextureSet, pass.input, {});
+    commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, handle, kMaterialSet, pass.material, {});
+    commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, handle, kScreenDepthSet, screenSet, {});
+    const glm::vec2 size{static_cast<float>(pass.extent.width), static_cast<float>(pass.extent.height)};
+    commandBuffer.pushConstants<glm::vec2>(
+        handle, vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment, 0, size);
+    commandBuffer.draw(3, 1, 0, 0);
+    commandBuffer.endRendering();
+    rendering::transitionImage(commandBuffer, pass.image, rendering::kSceneToShaderRead);
 }
 
 void ScreenPass::recordCopy(const vk::raii::CommandBuffer& commandBuffer, vk::DescriptorSet source, vk::Extent2D extent,

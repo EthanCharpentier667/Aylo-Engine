@@ -21,14 +21,16 @@ namespace aylo::plugins::graphics {
 /// @brief An image decoded into pixels.
 struct DecodedImage {
     glm::uvec2 size{0};             ///< In pixels.
-    std::vector<std::byte> pixels;  ///< RGBA, 8 bits per channel, row by row from the top.
+    std::vector<std::byte> pixels;  ///< RGBA, 8 bits per channel (32-bit floats if hdr), row by row from the top.
+    bool hdr{false};                ///< A Radiance .hdr image: linear colours that may exceed 1, as floats.
 };
 
 /// @return The whole content of the file at @p path.
 /// @throws core::asset::exceptions::AssetLoadException If it cannot be read.
 [[nodiscard]] AYLO_PLUGIN_GRAPHICS_API std::vector<std::byte> readFile(const std::filesystem::path& path);
 
-/// @brief Decodes an image file's bytes (PNG, JPEG, GIF, BMP, TGA... through stb_image) into RGBA pixels.
+/// @brief Decodes an image file's bytes (PNG, JPEG, GIF, BMP, TGA... through stb_image) into RGBA pixels; a Radiance
+/// .hdr image into RGBA floats (DecodedImage::hdr).
 /// @param name Names the image in errors.
 /// @throws core::asset::exceptions::AssetLoadException If the bytes are not an image stb_image decodes.
 [[nodiscard]] AYLO_PLUGIN_GRAPHICS_API DecodedImage decodeImage(std::string_view name,

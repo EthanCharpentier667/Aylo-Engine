@@ -144,6 +144,201 @@ TEST(ShaderCompiler, CompilesAMeshShaderForMeshesOnly) {
     EXPECT_EQ(shader.materialValues.size(), 2U);
 }
 
+TEST(ShaderCompiler, AMeshShaderReadsItsDrawsMatricesBoundsAndInstanceValuesInBothStages) {
+    // docs/Shaders.md: a mesh draw's data is in the frame's buffer of mesh draws, read by both stages.
+    const CompiledShader shader = compileShader(
+        "#pragma mesh\n"
+        "uniform sampler2D noise;\n"
+        "instance uniform float dissolve = 0.0;\n"
+        "void vertex() { VERTEX += NORMAL_MATRIX * NORMAL * dissolve; }\n"
+        "void fragment() {\n"
+        "    vec3 local = (INV_MODEL_MATRIX * MODEL_MATRIX * vec4(AABB_MIN, 1.0)).xyz;\n"
+        "    vec3 box = (local - AABB_MIN) / max(AABB_MAX - AABB_MIN, vec3(0.0001));\n"
+        "    if (texture(noise, box.xy).r < dissolve) { discard; }\n"
+        "}\n",
+        "dissolve");
+    ASSERT_EQ(shader.variants.size(), 1U);
+    EXPECT_EQ(shader.variants.front().fragment.front(), kSpirvMagic);
+    EXPECT_EQ(shader.instanceValues.size(), 1U);
+}
+
+TEST(ShaderCompiler, TheMeshDrawBuiltinsAreOnlyForMeshShaders) {
+    EXPECT_FALSE(errorOf("void fragment() { COLOR.rgb = AABB_MAX; }\n").empty());
+}
+
+TEST(ShaderCompiler, AVaryingReachesTheFragmentStageOfEveryTarget) {
+    // Every drawing target and the screen: the varyings' locations stay clear of each template's own.
+    const CompiledShader drawn = compileShader(
+        "varying vec2 wave;\nvarying float age;\nvarying vec4 a;\nvarying vec3 b;\nvarying int seed;\n"
+        "void vertex() { wave = VERTEX * 0.01; age = TIME; a = COLOR; b = vec3(UV, 1.0); seed = 3; }\n"
+        "void fragment() { COLOR.rgb *= 0.5 + 0.5 * sin(wave.x + age) + a.rgb * b * float(seed); }\n",
+        "wave");
+    EXPECT_EQ(drawn.variants.size(), aylo::plugins::shader::detail::kDrawingTargets.size());
+    const CompiledShader screen = compileShader(
+        "#pragma screen\nvarying vec2 centre;\nvoid vertex() { centre = UV - 0.5; }\n"
+        "void fragment() { COLOR.rgb *= 1.0 - length(centre); }\n",
+        "vignette");
+    EXPECT_EQ(screen.variants.size(), 1U);
+    const CompiledShader mesh = compileShader(
+        "#pragma mesh\nvarying vec3 objectPosition;\nvoid vertex() { objectPosition = VERTEX; }\n"
+        "void fragment() { COLOR.rgb *= 0.5 + 0.5 * fract(objectPosition.y * 4.0); }\n",
+        "stripes");
+    EXPECT_EQ(mesh.variants.size(), 1U);
+}
+
+TEST(ShaderCompiler, AMeshShaderReadsTheViewBuiltins) {
+    // The example of #100: a rim light from the view direction, on front faces only.
+    const CompiledShader shader = compileShader(
+        "#pragma mesh\n"
+        "void vertex() { VERTEX += (INV_MODEL_MATRIX * vec4(WORLD_POSITION, 1.0)).xyz * 0.0; }\n"
+        "void fragment() {\n"
+        "    float rim = 1.0 - max(dot(NORMAL, VIEW_DIR), 0.0);\n"
+        "    COLOR.rgb += pow(rim, 3.0) * vec3(0.3, 0.6, 1.0) * (FRONT_FACING ? 1.0 : 0.0);\n"
+        "    vec4 clip = PROJECTION_MATRIX * VIEW_MATRIX * vec4(WORLD_POSITION, 1.0);\n"
+        "    vec4 back = INV_VIEW_MATRIX * INV_PROJECTION_MATRIX * clip;\n"
+        "    COLOR.rgb *= step(0.0, back.w) + distance(CAMERA_POSITION, LOCAL_POSITION) * 0.0;\n"
+        "    COLOR.a *= FRAGCOORD.z;\n"
+        "}\n",
+        "rim");
+    ASSERT_EQ(shader.variants.size(), 1U);
+}
+
+TEST(ShaderCompiler, CompilesTheManuals3DShaders) {
+    // manual/pages/materials.md, "3D materials": burn.glsl and rim.glsl.
+    EXPECT_EQ(errorOf("#pragma mesh\nuniform sampler2D noise;\ninstance uniform float dissolve = 0.0;\n\n"
+                      "void fragment() {\n"
+                      "    vec3 box = (LOCAL_POSITION - AABB_MIN) / max(AABB_MAX - AABB_MIN, vec3(0.0001));\n"
+                      "    if (texture(noise, box.xy).r < dissolve) { discard; }\n"
+                      "}\n"),
+              "");
+    EXPECT_EQ(errorOf("#pragma mesh\nuniform vec3 rimColor = vec3(0.3, 0.6, 1.0);\n\n"
+                      "void fragment() {\n"
+                      "    float rim = 1.0 - max(dot(NORMAL, VIEW_DIR), 0.0);\n"
+                      "    COLOR.rgb += pow(rim, 3.0) * rimColor * COLOR.a * (FRONT_FACING ? 1.0 : 0.0);\n"
+                      "}\n"),
+              "");
+}
+
+TEST(ShaderCompiler, CompilesTheManualsRenderStateShaders) {
+    // manual/pages/materials.md, "How a 3D material is drawn": glass, a cutout and an outline.
+    EXPECT_EQ(errorOf("#pragma mesh\n#pragma blend alpha   // see what is behind it\n#pragma cull none\n"
+                      "void fragment() { COLOR = vec4(0.2, 0.5, 1.0, 1.0) * 0.4; }\n"),
+              "");
+    EXPECT_EQ(errorOf("#pragma mesh\n#pragma cull none\nvoid fragment() { ALPHA_SCISSOR = 0.5; }\n"), "");
+    EXPECT_EQ(errorOf("#pragma mesh\n#pragma cull front\nuniform vec4 outlineColor = vec4(0.0, 0.0, 0.0, 1.0);\n"
+                      "uniform float width = 0.03;\nvoid vertex() { VERTEX += NORMAL * width; }\n"
+                      "void fragment() { COLOR = outlineColor; }\n"),
+              "");
+}
+
+TEST(ShaderCompiler, CompilesTheManualsLitShaders) {
+    // manual/pages/lighting.md: a painted surface, a normal changed, a toon light().
+    EXPECT_EQ(errorOf("#pragma mesh\n#pragma lit\nuniform sampler2D albedoMap;\nuniform vec3 tint = vec3(1.0);\n"
+                      "void fragment() {\n    ALBEDO = texture(albedoMap, UV).rgb * tint;\n    ROUGHNESS = 0.4;\n"
+                      "    METALLIC = 0.0;\n}\n"),
+              "");
+    EXPECT_EQ(errorOf("#pragma mesh\n#pragma lit\nvoid fragment() {\n"
+                      "    NORMAL = normalize(NORMAL + 0.15 * sin(WORLD_POSITION * 12.0));\n    METALLIC = 1.0;\n"
+                      "    ROUGHNESS = 0.25;\n}\n"),
+              "");
+    EXPECT_EQ(errorOf("#pragma mesh\n#pragma lit\nuniform float bands = 3.0;\nvoid fragment() { ROUGHNESS = 1.0; }\n"
+                      "void light() {\n"
+                      "    float lit = floor(max(dot(NORMAL, LIGHT_DIR), 0.0) * bands) / bands;\n"
+                      "    DIFFUSE_LIGHT += ALBEDO * LIGHT_COLOR * ATTENUATION * SHADOW * lit;\n}\n"),
+              "");
+    EXPECT_EQ(errorOf("#pragma mesh\n#pragma lit\n#pragma blend alpha\n"
+                      "void fragment() { ALPHA = 0.3; EMISSION = vec3(0.0, 2.0, 4.0); AO = 0.5; SPECULAR = 0.2; }\n"),
+              "");
+}
+
+TEST(ShaderCompiler, AMeshShaderReadsItsVertexData) {
+    // manual/pages/lighting.md: the vertex colours and the second UV set.
+    EXPECT_EQ(errorOf("#pragma mesh\n#pragma lit\nuniform sampler2D lightmap;\n"
+                      "void vertex() { VERTEX += TANGENT * 0.0 + BINORMAL * 0.0; }\n"
+                      "void fragment() {\n    ALBEDO = COLOR.rgb * VERTEX_COLOR.rgb;\n"
+                      "    AO = texture(lightmap, UV2).r;\n    NORMAL = normalize(NORMAL + TANGENT * 0.1);\n}\n"),
+              "");
+    EXPECT_FALSE(errorOf("void fragment() { COLOR = VERTEX_COLOR; }\n").empty());
+}
+
+TEST(ShaderCompiler, SaysWhetherA3DShaderCastsShadowsAndCutsOut) {
+    const CompiledShader leaf = compileShader("#pragma mesh\nvoid fragment() { ALPHA_SCISSOR = 0.5; }\n", "leaf");
+    EXPECT_TRUE(leaf.castsShadows);
+    EXPECT_TRUE(leaf.cutsOut);
+    const CompiledShader glow = compileShader("#pragma mesh\n#pragma shadow off\nvoid fragment() {}\n", "glow");
+    EXPECT_FALSE(glow.castsShadows);
+    EXPECT_FALSE(glow.cutsOut);
+}
+
+TEST(ShaderCompiler, AScreenEffectReadsTheDepthAndTheCamera) {
+    // manual/pages/post-processing.md, "Depth and the 3D camera": fog, and edges from the rebuilt normals.
+    const CompiledShader fog = compileShader(
+        "#pragma screen\nuniform vec3 fogColor = vec3(0.5, 0.6, 0.7);\nuniform float density = 0.04;\n"
+        "void fragment() {\n    float distance = linearDepth(texture(DEPTH_TEXTURE, SCREEN_UV).r);\n"
+        "    COLOR.rgb = mix(fogColor, COLOR.rgb, exp(-density * distance));\n}\n",
+        "fog");
+    EXPECT_TRUE(fog.readsDepth);
+    const CompiledShader scan = compileShader(
+        "#pragma screen\nuniform float height = 1.0;\nvoid fragment() {\n"
+        "    vec3 world = worldPositionAt(SCREEN_UV);\n    vec3 n = normalAt(SCREEN_UV);\n"
+        "    float line = step(abs(world.y - height), 0.05) * step(0.5, n.y);\n"
+        "    COLOR.rgb += vec3(0.2, 1.0, 0.4) * line * (1.0 - step(30.0, distance(world, CAMERA_POSITION)));\n"
+        "    COLOR.rgb *= 1.0 + 0.0 * (VIEW_MATRIX * INV_VIEW_MATRIX * PROJECTION_MATRIX * "
+        "INV_PROJECTION_MATRIX)[0].x;\n"
+        "}\n",
+        "scan");
+    EXPECT_TRUE(scan.readsDepth);
+    EXPECT_FALSE(
+        compileShader("#pragma screen\nvoid fragment() { COLOR.rgb = 1.0 - COLOR.rgb; }\n", "invert").readsDepth);
+    EXPECT_FALSE(errorOf("void fragment() { COLOR.r = texture(DEPTH_TEXTURE, UV).r; }\n").empty());
+}
+
+TEST(ShaderCompiler, AScreenEffectReadsTheSceneAndThePreviousFrame) {
+    // manual/pages/post-processing.md, "Several passes": trails from the last frame over the untouched scene.
+    const CompiledShader trails = compileShader(
+        "#pragma screen\nuniform float keep = 0.9;\nvoid fragment() {\n"
+        "    vec3 last = texture(PREVIOUS_FRAME, SCREEN_UV).rgb;\n"
+        "    vec3 scene = texture(SCENE_TEXTURE, SCREEN_UV + SCREEN_PIXEL_SIZE).rgb;\n"
+        "    COLOR.rgb = max(COLOR.rgb, max(scene, last * keep));\n}\n",
+        "trails");
+    EXPECT_TRUE(trails.readsPreviousFrame);
+    EXPECT_FALSE(trails.readsDepth);
+    EXPECT_FALSE(
+        compileShader("#pragma screen\nvoid fragment() { COLOR = texture(SCENE_TEXTURE, SCREEN_UV); }\n", "scene")
+            .readsPreviousFrame);
+    EXPECT_FALSE(errorOf("void fragment() { COLOR = texture(PREVIOUS_FRAME, UV); }\n").empty());
+}
+
+TEST(ShaderCompiler, ALitShaderReadsTheLightAround) {
+    // manual/pages/lighting.md, "The light around": a cel shading whose light around is grey, its reflection dimmer.
+    const CompiledShader toon = compileShader(
+        "#pragma mesh\n#pragma lit\nvoid fragment() { ALBEDO = vec3(0.8); ROUGHNESS = 0.4; }\n"
+        "float luminance3(vec3 c) { return dot(c, vec3(0.333)); }\n"
+        "void light() {\n    DIFFUSE_LIGHT += ALBEDO * LIGHT_COLOR * step(0.3, dot(NORMAL, LIGHT_DIR)) * SHADOW;\n"
+        "    ENV_DIFFUSE = vec3(luminance3(ENV_DIFFUSE));\n    ENV_SPECULAR *= 0.5;\n}\n",
+        "toon");
+    EXPECT_EQ(toon.variants.size(), 1U);
+    EXPECT_FALSE(errorOf("#pragma mesh\nvoid fragment() { COLOR.rgb = ENV_DIFFUSE; }\n").empty());
+    EXPECT_FALSE(errorOf("#pragma mesh\n#pragma lit\nuniform vec3 ENV_SPECULAR;\nvoid fragment() {}\n").empty());
+}
+
+TEST(ShaderCompiler, TheSurfaceBuiltinsAreOnlyForLitShaders) {
+    EXPECT_FALSE(errorOf("#pragma mesh\nvoid fragment() { ALBEDO = vec3(1.0); }\n").empty());
+}
+
+TEST(ShaderCompiler, CarriesTheRenderStateAndCompilesACutout) {
+    const CompiledShader leaf = compileShader(
+        "#pragma mesh\n#pragma cull none\nvoid fragment() { ALPHA_SCISSOR = 0.5; COLOR.a = UV.x; }\n", "leaf");
+    EXPECT_EQ(leaf.renderState.cull, aylo::contract::renderer::CullMode::kNone);
+    EXPECT_FALSE(errorOf("void fragment() { ALPHA_SCISSOR = 0.5; }\n").empty());  // a 3D built-in
+}
+
+TEST(ShaderCompiler, The3DViewBuiltinsAreOnlyForMeshShadersButFragcoordIsEverywhere) {
+    EXPECT_FALSE(errorOf("void fragment() { COLOR.rgb = WORLD_POSITION; }\n").empty());
+    EXPECT_FALSE(errorOf("void fragment() { COLOR.rgb = VIEW_DIR; }\n").empty());
+    EXPECT_TRUE(errorOf("void fragment() { COLOR.r = FRAGCOORD.x; }\n").empty());
+}
+
 TEST(ShaderCompiler, AShaderIsAScreenEffectOrAMeshShaderNotBoth) {
     EXPECT_THROW(static_cast<void>(compileShader("#pragma screen\n#pragma mesh\nvoid fragment() {}\n", "both")),
                  aylo::plugins::shader::exceptions::ShaderException);

@@ -7,6 +7,8 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
+#include <cstddef>
 #include <filesystem>
 #include <format>
 #include <fstream>
@@ -19,6 +21,7 @@
 #include "aylo/contract/renderer/shaders/CompiledShader.hpp"
 #include "aylo/ecs/resource/ResourceTraits.hpp"
 #include "core/asset/AssetId.hpp"
+#include "plugins/shader/BuiltinShaders.hpp"
 #include "plugins/shader/ShaderAssets.hpp"
 
 using aylo::core::asset::AssetId;
@@ -178,8 +181,17 @@ TEST(ShaderAssets, RefusesAPathThatLeavesItsDirectory) {
 
 TEST(ShaderAssets, LoadsTheEnginesScreenShaders) {
     ShaderAssets shaders;
-    for (const std::string_view name : {"@aylo/bloom.glsl", "@aylo/tonemap.glsl"}) {
-        const AssetId id = shaders.load(std::string{name});
+    // Every shader the engine gives, the standard effects and their passes too.
+    const std::string names = aylo::plugins::shader::listBuiltinShaders();
+    std::vector<std::string> all;
+    for (std::size_t start = 0; start < names.size();) {
+        const std::size_t end = std::min(names.find(", ", start), names.size());
+        all.emplace_back(names.substr(start, end - start));
+        start = end + 2;
+    }
+    EXPECT_GE(all.size(), 18U);
+    for (const std::string& name : all) {
+        const AssetId id = shaders.load(name);
         ASSERT_NE(shaders.get(id), nullptr) << name << ": " << shaders.getEntry(id)->error;
         ASSERT_EQ(shaders.get(id)->variants.size(), 1U);
         EXPECT_EQ(shaders.get(id)->variants.front().target, aylo::contract::renderer::ShaderTarget::kScreen);
@@ -192,8 +204,11 @@ TEST(ShaderAssets, LoadsTheEnginesScreenShaders) {
 
 TEST(ShaderAssets, RecordsAnEngineShaderThatDoesNotExist) {
     ShaderAssets shaders;
-    const AssetId id = shaders.load("@aylo/vignette.glsl");
+    const AssetId id = shaders.load("@aylo/glitch.glsl");
     EXPECT_EQ(shaders.get(id), nullptr);
     ASSERT_NE(shaders.getEntry(id), nullptr);
     EXPECT_TRUE(shaders.getEntry(id)->error.contains("no such shader")) << shaders.getEntry(id)->error;
+    EXPECT_TRUE(shaders.getEntry(id)->error.contains("@aylo/vignette.glsl")) << shaders.getEntry(id)->error;
+    // A library is for #include, not a shader.
+    EXPECT_EQ(shaders.get(shaders.load("@aylo/noise.glsl")), nullptr);
 }

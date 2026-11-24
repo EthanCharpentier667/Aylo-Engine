@@ -8,12 +8,14 @@
 #pragma once
 
 #include <cstdint>
+#include <limits>
 #include <string_view>
 #include <vector>
 
 #include "aylo/ecs/app/App.hpp"
 #include "aylo/ecs/app/PluginRegistry.hpp"
 #include "aylo/ecs/call/CallTraits.hpp"
+#include "aylo/ecs/entity/Entity.hpp"
 #include "aylo/ecs/type/String.hpp"
 #include "core/asset/AssetId.hpp"
 #include "plugins/AssetIdReflection.hpp"  // IWYU pragma: keep
@@ -27,6 +29,18 @@ inline constexpr std::string_view kLoadMaterialCall = "aylo.shader.loadMaterial"
 inline constexpr std::string_view kSetValueCall = "aylo.shader.setMaterialValue";  ///< MaterialAssets::setValue().
 inline constexpr std::string_view kSetTextureCall =
     "aylo.shader.setMaterialTexture";  ///< MaterialAssets::setTexture().
+inline constexpr std::string_view kSetInstanceValueCall =
+    "aylo.shader.setInstanceValue";  ///< An entity's MaterialInstance (InstanceValueRequests).
+inline constexpr std::string_view kSetRenderStateCall =
+    "aylo.shader.setMaterialRenderState";  ///< MaterialAssets::setRenderState().
+inline constexpr std::string_view kSetNextPassCall =
+    "aylo.shader.setMaterialNextPass";  ///< MaterialAssets::setNextPass().
+inline constexpr std::string_view kAddScreenEffectCall =
+    "aylo.shader.addScreenEffect";  ///< A pass of ScreenMaterials, after the others.
+inline constexpr std::string_view kAddScreenEffectInputCall =
+    "aylo.shader.addScreenEffectInput";  ///< A texture of the last pass bound to a target.
+inline constexpr std::string_view kCheckScreenEffectsCall =
+    "aylo.shader.checkScreenEffects";  ///< Refuses passes that read what no earlier pass wrote.
 inline constexpr std::string_view kSetScreenMaterialsCall =
     "aylo.shader.setScreenMaterials";  ///< ScreenMaterials, replaced.
 
@@ -74,6 +88,41 @@ struct SetMaterialValueArguments {
 AYLO_ECS_CALL_DATA(SetMaterialValueArguments, "aylo.shader.SetMaterialValueArguments", material, name, size, x, y, z,
                    w);
 
+/// @brief The arguments of `aylo.shader.setInstanceValue`: an `instance uniform` of one entity's drawing (its
+/// aylo.MaterialInstance), a float or a vector of @ref size components, laid out by @ref material's shader.
+struct SetInstanceValueArguments {
+    ecs::Entity entity;             ///< The entity drawn (a sprite, a text, a model...).
+    core::asset::AssetId material;  ///< The material it is drawn with, whose shader declares the value.
+    ecs::String name;               ///< The `instance uniform`, as declared in the shader.
+    std::uint32_t size{1};          ///< 1: a float (or a whole number, for an `int`); 2 to 4: a vec2 to a vec4.
+    float x{0.0F};                  ///< The float, or the first component.
+    float y{0.0F};                  ///< The second component.
+    float z{0.0F};                  ///< The third component.
+    float w{0.0F};                  ///< The fourth component.
+};
+AYLO_ECS_CALL_DATA(SetInstanceValueArguments, "aylo.shader.SetInstanceValueArguments", entity, material, name, size, x,
+                   y, z, w);
+
+/// @brief The arguments of `aylo.shader.setMaterialRenderState`: what a material changes of its 3D shader's render
+/// state, replacing what it changed before. An empty name or a NaN number keeps the shader's.
+struct SetMaterialRenderStateArguments {
+    core::asset::AssetId material;  ///< The material, from `aylo.shader.addMaterial`.
+    ecs::String cull;               ///< "back", "front", "none", or empty.
+    ecs::String blend;              ///< "opaque", "alpha", "premultiplied", "additive", "multiply", or empty.
+    ecs::String depth;              ///< "test write", "test nowrite", "notest", or empty.
+    float depthBias{std::numeric_limits<float>::quiet_NaN()};       ///< In steps of the depth buffer; NaN: keep.
+    float depthBiasSlope{std::numeric_limits<float>::quiet_NaN()};  ///< Times the slope; NaN: keep.
+};
+AYLO_ECS_CALL_DATA(SetMaterialRenderStateArguments, "aylo.shader.SetMaterialRenderStateArguments", material, cull,
+                   blend, depth, depthBias, depthBiasSlope);
+
+/// @brief The arguments of `aylo.shader.setMaterialNextPass`: the material drawn after @ref material on the same model.
+struct SetMaterialNextPassArguments {
+    core::asset::AssetId material;  ///< The material, from `aylo.shader.addMaterial`.
+    core::asset::AssetId nextPass;  ///< Another material, drawn after it; none: no next pass.
+};
+AYLO_ECS_CALL_DATA(SetMaterialNextPassArguments, "aylo.shader.SetMaterialNextPassArguments", material, nextPass);
+
 /// @brief The arguments of `aylo.shader.setMaterialTexture`.
 struct SetMaterialTextureArguments {
     core::asset::AssetId material;  ///< The material, from `aylo.shader.addMaterial`.
@@ -89,8 +138,32 @@ struct SetScreenMaterialsArguments {
 };
 AYLO_ECS_CALL_DATA(SetScreenMaterialsArguments, "aylo.shader.SetScreenMaterialsArguments", materials);
 
+/// @brief The arguments of `aylo.shader.addScreenEffect`: a pass added after the others
+/// (`aylo.shader.setScreenMaterials` with an empty list starts over).
+struct AddScreenEffectArguments {
+    core::asset::AssetId material;  ///< A material of a `#pragma screen` shader.
+    ecs::String input;              ///< The target it reads as TEXTURE: an earlier pass's output, "scene", or empty.
+    ecs::String output;             ///< The target it writes; empty: the chain.
+    float scale{1.0F};              ///< Its target's share of the screen.
+    std::uint32_t width{0};         ///< Its target's width in pixels; 0: by scale.
+    std::uint32_t height{0};        ///< Its target's height in pixels; 0: by scale.
+    bool lowPrecision{false};       ///< An 8-bit target instead of half float.
+};
+AYLO_ECS_CALL_DATA(AddScreenEffectArguments, "aylo.shader.AddScreenEffectArguments", material, input, output, scale,
+                   width, height, lowPrecision);
+
+/// @brief The arguments of `aylo.shader.addScreenEffectInput`: a `uniform sampler2D` of the last pass's shader bound to
+/// a target.
+struct AddScreenEffectInputArguments {
+    ecs::String sampler;  ///< As declared in the shader.
+    ecs::String target;   ///< An earlier pass's output, or "scene".
+};
+AYLO_ECS_CALL_DATA(AddScreenEffectInputArguments, "aylo.shader.AddScreenEffectInputArguments", sampler, target);
+
 /// @brief Registers the shader engine calls on @p app, for scripts: `aylo.shader.load`, `aylo.shader.addMaterial`,
-/// `aylo.shader.setMaterialValue`, `aylo.shader.setMaterialTexture` and `aylo.shader.setScreenMaterials`. They throw a
+/// `aylo.shader.setMaterialValue`, `aylo.shader.setMaterialTexture`, `aylo.shader.setMaterialRenderState`,
+/// `aylo.shader.setMaterialNextPass`,
+/// `aylo.shader.setInstanceValue` and `aylo.shader.setScreenMaterials`. They throw a
 /// ShaderException naming what is wrong (an unknown material, a size that is not 1 to 4). Called by the ShaderPlugin.
 void addShaderCalls(ecs::App& app);
 

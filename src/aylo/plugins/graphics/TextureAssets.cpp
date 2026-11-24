@@ -157,6 +157,9 @@ void updateTextures(TextureAssets& assets, contract::renderer::IRenderer& render
                 decodeImage(entry.path, entry.encoded.empty() ? core::vfs::readBytes(assets.getSource(), entry.path)
                                                               : entry.encoded);
             desc.size = image.size;
+            if (image.hdr) {
+                desc.encoding = contract::renderer::TextureEncoding::kHdr;
+            }
             assets.setLoaded(id, renderer.createTexture(desc, image.pixels), desc);
         } catch (const std::exception& error) {
             const std::string message = std::format("Texture {}", error.what());

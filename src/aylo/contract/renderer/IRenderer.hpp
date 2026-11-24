@@ -15,10 +15,12 @@
 #include <span>
 #include <stdexcept>
 #include <variant>
+#include <vector>
 
 #include "aylo/contract/platform/IPlatform.hpp"
 #include "aylo/contract/platform/exceptions/PlatformExceptions.hpp"
 #include "aylo/contract/renderer/drawing/Color.hpp"
+#include "aylo/contract/renderer/drawing/Light3D.hpp"
 #include "aylo/contract/renderer/drawing/Lines3D.hpp"
 #include "aylo/contract/renderer/drawing/Mesh.hpp"
 #include "aylo/contract/renderer/drawing/Overlay.hpp"
@@ -30,6 +32,7 @@
 #include "aylo/contract/renderer/particle/Particle.hpp"
 #include "aylo/contract/renderer/particle/ParticleSystemDesc.hpp"
 #include "aylo/contract/renderer/shaders/CompiledShader.hpp"
+#include "aylo/contract/renderer/shaders/ScreenEffect.hpp"
 #include "aylo/contract/renderer/stats/FrameStats.hpp"
 #include "aylo/contract/renderer/view/ScenePreview.hpp"
 #include "aylo/contract/renderer/view/View.hpp"
@@ -136,6 +139,14 @@ class AYLO_HEADER_ONLY_API IRenderer {
 
     /// @brief Destroys a mesh of createStaticMesh(); a destroyed or unknown one is ignored. Default: does nothing.
     virtual void destroyStaticMesh(StaticMeshId /*mesh*/) {}
+
+    /// @return Whether the renderer lights the 3D world: setLights3D() does something. Default: false.
+    [[nodiscard]] virtual bool supportsLights3D() const noexcept { return false; }
+
+    /// @brief Sets the lights of the frame's 3D world, in the world's space, and its ambient light; a frame where it is
+    /// not called has none. Past kMaxLights3D, the renderer keeps the directional lights and the nearest others to the
+    /// 3D camera. Default: does nothing.
+    virtual void setLights3D(std::span<const Light3D> /*lights*/, const Environment3D& /*environment*/) {}
 
     /// @brief Draws a mesh in the 3D world, with the depth test, its parts unlit (base colour times texture, times the
     /// draw's colour). A destroyed mesh is skipped. Default: draws nothing.
@@ -244,6 +255,20 @@ class AYLO_HEADER_ONLY_API IRenderer {
     /// after them, so they leave it alone. A material destroyed, or whose shader does not serve kScreen, is skipped.
     /// Empty, the default: the scene is shown as drawn. Default: does nothing.
     virtual void setScreenMaterials(std::span<const MaterialId> /*materials*/) {}
+
+    /// @brief Sets the screen effects as passes (ScreenEffectPass): each writes the chain or a named target at a scale
+    /// of the screen, reading earlier targets and the scene; the list of setScreenMaterials() is a chain of passes at
+    /// full size. Passes that checkScreenEffects() refuses are skipped. Default: the chain of their materials, their
+    /// targets ignored.
+    virtual void setScreenEffects(std::span<const ScreenEffectPass> passes) {
+        std::vector<MaterialId> materials;
+        for (const ScreenEffectPass& pass : passes) {
+            if (pass.output.empty()) {
+                materials.push_back(pass.material);
+            }
+        }
+        setScreenMaterials(materials);
+    }
     /// @}
 
     /// @name Tools

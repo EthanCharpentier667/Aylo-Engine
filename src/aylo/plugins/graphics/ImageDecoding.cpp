@@ -37,7 +37,31 @@ constexpr int kChannels = 4;
 /// @brief Frees the pixels stb_image decoded.
 struct StbFree {
     void operator()(stbi_uc* pixels) const noexcept { stbi_image_free(pixels); }
+    void operator()(float* pixels) const noexcept { stbi_image_free(pixels); }
 };
+
+/// @return The HDR image @p encoded holds, as RGBA floats.
+DecodedImage decodeHdr(std::string_view name, std::span<const std::byte> encoded) {
+    int width = 0;
+    int height = 0;
+    int fileChannels = 0;
+    // NOLINTBEGIN(cppcoreguidelines-pro-type-reinterpret-cast): stb_image reads unsigned bytes.
+    const std::unique_ptr<float, StbFree> pixels{
+        stbi_loadf_from_memory(reinterpret_cast<const stbi_uc*>(encoded.data()), static_cast<int>(encoded.size()),
+                               &width, &height, &fileChannels, kChannels)};
+    // NOLINTEND(cppcoreguidelines-pro-type-reinterpret-cast)
+    if (pixels == nullptr) {
+        throw core::asset::exceptions::AssetLoadException{
+            std::format("'{}': cannot decode the HDR image ({})", name, stbi_failure_reason())};
+    }
+    const std::size_t byteCount =
+        static_cast<std::size_t>(width) * static_cast<std::size_t>(height) * kChannels * sizeof(float);
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+    const std::span<const std::byte> rgba{reinterpret_cast<const std::byte*>(pixels.get()), byteCount};
+    return DecodedImage{.size = {static_cast<unsigned>(width), static_cast<unsigned>(height)},
+                        .pixels = {rgba.begin(), rgba.end()},
+                        .hdr = true};
+}
 }  // namespace
 
 std::vector<std::byte> readFile(const std::filesystem::path& path) {
@@ -53,6 +77,11 @@ std::vector<std::byte> readFile(const std::filesystem::path& path) {
 }
 
 DecodedImage decodeImage(std::string_view name, std::span<const std::byte> encoded) {
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast): stb_image reads unsigned bytes.
+    if (stbi_is_hdr_from_memory(reinterpret_cast<const stbi_uc*>(encoded.data()), static_cast<int>(encoded.size())) !=
+        0) {
+        return decodeHdr(name, encoded);
+    }
     int width = 0;
     int height = 0;
     int fileChannels = 0;

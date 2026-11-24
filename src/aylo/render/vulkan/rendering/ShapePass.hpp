@@ -16,6 +16,7 @@
 
 #include "MaterialBinding.hpp"
 #include "ShapeBatch.hpp"
+#include "aylo/contract/renderer/shaders/CompiledShader.hpp"
 #include "aylo/contract/renderer/view/CameraView.hpp"
 #include "render/vulkan/Export.hpp"
 #include "render/vulkan/core/Device.hpp"
@@ -63,7 +64,7 @@ class AYLO_RENDER_VULKAN_API ShapePass {
     [[nodiscard]] static pipeline::GraphicsPipeline createMaterialPipeline(
         const core::Device& device, const vk::raii::ShaderModule& vertex, const vk::raii::ShaderModule& fragment,
         bool instanceValues, const pipeline::PipelineLayout& layout, vk::Format colorFormat,
-        const vk::raii::PipelineCache* cache);
+        const vk::raii::PipelineCache* cache, const contract::renderer::RenderState& state);
 
     /// @brief Copies @p shapes into frame @p frameIndex's buffers, for record().
     /// @throws vk::SystemError If a bigger buffer cannot be created.

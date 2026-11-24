@@ -21,6 +21,11 @@ layout(set = 0, binding = 0, std140) uniform FrameUniforms {
     float deltaTime;       // Seconds since the previous frame, 0 on the first one. Offset 4.
     vec2 framebufferSize;  // Size of the rendered images, in pixels. Offset 8.
     mat4 viewProjection;   // World to clip space: the frame's camera. Offset 16.
+    mat4 view;             // World to camera space (identity in 2D). Offset 80.
+    mat4 projection;       // Camera to clip space. Offset 144.
+    mat4 inverseView;      // Camera to world space. Offset 208.
+    mat4 inverseProjection;  // Clip to camera space. Offset 272.
+    vec4 cameraPosition;   // xyz: the camera in the world; w: 1 perspective, 0 orthographic. Offset 336.
 } frame;
 
 #endif

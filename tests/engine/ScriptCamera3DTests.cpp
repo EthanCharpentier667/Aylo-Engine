@@ -107,3 +107,103 @@ TEST(ScriptCamera3D, AProjectionNameItDoesNotHaveIsAnError) {
 
     EXPECT_NE(log.find("'fisheye' is not one of perspective, orthographic"), std::string::npos) << log;
 }
+
+TEST(ScriptCamera3D, AScriptLightsThe3DWorld) {
+    // manual/pages/lights.md: the first example.
+    ClientScripts client;
+    ASSERT_EQ(client.run(R"(
+        engine.ecs.system("game.Lights", {
+            phase = "Startup",
+            side = "client",
+            run = function(ctx)
+                ctx.commands:spawn({
+                    ["aylo.Transform3D"] = { position = vector.create(3, 2.4, 0.3) },
+                    ["aylo.Light3D"] = { kind = "area", color = vector.create(1, 0.6, 0.38), power = 600,
+                                         size = { x = 5, y = 5 } },
+                })
+                ctx.commands:spawn({
+                    ["aylo.Transform3D"] = { rotation = engine.math.quat.fromEuler(math.rad(-50), 0, 0) },
+                    ["aylo.Light3D"] = { kind = "directional", intensity = 1.4 },
+                })
+                ctx.commands:spawn({ ["aylo.Environment3D"] = { ambient = vector.create(0.05, 0.05, 0.06) } })
+            end,
+        })
+    )"),
+              "");
+    client.app.runFrame();
+    client.app.runFrame();
+
+    ASSERT_FALSE(client.state->lightFrames.empty());
+    const auto& lights = client.state->lightFrames.back();
+    ASSERT_EQ(lights.size(), 2U);
+    EXPECT_EQ(lights.at(0).kind, aylo::contract::renderer::LightKind3D::kArea);
+    EXPECT_FLOAT_EQ(lights.at(0).intensity, 600.0F);
+    EXPECT_FLOAT_EQ(lights.at(0).size.x, 5.0F);
+    EXPECT_FLOAT_EQ(lights.at(0).position.y, 2.4F);
+    EXPECT_FLOAT_EQ(lights.at(1).intensity, 1.4F);
+    EXPECT_LT(lights.at(1).direction.y, 0.0F);  // turned down
+    EXPECT_FLOAT_EQ(client.state->environments.back().ambient.z, 0.06F);
+}
+
+TEST(ScriptCamera3D, AScriptMakesALightCastShadowsAndSetsThem) {
+    // manual/pages/lights.md, "Shadows".
+    ClientScripts client;
+    ASSERT_EQ(client.run(R"(
+        engine.ecs.system("game.Lights", {
+            phase = "Startup",
+            side = "client",
+            run = function(ctx)
+                ctx.commands:spawn({
+                    ["aylo.Transform3D"] = { position = vector.create(0, 4, 0) },
+                    ["aylo.Light3D"] = { kind = "spot", power = 800, castShadows = true, shadowSoftness = 2 },
+                })
+                ctx.commands:spawn({
+                    ["aylo.Environment3D"] = { shadowCascades = 4, shadowResolution = 2048, shadowDistance = 80 },
+                })
+            end,
+        })
+    )"),
+              "");
+    client.app.runFrame();
+    client.app.runFrame();
+    ASSERT_FALSE(client.state->lightFrames.empty());
+    const auto& light = client.state->lightFrames.back().at(0);
+    EXPECT_TRUE(light.castShadows);
+    EXPECT_FLOAT_EQ(light.shadowSoftness, 2.0F);
+    EXPECT_EQ(client.state->environments.back().shadowCascades, 4U);
+    EXPECT_EQ(client.state->environments.back().shadowResolution, 2048U);
+    EXPECT_FLOAT_EQ(client.state->environments.back().shadowDistance, 80.0F);
+}
+
+TEST(ScriptCamera3D, AScriptGivesThe3DWorldASky) {
+    // manual/pages/lights.md, "The sky".
+    ClientScripts client;
+    ASSERT_EQ(client.run(R"(
+        engine.ecs.system("game.Sky", {
+            phase = "Startup",
+            side = "client",
+            run = function(ctx)
+                ctx.commands:spawn({
+                    ["aylo.Environment3D"] = {
+                        skyGradient = true,
+                        skyTop = vector.create(0.2, 0.4, 1.0),
+                        skyHorizon = vector.create(0.9, 0.8, 0.7),
+                        skyIntensity = 1.5,
+                        skyRotation = math.rad(90),
+                    },
+                })
+            end,
+        })
+    )"),
+              "");
+    client.app.runFrame();
+    client.app.runFrame();
+    ASSERT_FALSE(client.state->environments.empty());
+    const auto& sky = client.state->environments.back();
+    EXPECT_EQ(sky.sky, aylo::contract::renderer::SkyKind::kGradient);
+    EXPECT_FLOAT_EQ(sky.skyTop.z, 1.0F);
+    EXPECT_FLOAT_EQ(sky.skyHorizon.x, 0.9F);
+    EXPECT_FLOAT_EQ(sky.skyIntensity, 1.5F);
+    EXPECT_NEAR(sky.skyRotation, 1.5708F, 1e-4F);
+    EXPECT_TRUE(sky.lightingFromSky);
+}

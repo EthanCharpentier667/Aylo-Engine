@@ -70,6 +70,9 @@ constexpr auto kMeshVertex = std::to_array<char>({
 constexpr auto kMeshFragment = std::to_array<char>({
 #include "mesh.frag.glsl.h"
 });
+constexpr auto kLighting = std::to_array<char>({
+#include "lighting.glsl.h"
+});
 
 /// @brief Where a template takes the shader's declarations and body, and where its main() takes the instance values
 /// and the shader's call.
@@ -94,7 +97,7 @@ std::string replaceMarker(std::string glsl, std::string_view marker, std::string
 /// @return Whether @p shader adds nothing to the prelude: the default shader.
 bool isEmpty(const ParsedShader& shader) noexcept {
     return shader.materialValues.empty() && shader.instanceValues.empty() && shader.textures.empty() &&
-           !shader.hasVertex && !shader.hasFragment && shader.body.empty();
+           shader.varyings.empty() && !shader.hasVertex && !shader.hasFragment && shader.body.empty();
 }
 
 /// @return The GLSL type of @p type.
@@ -160,6 +163,60 @@ std::string declareValues(const ParsedShader& shader) {
     return glsl;
 }
 
+/// @return The first location @p target leaves to the shader's varyings: after the template's own outputs.
+std::uint32_t firstVaryingLocation(ShaderTarget target) noexcept {
+    switch (target) {
+        case ShaderTarget::kShape:
+            return 11;  // the shape's own end at 10
+        case ShaderTarget::kMesh:
+            return 9;  // the world and local positions, tangent, vertex colour, normal and second UV take 3 to 8
+        case ShaderTarget::kSprite:
+        case ShaderTarget::kGlyph:
+        case ShaderTarget::kParticle:
+        case ShaderTarget::kScreen:
+            break;
+    }
+    return 7;  // the instance values take 3 to 6
+}
+
+/// @return The shader's varyings, `out` in the vertex stage and `in` in the fragment stage, each at its location from
+/// firstVaryingLocation(); an `int` is flat, as GLSL wants.
+std::string declareVaryings(const ParsedShader& shader, ShaderTarget target, bool vertex) {
+    std::string glsl;
+    std::uint32_t location = firstVaryingLocation(target);
+    for (const DeclaredVarying& varying : shader.varyings) {
+        glsl += std::format("layout(location = {}) {}{} {} {};\n", location++, varying.type == "int" ? "flat " : "",
+                            vertex ? "out" : "in", varying.type, varying.name);
+    }
+    return glsl;
+}
+
+/// @return The `#define`s that choose what the prelude of @p stage of @p shader on @p target holds.
+std::string definesOf(const ParsedShader& shader, ShaderTarget target, ShaderStage stage) {
+    std::string defines;
+    if (!shader.instanceValues.empty()) {
+        defines += "#define AYLO_INSTANCE_VALUES\n";
+    }
+    if (target != ShaderTarget::kMesh) {
+        return defines;
+    }
+    defines += "#define AYLO_MESH\n";
+    if (stage == ShaderStage::kVertex) {
+        return defines;
+    }
+    // The cutout is only compiled in when the shader writes it: a discard can cost the early depth test.
+    if (shader.body.contains("ALPHA_SCISSOR")) {
+        defines += "#define AYLO_ALPHA_SCISSOR\n";
+    }
+    if (shader.lit) {
+        defines += "#define AYLO_LIT\n";
+        if (shader.hasLight) {
+            defines += "#define AYLO_CUSTOM_LIGHT\n";
+        }
+    }
+    return defines;
+}
+
 /// @return The template of @p target's vertex stage.
 std::string_view vertexTemplate(ShaderTarget target) noexcept {
     switch (target) {
@@ -211,6 +268,22 @@ std::string screenInstanceValues(const ParsedShader& shader) {
     return glsl;
 }
 
+/// @return Where @p target's main() reads the instance values from: 4 vec4.
+std::string_view instanceSource(ShaderTarget target) noexcept {
+    switch (target) {
+        case ShaderTarget::kParticle:
+            return "ayloParticles.instance";
+        case ShaderTarget::kMesh:
+            return "ayloMeshDraws[ayloPart.draw].instance";
+        case ShaderTarget::kSprite:
+        case ShaderTarget::kGlyph:
+        case ShaderTarget::kShape:
+        case ShaderTarget::kScreen:
+            break;
+    }
+    return "ayloInstance";
+}
+
 /// @return The statements that fill the instance values from @p source (4 vec4), for main().
 std::string loadInstanceValues(const ParsedShader& shader, std::string_view source) {
     std::string glsl;
@@ -258,40 +331,38 @@ std::string assembleShader(const ParsedShader& shader, ShaderTarget target, Shad
     const bool particle = target == ShaderTarget::kParticle;
     const bool mesh = target == ShaderTarget::kMesh;
     const bool vertex = stage == ShaderStage::kVertex;
-    std::string glsl{"#version 450\n"};
-    if (!shader.instanceValues.empty()) {
-        glsl += "#define AYLO_INSTANCE_VALUES\n";
-    }
-    if (mesh) {
-        glsl += "#define AYLO_MESH\n";
-    }
+    std::string glsl = std::format("#version 450\n{}", definesOf(shader, target, stage));
     glsl += text(kCommon);
     if (particle) {
         glsl += text(kParticleConstants);
     }
-    // A screen effect's vertex stage and both stages of a mesh have no drawing to carry instance values: their
-    // defaults are written in.
-    const bool screenValues = ((target == ShaderTarget::kScreen && vertex) || mesh) && !shader.instanceValues.empty();
+    // A screen effect's vertex stage has no drawing to carry instance values: their defaults are written in. A mesh
+    // reads its draw's from the frame's buffer of mesh draws.
+    const bool screenValues = target == ShaderTarget::kScreen && vertex && !shader.instanceValues.empty();
     if (screenValues) {
         glsl += "vec4 ayloInstance[4];\n";
     }
     if (!vertex) {
         glsl += text(kFragmentCommon);
+        if (mesh && shader.lit) {
+            glsl += text(kLighting);
+        }
         if (!particle && !mesh) {
             glsl += text(kInstanceInput);
         }
     }
     const std::string_view stageTemplate = vertex ? vertexTemplate(target) : fragmentTemplate(target);
-    const std::string shaderCode = isEmpty(shader)
-                                       ? std::string{}
-                                       : std::format("{}\n#line 1\n{}\n", declareValues(shader),
-                                                     blankFunction(shader.body, vertex ? "fragment" : "vertex"));
+    const std::string shaderCode =
+        isEmpty(shader)
+            ? std::string{}
+            : std::format("{}{}\n#line 1\n{}\n", declareValues(shader), declareVaryings(shader, target, vertex),
+                          vertex ? blankFunction(blankFunction(shader.body, "fragment"), "light")
+                                 : blankFunction(shader.body, "vertex"));
     const bool calls = vertex ? shader.hasVertex : shader.hasFragment;
     const std::string_view call = vertex ? "    vertex();" : "    fragment();";
     const std::string mainCode =
         std::format("{}{}{}", screenValues ? screenInstanceValues(shader) : std::string{},
-                    loadInstanceValues(shader, particle ? "ayloParticles.instance" : "ayloInstance"),
-                    calls ? call : std::string_view{});
+                    loadInstanceValues(shader, instanceSource(target)), calls ? call : std::string_view{});
     glsl += replaceMarker(replaceMarker(std::string{stageTemplate}, kShaderMarker, shaderCode), kMainMarker, mainCode);
     return glsl;
 }
