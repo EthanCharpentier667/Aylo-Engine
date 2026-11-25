@@ -612,7 +612,7 @@ TEST(ScriptPhysics, TheFormsSayWhatIsWrongWithTheirArguments) {
                 probe.noCollider = message(function()
                     engine.physics.moveAndSlide3D(ctx, ctx.commands:spawn({}), vector.zero, vector.one)
                 end)
-                probe.notListed = message(function() engine.physics.overlap(ctx, { shape = "circle" }, { x = 0, y = 0 }) end)
+                probe.unlisted = message(function() engine.physics.overlap(ctx, { shape = "circle" }, { x = 0, y = 0 }) end)
             end,
         })
     )"),
@@ -632,7 +632,7 @@ TEST(ScriptPhysics, TheFormsSayWhatIsWrongWithTheirArguments) {
     EXPECT_EQ(says("badRotation", "'rotation' must be a quaternion"), "");
     EXPECT_EQ(says("noCollider", "engine.physics.moveAndSlide3D: "), "");
     EXPECT_EQ(says("noCollider", "has no Collider3D"), "");
-    EXPECT_EQ(says("notListed", "engine.physics.overlap: "), "");
+    EXPECT_EQ(says("unlisted", "no error"), "");  // a call left out of `calls` is found when it is made
 }
 
 TEST(ScriptPhysics, TheFormsPushBodiesAndSetTheGravity) {
