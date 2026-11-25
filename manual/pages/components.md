@@ -113,7 +113,8 @@ other follows the rules above, not the order you spawned them in.
 
 ## Reading and writing
 
-A system receives a *view* of a component for each entity it matches (see [Systems](systems.md)). Fields read and write
+A system receives a *view* of a component for each entity it matches (see [Systems](systems.md)), and
+`ctx:get(entity, name)` gives one for any other entity (see [Other entities](systems.md#other-entities)). Fields read and write
 like table fields: `ship.position`, `ship.player = 1`, `transform.position = { x = 4, y = 5 }`. A view is valid only
 during the call to `run`: do not keep it. Writing a read-only view is an error. An entity is a value you can keep
 (`entity.bits` identifies it, for example as a table key), and it stays valid across frames.
