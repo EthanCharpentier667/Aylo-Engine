@@ -787,7 +787,7 @@ replication plugin uses to send only what changed. Serves: R3 above all.
 (`OnAdd`, `OnRemove`, `OnSet`).
 
 **Our choice.** v1 has only the **memory hooks** of `TypeHooks`. Gameplay reactions use
-`Added<T>` filters or events, which keep all logic in scheduled systems. Observers can come in v3 if a
+`Added<T>` and `Removed<T>` filters or events, which keep all logic in scheduled systems. Observers can come in v3 if a
 real need appears. Serves: Principles, R4.
 
 **Details:** [`features/16-hooks-and-observers.md`](features/16-hooks-and-observers.md).

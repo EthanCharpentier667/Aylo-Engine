@@ -54,6 +54,7 @@ void cleanup(aylo::ecs::Query<const Transform, aylo::ecs::With<Enemy>, aylo::ecs
 | `Optional<T>` / `Optional<const T>` | may be absent | `Mut<T>` that may be empty / `const T*` that may be null |
 | `With<T>` / `Without<T>` | presence / absence, no access | nothing |
 | `Added<T>` / `Changed<T>` | added / written since this system last ran | nothing |
+| `Removed<T>` | lost (removed or despawned) since this system last ran; the entity may be dead | nothing |
 
 A typed query has two parts. The **`QueryState<Terms...>`** is built once (it resolves and checks the terms,
 registering their components); a system keeps one per `Query` parameter. The **`Query<Terms...>`** a system
@@ -100,6 +101,7 @@ for (aylo::ecs::QueryMatch& match : query->iter(lastRun)) {
 | `optionalRead(id)` / `optionalWrite(id)` | may be absent (empty bytes then) | yes |
 | `with(id)` / `without(id)` | presence / absence | no |
 | `added(id)` / `changed(id)` | required, stamped after `lastRun` | no |
+| `removed(id)` | lost after `lastRun` (see [Change detection](08-change-detection.md#removals)) | no |
 
 - **Values are numbered by data term**, in the order given; filters are not numbered.
 - **`get(i)` never marks anything; `getMut(i)` marks the value changed** (it only has bytes, so it
