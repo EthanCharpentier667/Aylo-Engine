@@ -65,14 +65,12 @@ The [editor](editor.md) shows entities by these names; a script can read them li
 
 ## Spawning, switching levels, reloading
 
-The `engine.capsule` forms do each of these in one line, from a system's `run`. Each makes an engine call, so the
-system lists that call in its `calls`:
+The `engine.capsule` forms do each of these in one line, from a system's `run`:
 
 ```luau
 engine.ecs.system("game.Waves", {
 	phase = "Update",
 	query = {},
-	calls = { "aylo.capsule.spawn", "aylo.capsule.load" },
 	run = function(ctx)
 		local bydo = engine.capsule.spawn(ctx, "actors/bydo.actor", {
 			["aylo.Transform2D"] = { position = { x = 820, y = 140 } },
@@ -85,7 +83,7 @@ engine.ecs.system("game.Waves", {
 })
 ```
 
-| Form | Needs in `calls` | Returns | What it does |
+| Form | The call it makes | Returns | What it does |
 |---|---|---|---|
 | `engine.capsule.spawn(ctx, path, overrides)` | `aylo.capsule.spawn` | the root entity | Spawns a copy of the capsule |
 | `engine.capsule.load(ctx, path, overrides)` | `aylo.capsule.load` | the root entity | Switches levels: the capsule loaded before is despawned, then this one is spawned |

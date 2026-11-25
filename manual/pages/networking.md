@@ -92,7 +92,7 @@ Each client estimates it for you; you add nothing to `project.luau`.
 | `aylo.net.serverTime` | both | none (`{}`) | `{ synced, time }`: `time` is the server clock now, in seconds. On the server it is the clock itself and `synced` is always `true`. On a client it is the estimate, and `synced` is `false` until the server has answered once since the connection (then `time` is `0`) |
 | `aylo.net.rtt` | server | `client` (number, the id as `net.Owner` and `net.ClientConnected` carry it) | `{ connected, rtt }`: `connected` is `false` for a client that is not there (then `rtt` is `0`); `rtt` is the smoothed round-trip time to that client, in seconds |
 
-List the call in the system's `calls`, like any engine call. `aylo.net.serverTime` exists on both sides, so a
+`aylo.net.serverTime` exists on both sides, so a
 `side = "both"` system can use it; `aylo.net.rtt` exists on the server only, so use it in a `side = "server"` system.
 The server clock counts seconds from the moment the server first needed it (about when it started). It is not
 `ctx.time.elapsed`: when the server and its clients must agree on a moment, read `aylo.net.serverTime` on both

@@ -54,8 +54,9 @@ engine.ecs.system("game.Ask", {
 })
 ```
 
-- The system lists `aylo.http.request` under `calls` and `aylo.HttpResponse` under `events.read`, as every system
-  must declare what it uses.
+- The system lists `aylo.http.request` under `calls` and `aylo.HttpResponse` under `events.read`. It could leave them
+  out (see [What a system uses](systems.md#what-a-system-uses)); listed, a misspelled name stops the script when it
+  loads.
 - `engine.http.request` returns the request's id at once. Keep it to recognise its response.
 - The response comes as an `aylo.HttpResponse` event, in a later frame. A system of the `Update` phase reads it in
   the frame the request ends.

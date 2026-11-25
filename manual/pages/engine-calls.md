@@ -8,12 +8,11 @@ input, playing a sound, asking the physics a question. It is a function the engi
 -- while the script loads (top level of a file)
 local sound = engine.call("aylo.audio.loadSound", { path = "laser.mp3" })
 
--- in a system: declare it, then call it
+-- in a system
 engine.ecs.system("game.Pew", {
 	phase = "Update",
 	side = "client",
 	query = {},
-	calls = { "aylo.audio.playSound" },
 	run = function(ctx)
 		ctx.call("aylo.audio.playSound", { sound = sound, volume = 0.9 })
 	end,
@@ -26,9 +25,12 @@ engine.ecs.system("game.Pew", {
   as its table says. A list argument is a Luau array.
 - A result of one field is returned as that value, a result of several as a table, a call with no result returns
   nothing.
-- A system that calls something it did not list under `calls` gets a Luau error. An unknown call is refused when the
-  script loads, except in a system that does not run on that side (a client system may list a call that only the client
-  has).
+- A system may list the calls it makes under `calls`: an unknown name there is refused when the script loads, except
+  in a system that does not run on that side (a client system may list a call that only the client has). A call it
+  does not list is found the first time it is made (see [What a system uses](systems.md#what-a-system-uses)); an
+  unknown one is then a Luau error, `unknown engine call 'x' (system 'y')`.
+- A client system cannot make a call that writes replicated or server-only components: it is a Luau error naming the
+  call and the component.
 - An unknown name, a wrong argument or a failing call is a Luau error that names the call.
 - A call exists only where its feature is: a server has no textures or sounds. The [setup forms](setup-forms.md) hide
   this for assets.
@@ -153,7 +155,7 @@ engine.ecs.system("game.Beat", {
 })
 ```
 
-To stop it, call `aylo.audio.stopVoice` (declare it in `calls`) with `{ voice = voice, fadeOut = 0.25 }`.
+To stop it, call `aylo.audio.stopVoice` with `{ voice = voice, fadeOut = 0.25 }`.
 
 - Voices given the same `startAt` start on the same audio sample, so stems stay locked together.
 - A `startAt` of 0, or a time already past, starts the voice at once.

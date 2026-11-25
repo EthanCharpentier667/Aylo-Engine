@@ -114,7 +114,7 @@ When your game is ready, [Shipping your game](shipping.md) explains what to give
 
 ## Stopping the game and running a test
 
-To know that the player closed the window, read the event `aylo.Closed` in a system (declare it under `events = { read = { "aylo.Closed" } }`). The engine does not stop the game by itself: send `aylo.AppExit` in answer, after saving for example.
+To know that the player closed the window, read the event `aylo.Closed` in a system with `ctx.events.read("aylo.Closed")`. The engine does not stop the game by itself: send `aylo.AppExit` in answer, after saving for example.
 
 A script stops the process with the event `aylo.AppExit`. The game finishes the frame it was sent in, and `aylo-runtime`
 returns `code` as its exit code (`0` is success; send another number to fail):

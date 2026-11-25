@@ -73,7 +73,7 @@ colliders collide only when each one's layer is in the other's mask. Use `bit32.
 
 ## Events
 
-Declare them under `events = { read = {...} }` and read them with `ctx.events.read`:
+Read them with `ctx.events.read`:
 
 | Event | When |
 |---|---|
@@ -106,7 +106,7 @@ A null `ignore` (the default) skips no entity.
 
 `engine.physics` gives each call above as a plain function, to use in a system's `run`. A form takes `ctx` first and
 its arguments in order, checks them, and gives back something easy to test: a query returns the hit, or `nil` when it
-hit nothing. It makes the same engine call, so list that call in the system's `calls`, as for `ctx.call`.
+hit nothing. It makes the same engine call as `ctx.call` would.
 
 ```luau
 engine.ecs.system("game.Move", {

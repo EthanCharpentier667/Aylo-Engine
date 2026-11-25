@@ -27,14 +27,75 @@ engine.ecs.system("game.MoveShips", {
 | `query` | Which entities it visits, see [Queries](#queries). Leave it out (or write `{}`) for a system that visits none. |
 | `run` | **Required.** The function, called with `ctx`. |
 | `side` | `"server"` (default), `"client"` or `"both"`: where it runs. |
-| `resources` | `{ read = {...}, write = {...} }`: the resources it uses. |
-| `events` | `{ read = {...}, send = {...} }`: the events it reads or sends. |
-| `calls` | The [engine calls](engine-calls.md) it makes with `ctx.call`. |
+| `resources` | Optional. `{ read = {...}, write = {...} }`: resources it uses, checked when the script loads. See [What a system uses](#what-a-system-uses). |
+| `events` | Optional. `{ read = {...}, send = {...} }`: events it reads or sends, checked when the script loads. |
+| `calls` | Optional. [Engine calls](engine-calls.md) it makes, checked when the script loads. |
 | `after`, `before` | Names of systems it must run after or before. |
 | `inState`, `onEnter`, `onExit` | `{ machine, value }`: runs only in a game state, or once when the game enters or leaves it. See [States](states.md). |
 
-Any other option is an error naming the system. A system must declare everything it touches: using an undeclared
-resource, event or call is an error.
+Any other option is an error naming the system.
+
+## What a system uses
+
+A system can use any resource, event or [engine call](engine-calls.md) without listing it: the engine finds what it
+uses the first time it uses it. This is what lets a helper function make calls of its own, without the systems that
+call it knowing about them:
+
+```luau
+-- scripts/server/weapons.luau
+local Weapons = {}
+
+function Weapons.fire(ctx, position)
+	engine.capsule.spawn(ctx, "actors/laser.actor", { ["aylo.Transform2D"] = { position = position } })
+end
+
+return Weapons
+```
+
+```luau
+-- scripts/server/ships.luau: no `calls` needed for the spawn inside Weapons.fire
+engine.ecs.system("game.Fire", {
+	phase = "FixedUpdate",
+	query = { read = { "game.Ship" } },
+	run = function(ctx)
+		for entity, ship in ctx.query do
+			Weapons.fire(ctx, ship.position)
+		end
+	end,
+})
+```
+
+What the engine finds:
+
+| You use | The system then |
+|---|---|
+| `ctx.call(name, ...)`, or a form that makes the call | makes the call, from now on as if it had listed it |
+| `ctx.resources[name]` | reads the resource; the first time you write a field of it, it writes it |
+| `ctx.events.read(name)` | reads the event, from the oldest one still queued |
+| `ctx.events.send(name, ...)` | sends the event |
+
+Listing something is still allowed, and it does two things:
+
+- **A name you list is checked when the script loads.** A misspelled resource in `resources` stops the script at once,
+  instead of failing the first time `run` reaches that line.
+- **A name you list keeps the limits you gave it.** A resource under `resources.read` stays read-only, and an event
+  under `events.read` cannot be sent: writing or sending it is an error.
+
+The [query](#queries) is different: you always declare it, since it says which entities the system visits.
+
+### Two systems on the same data
+
+Two systems of the same phase that use the same data, one of them writing it, must say which runs first, with `after`
+or `before`. For what a system lists, a missing order is an error when the game starts. For what the engine finds while
+the game runs, it is a warning, written once:
+
+```
+[Schedule] Systems of phase Update touch the same data with no order between them, found while they ran (not declared): 'game.Fire' and 'game.Score' both use resource 'game.Points', one of them writing it. They run in the order they were added; order them with before / after
+```
+
+The game goes on: the systems keep running in the order they were added. Add `after` or `before` to one of them to
+make the order yours. In single player and in the editor, a server system that uses the data of a client system runs
+before it, as over the network, so that pair needs no order.
 
 ## Phases
 
@@ -133,7 +194,7 @@ optionalRead, optionalWrite (inside each, in the order you listed them). The vie
 | `ctx.commands` | Deferred changes to the world, see below. |
 | `ctx.resources` | The resources the system declared: `ctx.resources["aylo.Input"]` is a view (read-only unless declared in `write`). |
 | `ctx.events` | `ctx.events.read(name)` loops over the events not read yet; `ctx.events.send(name, fields)` sends one. Both need the name in `events`. |
-| `ctx.call(name, args)` | Makes an engine call the system listed in `calls`. |
+| `ctx.call(name, args)` | Makes an engine call. |
 
 ### Commands
 
@@ -176,7 +237,8 @@ cannot be patched; use `setParent` and `removeParent`.
 
 ### Events
 
-An event is a message between systems. Declare the ones you use under `events`, then:
+An event is a message between systems. Read and send them with `ctx.events` (listing them under `events` is
+optional, see [What a system uses](#what-a-system-uses)):
 
 ```luau
 events = { read = { "aylo.CollisionStarted" }, send = { "aylo.PlayMusic" } },
@@ -226,9 +288,19 @@ See [Networking](networking.md).
 
 ## Errors
 
-A bad declaration (an unknown option, a missing `phase`, an undeclared name) is an error naming the system, raised when
-the script loads, and the script fails to load. A mistake inside `run` (an undeclared resource, a call that was not
-listed, a stale view) is a Luau error naming the cause. Read the output of the program.
+A bad declaration (an unknown option, a missing `phase`, an unknown name in the query or in `calls`, `resources` or
+`events`) is an error naming the system, raised when the script loads, and the script fails to load. A mistake inside
+`run` is a Luau error naming the cause. Read the output of the program.
+
+| Message inside `run` | Cause |
+|---|---|
+| `unknown engine call 'aylo.audio.playSund' (system 'game.Pew')` | No call has this name (a typo, or a plugin the project does not load) |
+| `unknown resource 'game.Pints' (system 'game.Score')` | No resource has this name |
+| `unknown event 'game.Hitt' (system 'game.Damage')` | No event has this name |
+| `cannot write 'count': the view of 'game.Points' is read-only` | The resource is listed under `resources.read` |
+| `event 'aylo.PlayMusic' is declared to be read by system 'game.Music', not sent: ...` | The event is listed under `events.read` and the system sends it |
+| `Call 'x' writes component 'y', which is replicated: ...` | A client system makes a call that writes server data |
+| `ctx.resources is no longer valid: ...`, `... is no longer valid` | A view or `ctx.resources` kept after `run` returned |
 
 A `run` that never ends or allocates without limit is stopped too, after `scripts.timeout` seconds (5 by default) or
 past `scripts.memoryLimit` megabytes (1024), with an error naming the system; the other systems and the next frames
