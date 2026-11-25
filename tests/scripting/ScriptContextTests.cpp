@@ -22,6 +22,9 @@
 #include "aylo/ecs/event/EventTraits.hpp"
 #include "aylo/ecs/resource/ResourceTraits.hpp"
 #include "aylo/ecs/schedule/Phase.hpp"
+#include "aylo/ecs/schedule/Schedule.hpp"
+#include "aylo/ecs/schedule/Schedules.hpp"
+#include "aylo/ecs/system/System.hpp"
 #include "aylo/ecs/time/FixedTimestep.hpp"
 #include "aylo/ecs/time/TimePlugin.hpp"
 #include "aylo/scripting/ScriptHost.hpp"
@@ -191,17 +194,19 @@ TEST(ScriptContext, ADeclaredResourceWithoutValueIsNil) {
     EXPECT_EQ(fixture.score().count, 3);
 }
 
-TEST(ScriptContext, AResourceThatWasNotDeclaredRaisesAnError) {
+TEST(ScriptContext, AResourceThatWasNotDeclaredIsFoundReadThenWritten) {
     Fixture fixture;
     ASSERT_EQ(fixture.run(R"(
         engine.ecs.system("game.Undeclared", {
             phase = "Update",
             query = {},
-            resources = { write = { "test.ctx.Score" } },
             run = function(ctx)
-                local ok, message = pcall(function() return ctx.resources["aylo.Time"] end)
-                assert(not ok and string.find(message, "not declared"), message)
-                ctx.resources["test.ctx.Score"].count = 1
+                local ok, message = pcall(function() return ctx.resources["test.ctx.Nope"] end)
+                assert(not ok and string.find(message, "unknown resource 'test.ctx.Nope'", 1, true), message)
+                local score = ctx.resources["test.ctx.Score"]
+                assert(score.count == 0)
+                score.count = 2 -- the first write makes it a resource the system writes
+                score.count += 1
             end,
         })
     )"),
@@ -209,7 +214,34 @@ TEST(ScriptContext, AResourceThatWasNotDeclaredRaisesAnError) {
 
     fixture.app.runFrame();
 
-    EXPECT_EQ(fixture.score().count, 1);
+    EXPECT_EQ(fixture.score().count, 3);
+    const aylo::ecs::System* system =
+        fixture.app.getSchedules().getSchedule(aylo::ecs::Phase::kUpdate).findSystem("game.Undeclared");
+    ASSERT_NE(system, nullptr);
+    // Every script system reads aylo.Time; the score was found on top of it, and is written.
+    const auto declared = system->getDeclaredAccess().getResources().size();
+    ASSERT_EQ(system->getAccess().getResources().size(), declared + 1);
+    EXPECT_TRUE(system->getAccess().getResources().back().write);
+}
+
+TEST(ScriptContext, AResourceDeclaredReadStaysReadOnly) {
+    Fixture fixture;
+    ASSERT_EQ(fixture.run(R"(
+        engine.ecs.system("game.Reader", {
+            phase = "Update",
+            query = {},
+            resources = { read = { "test.ctx.Score" } },
+            run = function(ctx)
+                local ok, message = pcall(function() ctx.resources["test.ctx.Score"].count = 1 end)
+                assert(not ok and string.find(message, "read-only", 1, true), message)
+            end,
+        })
+    )"),
+              "");
+
+    fixture.app.runFrame();
+
+    EXPECT_EQ(fixture.score().count, 0);
 }
 
 TEST(ScriptContext, ResourcesOfASystemThatReturnedAreNoLongerValid) {
@@ -438,8 +470,10 @@ TEST(ScriptContext, EventsAreCheckedAgainstWhatTheSystemDeclared) {
                     assert(not ok and string.find(message, pattern), tostring(message))
                 end
                 fails("not sent", function() ctx.events.send("test.ctx.Boom", {}) end)
-                fails("not declared", function() ctx.events.read("test.ctx.Crowd") end)
+                fails("unknown event 'test.ctx.Nope'", function() ctx.events.read("test.ctx.Nope") end)
                 fails("expects the name", function() ctx.events.send() end)
+                for _ in ctx.events.read("test.ctx.Crowd") do end -- not declared: found
+                ctx.events.send("test.ctx.Crowd", {})            -- and now sent too
                 ctx.resources["test.ctx.Score"].count = 1
             end,
         })

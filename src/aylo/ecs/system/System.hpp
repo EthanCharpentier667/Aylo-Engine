@@ -8,6 +8,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <string>
@@ -130,8 +131,17 @@ class AYLO_ECS_API System {
     /// @return Where the system runs; Side::kServer unless set.
     [[nodiscard]] Side getSide() const noexcept;
 
-    /// @return What the system reads and writes, deduced from its parameters.
+    /// @return What the system reads and writes: what its parameters declared, and what it discovered while it ran
+    /// (a script system using an engine call, a resource or an event it did not declare, see SystemContext::access).
     [[nodiscard]] const SystemAccess& getAccess() const noexcept;
+
+    /// @return What the system's parameters declared when it was made, without what it discovered since: what the
+    /// schedule refuses ambiguities on when it is built.
+    [[nodiscard]] const SystemAccess& getDeclaredAccess() const noexcept;
+
+    /// @return Whether the access grew since the last call (the system discovered a use while it ran), then forgets
+    /// it: the schedule checks the system again when it did.
+    [[nodiscard]] bool takeAccessGrowth() noexcept;
 
     /// @return The world's change tick at the system's last run.
     [[nodiscard]] Tick getLastRun() const noexcept;
@@ -187,6 +197,8 @@ class AYLO_ECS_API System {
     Commands _commands;                         ///< Its command buffer.
     Tick _lastRun;                              ///< The world's change tick at its last run.
     std::unique_ptr<detail::SystemBody> _body;  ///< Its function and the state of each parameter.
+    SystemAccess _declaredAccess;   ///< _access as the body declared it, before any run; after _body, which fills it.
+    std::uint64_t _seenVersion{0};  ///< The version of _access at the last takeAccessGrowth().
 };
 }  // namespace aylo::ecs
 

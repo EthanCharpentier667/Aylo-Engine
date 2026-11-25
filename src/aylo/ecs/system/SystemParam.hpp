@@ -21,16 +21,22 @@
 #include "aylo/ecs/system/EventReader.hpp"
 #include "aylo/ecs/system/EventWriter.hpp"
 #include "aylo/ecs/system/ResourceParam.hpp"
+#include "aylo/ecs/system/Side.hpp"
 #include "aylo/ecs/system/SystemAccess.hpp"
 #include "aylo/ecs/world/World.hpp"
 
 namespace aylo::ecs {
 /// @brief What a system's parameters are built from at each run.
 struct SystemContext {
-    World* world;        ///< The world the system runs on.
-    Commands* commands;  ///< The system's command buffer.
-    Tick lastRun;        ///< Tick the system last ran at.
-    Tick thisRun;        ///< The world's change tick now.
+    World* world{nullptr};        ///< The world the system runs on.
+    Commands* commands{nullptr};  ///< The system's command buffer.
+    Tick lastRun{};               ///< Tick the system last ran at.
+    Tick thisRun{};               ///< The world's change tick now.
+    /// The system's access, which a parameter that discovers what it uses while it runs (DynamicCalls::add(),
+    /// DynamicResources::add(), DynamicEvents::add()) grows. Null when the parameters are not built by a system's run
+    /// (an engine call made while a script loads): nothing can be discovered then.
+    SystemAccess* access{nullptr};
+    Side side{Side::kServer};  ///< Where the system runs: a client system may not discover a write of replicated data.
 };
 
 /// @brief How a system parameter type is made: what the system keeps for it between runs (`State`, built once by

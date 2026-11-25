@@ -23,7 +23,7 @@ namespace aylo::scripting::system {
 /// @details Like a view, it only lives during the run that received it: the scope's generation moves on when `run`
 /// returns, and every access through a handle of an older generation raises a Luau error.
 struct AYLO_SCRIPTING_API ResourcesHandle {
-    const ScriptSystem* system{nullptr};        ///< The system, for the resources it declared.
+    ScriptSystem* system{nullptr};              ///< The system, for its resources; it adds those it discovers.
     ecs::DynamicResources* resources{nullptr};  ///< The bytes of those resources, for the run.
     std::weak_ptr<view::ViewScope> scope;       ///< The scope that invalidates the handle and the views it gives.
     std::uint64_t generation{0};                ///< The scope's generation when the handle was created.

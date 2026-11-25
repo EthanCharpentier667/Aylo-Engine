@@ -25,10 +25,14 @@
 
 #include "ContextTypes.hpp"
 #include "aylo/ecs/call/CallInfo.hpp"
+#include "aylo/ecs/call/Calls.hpp"
 #include "aylo/ecs/call/DynamicCalls.hpp"
 #include "aylo/ecs/command/Commands.hpp"
 #include "aylo/ecs/entity/Entity.hpp"
+#include "aylo/ecs/event/EventInfo.hpp"
 #include "aylo/ecs/event/EventRange.hpp"
+#include "aylo/ecs/event/Events.hpp"
+#include "aylo/ecs/exceptions/CallException.hpp"
 #include "aylo/ecs/query/QueryIteration.hpp"
 #include "aylo/ecs/query/QueryMatch.hpp"
 #include "aylo/ecs/system/DynamicEvents.hpp"
@@ -36,6 +40,7 @@
 #include "aylo/ecs/system/DynamicResources.hpp"
 #include "aylo/ecs/time/Time.hpp"
 #include "aylo/ecs/type/TypeInfo.hpp"
+#include "aylo/ecs/world/World.hpp"
 #include "aylo/luau/CallContext.hpp"
 #include "aylo/luau/Exceptions.hpp"
 #include "aylo/luau/Function.hpp"
@@ -209,25 +214,44 @@ class EventsContext {
         ecs::RawEventRange::Iterator end;   ///< One past the last event.
     };
 
-    /// @return The index and term of the declared event called `name`, or a Luau error.
+    /// @return The index and term of the system's event called `name`, able to be read (`read`) or sent. One the system
+    /// did not declare is discovered and added, or gets the use it lacks; a declared one keeps what it declared.
+    /// @throws luau::exceptions::RuntimeError If there is no name, no event has this name, a script cannot use it, or
+    /// the system declared it for the other use.
     [[nodiscard]] std::pair<std::size_t, const EventTerm&> find(const luau::CallContext& arguments,
-                                                                const std::string_view function) const {
+                                                                const std::string_view function,
+                                                                const bool read) const {
         const auto* name = arguments.argCount() > 0 ? arguments.args().front().tryAs<std::string>() : nullptr;
         if (name == nullptr) {
             throw luau::exceptions::RuntimeError{std::format("events.{} expects the name of an event", function)};
         }
-        const auto found =
-            std::ranges::find(_system->events, *name, [](const EventTerm& term) { return term.type->name; });
-        if (found == _system->events.end()) {
-            throw luau::exceptions::RuntimeError{
-                std::format("event '{}' is not declared by system '{}': list it under 'events'", *name, _system->name)};
+        auto& terms = _system->events;
+        const auto found = std::ranges::find(terms, *name, [](const EventTerm& term) { return term.type->name; });
+        if (found == terms.end()) {
+            const ecs::EventInfo* info = _system->world->getEvents().getRegistry().findByName(*name);
+            if (info == nullptr) {
+                throw luau::exceptions::RuntimeError{
+                    std::format("unknown event '{}' (system '{}')", *name, _system->name)};
+            }
+            if (!info->type.copyable) {
+                throw luau::exceptions::RuntimeError{
+                    std::format("event '{}' cannot be used by a script: it cannot be copied", *name)};
+            }
+            const std::size_t index = _events.add(info->type.id, read, !read);
+            terms.push_back({.type = &info->type, .read = read, .send = !read, .discovered = true});
+            return {index, terms.at(index)};
         }
-        return {static_cast<std::size_t>(std::distance(_system->events.begin(), found)), *found};
+        const auto index = static_cast<std::size_t>(std::distance(terms.begin(), found));
+        if (found->discovered && !(read ? found->read : found->send)) {
+            static_cast<void>(_events.add(found->type->id, read, !read));
+            (read ? found->read : found->send) = true;
+        }
+        return {index, *found};
     }
 
     /// @brief `ctx.events.send(name, fields)`: sends an event with its defaults and the fields written over them.
     luau::ValuePack send(const luau::CallContext& arguments) {
-        const auto [index, term] = find(arguments, "send");
+        const auto [index, term] = find(arguments, "send", false);
         if (!term.send) {
             throw luau::exceptions::RuntimeError{
                 std::format("event '{}' is declared to be read by system '{}', not sent: list it under 'events.send'",
@@ -256,7 +280,7 @@ class EventsContext {
 
     /// @brief `ctx.events.read(name)`: an iterator over the events of the type not read yet.
     luau::ValuePack read(const luau::CallContext& arguments) {
-        const auto [index, term] = find(arguments, "read");
+        const auto [index, term] = find(arguments, "read", true);
         if (!term.read) {
             throw luau::exceptions::RuntimeError{
                 std::format("event '{}' is declared to be sent by system '{}', not read: list it under 'events.read'",
@@ -304,18 +328,28 @@ class EventsContext {
     std::deque<Pass> _passes;                    ///< What each iterator steps.
 };
 
-/// @brief `ctx.call(name, fields)`: makes one of the engine calls the system declared.
-[[nodiscard]] luau::ValuePack makeCall(const ScriptSystem& system, const luau::Runtime& runtime,
+/// @brief `ctx.call(name, fields)`: makes an engine call. One the system did not declare is discovered and added to it.
+[[nodiscard]] luau::ValuePack makeCall(ScriptSystem& system, const luau::Runtime& runtime,
                                        const ecs::DynamicCalls& calls, const luau::CallContext& arguments) {
     const auto* name = arguments.argCount() > 0 ? arguments.args().front().tryAs<std::string>() : nullptr;
     if (name == nullptr) {
         throw luau::exceptions::RuntimeError{"ctx.call expects the name of an engine call"};
     }
-    const auto found =
+    auto found =
         std::ranges::find(system.calls, *name, [](const ecs::CallInfo* info) { return std::string_view{info->name}; });
     if (found == system.calls.end()) {
-        throw luau::exceptions::RuntimeError{
-            std::format("engine call '{}' is not declared by system '{}': list it under 'calls'", *name, system.name)};
+        const ecs::CallInfo* info = system.world->getCalls().findByName(*name);
+        if (info == nullptr) {
+            throw luau::exceptions::RuntimeError{
+                std::format("unknown engine call '{}' (system '{}')", *name, system.name)};
+        }
+        try {
+            static_cast<void>(calls.add(info->id));
+        } catch (const ecs::exceptions::CallException& error) {
+            throw luau::exceptions::RuntimeError{error.what()};
+        }
+        system.calls.push_back(info);
+        found = std::prev(system.calls.end());
     }
     const auto index = static_cast<std::size_t>(std::distance(system.calls.begin(), found));
     const luau::Value* fields = arguments.argCount() > 1 ? &*std::next(arguments.args().begin()) : nullptr;

@@ -8,6 +8,7 @@
 #include "SystemAccess.hpp"
 
 #include <algorithm>
+#include <cstdint>
 #include <span>
 #include <vector>
 
@@ -22,13 +23,20 @@ std::span<const TypeAccess> SystemAccess::getEvents() const noexcept { return _e
 
 bool SystemAccess::isMainThread() const noexcept { return _mainThread; }
 
+std::uint64_t SystemAccess::getVersion() const noexcept { return _version; }
+
 void SystemAccess::addComponent(TypeId id, bool write) { add(_components, id, write); }
 
 void SystemAccess::addResource(TypeId id, bool write, bool append) { add(_resources, id, write, append); }
 
 void SystemAccess::addEvent(TypeId id, bool write) { add(_events, id, write); }
 
-void SystemAccess::requireMainThread() noexcept { _mainThread = true; }
+void SystemAccess::requireMainThread() noexcept {
+    if (!_mainThread) {
+        _mainThread = true;
+        ++_version;
+    }
+}
 
 void SystemAccess::merge(const SystemAccess& other) {
     for (const TypeAccess& access : other._components) {
@@ -40,16 +48,23 @@ void SystemAccess::merge(const SystemAccess& other) {
     for (const TypeAccess& access : other._events) {
         add(_events, access.id, access.write);
     }
-    _mainThread = _mainThread || other._mainThread;
+    if (other._mainThread) {
+        requireMainThread();
+    }
 }
 
 void SystemAccess::add(std::vector<TypeAccess>& accesses, TypeId id, bool write, bool append) {
     const auto known = std::ranges::find(accesses, id, &TypeAccess::id);
     if (known != accesses.end()) {
+        const TypeAccess before = *known;
         known->write = known->write || write;
         known->append = known->append && append;
+        if (*known != before) {
+            ++_version;
+        }
         return;
     }
     accesses.push_back(TypeAccess{.id = id, .write = write, .append = append});
+    ++_version;
 }
 }  // namespace aylo::ecs

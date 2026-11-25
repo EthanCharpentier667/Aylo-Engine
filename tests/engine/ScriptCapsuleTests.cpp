@@ -215,7 +215,7 @@ TEST(ScriptCapsule, TheFormsCheckWhatTheyAreGiven) {
                 try(engine.capsule.spawn, ctx, 42)
                 try(engine.capsule.spawn, ctx, "actors/bydo.actor", { ["test.scriptcapsule.Armor"] = 3 })
                 try(engine.capsule.spawn, ctx, "actors/nothing.actor")
-                try(engine.capsule.load, ctx, "scenes/one.scene")
+                try(engine.capsule.load, ctx, "scenes/nothing.scene") -- not in `calls`: found, then refused
                 try(engine.capsule.spawn, ctx, "actors/bydo.actor", { ["test.scriptcapsule.Armor"] = { extar = 1 } })
                 try(engine.capsule.spawn, ctx, "actors/bydo.actor", {}, "more")
             end,

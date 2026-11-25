@@ -52,7 +52,7 @@ struct ConfigsMatch<std::tuple<Params...>, std::tuple<Configs...>> {
 
 /// @return The state of `Param`: built from its configuration (moved out of `configs`) when it is configured.
 template <typename Param, typename... Configs>
-[[nodiscard]] typename SystemParam<Param>::State initState(World& world, std::tuple<Configs...>& configs) {
+[[nodiscard]] SystemParam<Param>::State initState(World& world, std::tuple<Configs...>& configs) {
     if constexpr (ConfiguredParameter<Param>) {
         return SystemParam<Param>::init(world, std::move(std::get<typename SystemParam<Param>::Config>(configs)));
     } else {
@@ -125,7 +125,9 @@ System::System(World& world, std::string name, void (*function)(Params...), Conf
       _name{std::move(name)},
       _commands{world},
       _lastRun{world.getChangeTick() - kMaxChangeAge},  // the first run sees everything as added
-      _body{makeBody(world, function, std::type_identity<void(Params...)>{}, _access, std::move(configs)...)} {}
+      _body{makeBody(world, function, std::type_identity<void(Params...)>{}, _access, std::move(configs)...)},
+      _declaredAccess{_access},
+      _seenVersion{_access.getVersion()} {}
 
 template <typename Function, typename... Configs>
 System::System(World& world, std::string name, Function function, Configs... configs)
@@ -137,7 +139,9 @@ System::System(World& world, std::string name, ScriptCallable<Callable> script, 
       _name{std::move(name)},
       _commands{world},
       _lastRun{world.getChangeTick() - kMaxChangeAge},  // the first run sees everything as added
-      _body{makeScriptBody(world, std::move(script.callable), _access, std::move(configs)...)} {}
+      _body{makeScriptBody(world, std::move(script.callable), _access, std::move(configs)...)},
+      _declaredAccess{_access},
+      _seenVersion{_access.getVersion()} {}
 
 template <typename Callable, typename... Params, typename... Configs>
 std::unique_ptr<detail::SystemBody> System::makeBody(World& world, Callable function,

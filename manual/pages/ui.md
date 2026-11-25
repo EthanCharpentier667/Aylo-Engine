@@ -132,7 +132,7 @@ in `PreUpdate`, so a system in `Update` reads what happened in the same frame.
 | `aylo.UiTextChanged` | a text input | `entity`, `action`; the text is in its `aylo.UiText` |
 | `aylo.UiTextSubmitted` | a text input, on Enter | `entity`, `action` |
 
-Declare them under `events = { read = {...} }` as in the first menu. For anything the widgets do not cover, any node can
+Read them with `ctx.events.read`, as in the first menu. For anything the widgets do not cover, any node can
 carry an `aylo.UiInteraction` (`hovered`, `pressed`, `focused`, `clicked`) that a system reads.
 
 Two resources help the gameplay get out of the UI's way; read them with `resources = { read = {...} }`:

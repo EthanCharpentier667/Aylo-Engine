@@ -94,7 +94,9 @@ luau::Result<> registerComponentViewType(luau::Runtime& runtime, const FieldRead
         })
         .rawNewIndex([](const ComponentView& view, const std::string_view name, const luau::StackSlot& value) {
             checkAlive(view);
-            if (view.readOnly) {
+            if (view.readOnly && view.onWrite != nullptr) {
+                (*view.onWrite)();
+            } else if (view.readOnly) {
                 throw luau::exceptions::RuntimeError{
                     std::format("cannot write '{}': the view of '{}' is read-only", name, view.type->name)};
             }

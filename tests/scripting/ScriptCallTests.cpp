@@ -21,6 +21,8 @@
 #include "aylo/ecs/resource/ResourceTraits.hpp"
 #include "aylo/ecs/schedule/Phase.hpp"
 #include "aylo/ecs/schedule/RunMode.hpp"
+#include "aylo/ecs/schedule/Schedule.hpp"
+#include "aylo/ecs/schedule/Schedules.hpp"
 #include "aylo/ecs/system/System.hpp"
 #include "aylo/ecs/system/SystemParam.hpp"
 #include "aylo/ecs/time/FixedTimestep.hpp"
@@ -237,27 +239,35 @@ TEST(ScriptCall, ASystemMakesTheCallsItDeclares) {
     EXPECT_EQ(fixture.score(), 15);
 }
 
-TEST(ScriptCall, ACallTheSystemDidNotDeclareRaisesAnError) {
+TEST(ScriptCall, ACallTheSystemDidNotDeclareIsFoundWhenItIsMade) {
     Fixture fixture;
     ASSERT_EQ(fixture.run(R"(
-        engine.ecs.system("game.Sneaky", {
+        local function helper(ctx)
+            return ctx.call("test.addPoints", { points = 2 }) -- a helper's call needs no declaration
+        end
+        engine.ecs.system("game.Helped", {
             phase = "Update",
             query = {},
-            calls = { "test.addPoints" },
             run = function(ctx)
-                local ok, message = pcall(ctx.call, "test.reset")
-                assert(not ok, "an undeclared call should fail")
-                assert(string.find(message, "engine call 'test.reset' is not declared by system 'game.Sneaky'", 1,
-                    true), message)
-                ctx.call("test.addPoints")
+                local ok, message = pcall(ctx.call, "test.nope")
+                assert(not ok, "an unknown call should fail")
+                assert(string.find(message, [[unknown engine call 'test.nope' (system 'game.Helped']], 1, true), message)
+                assert(helper(ctx) >= 12)
             end,
         })
     )"),
               "");
 
     fixture.app.runFrame();
+    fixture.app.runFrame();  // found once, then made like a declared call
 
-    EXPECT_EQ(fixture.score(), 11);  // the asserts passed, then the declared call ran
+    EXPECT_EQ(fixture.score(), 14);
+    const aylo::ecs::System* system =
+        fixture.app.getSchedules().getSchedule(aylo::ecs::Phase::kUpdate).findSystem("game.Helped");
+    ASSERT_NE(system, nullptr);
+    // What test.addPoints writes, on top of the aylo.Time every script system reads.
+    EXPECT_EQ(system->getAccess().getResources().size(), system->getDeclaredAccess().getResources().size() + 1);
+    EXPECT_TRUE(system->getAccess().getResources().back().write);
 }
 
 TEST(ScriptCall, AnUnknownDeclaredCallIsRefusedWhenTheScriptLoads) {

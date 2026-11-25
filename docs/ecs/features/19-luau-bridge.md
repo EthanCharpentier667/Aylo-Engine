@@ -131,7 +131,7 @@ local total = engine.call("game.addPoints", { points = 3 })   -- while the scrip
 
 engine.ecs.system("game.Scorer", {
     query = { read = { "game.Ship" } },
-    calls = { "game.addPoints" },                              -- declared, like resources and events
+    calls = { "game.addPoints" },                              -- optional, like resources and events
     run = function(ctx)
         for entity, ship in ctx.query do
             ctx.call("game.addPoints", { points = 1 })
@@ -143,11 +143,15 @@ engine.ecs.system("game.Scorer", {
 Missing argument fields keep their defaults. A result of one field is returned as that value, a result of several as
 a table, and a call that returns nothing returns no value. A `std::string` field of a call takes and gives a Luau
 string of any length, and a `std::vector` field a Luau array; an `ecs::String` field is cut at 255 bytes. The
-arguments and the result live in `CallBuffer`s for the time of the call, so their memory is freed after it. A system's declared calls add their access to its own, so
-the scheduler sees what they read and write, and runs it on the main thread when one of them needs it. Calling a call
-the system did not declare raises a Luau error. An unknown call, a wrong argument or a call that throws raises an error
-naming the call. An unknown call in `calls` is refused when the script loads, unless the system does not run in that
-`App`'s mode: a client system may list a call only the client plugins register.
+arguments and the result live in `CallBuffer`s for the time of the call, so their memory is freed after it. A system's calls add their access to its own, so
+the scheduler sees what they read and write, and runs it on the main thread when one of them needs it. A call the
+system did not list is found the first time it is made (`DynamicCalls::add()`), as are resources and events
+(see [Access found while running](13-scheduler.md#access-found-while-running)): listing is optional, and gives the errors
+when the script loads. A name the system lists keeps the use it listed (a resource under `read` stays read-only, an
+event under `read` cannot be sent); one it found gets the use it makes (a resource becomes written at the first write
+of a field of its view). An unknown call, a wrong argument or a call that throws raises an error naming the call. An
+unknown call in `calls` is refused when the script loads, unless the system does not run in that `App`'s mode: a client
+system may list a call only the client plugins register.
 
 The engine's plugins register these calls, on the side they are added on (the backend plugin and the plugins it
 adds run on clients):

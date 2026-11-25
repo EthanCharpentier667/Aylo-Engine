@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <span>
 #include <vector>
 
@@ -50,6 +51,10 @@ class AYLO_ECS_API SystemAccess {
     /// thread.
     [[nodiscard]] bool isMainThread() const noexcept;
 
+    /// @return A number that changes whenever the access grows (a new type, a read turned into a write, the main-thread
+    /// need): what tells that a system discovered a new use while it ran (see SystemContext::access).
+    [[nodiscard]] std::uint64_t getVersion() const noexcept;
+
     /// @brief Records reading (`write` false) or writing a component.
     void addComponent(TypeId id, bool write);
 
@@ -69,12 +74,14 @@ class AYLO_ECS_API SystemAccess {
     void merge(const SystemAccess& other);
 
   private:
-    /// @brief Adds the type to `accesses`, or upgrades its entry to a write.
-    static void add(std::vector<TypeAccess>& accesses, TypeId id, bool write, bool append = false);
+    /// @brief Adds the type to `accesses`, or upgrades its entry to a write, and moves the version on if that changed
+    /// anything.
+    void add(std::vector<TypeAccess>& accesses, TypeId id, bool write, bool append = false);
 
     std::vector<TypeAccess> _components;  ///< Components read or written, one entry each.
     std::vector<TypeAccess> _resources;   ///< Resources read or written, one entry each.
     std::vector<TypeAccess> _events;      ///< Event types read or sent, one entry each.
     bool _mainThread{false};              ///< Whether the system must run on the main thread.
+    std::uint64_t _version{0};            ///< Moved on by every change, see getVersion().
 };
 }  // namespace aylo::ecs

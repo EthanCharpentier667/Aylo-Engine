@@ -32,7 +32,7 @@ order of the list, each one reading what the previous one wrote.
 | Form or call | Arguments | What it does |
 |---|---|---|
 | `engine.screenEffects(effects)` | a list mixing material ids, passes ([Several passes](#several-passes)), shader names (`"@aylo/vignette.glsl"`, its defaults) and what [`engine.effects`](screen-effects.md) functions return | Sets the screen effects, in their order, replacing the previous ones. `{}` removes them all. Does nothing on a server |
-| `aylo.shader.setScreenMaterials` | `materials`: a list of material ids | The call behind the form, for a system (list it in its `calls`). Replaces the effects, passes included. Absent on a server |
+| `aylo.shader.setScreenMaterials` | `materials`: a list of material ids | The call behind the form, for a system. Replaces the effects, passes included. Absent on a server |
 | `aylo.shader.addScreenEffect` | `material`; `input`, `output`: strings (default `""`); `scale`: number (default `1`); `width`, `height`: whole numbers (default `0`: by `scale`); `lowPrecision`: boolean (default `false`) | Adds a pass after the others. Call `setScreenMaterials` with `{}` first to start over. Absent on a server |
 | `aylo.shader.addScreenEffectInput` | `sampler`: a `uniform sampler2D` of the last pass's shader; `target`: a target's name | Binds that texture of the last pass added to a target. Absent on a server |
 | `aylo.shader.checkScreenEffects` | none | Fails, and removes the passes, if one reads a target no pass before it writes. Absent on a server |

@@ -193,6 +193,22 @@ In a `kStandalone` schedule, a server-side system and a client-side system that 
 is the server's and the client's, so the scheduler orders the server's system first, as a client sees what the server did
 over the network (unless the game ordered them itself). Pairs on the same side, or on both, still need an order.
 
+### Access found while running
+
+A script system need not list the engine calls, resources and events it uses: its `DynamicCalls`, `DynamicResources`
+and `DynamicEvents` parameters `add()` them the first time it uses them, growing the system's access through
+`SystemContext::access` (a call binds its body then; a client system cannot add a call that writes a replicated or
+server-only component, see `findClientWrite()`). `System` keeps both: `getDeclaredAccess()`, as its parameters declared
+it, and `getAccess()`, with what it found. `takeAccessGrowth()` tells the schedule the access grew.
+
+- `build()` refuses ambiguities on the declared access only, so a schedule never stops building because of what a
+  system found.
+- After a run where a system's access grew, `Schedule::run()` lists the written events again (a system may send an
+  event it did not declare, which changes the queues `Schedules` updates), marks itself to be built again, and writes
+  each new ambiguity on the full access to `std::cerr` once (`[Schedule] ... order them with before / after`).
+- The order depends on the access only in `kStandalone`, for the server-before-client edges: the next build adds them
+  for what was found. An edge is only added between two systems no constraint orders, so it cannot make a cycle.
+
 ### Running a phase
 
 `Schedule::run()` (or `Schedules::run(phase)`) runs the phase's systems in order, skipping those whose [side](12-systems.md#the-side-rule)
@@ -258,7 +274,9 @@ sends through `follow()`, and refuses `request()`. See [Replication](20-replicat
 
 Each system's access set (reads/writes per component and resource, main-thread flag) is known. A
 parallel scheduler can run systems of the same phase concurrently when their access sets do not conflict
-and no ordering constraint links them. Nothing in the systems changes.
+and no ordering constraint links them. Nothing in the systems changes. A script system's access can grow while it runs
+(see above): the script systems share one Luau VM and never run concurrently with each other, but against C++ systems a
+parallel scheduler must treat a script system as touching anything until its access stops growing, or run it alone.
 
 ## Connections
 

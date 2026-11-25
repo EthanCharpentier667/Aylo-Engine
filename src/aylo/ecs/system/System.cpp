@@ -7,6 +7,7 @@
 
 #include "System.hpp"
 
+#include <cstdint>
 #include <string_view>
 #include <utility>
 
@@ -23,6 +24,17 @@ Side System::getSide() const noexcept { return _side; }
 
 const SystemAccess& System::getAccess() const noexcept { return _access; }
 
+const SystemAccess& System::getDeclaredAccess() const noexcept { return _declaredAccess; }
+
+bool System::takeAccessGrowth() noexcept {
+    const std::uint64_t version = _access.getVersion();
+    if (version == _seenVersion) {
+        return false;
+    }
+    _seenVersion = version;
+    return true;
+}
+
 Tick System::getLastRun() const noexcept { return _lastRun; }
 
 void System::setSide(Side side) noexcept { _side = side; }
@@ -35,7 +47,12 @@ bool System::canRun() const { return !_condition || _condition(*_world); }
 
 void System::run() {
     const Tick thisRun = _world->getChangeTick();
-    _body->run(SystemContext{.world = _world, .commands = &_commands, .lastRun = _lastRun, .thisRun = thisRun});
+    _body->run(SystemContext{.world = _world,
+                             .commands = &_commands,
+                             .lastRun = _lastRun,
+                             .thisRun = thisRun,
+                             .access = &_access,
+                             .side = _side});
     _lastRun = thisRun;
     _world->advanceChangeTick();  // the next run starts after this tick: what this run wrote is not reported to it
 }
