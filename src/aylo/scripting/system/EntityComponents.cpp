@@ -30,6 +30,7 @@
 #include "aylo/luau/CallContext.hpp"
 #include "aylo/luau/Exceptions.hpp"
 #include "aylo/luau/Runtime.hpp"
+#include "aylo/luau/Table.hpp"
 #include "aylo/luau/Userdata.hpp"
 #include "aylo/luau/Usertype.hpp"
 #include "aylo/luau/Value.hpp"
@@ -63,14 +64,19 @@ struct Target {
     return index;
 }
 
+/// @return The entity given as the first argument after `ctx`, or null when it is not one.
+[[nodiscard]] const ecs::Entity* findEntity(const std::span<const luau::Value> args) {
+    const auto* userdata = args.size() > 1 ? std::next(args.begin(), 1)->tryAs<luau::Userdata>() : nullptr;
+    return userdata != nullptr ? userdata->tryAs<ecs::Entity>() : nullptr;
+}
+
 /// @return The entity and component of `ctx:<function>(entity, name)`.
 /// @throws luau::exceptions::RuntimeError If the arguments are not `ctx`, an entity and a name, or no component has
 /// this name.
 [[nodiscard]] Target readTarget(ScriptSystem& system, const ecs::DynamicComponents& components,
                                 const luau::CallContext& arguments, const std::string_view function) {
     const std::span<const luau::Value> args = arguments.args();
-    const auto* userdata = args.size() > 1 ? std::next(args.begin(), 1)->tryAs<luau::Userdata>() : nullptr;
-    const auto* entity = userdata != nullptr ? userdata->tryAs<ecs::Entity>() : nullptr;
+    const auto* entity = findEntity(args);
     const auto* name = args.size() > 2 ? std::next(args.begin(), 2)->tryAs<std::string>() : nullptr;
     if (entity == nullptr || name == nullptr) {
         throw luau::exceptions::RuntimeError{
@@ -78,6 +84,28 @@ struct Target {
                         function, function)};
     }
     return {.entity = *entity, .index = findOrDiscover(system, components, *name)};
+}
+
+/// @return The entity of `ctx:<function>(entity)`.
+/// @throws luau::exceptions::RuntimeError If the arguments are not `ctx` and an entity.
+[[nodiscard]] ecs::Entity readEntity(const luau::CallContext& arguments, const std::string_view function) {
+    const auto* entity = findEntity(arguments.args());
+    if (entity == nullptr) {
+        throw luau::exceptions::RuntimeError{
+            std::format("ctx:{} expects an entity: ctx:{}(entity)", function, function)};
+    }
+    return *entity;
+}
+
+/// @return The hierarchy component `T` of `entity`, read by the system (discovered like any component), or null when
+/// the entity is not alive, does not have it, or no entity has one yet (the world registers it at the first parent).
+template <typename T>
+[[nodiscard]] const T* findHierarchy(ScriptSystem& system, const ecs::DynamicComponents& components,
+                                     const ecs::Entity entity) {
+    if (system.components->findByName(ecs::TypeTraits<T>::kName) == nullptr) {
+        return nullptr;
+    }
+    return components.get<T>(entity, findOrDiscover(system, components, ecs::TypeTraits<T>::kName));
 }
 
 /// @return Why a field of the component of `term` cannot be written by the system, or an empty string when it can be.
@@ -145,6 +173,50 @@ luau::ValuePack getComponent(ScriptSystem& system, const luau::Runtime& runtime,
         throw luau::exceptions::RuntimeError{std::string{view.error().message()}};
     }
     pack.add(luau::Value{std::move(*view)});
+    return pack;
+}
+
+luau::ValuePack getParent(ScriptSystem& system, const luau::Runtime& runtime, const ecs::DynamicComponents& components,
+                          const luau::CallContext& arguments) {
+    const ecs::Entity entity = readEntity(arguments, "getParent");
+    luau::ValuePack pack;
+    const auto* parent = findHierarchy<ecs::Parent>(system, components, entity);
+    if (parent == nullptr) {
+        pack.add(luau::Value{luau::Value::Nil{}});
+        return pack;
+    }
+    auto handle = runtime.usertype<ecs::Entity>().create(parent->entity);
+    if (!handle) {
+        throw luau::exceptions::RuntimeError{std::string{handle.error().message()}};
+    }
+    pack.add(luau::Value{std::move(*handle)});
+    return pack;
+}
+
+luau::ValuePack getChildren(ScriptSystem& system, const luau::Runtime& runtime,
+                            const ecs::DynamicComponents& components, const luau::CallContext& arguments) {
+    const ecs::Entity entity = readEntity(arguments, "getChildren");
+    const auto* children = findHierarchy<ecs::Children>(system, components, entity);
+    const std::span<const ecs::Entity> entities =
+        children != nullptr ? std::span<const ecs::Entity>{children->entities} : std::span<const ecs::Entity>{};
+    auto list = luau::Table::create(runtime, static_cast<int>(entities.size()));
+    if (!list) {
+        throw luau::exceptions::RuntimeError{std::string{list.error().message()}};
+    }
+    const auto handles = runtime.usertype<ecs::Entity>();
+    double key = 1;
+    for (const ecs::Entity child : entities) {
+        auto handle = handles.create(child);
+        if (!handle) {
+            throw luau::exceptions::RuntimeError{std::string{handle.error().message()}};
+        }
+        if (auto set = list->set(luau::Value{key}, luau::Value{std::move(*handle)}); !set) {
+            throw luau::exceptions::RuntimeError{std::string{set.error().message()}};
+        }
+        ++key;
+    }
+    luau::ValuePack pack;
+    pack.add(luau::Value{std::move(*list)});
     return pack;
 }
 

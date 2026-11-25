@@ -36,4 +36,17 @@ namespace aylo::scripting::system {
 /// @throws luau::exceptions::RuntimeError If the arguments are wrong or no component has this name.
 [[nodiscard]] luau::ValuePack hasComponent(ScriptSystem& system, const ecs::DynamicComponents& components,
                                            const luau::CallContext& arguments);
+
+/// @brief `ctx:getParent(entity)`: the entity's parent, or `nil` when it has none or is dead. Reads `aylo.Parent`,
+/// discovered like any component.
+/// @throws luau::exceptions::RuntimeError If the argument is not an entity.
+[[nodiscard]] luau::ValuePack getParent(ScriptSystem& system, const luau::Runtime& runtime,
+                                        const ecs::DynamicComponents& components, const luau::CallContext& arguments);
+
+/// @brief `ctx:getChildren(entity)`: a new list of the entity's children, in the order of `aylo.Children`; empty when
+/// it has none or is dead. Reads `aylo.Children`, discovered like any component. The list is a copy: it stays valid
+/// after the run, but does not follow later changes of the hierarchy.
+/// @throws luau::exceptions::RuntimeError If the argument is not an entity.
+[[nodiscard]] luau::ValuePack getChildren(ScriptSystem& system, const luau::Runtime& runtime,
+                                          const ecs::DynamicComponents& components, const luau::CallContext& arguments);
 }  // namespace aylo::scripting::system
