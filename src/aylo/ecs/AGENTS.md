@@ -16,7 +16,10 @@ functions that plugins give to scripts). Shared library `ecs`.
 - Data is described once (fields, hooks, a description in the registry) and everything else derives from it: scripts,
   serialization, replication. A new kind of data goes through that description, never around it.
 - Every component, resource and event says which side it lives on (server, client or both).
-- A system's accesses are declared by its parameters; the scheduler orders and parallelizes from them.
+- A system's accesses are declared by its parameters; the scheduler orders and parallelizes from them. A dynamic
+  parameter (`DynamicCalls`, `DynamicResources`, `DynamicEvents`, used by script systems) may grow them while the
+  system runs (`SystemContext::access`): an ambiguity found that way is a warning, never an error, and only what was
+  declared is refused when a schedule is built.
 - Structural changes during a frame are deferred commands.
 - A plugin names what it requires; the app refuses a plugin whose requirement was not added first.
 

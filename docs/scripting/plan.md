@@ -703,7 +703,7 @@ their bytes would be wrong anyway.
   *Done:* `App::addCall(name, function)` registers a C++ function whose parameters are system parameters and an
   optional `const Args&`, `Args` and its result being plain-data structs declared with `AYLO_ECS_CALL_DATA` (so the
   signature is a `TypeInfo` of `FieldType`s). Scripts call it with `engine.call(name, { field = value })` while they
-  load, and with `ctx.call(name, {...})` in a system that lists it under `calls = {...}`; the system takes the call's
+  load, and with `ctx.call(name, {...})` in a system (listed under `calls = {...}`, or found when it is first made: `dx-plan.md` D7); the system takes the call's
   access (and its main-thread need), so the scheduler orders it like any other. A call the system does not list is a
   Luau error; an unknown call is refused when the script loads, unless the system does not run in that `App`'s mode.
   The asset, input and audio plugins register their calls (`aylo.sprite.createAtlas`, `aylo.input.bindVector`,
