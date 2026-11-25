@@ -31,10 +31,11 @@ struct AYLO_SCRIPTING_API ResourcesHandle {
 
 /// @brief Registers the `Resources` usertype of `ctx.resources` in a runtime.
 ///
-/// @details `ctx.resources["aylo.Input"]` gives a view of the resource, like those of components: read-only unless
-/// the system declared it under `resources.write`, so writing a field of a read resource raises a Luau error. The
-/// view is `nil` while the resource has no value. A name the system did not declare raises a Luau error. A writable
-/// view marks the resource changed when it is given, not when a field is written, since the ECS only has bytes.
+/// @details `ctx.resources["aylo.Input"]` gives a view of the resource, like those of components: a resource declared
+/// under `resources.read` stays read-only, so writing one of its fields raises a Luau error. A name the system did not
+/// declare is discovered, read, and becomes written at the first write to its view; an unknown name raises a Luau
+/// error. The view is `nil` while the resource has no value. A declared writable view marks the resource changed when
+/// it is given, not when a field is written, since the ECS only has bytes.
 /// @param runtime The runtime to register the usertype in; it must have the `Entity`, `AssetId` and `ComponentView`
 /// usertypes (see view::registerViewTypes()).
 /// @return Nothing, or the error of the registration.
