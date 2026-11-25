@@ -14,6 +14,7 @@
 
 #include "aylo/ecs/Export.hpp"
 #include "aylo/ecs/component/ComponentInfo.hpp"
+#include "aylo/ecs/component/ComponentTraits.hpp"
 #include "aylo/ecs/entity/Entity.hpp"
 #include "aylo/ecs/system/SystemAccess.hpp"
 #include "aylo/ecs/system/SystemParam.hpp"
@@ -86,6 +87,11 @@ class AYLO_ECS_API DynamicComponents {
     /// it is a tag (use has()). Invalidated by the next structural change to the component.
     [[nodiscard]] std::span<const std::byte> get(Entity entity, std::size_t index) const noexcept;
 
+    /// @return The entity's component at `index` as the C++ component `T`; null if the entity is not alive, does not
+    /// have it, or the component at `index` is not `T`.
+    template <Component T>
+    [[nodiscard]] const T* get(Entity entity, std::size_t index) const noexcept;
+
     /// @brief Write access to the entity's component at `index`, marked changed now.
     /// @return The bytes of the value; empty if the component was declared read, the entity is not alive, does not
     /// have it, or it is a tag.
@@ -113,3 +119,5 @@ struct AYLO_ECS_API SystemParam<DynamicComponents> {
     static void addAccess(const State& state, SystemAccess& access);
 };
 }  // namespace aylo::ecs
+
+#include "DynamicComponents.tpp"
