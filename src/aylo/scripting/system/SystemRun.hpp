@@ -23,6 +23,7 @@
 #include "aylo/ecs/system/DynamicResources.hpp"
 #include "aylo/ecs/time/Time.hpp"
 #include "aylo/ecs/type/TypeInfo.hpp"
+#include "aylo/ecs/world/World.hpp"
 #include "aylo/luau/FunctionRef.hpp"
 #include "aylo/scripting/Export.hpp"
 #include "aylo/scripting/view/ViewScope.hpp"
@@ -34,17 +35,19 @@ struct DataTerm {
     bool readOnly{false};                     ///< Whether the view refuses writes (a read term).
 };
 
-/// @brief A resource a script system declared: what `ctx.resources` gives for its name.
+/// @brief A resource a script system uses: what `ctx.resources` gives for its name.
 struct ResourceTerm {
     const ecs::TypeInfo* type{nullptr};  ///< The resource; outlives the system (the registry never moves it).
     bool write{false};                   ///< Whether the system may write it.
+    bool discovered{false};  ///< Found while the system ran, not declared: a write turns its read into a write.
 };
 
-/// @brief An event type a script system declared: what `ctx.events` accepts for its name.
+/// @brief An event type a script system uses: what `ctx.events` accepts for its name.
 struct EventTerm {
     const ecs::TypeInfo* type{nullptr};  ///< The event; outlives the system (the registry never moves it).
     bool read{false};                    ///< Whether `ctx.events.read` accepts it.
     bool send{false};                    ///< Whether `ctx.events.send` accepts it.
+    bool discovered{false};  ///< Found while the system ran, not declared: reading or sending it adds that use.
 };
 
 /// @brief What the body of a script system keeps between runs.
@@ -52,14 +55,16 @@ struct ScriptSystem {
     std::string name;                         ///< Name of the system, for the messages.
     luau::FunctionRef run;                    ///< The `run` function of the declaration.
     std::vector<DataTerm> terms;              ///< The data terms of its query, in the order the query yields them.
-    std::vector<ResourceTerm> resources;      ///< Its resources, in the order of its ResourceList.
-    std::vector<EventTerm> events;            ///< Its event types, in the order of its EventList.
-    std::vector<const ecs::CallInfo*> calls;  ///< Its engine calls, in the order of its CallList; owned by the world.
+    std::vector<ResourceTerm> resources;      ///< Its resources: those of its ResourceList, then those it found.
+    std::vector<EventTerm> events;            ///< Its event types: those of its EventList, then those it found.
+    std::vector<const ecs::CallInfo*> calls;  ///< Its engine calls: its CallList, then those it found; owned by the
+                                              ///< world.
     bool clientSide{false};                   ///< Runs on clients only: its commands cannot add replicated components.
     std::string_view side{"server"};          ///< `ctx.side`: "server" (the default), "client" or "both".
     const ecs::ComponentRegistry* components{nullptr};  ///< The world's components, for its commands.
-    std::shared_ptr<RuntimeHandle> runtime;             ///< The runtime of the host, null inside once it is destroyed.
-    std::shared_ptr<view::ViewScope> scope;             ///< Invalidates the views of a run when it returns.
+    const ecs::World* world{nullptr};        ///< The world, to find the calls, resources and events it did not declare.
+    std::shared_ptr<RuntimeHandle> runtime;  ///< The runtime of the host, null inside once it is destroyed.
+    std::shared_ptr<view::ViewScope> scope;  ///< Invalidates the views of a run when it returns.
 };
 
 /// @brief Runs a script system once: calls its `run` with a `ctx`.
@@ -68,11 +73,16 @@ struct ScriptSystem {
 /// in the order of the query, a view of its component (read-only for a read term, `nil` for an optional component the
 /// entity lacks). `ctx.time` is a table of the values of Time (`delta`, `fixedDelta`, `elapsed`, `tick`, `alpha`),
 /// `ctx.delta` and `ctx.fixedDelta` stay as shorthands of its first two, and `ctx.commands` records structural changes
-/// (see registerCommandsType()). `ctx.resources["aylo.Input"]` is a view of a declared resource (read-only unless
-/// declared `write`, `nil` while it has no value), and `ctx.events` has `send(name, fields)` and `read(name)` for the
-/// declared events (see registerContextTypes()). `ctx.call(name, fields)` makes one of the engine calls the system
-/// declared under `calls` (see call::callEngine()). The views die when `run` returns. A Luau error in `run` is written
-/// to `std::cerr` with the name of the system and skips the rest of the run; nothing is thrown.
+/// (see registerCommandsType()). `ctx.resources["aylo.Input"]` is a view of a resource (`nil` while it has no value),
+/// `ctx.events` has `send(name, fields)` and `read(name)` (see registerContextTypes()), and `ctx.call(name, fields)`
+/// makes an engine call (see call::callEngine()).
+///
+/// A name the system declared is limited to what it declared: a resource declared read refuses writes, an event
+/// declared sent cannot be read. A name it did not declare is discovered at its first use and added to the system's
+/// access (ecs::DynamicCalls::add() and the like): a resource is read, then written once a field of its view is
+/// written; an event is read or sent as it is used. An unknown name is a Luau error. The views die when `run` returns.
+/// A Luau error in `run` is written to `std::cerr` with the name of the system and skips the rest of the run; nothing
+/// is thrown.
 /// @param system The system to run.
 /// @param queries The system's queries, of which the first is iterated.
 /// @param resources The system's resources, in the order of `system.resources`.

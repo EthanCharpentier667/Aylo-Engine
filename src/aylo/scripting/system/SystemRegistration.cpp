@@ -18,6 +18,7 @@
 #include <utility>
 #include <vector>
 
+#include "PlainData.hpp"
 #include "RuntimeHandle.hpp"
 #include "SystemDeclaration.hpp"
 #include "SystemRun.hpp"
@@ -131,18 +132,6 @@ void addTerm(ecs::QueryBuilder& builder, const ecs::TermKind kind, const ecs::Co
         }
     }
     return terms;
-}
-
-/// @return Why a type cannot be given to scripts as bytes, or an empty string when it can: a script only gets plain
-/// data, whose bytes it may read and write in place.
-[[nodiscard]] std::string whyNotPlainData(const ecs::TypeInfo& type, const bool mainThread) {
-    if (mainThread) {
-        return "it is main-thread only";
-    }
-    if (type.hooks.destruct != nullptr || type.hooks.move != nullptr || type.hooks.copy != nullptr) {
-        return "it is not plain data (it owns memory of its own)";
-    }
-    return {};
 }
 
 /// @return The resources the system declared, checked against the world, with the access they ask of the scheduler.
@@ -318,6 +307,7 @@ Result<BuiltSystem> makeSystem(ecs::App& app, SystemDeclaration declaration, std
         .clientSide = declaration.side == ecs::Side::kClient,
         .side = sideName(declaration.side),
         .components = &components.getRegistry(),
+        .world = &app.getWorld(),
         .runtime = std::move(runtime),
         .scope = std::make_shared<view::ViewScope>(),
     });
