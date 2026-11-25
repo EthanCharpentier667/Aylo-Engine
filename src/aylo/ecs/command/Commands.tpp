@@ -83,10 +83,6 @@ ComponentId Commands::registerIfNeeded(Components& components) {
     if (const ComponentInfo* info = components.getRegistry().find<T>()) {
         return info->type.id;  // keeps the options it was registered with
     }
-    if constexpr (std::same_as<T, Parent>) {
-        return components.registerType<T>(kParentOptions);
-    } else {
-        return components.registerType<T>();
-    }
+    return components.registerType<T>();  // with its own options (kDefaultComponentOptions)
 }
 }  // namespace aylo::ecs
