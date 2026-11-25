@@ -374,3 +374,58 @@ TEST(ScriptSystemRun, ASystemWithoutAQueryRunsOnItsScheduleWithNoEntity) {
     EXPECT_EQ(count("game.Dead"), 1U) << "Startup runs once";
     EXPECT_EQ(count("game.Position"), 3U) << "FixedUpdate runs on every tick";
 }
+
+namespace {
+/// @brief The example of manual/pages/systems.md, "Queries", as written there.
+constexpr std::string_view kManualDropLoot = R"(
+engine.ecs.system("game.DropLoot", {
+	phase = "Update",
+	query = { removed = { "game.Enemy" } },
+	run = function(ctx)
+		for enemy in ctx.query do
+			-- enemy lost game.Enemy, or was despawned: its components may be gone
+			ctx.commands:spawn({ ["game.Loot"] = {} })
+		end
+	end,
+})
+)";
+}  // namespace
+
+TEST(ScriptSystemRun, ARemovedTermVisitsWhatLostAComponentOnce) {
+    Fixture fixture;
+    ASSERT_EQ(fixture.run(R"(
+        engine.ecs.component("game.Enemy", { fields = {} })
+        engine.ecs.component("game.Loot", { fields = {} })
+        engine.ecs.system("game.Mark", {
+            phase = "Update",
+            query = { removed = { "game.Enemy" }, write = { "game.Position" } },
+            run = function(ctx)
+                for entity, position, extra in ctx.query do
+                    assert(extra == nil)
+                    position.x = position.x + 1
+                end
+            end,
+        })
+    )"),
+              "");
+    ASSERT_EQ(fixture.run(std::string{kManualDropLoot}), "");
+    auto& components = fixture.app.getWorld().getComponents();
+    const auto enemy = *components.find("game.Enemy");
+    const auto loot = *components.find("game.Loot");
+    const auto disarmed = fixture.spawn(fixture.app.getWorld().spawn(), "game.Position", {});
+    ASSERT_TRUE(components.add(disarmed, enemy, {}));
+    const auto killed = fixture.app.getWorld().spawn();
+    ASSERT_TRUE(components.add(killed, enemy, {}));
+    fixture.app.runFrame();
+    EXPECT_EQ(components.findPool(loot)->getSize(), 0U);
+
+    ASSERT_TRUE(components.remove(disarmed, enemy));
+    ASSERT_TRUE(fixture.app.getWorld().despawn(killed));
+    testing::internal::CaptureStderr();
+    fixture.app.runFrame();
+    fixture.app.runFrame();
+    EXPECT_EQ(testing::internal::GetCapturedStderr(), "");
+
+    EXPECT_EQ(components.findPool(loot)->getSize(), 2U);                 // one loot each, once
+    EXPECT_FLOAT_EQ(fixture.read(disarmed, "game.Position", "x"), 1.F);  // the dead one has no position to write
+}
