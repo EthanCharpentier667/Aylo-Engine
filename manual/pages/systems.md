@@ -174,6 +174,7 @@ query = {
 	optionalRead = {}, optionalWrite = {},
 	with = { "net.Owner" }, without = { "game.Dead" },
 	added = { "game.Laser" }, changed = { "game.Ship" },
+	removed = { "game.Enemy" },
 }
 ```
 
@@ -184,10 +185,35 @@ query = {
 | `with`, `without` | The entity must have, or must not have, the component. No view. |
 | `added` | The entity must have it, and it was added since this system last ran. |
 | `changed` | The entity must have it, and it was added or written since this system last ran. |
+| `removed` | The entity lost it since this system last ran: it was removed, or the entity was despawned. No view. |
 
 `for entity, a, b in ctx.query do` gives the entity, then one view per `read`/`write` term in the order read, write,
 optionalRead, optionalWrite (inside each, in the order you listed them). The views are valid only during the call to
 `run`. An unknown term name is an error.
+
+### Reacting to a removal
+
+`removed` visits each entity that lost a component, once, the next time the system runs: to drop loot when an enemy
+dies, or end an effect when a buff is gone.
+
+```luau
+engine.ecs.system("game.DropLoot", {
+	phase = "Update",
+	query = { removed = { "game.Enemy" } },
+	run = function(ctx)
+		for enemy in ctx.query do
+			-- enemy lost game.Enemy, or was despawned: its components may be gone
+			ctx.commands:spawn({ ["game.Loot"] = {} })
+		end
+	end,
+})
+```
+
+There is no view of the removed component: its value is gone. A despawned entity is dead in the loop, so it has no
+component at all, and the other terms are checked on the entity as it is now: `removed = { "game.Enemy" }` with
+`read = { "aylo.Transform2D" }` only visits the entities that lost `game.Enemy` and are still alive with a transform.
+To place the loot where a despawned enemy was, record what you need (its position) before you despawn it. An entity
+that lost the component and got it back since is still visited.
 
 ## Other entities
 
