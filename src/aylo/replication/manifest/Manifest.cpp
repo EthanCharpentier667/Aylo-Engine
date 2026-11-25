@@ -55,8 +55,8 @@ Manifest Manifest::build(const ecs::World& world, const input::InputLayout& inpu
         }
         if (!serialization::isSerializable(info->type)) {
             throw exceptions::ManifestException{
-                std::format("The replicated component '{}' cannot be serialized: it needs at least one field and "
-                            "plain data (no destruct, move or copy hook) or a copyable type with a list field",
+                std::format("The replicated component '{}' cannot be serialized: it needs to be a tag, or have fields "
+                            "and be plain data (no destruct, move or copy hook) or a copyable type with a list field",
                             info->type.name)};
         }
         if (info->type.name.size() > kMaxNameLength) {
@@ -124,7 +124,8 @@ std::optional<ecs::ComponentId> Manifest::toLocal(const std::uint16_t shortId) c
     if (shortId >= _components.size()) {
         return std::nullopt;
     }
-    return _components.at(shortId);
+    // NOLINTNEXTLINE(*-avoid-unchecked-container-access): shortId < _components.size(), checked above.
+    return _components[shortId];
 }
 
 std::optional<std::uint16_t> Manifest::toShort(const ecs::ComponentId id) const noexcept {
