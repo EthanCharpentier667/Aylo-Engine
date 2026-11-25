@@ -429,3 +429,109 @@ TEST(ScriptSystemRun, ARemovedTermVisitsWhatLostAComponentOnce) {
     EXPECT_EQ(components.findPool(loot)->getSize(), 2U);                 // one loot each, once
     EXPECT_FLOAT_EQ(fixture.read(disarmed, "game.Position", "x"), 1.F);  // the dead one has no position to write
 }
+
+namespace {
+/// @brief The example of manual/pages/systems.md, "Switching an entity off", as written there.
+constexpr std::string_view kManualWakeUp = R"(
+engine.ecs.system("game.WakeUp", {
+	phase = "Update",
+	query = { with = { "game.Enemy", "aylo.Disabled" } }, -- names aylo.Disabled: sees the ones switched off
+	run = function(ctx)
+		if ctx.time.elapsed < 3 then
+			return
+		end
+		for enemy in ctx.query do
+			ctx.commands:remove(enemy, "aylo.Disabled")
+		end
+	end,
+})
+)";
+}  // namespace
+
+TEST(ScriptSystemRun, AScriptQuerySkipsWhatIsSwitchedOffAndItsChildren) {
+    Fixture fixture;
+    ASSERT_EQ(fixture.run(R"(
+        engine.ecs.component("game.Enemy", { fields = {} })
+        engine.ecs.system("game.Setup", {
+            phase = "Startup",
+            run = function(ctx)
+                local enemy = ctx.commands:spawn({ ["game.Enemy"] = {}, ["game.Position"] = {}, ["aylo.Disabled"] = {} })
+                local gun = ctx.commands:spawn({ ["game.Position"] = {} })
+                ctx.commands:setParent(gun, enemy)
+                ctx.commands:spawn({ ["game.Position"] = { y = 1 } })
+            end,
+        })
+        engine.ecs.system("game.Move", {
+            phase = "Update",
+            query = { write = { "game.Position" } },
+            run = function(ctx)
+                for _, position in ctx.query do
+                    position.x = position.x + 1
+                end
+            end,
+        })
+    )"),
+              "");
+    ASSERT_EQ(fixture.run(std::string{kManualWakeUp}), "");
+
+    fixture.app.runFrame();
+    fixture.app.runFrame();
+    auto& components = fixture.app.getWorld().getComponents();
+    const auto position = *components.find("game.Position");
+    std::vector<float> moved;
+    for (const aylo::ecs::Entity entity : components.findPool(position)->getEntities()) {
+        moved.push_back(fixture.read(entity, "game.Position", "x"));
+    }
+    std::ranges::sort(moved);
+    EXPECT_EQ(moved, (std::vector<float>{0.F, 0.F, 2.F}));  // only the one that is not switched off moved
+
+    for (int frame = 0; frame < 4; ++frame) {
+        fixture.app.runFrame();
+    }
+    EXPECT_EQ(components.findPool(*components.find("aylo.Disabled"))->getSize(), 0U);  // woken up
+    for (const aylo::ecs::Entity entity : components.findPool(position)->getEntities()) {
+        EXPECT_GT(fixture.read(entity, "game.Position", "x"), 0.F);
+    }
+}
+
+TEST(ScriptSystemRun, CommandsRemoveAComponentOrSayWhyNot) {
+    Fixture fixture;
+    ASSERT_EQ(fixture.run(R"lua(
+        engine.ecs.component("game.Synced", { fields = { value = "i32" }, replication = "everyChange" })
+        engine.ecs.system("game.Strip", {
+            phase = "Update",
+            query = { with = { "game.Shield" } },
+            run = function(ctx)
+                for entity in ctx.query do
+                    ctx.commands:remove(entity, "game.Shield")
+                    ctx.commands:remove(entity, "game.Dead") -- it does not have it: nothing happens
+                    local ok, message = pcall(function() ctx.commands:remove(entity, "game.Nope") end)
+                    assert(not ok and string.find(message, "unknown component 'game.Nope'", 1, true), message)
+                    ok, message = pcall(function() ctx.commands:remove(entity, "aylo.Parent") end)
+                    assert(not ok and string.find(message, "use removeParent", 1, true), message)
+                end
+            end,
+        })
+        engine.ecs.system("game.ClientStrip", {
+            phase = "Update",
+            side = "client",
+            query = { with = { "game.Shield" } },
+            run = function(ctx)
+                for entity in ctx.query do
+                    local ok, message = pcall(function() ctx.commands:remove(entity, "game.Synced") end)
+                    assert(not ok and string.find(message, "a client system cannot remove 'game.Synced'", 1, true),
+                        message)
+                end
+            end,
+        })
+    )lua"),
+              "");
+    const auto entity = fixture.spawn(fixture.app.getWorld().spawn(), "game.Shield", {});
+
+    testing::internal::CaptureStderr();
+    fixture.app.runFrame();
+    EXPECT_EQ(testing::internal::GetCapturedStderr(), "");
+
+    EXPECT_FALSE(fixture.app.getWorld().getComponents().has(
+        entity, *fixture.app.getWorld().getComponents().find("game.Shield")));
+}

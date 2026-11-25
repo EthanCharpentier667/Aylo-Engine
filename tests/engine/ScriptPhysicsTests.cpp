@@ -183,6 +183,73 @@ TEST(ScriptPhysics, TheManualsDamageExampleHurtsTheEntityItHits) {
     EXPECT_EQ(server.run("assert(probe.total == 19, tostring(probe.total))"), "");
 }
 
+namespace {
+/// @brief A body moving onto a wall switched off; at the second frame, the wall is turned back on when `wake` is true.
+std::string switchedOffWall(const bool wake) {
+    return std::format(R"(
+        local wake = {}
+        local frame = 0
+        engine.ecs.system("game.Spawn", {{
+            phase = "Update",
+            run = function(ctx)
+                frame += 1
+                if frame ~= 1 then return end
+                ctx.commands:spawn({{
+                    ["aylo.Transform2D"] = {{ position = {{ x = -60, y = 0 }} }},
+                    ["aylo.Collider"] = {{ size = {{ x = 20, y = 20 }} }},
+                    ["aylo.RigidBody"] = {{ gravityScale = 0, fixedRotation = true }},
+                    ["aylo.Velocity"] = {{ linear = {{ x = 600, y = 0 }} }},
+                }})
+                ctx.commands:spawn({{
+                    ["aylo.Transform2D"] = {{ position = {{ x = 40, y = 0 }} }},
+                    ["aylo.Collider"] = {{ size = {{ x = 20, y = 20 }} }},
+                    ["aylo.Disabled"] = {{}},
+                }})
+            end,
+        }})
+        engine.ecs.system("game.Wake", {{
+            phase = "Update",
+            query = {{ with = {{ "aylo.Disabled" }} }},
+            run = function(ctx)
+                for wall in ctx.query do
+                    if wake and frame == 2 then
+                        ctx.commands:remove(wall, "aylo.Disabled")
+                    end
+                end
+            end,
+        }})
+        probe.hits = 0
+        engine.ecs.system("game.Hits", {{
+            phase = "Update",
+            run = function(ctx)
+                for collision in ctx.events.read("aylo.CollisionStarted") do
+                    probe.hits += 1
+                end
+            end,
+        }})
+    )",
+                       wake ? "true" : "false");
+}
+}  // namespace
+
+TEST(ScriptPhysics, ASwitchedOffBodyIsNotSimulated) {
+    ServerScripts server;
+    ASSERT_EQ(server.run(switchedOffWall(false)), "");
+
+    server.runFrames();
+
+    EXPECT_EQ(server.run("assert(probe.hits == 0, tostring(probe.hits))"), "");  // no body to hit
+}
+
+TEST(ScriptPhysics, ABodyTurnedBackOnIsSimulatedAgain) {
+    ServerScripts server;
+    ASSERT_EQ(server.run(switchedOffWall(true)), "");
+
+    server.runFrames();
+
+    EXPECT_EQ(server.run("assert(probe.hits == 1, tostring(probe.hits))"), "");
+}
+
 TEST(ScriptPhysics, AScriptMovesAShipAndCastsARayThroughTheCalls) {
     ServerScripts server;
     ASSERT_EQ(server.run(R"(
