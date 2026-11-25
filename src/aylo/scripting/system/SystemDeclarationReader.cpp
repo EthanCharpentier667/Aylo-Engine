@@ -48,6 +48,7 @@ constexpr std::array kTerms{
     TermName{.name = "without", .kind = ecs::TermKind::kWithout},
     TermName{.name = "added", .kind = ecs::TermKind::kAdded},
     TermName{.name = "changed", .kind = ecs::TermKind::kChanged},
+    TermName{.name = "removed", .kind = ecs::TermKind::kRemoved},
 };
 
 constexpr std::array kPhases{

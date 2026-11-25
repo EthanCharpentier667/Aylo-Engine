@@ -87,6 +87,9 @@ void addTerm(ecs::QueryBuilder& builder, const ecs::TermKind kind, const ecs::Co
         case ecs::TermKind::kChanged:
             builder.changed(id);
             break;
+        case ecs::TermKind::kRemoved:
+            builder.removed(id);
+            break;
     }
 }
 
