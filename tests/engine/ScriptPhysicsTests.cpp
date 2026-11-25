@@ -120,6 +120,69 @@ TEST(ScriptPhysics, AScriptSpawnsBodiesAndReadsTheirCollision) {
     EXPECT_EQ(server.run("assert(probe.hits == 1, tostring(probe.hits))"), "");
 }
 
+/// @brief The example of manual/pages/systems.md, "Other entities", as written there.
+constexpr const char* kManualDamage = R"(
+engine.ecs.system("game.Damage", {
+	phase = "FixedUpdate",
+	after = { "aylo.Physics.Events" }, -- once this frame's collisions are sent
+	run = function(ctx)
+		for collision in ctx.events.read("aylo.CollisionStarted") do
+			local health = ctx:get(collision.second, "game.Health") -- a view, or nil
+			if health then
+				health.value -= 1
+			end
+		end
+	end,
+})
+)";
+
+TEST(ScriptPhysics, TheManualsDamageExampleHurtsTheEntityItHits) {
+    ServerScripts server;
+    ASSERT_EQ(server.run(R"(
+        engine.ecs.component("game.Health", { fields = { value = "i32" } })
+        local spawned = false
+        engine.ecs.system("game.Spawn", {
+            phase = "Update",
+            run = function(ctx)
+                if spawned then return end
+                spawned = true
+                ctx.commands:spawn({
+                    ["game.Health"] = { value = 10 },
+                    ["aylo.Transform2D"] = { position = { x = 0, y = 0 } },
+                    ["aylo.Collider"] = { size = { x = 20, y = 20 } },
+                    ["aylo.RigidBody"] = { gravityScale = 0, fixedRotation = true },
+                    ["aylo.Velocity"] = { linear = { x = 600, y = 0 } },
+                })
+                ctx.commands:spawn({
+                    ["game.Health"] = { value = 10 },
+                    ["aylo.Transform2D"] = { position = { x = 40, y = 0 } },
+                    ["aylo.Collider"] = { size = { x = 20, y = 20 } },
+                })
+            end,
+        })
+        engine.ecs.system("game.Look", {
+            phase = "Update",
+            query = { read = { "game.Health" } },
+            run = function(ctx)
+                probe.total = 0
+                for _, health in ctx.query do
+                    probe.total += health.value
+                end
+            end,
+        })
+    )"),
+              "");
+    ASSERT_EQ(server.run(kManualDamage), "");
+
+    testing::internal::CaptureStderr();
+    server.runFrames();
+    const std::string errors = testing::internal::GetCapturedStderr();
+
+    EXPECT_EQ(errors, "");
+    // One collision, so one of the two bodies lost one point, whichever the event names second.
+    EXPECT_EQ(server.run("assert(probe.total == 19, tostring(probe.total))"), "");
+}
+
 TEST(ScriptPhysics, AScriptMovesAShipAndCastsARayThroughTheCalls) {
     ServerScripts server;
     ASSERT_EQ(server.run(R"(
