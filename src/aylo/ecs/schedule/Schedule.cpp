@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <format>
+#include <iostream>
 #include <iterator>
 #include <optional>
 #include <span>
@@ -26,6 +27,7 @@
 #include "aylo/ecs/schedule/DependencyGraph.hpp"
 #include "aylo/ecs/schedule/Phase.hpp"
 #include "aylo/ecs/schedule/RunMode.hpp"
+#include "aylo/ecs/system/ClientWrites.hpp"
 #include "aylo/ecs/system/Side.hpp"
 #include "aylo/ecs/system/System.hpp"
 #include "aylo/ecs/system/SystemAccess.hpp"
@@ -113,19 +115,11 @@ Schedule::SystemConfig& Schedule::SystemConfig::setSide(Side side) {
 }
 
 void Schedule::checkClientWrites(const System& system) const {
-    const ComponentRegistry& registry = _world->getComponents().getRegistry();
-    for (const TypeAccess& access : system.getAccess().getComponents()) {
-        const ComponentInfo* info = registry.findById(access.id);
-        if (!access.write || info == nullptr) {
-            continue;
-        }
-        const bool replicated = info->type.replication != ReplicationMode::kNone;
-        if (replicated || info->type.presence == Presence::kServerOnly) {
-            throw exceptions::ScheduleException{std::format(
-                "System '{}' of phase {} runs on clients but writes component '{}', which is {}", system.getName(),
-                toString(_phase), info->type.name,
-                replicated ? "replicated: the server would overwrite it" : "server-only: clients do not have it")};
-        }
+    if (const auto write = findClientWrite(_world->getComponents().getRegistry(), system.getAccess())) {
+        throw exceptions::ScheduleException{
+            std::format("System '{}' of phase {} runs on clients but writes component "
+                        "'{}', which is {}",
+                        system.getName(), toString(_phase), write->component, write->reason)};
     }
 }
 
@@ -275,11 +269,18 @@ void Schedule::run() {
     if (!_built) {
         build();
     }
+    bool discovered = false;
     for (const std::size_t index : _order) {
         System& system = _entries.at(index).system;
         if (runsIn(system.getSide(), _mode) && system.canRun()) {
             system.run();
+            discovered = system.takeAccessGrowth() || discovered;
         }
+    }
+    if (discovered) {
+        _writtenEvents = collectWrittenEvents();
+        _built = false;
+        warnDiscoveredAmbiguities();
     }
     for (const std::size_t index : _order) {  // after the phase: no system of it sees another's structural changes
         System& system = _entries.at(index).system;
@@ -314,15 +315,13 @@ detail::DependencyGraph Schedule::makeGraph() const {
         }
     }
     if (_mode == RunMode::kStandalone) {
-        // Both sides share one world: a server system and a client system that touch the same data are not ambiguous,
-        // the server's runs first, as the client of a network game sees what the server did. A pair the game ordered
-        // itself keeps its order.
         for (std::size_t server = 0; server < _entries.size(); ++server) {
             for (std::size_t client = 0; client < _entries.size(); ++client) {
                 const System& first = _entries.at(server).system;
                 const System& second = _entries.at(client).system;
                 if (first.getSide() == Side::kServer && second.getSide() == Side::kClient &&
-                    !graph.reaches(server, client) && !graph.reaches(client, server) && findConflict(first, second)) {
+                    !graph.reaches(server, client) && !graph.reaches(client, server) &&
+                    findConflict(first.getAccess(), second.getAccess())) {
                     graph.addEdge(server, client);
                 }
             }
@@ -345,7 +344,7 @@ std::size_t Schedule::resolve(const NameIndex& names, const Entry& entry, std::s
 
 void Schedule::checkAmbiguities(const std::vector<std::string_view>& names,
                                 const detail::DependencyGraph& graph) const {
-    const std::vector<std::string> ambiguities = findAmbiguities(names, graph);
+    const std::vector<std::string> ambiguities = findAmbiguities(names, graph, true);
     if (!ambiguities.empty()) {
         throw exceptions::ScheduleException{
             std::format("Systems of phase {} touch the same data with no order between them, so their result would "
@@ -354,8 +353,22 @@ void Schedule::checkAmbiguities(const std::vector<std::string_view>& names,
     }
 }
 
+void Schedule::warnDiscoveredAmbiguities() {
+    const std::vector<std::string_view> names = getNames();
+    for (std::string& line : findAmbiguities(names, makeGraph(), false)) {
+        if (_warnedAmbiguities.contains(line)) {
+            continue;
+        }
+        std::cerr << std::format(
+            "[Schedule] Systems of phase {} touch the same data with no order between them, found while they ran (not "
+            "declared): {}. They run in the order they were added; order them with before / after\n",
+            toString(_phase), line);
+        _warnedAmbiguities.insert(std::move(line));
+    }
+}
+
 std::vector<std::string> Schedule::findAmbiguities(const std::vector<std::string_view>& names,
-                                                   const detail::DependencyGraph& graph) const {
+                                                   const detail::DependencyGraph& graph, const bool declared) const {
     // Pairs in name order, so the lines never depend on the order systems were added.
     const std::vector<std::size_t> byName = sortByName(names);
     std::vector<std::string> ambiguities;
@@ -364,8 +377,11 @@ std::vector<std::string> Schedule::findAmbiguities(const std::vector<std::string
             if (graph.reaches(*first, *second) || graph.reaches(*second, *first)) {
                 continue;  // ordered: they always run in the same order
             }
-            const std::optional<std::string> shared =
-                findConflict(_entries.at(*first).system, _entries.at(*second).system);
+            const System& a = _entries.at(*first).system;
+            const System& b = _entries.at(*second).system;
+            const std::optional<std::string> shared = declared
+                                                          ? findConflict(a.getDeclaredAccess(), b.getDeclaredAccess())
+                                                          : findConflict(a.getAccess(), b.getAccess());
             if (shared) {
                 ambiguities.push_back(std::format("'{}' and '{}' both use {}, one of them writing it", names.at(*first),
                                                   names.at(*second), *shared));
@@ -375,16 +391,14 @@ std::vector<std::string> Schedule::findAmbiguities(const std::vector<std::string
     return ambiguities;
 }
 
-std::optional<std::string> Schedule::findConflict(const System& first, const System& second) const {
-    const SystemAccess& a = first.getAccess();
-    const SystemAccess& b = second.getAccess();
-    if (const std::optional<TypeId> id = findSharedWrite(a.getComponents(), b.getComponents())) {
+std::optional<std::string> Schedule::findConflict(const SystemAccess& first, const SystemAccess& second) const {
+    if (const std::optional<TypeId> id = findSharedWrite(first.getComponents(), second.getComponents())) {
         return std::format("component '{}'", _world->getComponents().getRegistry().findById(*id)->type.name);
     }
-    if (const std::optional<TypeId> id = findSharedWrite(a.getResources(), b.getResources())) {
+    if (const std::optional<TypeId> id = findSharedWrite(first.getResources(), second.getResources())) {
         return std::format("resource '{}'", _world->getResources().getRegistry().findById(*id)->type.name);
     }
-    if (const std::optional<TypeId> id = findSharedWrite(a.getEvents(), b.getEvents())) {
+    if (const std::optional<TypeId> id = findSharedWrite(first.getEvents(), second.getEvents())) {
         return std::format("event '{}'", _world->getEvents().getRegistry().findById(*id)->type.name);
     }
     return std::nullopt;

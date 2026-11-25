@@ -31,13 +31,14 @@ struct ResourceList {
     std::vector<ResourceUse> resources;  ///< The resources, in order.
 };
 
-/// @brief A system parameter giving the bytes of resources chosen when the system is added, by id: for resources the
-/// system does not know at compile time (those a script names).
+/// @brief A system parameter giving the bytes of resources chosen when the system is added, by id, or found while it
+/// runs: for resources the system does not know at compile time (those a script names).
 ///
 /// @details Configured with a ResourceList (see SystemParam): the system's access set gets every resource of the list
 /// as read or written, so the scheduler orders it as for `Res` and `ResMut`. A resource declared read refuses write
 /// access (getMut() gives nothing), so the system writes nothing it did not declare. Main-thread resources are
-/// refused when the system is added: a dynamic system may run on any thread.
+/// refused: a dynamic system may run on any thread. add() gives the system a resource while it runs, or turns one it
+/// reads into one it writes: its access grows, and the schedule checks the system again after the run.
 /// @code
 /// void run(aylo::ecs::DynamicResources resources) {
 ///     std::span<const std::byte> time = resources.get(0);
@@ -47,8 +48,9 @@ struct ResourceList {
 class AYLO_ECS_API DynamicResources {
   public:
     /// @param resources The world's resources; they must outlive the view.
-    /// @param uses The resources of the system, in order; they must outlive the view.
-    DynamicResources(Resources& resources, std::span<const ResourceUse> uses) noexcept;
+    /// @param list The resources of the system; it must outlive the view.
+    /// @param access The system's access, grown by add(); null when the view is not built by a system's run.
+    DynamicResources(Resources& resources, ResourceList& list, SystemAccess* access) noexcept;
 
     ~DynamicResources() = default;
     DynamicResources(const DynamicResources& other) noexcept = default;
@@ -56,11 +58,18 @@ class AYLO_ECS_API DynamicResources {
     DynamicResources(DynamicResources&& other) noexcept = default;
     DynamicResources& operator=(DynamicResources&& other) noexcept = default;
 
-    /// @return The number of resources, as given in the ResourceList.
+    /// @return The number of resources: those of the ResourceList, then those add() found.
     [[nodiscard]] std::size_t getCount() const noexcept;
 
     /// @return The use at `index`; `index` must be below getCount().
     [[nodiscard]] const ResourceUse& getUse(std::size_t index) const noexcept;
+
+    /// @brief Gives the system the resource `id` while it runs, or turns its read into a write: adds it to the
+    /// system's access (SystemContext::access).
+    /// @return The index of the resource.
+    /// @throws exceptions::ResourceRegistrationException When `id` is not a registered resource, is main-thread only,
+    /// or the view is not built by a system's run (no access to grow).
+    [[nodiscard]] std::size_t add(ResourceId id, bool write) const;
 
     /// @return Whether the resource at `index` holds a value.
     [[nodiscard]] bool has(std::size_t index) const noexcept;
@@ -73,8 +82,9 @@ class AYLO_ECS_API DynamicResources {
     [[nodiscard]] std::span<std::byte> getMut(std::size_t index) noexcept;
 
   private:
-    Resources* _resources;               ///< The world's resources.
-    std::span<const ResourceUse> _uses;  ///< The system's resources.
+    Resources* _resources;  ///< The world's resources.
+    ResourceList* _list;    ///< The system's resources.
+    SystemAccess* _access;  ///< The system's access; null outside a system's run.
 };
 
 /// @brief `DynamicResources`: configured with a ResourceList; the system keeps it.

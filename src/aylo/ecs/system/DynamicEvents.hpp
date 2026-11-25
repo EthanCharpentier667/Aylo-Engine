@@ -34,13 +34,21 @@ struct EventList {
     std::vector<EventUse> events;  ///< The event types, in order.
 };
 
-/// @brief A system parameter reading and sending events chosen when the system is added, by id: for events the system
-/// does not know at compile time (those a script names).
+/// @brief What a DynamicEvents parameter keeps between runs: the event types and where the system is in each queue.
+struct DynamicEventsState {
+    std::vector<EventUse> uses;        ///< The event types, in order.
+    std::vector<EventCursor> cursors;  ///< One cursor per use.
+};
+
+/// @brief A system parameter reading and sending events chosen when the system is added, by id, or found while it
+/// runs: for events the system does not know at compile time (those a script names).
 ///
 /// @details Configured with an EventList (see SystemParam): the system keeps one EventCursor per event type, as an
 /// EventReader does, so it reads each event once, and its access set gets every type as read, or as written when it
 /// sends (it then orders against the systems reading or sending the same type). Reading a type declared only to be
-/// sent, or sending one declared only to be read, does nothing.
+/// sent, or sending one declared only to be read, does nothing. add() gives the system an event type while it runs,
+/// or lets it read or send one it already has: its access grows, and the schedule checks the system again after the
+/// run. A type added to be read starts at the oldest event its queue still holds, as a declared one does.
 /// @code
 /// void run(aylo::ecs::DynamicEvents events) {
 ///     for (const std::span<const std::byte> bytes : events.read(0)) {
@@ -52,9 +60,9 @@ struct EventList {
 class AYLO_ECS_API DynamicEvents {
   public:
     /// @param events The world's events; they must outlive the view.
-    /// @param uses The event types of the system, in order; they must outlive the view.
-    /// @param cursors One cursor per use, in the same order; they must outlive the view.
-    DynamicEvents(Events& events, std::span<const EventUse> uses, std::span<EventCursor> cursors) noexcept;
+    /// @param state The event types of the system and its cursors; it must outlive the view.
+    /// @param access The system's access, grown by add(); null when the view is not built by a system's run.
+    DynamicEvents(Events& events, DynamicEventsState& state, SystemAccess* access) noexcept;
 
     ~DynamicEvents() = default;
     DynamicEvents(const DynamicEvents& other) noexcept = default;
@@ -62,11 +70,18 @@ class AYLO_ECS_API DynamicEvents {
     DynamicEvents(DynamicEvents&& other) noexcept = default;
     DynamicEvents& operator=(DynamicEvents&& other) noexcept = default;
 
-    /// @return The number of event types, as given in the EventList.
+    /// @return The number of event types: those of the EventList, then those add() found.
     [[nodiscard]] std::size_t getCount() const noexcept;
 
     /// @return The use at `index`; `index` must be below getCount().
     [[nodiscard]] const EventUse& getUse(std::size_t index) const noexcept;
+
+    /// @brief Gives the system the event type `id` while it runs, or lets it also read or send one it has: adds it to
+    /// the system's access (SystemContext::access).
+    /// @return The index of the type.
+    /// @throws exceptions::TypeRegistrationException When `id` is not a registered event, or the view is not built by
+    /// a system's run (no access to grow).
+    [[nodiscard]] std::size_t add(EventId id, bool read, bool send) const;
 
     /// @brief Takes the events of the type at `index` that the system has not read yet.
     /// @return The unread events as raw bytes; empty if the type was not declared read. Invalidated by the next update
@@ -80,21 +95,16 @@ class AYLO_ECS_API DynamicEvents {
     [[nodiscard]] bool send(std::size_t index, std::span<const std::byte> value) const;
 
   private:
-    Events* _events;                  ///< The world's events.
-    std::span<const EventUse> _uses;  ///< The system's event types.
-    std::span<EventCursor> _cursors;  ///< Where the system is in each queue.
+    Events* _events;             ///< The world's events.
+    DynamicEventsState* _state;  ///< The system's event types and cursors.
+    SystemAccess* _access;       ///< The system's access; null outside a system's run.
 };
 
 /// @brief `DynamicEvents`: configured with an EventList; the system keeps its cursors.
 template <>
 struct AYLO_ECS_API SystemParam<DynamicEvents> {
-    using Config = EventList;  ///< The event types to use, given when the system is added.
-
-    /// @brief The event types and where the system is in each queue.
-    struct State {
-        std::vector<EventUse> uses;        ///< The event types, in order.
-        std::vector<EventCursor> cursors;  ///< One cursor per use.
-    };
+    using Config = EventList;          ///< The event types to use, given when the system is added.
+    using State = DynamicEventsState;  ///< The event types and where the system is in each queue.
 
     /// @return The list checked against the world, with a cursor at the start of each queue.
     /// @throws exceptions::TypeRegistrationException When an id is not a registered event.

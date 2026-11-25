@@ -13,6 +13,7 @@
 #include <format>
 #include <iterator>
 #include <memory>
+#include <optional>
 #include <span>
 #include <utility>
 #include <vector>
@@ -20,27 +21,63 @@
 #include "aylo/ecs/call/CallInfo.hpp"
 #include "aylo/ecs/call/Calls.hpp"
 #include "aylo/ecs/exceptions/CallException.hpp"
+#include "aylo/ecs/system/ClientWrites.hpp"
+#include "aylo/ecs/system/Side.hpp"
 #include "aylo/ecs/system/SystemAccess.hpp"
 #include "aylo/ecs/system/SystemParam.hpp"
 #include "aylo/ecs/world/World.hpp"
 
 namespace aylo::ecs {
-DynamicCalls::DynamicCalls(std::span<const CallInfo* const> infos, std::span<detail::CallBody* const> bodies,
-                           const SystemContext& context) noexcept
-    : _infos{infos}, _bodies{bodies}, _context{context} {}
+DynamicCalls::DynamicCalls(DynamicCallsState& state, const SystemContext& context) noexcept
+    : _state{&state}, _context{context} {}
 
-std::size_t DynamicCalls::getCount() const noexcept { return _infos.size(); }
+std::size_t DynamicCalls::getCount() const noexcept { return _state->infos.size(); }
 
 const CallInfo& DynamicCalls::getInfo(const std::size_t index) const noexcept {
-    assert(index < _infos.size());
-    return **std::next(_infos.begin(), static_cast<std::ptrdiff_t>(index));
+    assert(index < _state->infos.size());
+    // NOLINTNEXTLINE(*-avoid-unchecked-container-access): index < getCount(), asserted above.
+    return *_state->infos[index];
+}
+
+std::optional<std::size_t> DynamicCalls::find(const CallId id) const noexcept {
+    const auto found = std::ranges::find(_state->infos, id, [](const CallInfo* info) { return info->id; });
+    if (found == _state->infos.end()) {
+        return std::nullopt;
+    }
+    return static_cast<std::size_t>(std::distance(_state->infos.begin(), found));
+}
+
+std::size_t DynamicCalls::add(const CallId id) const {
+    if (const std::optional<std::size_t> known = find(id)) {
+        return *known;
+    }
+    const CallInfo* info = _context.world->getCalls().findById(id);
+    if (info == nullptr) {
+        throw exceptions::CallException{std::format("Call id {} is not registered", id)};
+    }
+    if (_context.access == nullptr) {
+        throw exceptions::CallException{
+            std::format("Call '{}' cannot be added: the calls are not made from a system's run", info->name)};
+    }
+    if (_context.side == Side::kClient) {
+        if (const auto write = findClientWrite(_context.world->getComponents().getRegistry(), info->access)) {
+            throw exceptions::CallException{
+                std::format("Call '{}' writes component '{}', which is {}: a system running on clients cannot make it",
+                            info->name, write->component, write->reason)};
+        }
+    }
+    _state->owned.push_back(info->body->bind(*_context.world));
+    _state->bodies.push_back(_state->owned.back().get());
+    _state->infos.push_back(info);
+    _context.access->merge(info->access);
+    return _state->infos.size() - 1;
 }
 
 void DynamicCalls::invoke(const std::size_t index, const std::span<const std::byte> arguments,
                           const std::span<std::byte> result) const {
-    assert(index < _bodies.size());
+    assert(index < _state->bodies.size());
     checkCallBytes(getInfo(index), arguments, result);
-    (*std::next(_bodies.begin(), static_cast<std::ptrdiff_t>(index)))->invoke(_context, arguments, result);
+    _state->bodies.at(index)->invoke(_context, arguments, result);
 }
 
 SystemParam<DynamicCalls>::State SystemParam<DynamicCalls>::init(World& world, Config config) {
@@ -64,7 +101,7 @@ SystemParam<DynamicCalls>::State SystemParam<DynamicCalls>::init(World& world, C
 }
 
 DynamicCalls SystemParam<DynamicCalls>::get(State& state, const SystemContext& context) noexcept {
-    return DynamicCalls{state.infos, state.bodies, context};
+    return DynamicCalls{state, context};
 }
 
 void SystemParam<DynamicCalls>::addAccess(const State& state, SystemAccess& access) {

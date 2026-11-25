@@ -9,6 +9,7 @@
 
 #include <cstddef>
 #include <optional>
+#include <set>
 #include <span>
 #include <string>
 #include <string_view>
@@ -22,6 +23,7 @@
 #include "aylo/ecs/schedule/RunMode.hpp"
 #include "aylo/ecs/system/Side.hpp"
 #include "aylo/ecs/system/System.hpp"
+#include "aylo/ecs/system/SystemAccess.hpp"
 #include "aylo/ecs/world/World.hpp"
 
 namespace aylo::ecs {
@@ -177,29 +179,38 @@ class AYLO_ECS_API Schedule {
                                       const std::string& target) const;
 
     /// @brief Checks that every two systems touching the same data, one of them writing it, are ordered (one reaches
-    /// the other in `graph`): otherwise their result would depend on the order they were added.
+    /// the other in `graph`): otherwise their result would depend on the order they were added. Only what the systems
+    /// declared counts: what they discovered while they ran is a warning (warnDiscoveredAmbiguities()).
     /// @throws exceptions::ScheduleException Listing every such pair and the component, resource or event type.
     void checkAmbiguities(const std::vector<std::string_view>& names, const detail::DependencyGraph& graph) const;
 
+    /// @brief Writes a warning, once per pair and data, for every two systems that touch the same data with no order
+    /// between them, counting what they discovered while they ran (System::getAccess()). The run order does not
+    /// depend on it (only on before / after and the order the systems were added), so this never stops the game.
+    void warnDiscoveredAmbiguities();
+
     /// @return One line per pair of systems that touch the same data, one of them writing it, with no order between
     /// them ("'a' and 'b' both use component 'x', one of them writing it"), the pairs in name order.
+    /// @param declared Whether to compare what the systems declared (System::getDeclaredAccess()) rather than
+    /// everything they use (System::getAccess()).
     [[nodiscard]] std::vector<std::string> findAmbiguities(const std::vector<std::string_view>& names,
-                                                           const detail::DependencyGraph& graph) const;
+                                                           const detail::DependencyGraph& graph, bool declared) const;
 
     /// @return The name of the first type `first` and `second` both use, one of them writing it, as
     /// "component 'aylo.Position'"; nothing if they do not conflict.
-    [[nodiscard]] std::optional<std::string> findConflict(const System& first, const System& second) const;
+    [[nodiscard]] std::optional<std::string> findConflict(const SystemAccess& first, const SystemAccess& second) const;
 
     /// @return The events written by the systems that run in this mode, sorted, without duplicates.
     [[nodiscard]] std::vector<EventId> collectWrittenEvents() const;
 
-    World* _world;                        ///< The world the systems run on.
-    RunMode _mode;                        ///< What this process runs.
-    Phase _phase;                         ///< The phase the schedule runs.
-    std::vector<Entry> _entries;          ///< Every system, in the order added.
-    std::vector<std::size_t> _order;      ///< Positions in _entries, in run order.
-    std::vector<EventId> _writtenEvents;  ///< Events written by the systems of this run mode, sorted.
-    bool _built{false};                   ///< Whether _order and _writtenEvents match _entries.
+    World* _world;                             ///< The world the systems run on.
+    RunMode _mode;                             ///< What this process runs.
+    Phase _phase;                              ///< The phase the schedule runs.
+    std::vector<Entry> _entries;               ///< Every system, in the order added.
+    std::vector<std::size_t> _order;           ///< Positions in _entries, in run order.
+    std::vector<EventId> _writtenEvents;       ///< Events written by the systems of this run mode, sorted.
+    bool _built{false};                        ///< Whether _order and _writtenEvents match _entries.
+    std::set<std::string> _warnedAmbiguities;  ///< The ambiguities warnDiscoveredAmbiguities() already wrote.
 };
 }  // namespace aylo::ecs
 
