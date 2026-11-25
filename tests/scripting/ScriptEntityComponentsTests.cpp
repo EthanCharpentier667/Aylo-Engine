@@ -120,12 +120,13 @@ TEST(ScriptEntityComponents, ASystemReadsAndWritesAComponentOfAnotherEntity) {
     EXPECT_EQ(fixture.report().checks, 2);
     const aylo::ecs::System* system = fixture.find("game.Hit");
     ASSERT_NE(system, nullptr);
-    // The query reads game.Target; game.Health and game.Armor were found on top of it, and game.Health is written.
+    // The query reads game.Target and aylo.Disabled (to skip what is switched off); game.Health and game.Armor were
+    // found on top of them, and game.Health is written.
     const auto components = system->getAccess().getComponents();
-    ASSERT_EQ(components.size(), 3U);
-    EXPECT_EQ(system->getDeclaredAccess().getComponents().size(), 1U);
-    EXPECT_TRUE(components[1].write);
-    EXPECT_FALSE(components[2].write);
+    ASSERT_EQ(components.size(), 4U);
+    EXPECT_EQ(system->getDeclaredAccess().getComponents().size(), 2U);
+    EXPECT_TRUE(components[2].write);
+    EXPECT_FALSE(components[3].write);
 }
 
 TEST(ScriptEntityComponents, ADeadEntityHasNoComponent) {
@@ -176,7 +177,8 @@ TEST(ScriptEntityComponents, WhatADeclarationSaysIsKept) {
 
     const aylo::ecs::System* system = fixture.find("game.Declared");
     ASSERT_NE(system, nullptr);
-    ASSERT_EQ(system->getDeclaredAccess().getComponents().size(), 3U);  // the query, then the components
+    ASSERT_EQ(system->getDeclaredAccess().getComponents().size(),
+              4U);  // the query and aylo.Disabled, then the components
 
     fixture.app.runFrame();
 
@@ -298,8 +300,8 @@ TEST(ScriptEntityComponents, TheHierarchyIsReadButNotWrittenThroughAView) {
     const aylo::ecs::System* system = fixture.find("game.Adopt");
     ASSERT_NE(system, nullptr);
     const auto components = system->getAccess().getComponents();
-    ASSERT_EQ(components.size(), 2U);
-    EXPECT_FALSE(components[1].write);  // the refused write did not give the system write access
+    ASSERT_EQ(components.size(), 3U);   // game.Target, aylo.Disabled, then aylo.Parent
+    EXPECT_FALSE(components[2].write);  // the refused write did not give the system write access
 }
 
 TEST(ScriptEntityComponents, BadComponentDeclarationsAreRefusedWhenTheScriptLoads) {
@@ -373,9 +375,9 @@ TEST(ScriptEntityComponents, ASystemWalksTheHierarchy) {
     EXPECT_EQ(fixture.report().value, 2);
     const aylo::ecs::System* system = fixture.find("game.Family");
     ASSERT_NE(system, nullptr);
-    // The query reads game.Target; aylo.Parent, aylo.Children and game.Armor were found, all read.
+    // The query reads game.Target and aylo.Disabled; aylo.Parent, aylo.Children and game.Armor were found, all read.
     const auto components = system->getAccess().getComponents();
-    ASSERT_EQ(components.size(), 4U);
+    ASSERT_EQ(components.size(), 5U);
     EXPECT_TRUE(std::ranges::none_of(components, [](const auto& component) { return component.write; }));
 }
 

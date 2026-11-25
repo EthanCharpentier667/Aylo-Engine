@@ -33,6 +33,7 @@
 #include "aylo/ecs/event/Events.hpp"
 #include "aylo/ecs/exceptions/ScheduleException.hpp"
 #include "aylo/ecs/hierarchy/Children.hpp"
+#include "aylo/ecs/hierarchy/Disabled.hpp"
 #include "aylo/ecs/hierarchy/Parent.hpp"
 #include "aylo/ecs/query/QueryBuilder.hpp"
 #include "aylo/ecs/query/QueryTerm.hpp"
@@ -90,6 +91,9 @@ void addTerm(ecs::QueryBuilder& builder, const ecs::TermKind kind, const ecs::Co
         case ecs::TermKind::kRemoved:
             builder.removed(id);
             break;
+        case ecs::TermKind::kEnabled:
+            builder.enabled(id);
+            break;
     }
 }
 
@@ -114,6 +118,13 @@ void addTerm(ecs::QueryBuilder& builder, const ecs::TermKind kind, const ecs::Co
                                     component));
         }
         addTerm(builder, kind, *id);
+    }
+    // A script query skips what is switched off, unless it names aylo.Disabled (to find, or turn back on, those).
+    const bool namesDisabled = std::ranges::any_of(declaration.terms, [](const TermDeclaration& term) {
+        return term.component == ecs::TypeTraits<ecs::Disabled>::kName;
+    });
+    if (!namesDisabled) {
+        builder.enabled(components.registerType<ecs::Disabled>());
     }
     if (const auto built = builder.build(components); !built) {
         return fail(ErrorKind::kInvalidDeclaration,

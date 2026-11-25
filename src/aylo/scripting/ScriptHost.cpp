@@ -31,6 +31,7 @@
 #include "aylo/ecs/call/Calls.hpp"
 #include "aylo/ecs/exceptions/ScheduleException.hpp"
 #include "aylo/ecs/exceptions/StateException.hpp"
+#include "aylo/ecs/hierarchy/Disabled.hpp"
 #include "aylo/ecs/schedule/Phase.hpp"
 #include "aylo/ecs/schedule/Schedule.hpp"
 #include "aylo/ecs/schedule/Schedules.hpp"
@@ -141,6 +142,8 @@ ScriptHost::ScriptHost(ecs::App& app, luau::Runtime runtime, luau::ModuleLoader:
       _resolver{std::move(resolver)} {
     _handle->runtime = &_runtime;
     _handle->components = &_components;
+    // Scripts switch entities off by name (commands:add(entity, "aylo.Disabled", {})), and their queries skip them.
+    static_cast<void>(app.getWorld().getComponents().registerType<ecs::Disabled>());
     if (_resolver) {
         // Each file has its own globals once the host is sealed (see seal()): modules share data through `require`.
         _loader = std::make_unique<luau::ModuleLoader>(
