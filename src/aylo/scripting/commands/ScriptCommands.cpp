@@ -23,10 +23,12 @@
 
 #include "aylo/ecs/component/ComponentInfo.hpp"
 #include "aylo/ecs/entity/Entity.hpp"
+#include "aylo/ecs/hierarchy/Children.hpp"
 #include "aylo/ecs/hierarchy/Parent.hpp"
 #include "aylo/ecs/type/Field.hpp"
 #include "aylo/ecs/type/TypeHooks.hpp"
 #include "aylo/ecs/type/TypeInfo.hpp"
+#include "aylo/ecs/type/TypeTraits.hpp"
 #include "aylo/luau/Exceptions.hpp"
 #include "aylo/luau/Result.hpp"
 #include "aylo/luau/Table.hpp"
@@ -243,6 +245,32 @@ void recordPatch(const ScriptCommands& handle, const luau::Userdata& entity, con
         throw luau::exceptions::RuntimeError{std::format("cannot patch '{}': use setParent and removeParent", name)};
     }
 }
+/// @brief `commands:remove(entity, name)`: records removing the component from the entity at the flush. Nothing
+/// happens then if the entity does not have it.
+/// @throws luau::exceptions::RuntimeError If no component has this name, it is the hierarchy, or the system runs on
+/// clients and the component is replicated or server-only.
+void recordRemove(const ScriptCommands& handle, const luau::Userdata& entity, const std::string& name) {
+    checkAlive(handle);
+    const ecs::Entity target = toEntity(entity);
+    if (name == ecs::TypeTraits<ecs::Parent>::kName || name == ecs::TypeTraits<ecs::Children>::kName) {
+        throw luau::exceptions::RuntimeError{std::format("cannot remove '{}': use removeParent", name)};
+    }
+    const auto layout = handle.layouts->find(name);
+    const ecs::ComponentInfo* info = handle.registry != nullptr ? handle.registry->findByName(name) : nullptr;
+    if (info == nullptr) {
+        throw luau::exceptions::RuntimeError{
+            std::format("unknown component '{}': no script declared it and the world has none", name)};
+    }
+    const bool clientWritable = layout != handle.layouts->end()
+                                    ? layout->second.clientWritable
+                                    : info->type.replication == ecs::ReplicationMode::kNone &&
+                                          info->type.presence != ecs::Presence::kServerOnly;
+    if (handle.clientSide && !clientWritable) {
+        throw luau::exceptions::RuntimeError{
+            std::format("a client system cannot remove '{}': it is replicated or server-only", name)};
+    }
+    static_cast<void>(handle.commands->remove(target, info->type.id));
+}
 }  // namespace
 
 luau::Result<> registerCommandsType(luau::Runtime& runtime) {
@@ -292,6 +320,7 @@ luau::Result<> registerCommandsType(luau::Runtime& runtime) {
                     handle.commands->add(target, value.id, value.value());  // copies the value
                 })
         .method("patch", &recordPatch)
+        .method("remove", &recordRemove)
         .method("setParent",
                 [](const ScriptCommands& handle, const luau::Userdata& child, const luau::Userdata& parent) {
                     checkAlive(handle);
