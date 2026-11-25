@@ -7,6 +7,7 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <chrono>
 #include <cstdint>
 #include <memory>
@@ -44,11 +45,14 @@ struct Fixture {
     aylo::ecs::App app{aylo::ecs::RunMode::kStandalone};
     std::unique_ptr<aylo::scripting::ScriptHost> host;
 
-    Fixture() {
+    /// @param hierarchy Whether aylo.Parent and aylo.Children are registered from the start, as a plugin does.
+    explicit Fixture(const bool hierarchy = true) {
         app.addPlugin(aylo::ecs::TimePlugin::manual(std::chrono::seconds{1}, aylo::ecs::FixedTimestep{1, 5}));
         app.getWorld().getResources().insert(Report{.value = 0, .checks = 0});
-        app.getWorld().getComponents().registerType<aylo::ecs::Parent>();
-        app.getWorld().getComponents().registerType<aylo::ecs::Children>();
+        if (hierarchy) {
+            static_cast<void>(app.getWorld().getComponents().registerType<aylo::ecs::Parent>());
+            static_cast<void>(app.getWorld().getComponents().registerType<aylo::ecs::Children>());
+        }
         auto created = aylo::scripting::ScriptHost::create(app, {});
         EXPECT_TRUE(created) << (created ? "" : std::string{created.error().message()});
         host = std::move(*created);
@@ -321,4 +325,136 @@ TEST(ScriptEntityComponents, BadComponentDeclarationsAreRefusedWhenTheScriptLoad
     )")
                   .find("unknown key 'edit'"),
               std::string::npos);
+}
+
+TEST(ScriptEntityComponents, ASystemWalksTheHierarchy) {
+    Fixture fixture;
+    ASSERT_EQ(fixture.run(R"lua(
+        kept = nil
+        engine.ecs.system("game.Family", {
+            phase = "Update",
+            query = { read = { "game.Target" } },
+            run = function(ctx)
+                for hunter, target in ctx.query do
+                    local report = ctx.resources["test.any.Report"]
+                    if report.checks == 0 then
+                        assert(ctx:getParent(hunter) == nil)
+                        assert(#ctx:getChildren(target.entity) == 0)
+                        ctx.commands:setParent(hunter, target.entity)
+                        local second = ctx.commands:spawn({ ["game.Armor"] = { value = 2 } })
+                        ctx.commands:setParent(second, target.entity)
+                    elseif kept then
+                        assert(#kept == 2 and kept[1] == hunter, "the list is a copy that outlives the run")
+                    else
+                        assert(ctx:getParent(hunter) == target.entity)
+                        assert(ctx:getParent(target.entity) == nil)
+                        local children = ctx:getChildren(target.entity)
+                        assert(#children == 2 and children[1] == hunter, tostring(#children))
+                        for _, child in children do
+                            local armor = ctx:get(child, "game.Armor")
+                            if armor then
+                                report.value = armor.value
+                            end
+                        end
+                        kept = children
+                    end
+                    report.checks += 1
+                end
+            end,
+        })
+    )lua"),
+              "");
+
+    fixture.app.runFrame();
+    fixture.app.runFrame();
+    fixture.app.runFrame();
+
+    EXPECT_EQ(fixture.report().checks, 3);
+    EXPECT_EQ(fixture.report().value, 2);
+    const aylo::ecs::System* system = fixture.find("game.Family");
+    ASSERT_NE(system, nullptr);
+    // The query reads game.Target; aylo.Parent, aylo.Children and game.Armor were found, all read.
+    const auto components = system->getAccess().getComponents();
+    ASSERT_EQ(components.size(), 4U);
+    EXPECT_TRUE(std::ranges::none_of(components, [](const auto& component) { return component.write; }));
+}
+
+TEST(ScriptEntityComponents, TheHierarchyOfAWorldWithNoParentYetIsEmpty) {
+    Fixture fixture{false};
+    ASSERT_EQ(fixture.run(R"lua(
+        engine.ecs.system("game.Orphans", {
+            phase = "Update",
+            query = { read = { "game.Target" } },
+            run = function(ctx)
+                for hunter, target in ctx.query do
+                    assert(ctx:getParent(hunter) == nil)
+                    assert(#ctx:getChildren(target.entity) == 0)
+                    local ok, message = pcall(function() return ctx:getParent("hunter") end)
+                    assert(not ok and string.find(message, "ctx:getParent expects an entity", 1, true), message)
+                    ok, message = pcall(function() return ctx.getChildren(hunter) end)
+                    assert(not ok and string.find(message, "ctx:getChildren expects an entity", 1, true), message)
+                    ctx.resources["test.any.Report"].checks += 1
+                end
+            end,
+        })
+    )lua"),
+              "");
+
+    fixture.app.runFrame();
+
+    EXPECT_EQ(fixture.report().checks, 1);
+}
+
+/// @brief The example of manual/pages/systems.md, "The hierarchy", as written there.
+constexpr const char* kManualBarrels = R"(
+engine.ecs.system("game.CoolBarrels", {
+	phase = "Update",
+	query = { with = { "game.Turret" } },
+	run = function(ctx)
+		for turret in ctx.query do
+			for _, child in ctx:getChildren(turret) do
+				local barrel = ctx:get(child, "game.Barrel")
+				if barrel then
+					barrel.heat = math.max(barrel.heat - ctx.delta, 0)
+				end
+			end
+		end
+	end,
+})
+)";
+
+TEST(ScriptEntityComponents, TheManualsTurretCoolsItsBarrels) {
+    Fixture fixture;
+    ASSERT_EQ(fixture.run(R"(
+        engine.ecs.component("game.Turret", { fields = {} })
+        engine.ecs.component("game.Barrel", { fields = { heat = "f32" } })
+        engine.ecs.system("game.Build", {
+            phase = "Startup",
+            run = function(ctx)
+                local turret = ctx.commands:spawn({ ["game.Turret"] = {} })
+                for _, heat in { 5, 1 } do
+                    ctx.commands:setParent(ctx.commands:spawn({ ["game.Barrel"] = { heat = heat } }), turret)
+                end
+                ctx.commands:setParent(ctx.commands:spawn({ ["game.Armor"] = { value = 1 } }), turret)
+            end,
+        })
+        engine.ecs.system("game.Look", {
+            phase = "PostUpdate",
+            query = { read = { "game.Barrel" } },
+            run = function(ctx)
+                local total = 0
+                for _, barrel in ctx.query do
+                    total += barrel.heat
+                end
+                ctx.resources["test.any.Report"].value = total
+            end,
+        })
+    )"),
+              "");
+    ASSERT_EQ(fixture.run(kManualBarrels), "");
+
+    fixture.app.runFrame();
+    fixture.app.runFrame();
+
+    EXPECT_EQ(fixture.report().value, 3);  // 5 and 1, cooled by one second on each frame: 3 and 0
 }
