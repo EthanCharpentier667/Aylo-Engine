@@ -195,7 +195,7 @@ void pickNodes(
     ecs::EventReader<contract::platform::event::MouseButtonPressed> presses,
     ecs::EventReader<contract::platform::event::MouseButtonReleased> releases,
     ecs::Query<const UiComputed, const UiNode, ecs::Optional<const ecs::Parent>, ecs::Optional<const UiBackground>,
-               ecs::Optional<const UiImage>, ecs::Optional<const UiInteraction>>
+               ecs::Optional<const UiImage>, ecs::Optional<const UiInteraction>, ecs::Enabled>
         nodes) {
     pointer->position = toView(*view, input->getMousePosition());
     pointer->clicked = ecs::Entity{};

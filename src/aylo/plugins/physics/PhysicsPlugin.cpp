@@ -53,17 +53,19 @@
 namespace aylo::plugins::physics {
 namespace {
 /// @brief Entities that get a 2D body: a Collider and a Transform2D, maybe a RigidBody, and no Collider3D (which wins).
+/// A switched-off entity (ecs::Disabled) is not visited, so the body pass destroys its body until it is enabled again.
 template <typename... Filters>
 using Bodies = ecs::Query<const Collider, ecs::Optional<const RigidBody>, const transform::Transform2D,
-                          ecs::Optional<const ecs::Parent>, ecs::Without<Collider3D>, Filters...>;
+                          ecs::Optional<const ecs::Parent>, ecs::Without<Collider3D>, ecs::Enabled, Filters...>;
 
-/// @brief Entities that get a 3D body: a Collider3D and a Transform3D, maybe a RigidBody.
+/// @brief Entities that get a 3D body: a Collider3D and a Transform3D, maybe a RigidBody, and not switched off.
 template <typename... Filters>
-using Bodies3D = ecs::Query<const Collider3D, ecs::Optional<const RigidBody>, const transform::Transform3D, Filters...>;
+using Bodies3D = ecs::Query<const Collider3D, ecs::Optional<const RigidBody>, const transform::Transform3D,
+                            ecs::Enabled, Filters...>;
 
 /// @brief The 3D bodies whose RigidBody changed.
 using ChangedBodies3D =
-    ecs::Query<const Collider3D, const RigidBody, const transform::Transform3D, ecs::Changed<RigidBody>>;
+    ecs::Query<const Collider3D, const RigidBody, const transform::Transform3D, ecs::Changed<RigidBody>, ecs::Enabled>;
 
 /// @brief Everything that can be an ancestor of a body.
 using Placed = ecs::Query<const transform::Transform2D, ecs::Optional<const ecs::Parent>>;
@@ -116,12 +118,13 @@ void syncBodies3D(PhysicsWorld& world, ecs::Commands& commands, Bodies3D<ecs::Ch
 /// @details Rebuilds the bodies whose Collider or RigidBody changed (creating the new ones), creates the missing ones
 /// and those whose RigidBody appeared or went, then destroys the bodies of entities that were despawned or lost their
 /// Collider or Transform2D. Their PhysicsHandle follows, through the commands applied at the end of the phase.
-void syncBodies(ecs::ResMut<PhysicsWorld> world, ecs::Commands& commands, Bodies<ecs::Changed<Collider>> colliders,
-                ecs::Query<const Collider, const RigidBody, const transform::Transform2D,
-                           ecs::Optional<const ecs::Parent>, ecs::Without<Collider3D>, ecs::Changed<RigidBody>>
-                    bodies,
-                Bodies<> all, ecs::Query<const PhysicsHandle> handles, Placed placed, ChildBodies children,
-                Bodies3D<ecs::Changed<Collider3D>> colliders3D, ChangedBodies3D bodies3D, Bodies3D<> all3D) {
+void syncBodies(
+    ecs::ResMut<PhysicsWorld> world, ecs::Commands& commands, Bodies<ecs::Changed<Collider>> colliders,
+    ecs::Query<const Collider, const RigidBody, const transform::Transform2D, ecs::Optional<const ecs::Parent>,
+               ecs::Without<Collider3D>, ecs::Changed<RigidBody>, ecs::Enabled>
+        bodies,
+    Bodies<> all, ecs::Query<const PhysicsHandle> handles, Placed placed, ChildBodies children,
+    Bodies3D<ecs::Changed<Collider3D>> colliders3D, ChangedBodies3D bodies3D, Bodies3D<> all3D) {
     const transform::WorldPoses poses = collectPoses(placed, children);
     world->beginBodyPass();
     for (auto [entity, collider, body, transform, parent] : colliders) {

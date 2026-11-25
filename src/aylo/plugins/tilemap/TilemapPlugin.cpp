@@ -138,7 +138,7 @@ void drawImage(const MapLayer& layer, std::int32_t drawLayer, const detail::Laye
 /// @brief Render, client: pushes the visible layers to the SpriteQueue.
 void drawTilemaps(ecs::Res<TilemapAssets> maps, ecs::Res<graphics::TextureAssets> textures,
                   ecs::Res<graphics::VisibleArea> visible, ecs::ResAppend<graphics::SpriteQueue> queue,
-                  ecs::Query<const transform::GlobalTransform2D, const TilemapLayer> layers) {
+                  ecs::Query<const transform::GlobalTransform2D, const TilemapLayer, ecs::Enabled> layers) {
     if (visible->isEmpty()) {
         return;
     }

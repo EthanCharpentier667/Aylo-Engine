@@ -323,12 +323,12 @@ void drawModel(contract::renderer::IRenderer& renderer, contract::renderer::Stat
 /// @brief Render: creates the meshes whose textures are ready, then draws each MeshRenderer whose mesh is loaded, at
 /// its GlobalTransform3D (drawModel()). One system, placed among the GraphicsPlugin's own, so no other plugin's use of
 /// the backend needs an order with it.
-void drawMeshes(
-    ecs::NonSendMut<graphics::Backend> backend, ecs::ResMut<MeshAssets> meshes,
-    ecs::Res<graphics::TextureAssets> textures, ecs::Res<shader::ShaderHandles> handles,
-    ecs::Res<shader::ShaderAssets> shaders, ecs::Res<shader::MaterialAssets> materials,
-    ecs::Query<const transform::GlobalTransform3D, const MeshRenderer, ecs::Optional<const shader::MaterialInstance>>
-        renderers) {
+void drawMeshes(ecs::NonSendMut<graphics::Backend> backend, ecs::ResMut<MeshAssets> meshes,
+                ecs::Res<graphics::TextureAssets> textures, ecs::Res<shader::ShaderHandles> handles,
+                ecs::Res<shader::ShaderAssets> shaders, ecs::Res<shader::MaterialAssets> materials,
+                ecs::Query<const transform::GlobalTransform3D, const MeshRenderer,
+                           ecs::Optional<const shader::MaterialInstance>, ecs::Enabled>
+                    renderers) {
     contract::renderer::IRenderer* renderer = rendererOf(*backend);
     if (renderer == nullptr) {
         return;
