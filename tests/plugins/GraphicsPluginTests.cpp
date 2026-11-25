@@ -29,6 +29,7 @@
 #include "aylo/ecs/component/Components.hpp"
 #include "aylo/ecs/entity/Entity.hpp"
 #include "aylo/ecs/event/EventCursor.hpp"
+#include "aylo/ecs/hierarchy/Disabled.hpp"
 #include "aylo/ecs/resource/Resources.hpp"
 #include "aylo/ecs/schedule/RunMode.hpp"
 #include "aylo/ecs/type/Field.hpp"
@@ -281,6 +282,25 @@ TEST(GraphicsPlugin, SkipsSpritesWhoseTextureIsNotLoaded) {
     spawnSprite(app, aylo::core::asset::AssetId::fromPath("never-loaded.png"), {0.0F, 0.0F}, 0);
     app.app().runFrame();
     EXPECT_TRUE(app.state().sprites.empty());
+}
+
+TEST(GraphicsPlugin, SkipsTheSpritesSwitchedOffAndTheirChildren) {
+    BackendApp app;
+    const auto texture = loadTexture(app, "ship.png");
+    const aylo::ecs::Entity ship = spawnSprite(app, texture, {0.0F, 0.0F}, 0);
+    const aylo::ecs::Entity turret = spawnSprite(app, texture, {1.0F, 0.0F}, 0);
+    spawnSprite(app, texture, {2.0F, 0.0F}, 0);
+    aylo::ecs::World& world = app.app().getWorld();
+    ASSERT_TRUE(world.setParent(turret, ship));
+    static_cast<void>(world.getComponents().add(ship, aylo::ecs::Disabled{}));
+    app.app().runFrame();
+    ASSERT_EQ(app.state().sprites.size(), 1U);
+    EXPECT_FLOAT_EQ(app.state().sprites[0].position.x, 2.0F);
+
+    app.state().sprites.clear();
+    static_cast<void>(world.getComponents().remove<aylo::ecs::Disabled>(ship));
+    app.app().runFrame();
+    EXPECT_EQ(app.state().sprites.size(), 3U);
 }
 
 TEST(GraphicsPlugin, LoadsNoTextureOnAServer) {
