@@ -256,7 +256,7 @@ std::span<const std::byte> DefaultValue::getBytes() const noexcept {
 }
 
 bool isHiddenComponent(std::string_view name, bool inScene) noexcept {
-    if (name == "aylo.Parent" || name == "aylo.Children" || name == "aylo.CapsuleInstance") {
+    if (name == "aylo.Parent" || name == "aylo.Children" || name == "aylo.CapsuleInstance" || name == "aylo.Disabled") {
         return true;
     }
     return inScene && (name == "aylo.Name" || name == "aylo.GlobalTransform2D");
