@@ -68,6 +68,7 @@ system.getAccess();       // what it reads and writes, for the scheduler
 | `EventWriter<T>` | the event's id | a writer to the queue | writes event `T` |
 | `DynamicQueries` (configured with a `QueryList`) | the built queries | a view with the system's `lastRun` | every component of every query, read or write |
 | `DynamicResources` (configured with a `ResourceList`) | the checked list | the bytes of each listed resource | each resource, read or write as listed |
+| `DynamicComponents` (configured with a `ComponentList`) | the checked list | `get(entity, i)` / `getMut(entity, i)` on any entity | each component, read or write as listed |
 | `DynamicEvents` (configured with an `EventList`) | the checked list, one `EventCursor` per event | `read(i)` and `send(i, bytes)` per listed event | each event, read or (when sent) written |
 | `DynamicCalls` (configured with a `CallList`) | a body of each listed [engine call](#engine-calls) | `invoke(i, arguments, result)` per listed call | the access of every listed call |
 
@@ -138,6 +139,28 @@ app.addSystem(aylo::ecs::Phase::kUpdate, "game.run", &run,
   declared neither read nor sent is left out of the access set.
 - A resource declared read refuses `getMut()`, and an event declared only read or only sent refuses the
   other operation: the system does nothing it did not declare.
+
+`DynamicComponents` gives the components of **any** entity, not only those a query visits (the entity a bullet hit,
+a target, a parent), configured with a `ComponentList` (`{id, write}` per component):
+
+```c++
+void follow(aylo::ecs::DynamicComponents components, const aylo::ecs::Query<const Target> targets) {
+    for (const auto& [entity, target] : targets) {
+        if (components.has(target->entity, 0)) {
+            std::span<const std::byte> health = components.get(target->entity, 0);
+        }
+    }
+}
+
+app.addSystem(aylo::ecs::Phase::kUpdate, "game.follow", &follow, aylo::ecs::ComponentList{{{healthId, false}}});
+```
+
+- `has()`, `get()` and `getMut()` take the entity: a dead entity, or one without the component, has nothing (an empty
+  span). `getMut()` marks the value changed, and gives nothing for a component declared read.
+- The access set gets each component as read or written, as a query term would, so two systems writing the same
+  component through it and through a query are ordered or reported alike.
+- `add()` gives the system a component while it runs (see [Access found while running](13-scheduler.md#access-found-while-running));
+  a system running on clients cannot add a write to a replicated or server-only component (`findClientWrite()`).
 
 ### Script callables
 

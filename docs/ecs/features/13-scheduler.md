@@ -195,8 +195,8 @@ over the network (unless the game ordered them itself). Pairs on the same side, 
 
 ### Access found while running
 
-A script system need not list the engine calls, resources and events it uses: its `DynamicCalls`, `DynamicResources`
-and `DynamicEvents` parameters `add()` them the first time it uses them, growing the system's access through
+A script system need not list the engine calls, resources, events and components of other entities it uses: its
+`DynamicCalls`, `DynamicResources`, `DynamicEvents` and `DynamicComponents` parameters `add()` them the first time it uses them, growing the system's access through
 `SystemContext::access` (a call binds its body then; a client system cannot add a call that writes a replicated or
 server-only component, see `findClientWrite()`). `System` keeps both: `getDeclaredAccess()`, as its parameters declared
 it, and `getAccess()`, with what it found. `takeAccessGrowth()` tells the schedule the access grew.
