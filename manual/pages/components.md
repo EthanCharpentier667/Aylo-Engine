@@ -19,7 +19,7 @@ engine.ecs.component("game.MisfireTimer", { fields = { remaining = "f32" }, pres
 |---|---|
 | `fields` | **Required.** A table of field name to type name. An empty table makes a tag. |
 | `defaults` | The starting value of some fields; a field not listed starts at zero. It can only name declared fields. |
-| `replication` | `"none"` (default), `"everyChange"` (sent whenever it changes) or `"spawnOnly"` (sent once, when the entity appears). A replicated component needs at least one field: a tag cannot be sent, and the server stops at start naming it. |
+| `replication` | `"none"` (default), `"everyChange"` (sent whenever it changes) or `"spawnOnly"` (sent once, when the entity appears). A tag (no fields) is sent too: its presence is what the clients get. |
 | `presence` | `"both"` (default), `"serverOnly"` or `"clientOnly"`: which side the component exists on. |
 
 Any other option is an error. Names are conventionally `game.Name`; the `aylo.` and `net.` prefixes belong to the
@@ -44,7 +44,8 @@ declared the same components, and refuses a client that differs, naming the comp
 
 The engine's own components are declared by its plugins and used by name, with the same views as yours:
 `aylo.Name` (`value`, a text: what the editor shows an entity as, given by a [capsule](capsules.md) to each entity it
-spawns), `aylo.Transform2D` and `aylo.Transform3D` (see [2D and 3D](3d.md)), `aylo.TransformInterpolation` (no fields: draws the entity smoothly between fixed ticks, see
+spawns), `aylo.Disabled` (no fields: switches the entity and its children off, see
+[Switching an entity off](systems.md#switching-an-entity-off)), `aylo.Transform2D` and `aylo.Transform3D` (see [2D and 3D](3d.md)), `aylo.TransformInterpolation` (no fields: draws the entity smoothly between fixed ticks, see
 [Smooth movement](systems.md#smooth-movement)), `aylo.Camera2D`, `aylo.SpriteRenderer`, `aylo.TextRenderer`, `aylo.ShapeRenderer`,
 `aylo.AudioListener`, `aylo.Collider`, `aylo.Collider3D`, `aylo.RigidBody`, `aylo.Velocity`, `aylo.Velocity3D` (see
 [Physics](physics.md)), and the network ones `net.Owner` and

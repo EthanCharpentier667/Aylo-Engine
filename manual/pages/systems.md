@@ -215,6 +215,39 @@ component at all, and the other terms are checked on the entity as it is now: `r
 To place the loot where a despawned enemy was, record what you need (its position) before you despawn it. An entity
 that lost the component and got it back since is still visited.
 
+### Switching an entity off
+
+`aylo.Disabled` switches an entity off without despawning it, its children with it: your systems skip it, it is not
+drawn, its body leaves the physics and its sound stops (it starts over when the entity is back). It keeps its components, and comes back as it was when you
+remove the tag:
+
+```luau
+ctx.commands:add(enemy, "aylo.Disabled", {})   -- off, with its children
+ctx.commands:remove(enemy, "aylo.Disabled")    -- on again
+```
+
+Every query skips the entities that have `aylo.Disabled`, or whose parent, or a parent of it, has it. A query that names
+`aylo.Disabled` in any term sees them all, which is how you find the ones to turn back on:
+
+```luau
+engine.ecs.system("game.WakeUp", {
+	phase = "Update",
+	query = { with = { "game.Enemy", "aylo.Disabled" } }, -- names aylo.Disabled: sees the ones switched off
+	run = function(ctx)
+		if ctx.time.elapsed < 3 then
+			return
+		end
+		for enemy in ctx.query do
+			ctx.commands:remove(enemy, "aylo.Disabled")
+		end
+	end,
+})
+```
+
+`aylo.Disabled` is replicated: only the server switches an entity off, and its clients hide it too. `ctx:get` still
+reads a switched-off entity: only queries skip it. In the editor, the Inspector's **Active** box adds or removes it, and
+a capsule saves it like any component.
+
 ## Other entities
 
 The query gives you the components of the entities it visits. To reach any other entity, the one a bullet hit, the
@@ -314,12 +347,15 @@ ctx.commands:add(ship, "aylo.RigidBody", { type = "kinematic" })
 ctx.commands:patch(ship, "game.Ship", { player = 1 })
 ctx.commands:setParent(child, parent) -- read it back with ctx:getParent, see The hierarchy
 ctx.commands:removeParent(child)
+ctx.commands:remove(ship, "aylo.RigidBody")
 ctx.commands:despawn(ship)
 ```
 
 `spawn` takes a table of component name to fields (fields left out keep their defaults) and returns the entity. It also
 builds the engine's components, such as `aylo.Collider` or `aylo.TextRenderer`. A command that names an unknown
-component, or that a client system may not write, is an error and records nothing.
+component, or that a client system may not write, is an error and records nothing. `remove` takes the component away
+when the commands are applied, and does nothing if the entity does not have it then; use `removeParent` for
+`aylo.Parent`.
 
 `add` and `patch` differ in what they keep:
 
@@ -403,6 +439,9 @@ A bad declaration (an unknown option, a missing `phase`, an unknown name in the 
 | `unknown resource 'game.Pints' (system 'game.Score')` | No resource has this name |
 | `unknown event 'game.Hitt' (system 'game.Damage')` | No event has this name |
 | `unknown component 'game.Helth' (system 'game.Damage')` | No component has this name (`ctx:get`, `ctx:has`) |
+| `unknown component 'game.Helth': no script declared it and the world has none` | A command (`add`, `patch`, `remove`, `spawn`) names a component that does not exist |
+| `cannot remove 'aylo.Parent': use removeParent` | `ctx.commands:remove` on `aylo.Parent` or `aylo.Children` |
+| `a client system cannot remove 'game.Health': it is replicated or server-only` | A client system removes a component the server owns |
 | `ctx:get expects an entity and the name of a component: ...` | `ctx.get` written with a `.`, or an argument that is not an entity or a name |
 | `the view of 'game.Health' is read-only: system 'game.Damage' declared it under 'components.read' ...` | The component is listed under `components.read` |
 | `a client system cannot write 'game.Health': it is replicated: the server would overwrite it` | A client system writes a field of a replicated (or server-only) component it got with `ctx:get` |
