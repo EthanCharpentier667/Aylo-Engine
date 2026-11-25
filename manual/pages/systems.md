@@ -74,6 +74,7 @@ What the engine finds:
 | `ctx.call(name, ...)`, or a form that makes the call | makes the call, from now on as if it had listed it |
 | `ctx.resources[name]` | reads the resource; the first time you write a field of it, it writes it |
 | `ctx:get(entity, name)`, `ctx:has(entity, name)` | reads the component; the first time you write a field of it, it writes it |
+| `ctx:getParent(entity)`, `ctx:getChildren(entity)` | reads `aylo.Parent` or `aylo.Children` |
 | `ctx.events.read(name)` | reads the event, from the oldest one still queued |
 | `ctx.events.send(name, ...)` | sends the event |
 
@@ -229,6 +230,37 @@ Some writes are refused, with a Luau error that names the component:
     (`target.entity = collision.second`), and call `ctx:get` again in the next run: a view kept in a variable is an
     error the next time you use it, `the view of 'game.Health' is no longer valid`.
 
+### The hierarchy
+
+An entity attached with `ctx.commands:setParent(child, parent)` has a parent, and the parent lists its children. Walk
+them with `ctx:getParent` and `ctx:getChildren`, then read their components with `ctx:get`:
+
+```luau
+engine.ecs.system("game.CoolBarrels", {
+	phase = "Update",
+	query = { with = { "game.Turret" } },
+	run = function(ctx)
+		for turret in ctx.query do
+			for _, child in ctx:getChildren(turret) do
+				local barrel = ctx:get(child, "game.Barrel")
+				if barrel then
+					barrel.heat = math.max(barrel.heat - ctx.delta, 0)
+				end
+			end
+		end
+	end,
+})
+```
+
+| Call | Gives |
+|---|---|
+| `ctx:getParent(entity)` | The entity's parent, or `nil` when it has none or is gone. |
+| `ctx:getChildren(entity)` | A list of the entity's children, in the order they were attached; empty when it has none or is gone. |
+
+They read `aylo.Parent` and `aylo.Children`, like `ctx:get` would, and need nothing declared. The list is a copy: you
+may keep it after `run`, but it does not follow later changes. A `setParent` you record shows the next time the system
+runs, once the commands are applied.
+
 ## `ctx`
 
 | Field | What it gives |
@@ -241,6 +273,7 @@ Some writes are refused, with a Luau error that names the component:
 | `ctx.events` | `ctx.events.read(name)` loops over the events not read yet; `ctx.events.send(name, fields)` sends one. |
 | `ctx.call(name, args)` | Makes an engine call. |
 | `ctx:get(entity, name)`, `ctx:has(entity, name)` | A component of any entity, see [Other entities](#other-entities). |
+| `ctx:getParent(entity)`, `ctx:getChildren(entity)` | The parent and the children of an entity, see [The hierarchy](#the-hierarchy). |
 
 ### Commands
 
@@ -253,7 +286,7 @@ local ship = ctx.commands:spawn({
 })
 ctx.commands:add(ship, "aylo.RigidBody", { type = "kinematic" })
 ctx.commands:patch(ship, "game.Ship", { player = 1 })
-ctx.commands:setParent(child, parent)
+ctx.commands:setParent(child, parent) -- read it back with ctx:getParent, see The hierarchy
 ctx.commands:removeParent(child)
 ctx.commands:despawn(ship)
 ```
@@ -347,6 +380,7 @@ A bad declaration (an unknown option, a missing `phase`, an unknown name in the 
 | `ctx:get expects an entity and the name of a component: ...` | `ctx.get` written with a `.`, or an argument that is not an entity or a name |
 | `the view of 'game.Health' is read-only: system 'game.Damage' declared it under 'components.read' ...` | The component is listed under `components.read` |
 | `a client system cannot write 'game.Health': it is replicated: the server would overwrite it` | A client system writes a field of a replicated (or server-only) component it got with `ctx:get` |
+| `ctx:getParent expects an entity: ctx:getParent(entity)` | `ctx.getParent` written with a `.`, or an argument that is not an entity (also `ctx:getChildren`) |
 | `'aylo.Parent' cannot be written: use commands:setParent()` | A field of `aylo.Parent` or `aylo.Children` written through `ctx:get` |
 | `cannot write 'count': the view of 'game.Points' is read-only` | The resource is listed under `resources.read` |
 | `event 'aylo.PlayMusic' is declared to be read by system 'game.Music', not sent: ...` | The event is listed under `events.read` and the system sends it |
