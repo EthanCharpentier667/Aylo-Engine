@@ -30,6 +30,10 @@ struct Health {
     int value{0};
 };
 AYLO_ECS_COMPONENT(Health, "test.anyentity.Health", value);
+struct Armor {
+    int value{0};
+};
+AYLO_ECS_COMPONENT(Armor, "test.anyentity.Armor", value);
 }  // namespace aylo::test::anyentity
 
 namespace {
@@ -41,6 +45,7 @@ using aylo::ecs::ScriptCallable;
 using aylo::ecs::Side;
 using aylo::ecs::System;
 using aylo::ecs::World;
+using aylo::test::anyentity::Armor;
 using aylo::test::anyentity::Health;
 
 /// @return The int at the start of `bytes`.
@@ -148,4 +153,20 @@ TEST(DynamicComponents, AClientSystemReadsButCannotWriteAReplicatedComponent) {
     EXPECT_TRUE(refused);
     ASSERT_EQ(system.getAccess().getComponents().size(), 1U);
     EXPECT_FALSE(system.getAccess().getComponents().front().write);
+}
+
+TEST(DynamicComponents, AComponentIsReadAsItsCxxType) {
+    World world;
+    const Entity target = world.spawn(Health{.value = 7});
+    const ComponentId health = world.getComponents().registerType<Health>();
+    const ComponentId other = world.getComponents().registerType<Armor>();
+    System system{world, "test.typed", ScriptCallable{[&](const DynamicComponents components) {
+                      const Health* value = components.get<Health>(target, 0);
+                      ASSERT_NE(value, nullptr);
+                      EXPECT_EQ(value->value, 7);
+                      EXPECT_EQ(components.get<Health>(target, 1), nullptr);  // index 1 is Armor, not Health
+                      EXPECT_EQ(components.get<Armor>(target, 1), nullptr);   // the entity has no Armor
+                  }},
+                  ComponentList{{{.id = health, .write = false}, {.id = other, .write = false}}}};
+    system.run();
 }
