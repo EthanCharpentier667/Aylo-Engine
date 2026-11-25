@@ -124,6 +124,7 @@ std::span<const ComponentAccess> QueryState<Terms...>::getAccess() const noexcep
 template <typename... Terms>
     requires ValidQuery<Terms...>
 typename QueryState<Terms...>::Iteration QueryState<Terms...>::iter(Tick lastRun) const noexcept {
+    _query.markSeen(lastRun);
     return Iteration{_query, lastRun, _components->getChangeTick()};
 }
 

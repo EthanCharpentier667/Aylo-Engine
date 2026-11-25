@@ -16,8 +16,8 @@ namespace aylo::ecs {
 /// @details A query is a list of terms, and each term is one condition on one component: "the entity must have
 /// `Position` and the query writes it", "the entity must not have `Dead`", "`Health` changed since the last run".
 /// An entity matches the query when it satisfies every term. Data terms (read, write and their optional forms) also
-/// give the query access to the component's value; the others (with, without, added, changed) are filters that only
-/// decide which entities match.
+/// give the query access to the component's value; the others (with, without, added, changed, removed) are filters
+/// that only decide which entities match.
 /// @code
 /// // Query<Position, const Velocity, Without<Dead>> is three terms:
 /// // {Position, kWrite}, {Velocity, kRead}, {Dead, kWithout}
@@ -31,6 +31,7 @@ enum class TermKind : std::uint8_t {
     kWithout,        ///< The entity must not have it.
     kAdded,          ///< The entity must have it, added since the query last ran.
     kChanged,        ///< The entity must have it, added or written since the query last ran.
+    kRemoved,        ///< The entity lost it (removed, or despawned) since the query last ran; it may be dead.
 };
 
 /// @brief Why two terms on the same component cannot be in one query.
@@ -71,6 +72,12 @@ struct ComponentAccess {
 [[nodiscard]] constexpr bool isRequiredTerm(TermKind kind) noexcept {
     return kind == TermKind::kRead || kind == TermKind::kWrite || kind == TermKind::kWith || kind == TermKind::kAdded ||
            kind == TermKind::kChanged;
+}
+
+/// @return Whether the term can drive the iteration: a required term walks its pool, a removed term the pool's
+/// removals.
+[[nodiscard]] constexpr bool isDriverTerm(TermKind kind) noexcept {
+    return isRequiredTerm(kind) || kind == TermKind::kRemoved;
 }
 
 /// @return Whether the term writes the component's value.

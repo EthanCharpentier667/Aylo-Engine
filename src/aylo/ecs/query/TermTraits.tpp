@@ -59,7 +59,7 @@ consteval bool areCompatibleTerms() noexcept {
         .kind = TermTraits<Terms>::kKind,
         .dataOnTag = isDataTerm(TermTraits<Terms>::kKind) && std::is_empty_v<typename TermTraits<Terms>::Type>}...};
 
-    if (std::ranges::none_of(terms, [](const Identity& term) { return isRequiredTerm(term.kind); })) {
+    if (std::ranges::none_of(terms, [](const Identity& term) { return isDriverTerm(term.kind); })) {
         return false;
     }
     if (std::ranges::any_of(terms, &Identity::dataOnTag)) {

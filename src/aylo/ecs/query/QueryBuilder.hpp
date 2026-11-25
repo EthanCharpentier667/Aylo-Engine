@@ -58,6 +58,9 @@ class AYLO_ECS_API QueryBuilder {
     /// @brief Requires the component, added or written since the query last ran.
     QueryBuilder& changed(ComponentId id);
 
+    /// @brief Visits the entities that lost the component (removed, or despawned) since the query last ran.
+    QueryBuilder& removed(ComponentId id);
+
     /// @brief Checks the terms and builds the query, as DynamicQuery::create() does.
     /// @param components The components of the world the query iterates; they must outlive the query.
     /// @return The query, or an ErrorKind::kInvalidQuery error naming the faulty component.

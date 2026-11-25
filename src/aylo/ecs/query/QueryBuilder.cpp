@@ -30,6 +30,8 @@ QueryBuilder& QueryBuilder::added(ComponentId id) { return add(id, TermKind::kAd
 
 QueryBuilder& QueryBuilder::changed(ComponentId id) { return add(id, TermKind::kChanged); }
 
+QueryBuilder& QueryBuilder::removed(ComponentId id) { return add(id, TermKind::kRemoved); }
+
 Result<DynamicQuery> QueryBuilder::build(Components& components) const {
     return DynamicQuery::create(components, _terms);
 }

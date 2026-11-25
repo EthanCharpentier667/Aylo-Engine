@@ -22,6 +22,7 @@ QueryCursor<Pools, Positions>::QueryCursor(std::span<const QueryTerm> terms, Poo
       _pools{std::move(pools)},
       _positions{std::move(positions)},
       _driver{findDriver(_terms, _pools)},
+      _removing{std::next(_terms.begin(), static_cast<std::ptrdiff_t>(_driver))->kind == TermKind::kRemoved},
       _lastRun{lastRun},
       _thisRun{thisRun} {
     skipToMatch();
@@ -49,7 +50,8 @@ Entity QueryCursor<Pools, Positions>::getEntity() const noexcept {
 
 template <typename Pools, typename Positions>
 bool QueryCursor<Pools, Positions>::isDone() const noexcept {
-    return _index >= (*std::next(_pools.begin(), static_cast<std::ptrdiff_t>(_driver)))->getSize();
+    const storage::SparseSetStorage& driver = **std::next(_pools.begin(), static_cast<std::ptrdiff_t>(_driver));
+    return _index >= (_removing ? driver.getRemovalLog().getRemovals().size() : driver.getSize());
 }
 
 template <typename Pools, typename Positions>
@@ -60,6 +62,10 @@ void QueryCursor<Pools, Positions>::advance() noexcept {
 
 template <typename Pools, typename Positions>
 void QueryCursor<Pools, Positions>::skipToMatch() noexcept {
+    if (_removing) {
+        skipToRemoval();
+        return;
+    }
     const std::span<const Entity> entities =
         (*std::next(_pools.begin(), static_cast<std::ptrdiff_t>(_driver)))->getEntities();
     for (; _index < entities.size(); ++_index) {
@@ -67,6 +73,20 @@ void QueryCursor<Pools, Positions>::skipToMatch() noexcept {
         if (matchEntity(_terms, entity, _driver, static_cast<std::uint32_t>(_index), _pools, _positions, _lastRun,
                         _thisRun)) {
             _entity = entity;
+            return;
+        }
+    }
+}
+
+template <typename Pools, typename Positions>
+void QueryCursor<Pools, Positions>::skipToRemoval() noexcept {
+    const std::span<const storage::Removal> removals =
+        (*std::next(_pools.begin(), static_cast<std::ptrdiff_t>(_driver)))->getRemovalLog().getRemovals();
+    for (; _index < removals.size(); ++_index) {
+        const storage::Removal& removal = *std::next(removals.begin(), static_cast<std::ptrdiff_t>(_index));
+        if (isNewerThan(removal.tick, _lastRun, _thisRun) &&
+            matchEntity(_terms, removal.entity, _driver, kNoPosition, _pools, _positions, _lastRun, _thisRun)) {
+            _entity = removal.entity;
             return;
         }
     }

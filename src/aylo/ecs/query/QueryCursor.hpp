@@ -15,8 +15,8 @@
 #include "aylo/ecs/query/QueryTerm.hpp"
 
 namespace aylo::ecs::detail {
-/// @brief The walk shared by every query pass: it moves along the dense entities of the smallest required pool (the
-/// driver, from findDriver()) and stops on each entity matchEntity() accepts.
+/// @brief The walk shared by every query pass: it moves along the dense entities of the smallest required pool, or the
+/// removals of a removed term's pool (the driver, from findDriver()), and stops on each entity matchEntity() accepts.
 ///
 /// @details The buffers are template parameters so that each pass keeps them where it wants: `std::vector`s for a
 /// DynamicQuery (its term count is only known at run time), `std::array`s for a typed Query (no allocation). It owns
@@ -63,10 +63,14 @@ class QueryCursor {
     /// @brief Moves `_index` forward to the first matching entity at or after it, or to the end.
     void skipToMatch() noexcept;
 
+    /// @brief skipToMatch() for a removed driver: `_index` walks its removals newer than `_lastRun`.
+    void skipToRemoval() noexcept;
+
     std::span<const QueryTerm> _terms;  ///< The query's terms.
     Pools _pools;                       ///< The pool of each term, in term order.
     Positions _positions;               ///< The current entity's position in each term's pool.
     std::size_t _driver;                ///< Index of the term whose pool drives the pass.
+    bool _removing;                     ///< Whether the driver is a removed term: the pass walks its removals.
     Tick _lastRun;                      ///< Tick the query last ran at.
     Tick _thisRun;                      ///< The world's change tick when the pass started.
     std::size_t _index{0};              ///< Position in the driver pool's dense entities.

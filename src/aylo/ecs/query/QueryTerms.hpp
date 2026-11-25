@@ -28,4 +28,9 @@ struct Added {};
 /// @brief Query filter: the entity's component was added or written since the query last ran.
 template <typename T>
 struct Changed {};
+
+/// @brief Query filter: the entity lost the component (removed, or despawned) since the query last ran. It yields
+/// nothing, and the entity may be dead.
+template <typename T>
+struct Removed {};
 }  // namespace aylo::ecs
