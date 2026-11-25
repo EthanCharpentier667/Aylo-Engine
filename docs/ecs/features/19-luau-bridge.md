@@ -124,6 +124,10 @@ during `run`; writing a field stamps the changed tick.
 `components = { read, write }`, or discovered at its first use, read, then written at the first write to a field of
 its view, which marks it changed (`system/EntityComponents.hpp`). `aylo.Parent` and `aylo.Children` stay read-only
 there, as in a query.
+`ctx:getParent(entity)` and `ctx:getChildren(entity)` walk the hierarchy through the same parameter: they read
+`aylo.Parent` and `aylo.Children` (discovered, read) with the typed `DynamicComponents::get<T>()`, and give an entity
+or `nil`, and a new list of entities (a copy, which outlives the run). Before the world registers the hierarchy (at the
+first parent), they give `nil` and an empty list.
 
 ### Engine calls
 

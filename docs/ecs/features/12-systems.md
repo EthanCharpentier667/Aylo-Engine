@@ -157,6 +157,8 @@ app.addSystem(aylo::ecs::Phase::kUpdate, "game.follow", &follow, aylo::ecs::Comp
 
 - `has()`, `get()` and `getMut()` take the entity: a dead entity, or one without the component, has nothing (an empty
   span). `getMut()` marks the value changed, and gives nothing for a component declared read.
+- `get<T>(entity, i)` reads the component as its C++ type `T` (null when the component at `i` is not `T`): how script
+  systems read `Parent` and `Children`.
 - The access set gets each component as read or written, as a query term would, so two systems writing the same
   component through it and through a query are ordered or reported alike.
 - `add()` gives the system a component while it runs (see [Access found while running](13-scheduler.md#access-found-while-running));
