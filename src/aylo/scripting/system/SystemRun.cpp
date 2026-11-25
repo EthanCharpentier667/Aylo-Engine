@@ -24,6 +24,7 @@
 #include <vector>
 
 #include "ContextTypes.hpp"
+#include "EntityComponents.hpp"
 #include "aylo/ecs/call/CallInfo.hpp"
 #include "aylo/ecs/call/Calls.hpp"
 #include "aylo/ecs/call/DynamicCalls.hpp"
@@ -35,6 +36,7 @@
 #include "aylo/ecs/exceptions/CallException.hpp"
 #include "aylo/ecs/query/QueryIteration.hpp"
 #include "aylo/ecs/query/QueryMatch.hpp"
+#include "aylo/ecs/system/DynamicComponents.hpp"
 #include "aylo/ecs/system/DynamicEvents.hpp"
 #include "aylo/ecs/system/DynamicQueries.hpp"
 #include "aylo/ecs/system/DynamicResources.hpp"
@@ -362,8 +364,8 @@ class EventsContext {
 /// @brief Builds `ctx` and calls `run` with it.
 [[nodiscard]] luau::Result<> call(ScriptSystem& system, const luau::Runtime& runtime,
                                   const ecs::DynamicQueries& queries, ecs::DynamicResources& resources,
-                                  const ecs::DynamicEvents& events, const ecs::DynamicCalls& calls,
-                                  const ecs::Time& time, ecs::Commands& commands) {
+                                  const ecs::DynamicComponents& components, const ecs::DynamicEvents& events,
+                                  const ecs::DynamicCalls& calls, const ecs::Time& time, ecs::Commands& commands) {
     // The iterator is a native function: it must stay alive while `run` can call it.
     // A system without query terms has no query: its iterator ends at once.
     std::optional<QueryStepper> stepper;
@@ -407,6 +409,14 @@ class EventsContext {
     engineCall.setHandler([&system, &runtime, &calls](const luau::CallContext& arguments) {
         return makeCall(system, runtime, calls, arguments);
     });
+    auto get = luau::Function::create(runtime, std::format("{}.get", system.name));
+    get.setHandler([&system, &runtime, &components](const luau::CallContext& arguments) {
+        return getComponent(system, runtime, components, arguments);
+    });
+    auto has = luau::Function::create(runtime, std::format("{}.has", system.name));
+    has.setHandler([&system, &components](const luau::CallContext& arguments) {
+        return hasComponent(system, components, arguments);
+    });
     auto timeTable = luau::Table::create(runtime, 0, 5);
     if (!timeTable) {
         return tl::unexpected{std::move(timeTable.error())};
@@ -422,7 +432,7 @@ class EventsContext {
             return set;
         }
     }
-    auto ctx = luau::Table::create(runtime, 0, 9);
+    auto ctx = luau::Table::create(runtime, 0, 11);
     if (!ctx) {
         return tl::unexpected{std::move(ctx.error())};
     }
@@ -435,6 +445,8 @@ class EventsContext {
              {"resources", luau::Value{std::move(*resourcesHandle)}},
              {"events", luau::Value{*eventsTable}},
              {"call", luau::Value{engineCall.ref()}},
+             {"get", luau::Value{get.ref()}},
+             {"has", luau::Value{has.ref()}},
              {"side", luau::Value{std::string{system.side}}},
          }) {
         if (auto set = ctx->set(name, value); !set) {
@@ -452,13 +464,13 @@ class EventsContext {
 }  // namespace
 
 void runScriptSystem(ScriptSystem& system, const ecs::DynamicQueries& queries, ecs::DynamicResources& resources,
-                     const ecs::DynamicEvents& events, const ecs::DynamicCalls& calls, const ecs::Time& time,
-                     ecs::Commands& commands) {
+                     const ecs::DynamicComponents& components, const ecs::DynamicEvents& events,
+                     const ecs::DynamicCalls& calls, const ecs::Time& time, ecs::Commands& commands) {
     const luau::Runtime* const runtime = system.runtime->runtime;
     if (runtime == nullptr) {
         return;  // the host is gone, and the script with it
     }
-    const auto result = call(system, *runtime, queries, resources, events, calls, time, commands);
+    const auto result = call(system, *runtime, queries, resources, components, events, calls, time, commands);
     ++system.scope->generation;  // every view of this run dies, even when it failed
     if (!result) {
         std::cerr << std::format("[ScriptSystem] '{}' failed, skipped this tick: {}\n", system.name,

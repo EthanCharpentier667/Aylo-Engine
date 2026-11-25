@@ -31,8 +31,9 @@ struct AYLO_SCRIPTING_API ComponentView {
     std::uint64_t generation{0};    ///< The scope's generation when the view was created.
     bool readOnly{false};           ///< Whether writes are refused (read terms of a query).
     std::shared_ptr<void> storage;  ///< Keeps `bytes` alive when the view owns a copy of them; null otherwise.
-    /// Called, when set, instead of refusing a write to a read-only view: a resource a system discovered reading
-    /// becomes one it writes. Null otherwise.
+    /// Called, when set, instead of refusing a write to a read-only view: a resource or a component a system discovered
+    /// reading becomes one it writes, and a component of `ctx:get` is marked changed. It may raise a Luau error that
+    /// refuses the write. Null otherwise.
     std::shared_ptr<const std::function<void()>> onWrite;
 };
 }  // namespace aylo::scripting::view
