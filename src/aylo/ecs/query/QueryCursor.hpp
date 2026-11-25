@@ -12,6 +12,7 @@
 
 #include "aylo/ecs/change/Tick.hpp"
 #include "aylo/ecs/entity/Entity.hpp"
+#include "aylo/ecs/query/QueryMatcher.hpp"
 #include "aylo/ecs/query/QueryTerm.hpp"
 
 namespace aylo::ecs::detail {
@@ -29,10 +30,9 @@ class QueryCursor {
     /// @param terms The checked terms of the query (DynamicQuery::getTerms()); they must outlive the cursor.
     /// @param pools The pool of each term, in term order (DynamicQuery::resolvePools()).
     /// @param positions One slot per term, filled at each match with the entity's position in the term's pool.
-    /// @param lastRun Tick the query last ran at: added and changed filters keep values stamped after it.
-    /// @param thisRun The world's change tick now, stamped on written values.
-    QueryCursor(std::span<const QueryTerm> terms, Pools pools, Positions positions, Tick lastRun,
-                Tick thisRun) noexcept;
+    /// @param context The ticks of the pass (filters keep what is newer than `lastRun`, written values are stamped
+    /// with `thisRun`) and the pool of Parent for enabled terms (DynamicQuery::findParents()).
+    QueryCursor(std::span<const QueryTerm> terms, Pools pools, Positions positions, MatchContext context) noexcept;
     ~QueryCursor() = default;
     QueryCursor(const QueryCursor& other) = default;
     QueryCursor& operator=(const QueryCursor& other) = default;
@@ -71,8 +71,7 @@ class QueryCursor {
     Positions _positions;               ///< The current entity's position in each term's pool.
     std::size_t _driver;                ///< Index of the term whose pool drives the pass.
     bool _removing;                     ///< Whether the driver is a removed term: the pass walks its removals.
-    Tick _lastRun;                      ///< Tick the query last ran at.
-    Tick _thisRun;                      ///< The world's change tick when the pass started.
+    MatchContext _context;              ///< The ticks of the pass and the pool of Parent.
     std::size_t _index{0};              ///< Position in the driver pool's dense entities.
     Entity _entity;                     ///< The current matching entity.
 };

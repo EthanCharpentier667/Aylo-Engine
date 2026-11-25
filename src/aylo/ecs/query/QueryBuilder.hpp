@@ -61,6 +61,9 @@ class AYLO_ECS_API QueryBuilder {
     /// @brief Visits the entities that lost the component (removed, or despawned) since the query last ran.
     QueryBuilder& removed(ComponentId id);
 
+    /// @brief Skips the entities switched off: `disabled` (the id of Disabled) on them or on one of their ancestors.
+    QueryBuilder& enabled(ComponentId disabled);
+
     /// @brief Checks the terms and builds the query, as DynamicQuery::create() does.
     /// @param components The components of the world the query iterates; they must outlive the query.
     /// @return The query, or an ErrorKind::kInvalidQuery error naming the faulty component.

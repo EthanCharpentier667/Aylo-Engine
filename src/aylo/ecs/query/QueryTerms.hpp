@@ -33,4 +33,8 @@ struct Changed {};
 /// nothing, and the entity may be dead.
 template <typename T>
 struct Removed {};
+
+/// @brief Query filter: neither the entity nor one of its ancestors is switched off with Disabled. The systems that
+/// draw, simulate or play an entity use it; a query without it sees disabled entities too.
+struct Enabled {};
 }  // namespace aylo::ecs

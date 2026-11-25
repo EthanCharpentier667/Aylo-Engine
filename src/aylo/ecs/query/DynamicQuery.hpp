@@ -79,6 +79,10 @@ class AYLO_ECS_API DynamicQuery {
     /// drop it. iter() does it; a typed Query calls it for its own passes.
     void markSeen(Tick lastRun) const noexcept;
 
+    /// @return The pool of Parent when the query has an enabled term and the world has a hierarchy, else null: an
+    /// enabled term looks for Disabled on the ancestors too.
+    [[nodiscard]] const storage::SparseSetStorage* findParents() const noexcept;
+
     /// @brief Looks up the pool of every term, in term order. Pools are looked up at each pass, not kept: the world's
     /// pool list may have grown (and moved) since the query was built.
     /// @param pools One slot per term.

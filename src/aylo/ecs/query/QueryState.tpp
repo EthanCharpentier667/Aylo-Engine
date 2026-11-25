@@ -51,7 +51,10 @@ bool QueryState<Terms...>::Iteration::Iterator::operator==(std::default_sentinel
 template <typename... Terms>
     requires ValidQuery<Terms...>
 QueryState<Terms...>::Iteration::Iteration(const DynamicQuery& query, Tick lastRun, Tick thisRun) noexcept
-    : _cursor{query.getTerms(), resolvePools(query), {}, lastRun, thisRun} {}
+    : _cursor{query.getTerms(),
+              resolvePools(query),
+              {},
+              detail::MatchContext{.lastRun = lastRun, .thisRun = thisRun, .parents = query.findParents()}} {}
 
 template <typename... Terms>
     requires ValidQuery<Terms...>
@@ -137,7 +140,9 @@ std::optional<typename QueryState<Terms...>::Item> QueryState<Terms...>::get(con
     Positions positions{};
     const Tick thisRun = _components->getChangeTick();
     // No driver term (its index is past the last one): every term's pool is searched for the entity.
-    if (!detail::matchEntity(_query.getTerms(), entity, sizeof...(Terms), 0, pools, positions, lastRun, thisRun)) {
+    if (!detail::matchEntity(
+            _query.getTerms(), entity, sizeof...(Terms), 0, pools, positions,
+            detail::MatchContext{.lastRun = lastRun, .thisRun = thisRun, .parents = _query.findParents()})) {
         return std::nullopt;
     }
     return makeItem(entity, pools, positions, thisRun, std::index_sequence_for<Terms...>{});
