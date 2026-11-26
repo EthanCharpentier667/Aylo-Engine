@@ -140,8 +140,12 @@ class QueryStepper {
 
   private:
     /// @brief Pushes the view of data term `index` of the match, or `nil` when the entity has no such optional
-    /// component.
+    /// component. A tag the entity has gets a view, with no fields.
     void pushView(ecs::QueryMatch& match, const std::size_t index, luau::Pusher& results) const {
+        if (!match.has(index)) {
+            results.nil();
+            return;
+        }
         const auto& [info, readOnly] = _system->terms.at(index);
         std::span<std::byte> bytes;
         if (readOnly) {
@@ -151,10 +155,6 @@ class QueryStepper {
             bytes = {const_cast<std::byte*>(read.data()), read.size()};
         } else {
             bytes = match.getMut(index);
-        }
-        if (bytes.empty()) {
-            results.nil();
-            return;
         }
         results.userdata(_views, view::ComponentView{
                                      .type = &info->type,
