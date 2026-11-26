@@ -61,7 +61,7 @@ Write a hook as a method of the Behaviour, `function Spinner:onUpdate(dt)`. Defi
 |---|---|
 | `onEnable(self)` | When the entity is switched on: once at the start, before `onStart`, then each time it is [switched on](systems.md#switching-an-entity-off) again (`PreUpdate` phase). |
 | `onStart(self)` | Once, at the start of the first frame the entity has the Behaviour (the `PreUpdate` phase), before its first `onUpdate` or `onFixedUpdate`. |
-| `onUpdate(self, dt)` | Every frame (`Update` phase). `dt` is the length of the frame, in seconds. |
+| `onUpdate(self, dt)` | Every frame (`Update` phase), for what the players see: a dedicated server runs no `Update`. `dt` is the length of the frame, in seconds. |
 | `onFixedUpdate(self, dt)` | Every fixed tick (`FixedUpdate` phase), where server gameplay goes. `dt` is the fixed step, in seconds. |
 | `onDisable(self)` | When the entity is switched off: it, or one of its parents, got `aylo.Disabled` (`PreUpdate` phase). |
 | `onDestroy(self)` | Once the entity lost the Behaviour: it was despawned, or the component was removed (`PostUpdate` phase, the frame it happened). |
@@ -243,4 +243,5 @@ any [system](systems.md#errors).
 
 - [Components](components.md) and [Systems](systems.md): what a Behaviour is made of.
 - [Capsules](capsules.md): put a Behaviour on the nodes of a capsule.
+- [Editor](editor.md#behaviours): make a Behaviour and attach it to nodes from the editor.
 - [Hot reload](hot-reload.md): editing a Behaviour while the game runs.
