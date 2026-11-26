@@ -425,6 +425,10 @@ class EventsContext {
     children.setHandler([&system, &runtime, &components](const luau::CallContext& arguments) {
         return getChildren(system, runtime, components, arguments);
     });
+    auto enabled = luau::Function::create(runtime, std::format("{}.isEnabled", system.name));
+    enabled.setHandler([&system, &components](const luau::CallContext& arguments) {
+        return isEnabled(system, components, arguments);
+    });
     auto timeTable = luau::Table::create(runtime, 0, 5);
     if (!timeTable) {
         return tl::unexpected{std::move(timeTable.error())};
@@ -440,7 +444,7 @@ class EventsContext {
             return set;
         }
     }
-    auto ctx = luau::Table::create(runtime, 0, 13);
+    auto ctx = luau::Table::create(runtime, 0, 14);
     if (!ctx) {
         return tl::unexpected{std::move(ctx.error())};
     }
@@ -457,6 +461,7 @@ class EventsContext {
              {"has", luau::Value{has.ref()}},
              {"getParent", luau::Value{parent.ref()}},
              {"getChildren", luau::Value{children.ref()}},
+             {"isEnabled", luau::Value{enabled.ref()}},
              {"side", luau::Value{std::string{system.side}}},
          }) {
         if (auto set = ctx->set(name, value); !set) {

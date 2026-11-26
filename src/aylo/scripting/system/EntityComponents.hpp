@@ -49,4 +49,11 @@ namespace aylo::scripting::system {
 /// @throws luau::exceptions::RuntimeError If the argument is not an entity.
 [[nodiscard]] luau::ValuePack getChildren(ScriptSystem& system, const luau::Runtime& runtime,
                                           const ecs::DynamicComponents& components, const luau::CallContext& arguments);
+
+/// @brief `ctx:isEnabled(entity)`: false when the entity or one of its ancestors has `aylo.Disabled`, the test the
+/// queries of scripts make. Reads `aylo.Disabled` and `aylo.Parent`, discovered like any component. Says nothing of
+/// whether the entity is alive: a dead entity has no Disabled, so it reads as enabled.
+/// @throws luau::exceptions::RuntimeError If the argument is not an entity.
+[[nodiscard]] luau::ValuePack isEnabled(ScriptSystem& system, const ecs::DynamicComponents& components,
+                                        const luau::CallContext& arguments);
 }  // namespace aylo::scripting::system
