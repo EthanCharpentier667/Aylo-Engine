@@ -83,6 +83,20 @@ void Pusher::pushUserdata(const detail::UsertypeData& data, void (*initialize)(v
     ++_count;
 }
 
+void Pusher::setInTable(const std::span<const std::string_view> keys) {
+    if (_count < 2 || !lua_istable(_state, -2)) {
+        throw exceptions::InvalidOperation{"setInTable needs a table pushed, then a value"};
+    }
+    reserve(2);
+    for (const std::string_view key : keys) {
+        lua_pushlstring(_state, key.data(), key.size());
+        lua_pushvalue(_state, -2);
+        lua_rawset(_state, -4);
+    }
+    lua_pop(_state, 1);
+    --_count;
+}
+
 int Pusher::count() const noexcept { return _count; }
 
 StackSlot::StackSlot(lua_State* state, const int index) noexcept : _state{state}, _index{lua_absindex(state, index)} {}
