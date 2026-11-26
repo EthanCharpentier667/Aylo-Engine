@@ -15,3 +15,5 @@ target("scripting")
     add_files("setup/FormsPrelude.luau")
     -- Same for the helpers of the debug console.
     add_files("console/ConsolePrelude.luau")
+    -- And engine.behaviour, which runs after the forms prelude.
+    add_files("behaviour/BehaviourPrelude.luau")

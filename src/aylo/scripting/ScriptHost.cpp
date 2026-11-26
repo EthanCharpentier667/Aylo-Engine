@@ -55,6 +55,7 @@
 #include "aylo/luau/Value.hpp"
 #include "aylo/luau/ValuePack.hpp"
 #include "aylo/scripting/ErrorKind.hpp"
+#include "behaviour/BehaviourPrelude.hpp"
 #include "call/EngineCall.hpp"
 #include "commands/ScriptCommands.hpp"
 #include "component/ComponentLayout.hpp"
@@ -352,7 +353,10 @@ luau::Result<> ScriptHost::installEngine(const Options options) {
     if (auto registered = _runtime.globals().registerLibrary(*_engine); !registered) {
         return registered;
     }
-    return runSource(std::string{setup::kFormsPreludeName}, std::string{setup::getFormsPrelude()});
+    if (auto ran = runSource(std::string{setup::kFormsPreludeName}, std::string{setup::getFormsPrelude()}); !ran) {
+        return ran;
+    }
+    return runSource(std::string{behaviour::kBehaviourPreludeName}, std::string{behaviour::getBehaviourPrelude()});
 }
 
 void ScriptHost::declareComponent(std::string name, const luau::Table& spec) {
