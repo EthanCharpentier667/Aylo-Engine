@@ -28,8 +28,10 @@ target("editor")
     add_files("**.cpp|app/**.cpp")
     -- The UI fonts, embedded as byte arrays (included as "JetBrainsMonoNerdFont-Regular.ttf.h"...): the editor needs no
     -- file next to it to look the same everywhere.
-    add_rules("utils.bin2c", {extensions = {".ttf"}})
+    add_rules("utils.bin2c", {extensions = {".ttf", ".luau"}})
     add_files("fonts/*.ttf")
+    -- The template of New Behaviour, embedded the same way (included as "BehaviourTemplate.luau.h").
+    add_files("behaviour/BehaviourTemplate.luau")
     add_headerfiles("**.hpp", "**.tpp")
 
 -- aylo-editor: the program that runs a game inside the editor, always as a debug run. The Engine loads the plugins and
