@@ -249,6 +249,24 @@ plugins it adds are not), it skips them and returns the id the asset would have,
 same script loads on the server and the clients. What only a plugin knows, such as a control name or an animation
 direction, is checked where the plugin runs, and a call's error is prefixed with the form's name.
 
+### Behaviours
+
+`engine.behaviour(name, { fields, defaults, replication, presence, side })` (`scripting/behaviour/BehaviourPrelude.luau`,
+run after the forms prelude) is sugar over the two declarations above, with no concept of its own
+(`docs/scripting/dx-plan.md`, D1 and D2). It declares the component `name` and returns a table whose `__newindex`
+turns each hook assigned to it into a system: `onUpdate` (`Update`, `dt = ctx.delta`) and `onFixedUpdate`
+(`FixedUpdate`, `ctx.fixedDelta`) are `<name>.<hook>`, querying `name` (written, or read on a client side when the
+component is replicated). `onStart` declares the tag `<name>.Started` (not replicated, present on the hooks' side) and
+the system `<name>.onStart` in `PreUpdate`, querying `name` without the tag: it adds the tag, then calls the hook. While
+a Behaviour has `onStart`, the other hook systems skip an entity until `ctx:has` finds the tag, so the order holds
+whichever phase spawned the entity, and a reload starts nothing again since the tag is in the world.
+
+Each visit builds a `self`, a table whose metatable maps the declared fields to the query's view, `entity` and `ctx` to
+the visit, and the methods (`getComponent`, `hasComponent`, `getParent`, `getChildren`, `getHandle`, `addComponent`,
+`removeComponent`, `destroy`) to `ctx:get`, `ctx:has`, `ctx:getParent`, `ctx:getChildren` and `ctx.commands`; other
+entities are handles with the same methods and no fields. Writing an undeclared field (D3) or a `ComponentView` (D5) is
+an error. A name starting with `on` and a capital letter must be a hook; a field cannot take the name of a method.
+
 ### Plugins
 
 ```luau
