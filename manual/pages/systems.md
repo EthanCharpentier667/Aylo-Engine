@@ -1,7 +1,8 @@
 # Systems
 
 A system is a function that runs on a schedule, on the entities that match a query. You declare one with
-`engine.ecs.system`.
+`engine.ecs.system`. To attach a script to entities without writing a query, see [Behaviours](behaviours.md), which
+are made of systems.
 
 ```luau
 engine.ecs.system("game.MoveShips", {

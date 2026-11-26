@@ -26,6 +26,7 @@ nav:
   - Components: components.md
   - 2D and 3D: 3d.md
   - Systems: systems.md
+  - Behaviours: behaviours.md
   - States: states.md
   - Engine calls: engine-calls.md
   - Setup forms: setup-forms.md
