@@ -20,6 +20,7 @@
 #include "aylo/luau/Runtime.hpp"
 #include "aylo/luau/RuntimeConfig.hpp"
 #include "aylo/luau/StackAccess.hpp"
+#include "aylo/luau/Table.hpp"
 #include "aylo/luau/Usertype.hpp"
 #include "aylo/luau/Value.hpp"
 
@@ -236,4 +237,36 @@ TEST(NativeCode, RunsScriptsAsTheInterpreterDoes) {
         EXPECT_EQ(globalNumber(runtime, "result"), 6766) << native;
         EXPECT_TRUE(runForError(runtime, "error('boom')").contains("test:1: boom")) << native;
     }
+}
+
+TEST(StackAccess, SetInTableFillsAHeldTableWithoutMakingOne) {
+    auto runtime = makeRuntime();
+    auto held = aylo::luau::Table::create(runtime);
+    ASSERT_TRUE(held);
+    int step = 0;
+    auto filler = aylo::luau::Function::create(runtime, "fill");
+    filler.setRawHandler([&](aylo::luau::Pusher& results) {
+        ++step;
+        results.value(aylo::luau::Value{*held});
+        results.number(step);
+        const std::array<std::string_view, 2> keys{"value", "alias"};
+        results.setInTable(keys);
+    });
+    auto broken = aylo::luau::Function::create(runtime, "broken");
+    broken.setRawHandler([](aylo::luau::Pusher& results) {
+        results.number(1);
+        results.number(2);
+        const std::array<std::string_view, 1> keys{"value"};
+        results.setInTable(keys);
+    });
+    ASSERT_TRUE(runtime.globals().set("fill", aylo::luau::Value{filler.ref()}));
+    ASSERT_TRUE(runtime.globals().set("broken", aylo::luau::Value{broken.ref()}));
+    run(runtime, R"(
+        local first = fill()
+        assert(select("#", fill()) == 1, "the value is no longer a result")
+        local second = fill()
+        assert(rawequal(first, second), "the same table every time")
+        assert(second.value == 3 and second.alias == 3)
+    )");
+    EXPECT_TRUE(runForError(runtime, "broken()").contains("setInTable needs a table pushed, then a value"));
 }
