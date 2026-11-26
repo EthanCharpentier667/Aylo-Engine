@@ -25,8 +25,9 @@ namespace aylo::scripting {
 /// @brief Runs the Luau files of a game on the App: the components and systems they declare join it.
 ///
 /// @details build() creates a ScriptHost with a modules::ScriptResolver over the scripts directory, then requires the
-/// entry points: `main` first, then `server` if the process runs the server side, then `client` if it runs the client
-/// side (a standalone process runs both, so all three). Only the entries and what they `require` run (see
+/// entry points: `main` first, then every file of `scripts/behaviours/` (at any depth, sorted, without a `require`: the
+/// Behaviours), then `server` if the process runs the server side, then `client` if it runs the client side (a
+/// standalone process runs both, so all three). Only the entries and what they `require` run (see
 /// `manual/pages/modules.md`); a module several of them require runs once. With no entry set, `main` defaults to
 /// `main` (`scripts/main.luau`) and a missing default entry logs a warning on `std::cerr` and loads nothing; an entry
 /// that was set and is missing fails the build, naming its setting. A script's chunk name, which names it in errors and
@@ -70,6 +71,11 @@ class AYLO_SCRIPTING_API ScriptingPlugin : public ecs::Plugin {
     void build(ecs::App& app) override;
 
   private:
+    /// @brief Requires every `.luau` file of `scripts/behaviours/`, at any depth, in sorted order, and warns about
+    /// those that declare no Behaviour.
+    /// @throws exceptions::ScriptLoadException When one of them fails.
+    void requireBehaviours() const;
+
     Config _config;                     ///< The scripts directory and the flags of `engine`.
     std::unique_ptr<ScriptHost> _host;  ///< The runtime of the scripts; null until build().
 };
