@@ -314,13 +314,13 @@ TEST(ScriptBehaviour, RefusesABadDeclaration) {
               std::string::npos);
     EXPECT_NE(failure(R"(engine.behaviour(42, { fields = {} }))").find("expected the name of the Behaviour first"),
               std::string::npos);
-    EXPECT_NE(
-        failure(R"(
+    EXPECT_NE(failure(R"(
         local F = engine.behaviour("game.F", { fields = {} })
         function F:onUpdat() end
     )")
-            .find("engine.behaviour 'game.F': 'onUpdat' is not a hook (hooks are onStart, onUpdate, onFixedUpdate)"),
-        std::string::npos);
+                  .find("engine.behaviour 'game.F': 'onUpdat' is not a hook (hooks are onStart, onEnable, onDisable, "
+                        "onUpdate, onFixedUpdate, onDestroy)"),
+              std::string::npos);
     EXPECT_NE(failure(R"(
         local G = engine.behaviour("game.G", { fields = {} })
         function G:onUpdate() end
@@ -417,4 +417,153 @@ TEST(ScriptBehaviour, AClientBehaviourReadsTheFieldsTheServerReplicates) {
     fixture.app.runFrame();
     EXPECT_EQ(testing::internal::GetCapturedStderr(), "");
     EXPECT_FLOAT_EQ(fixture.read(fixture.having("game.Ship").front(), "game.Position", "x"), 4.F);
+}
+
+namespace {
+/// @brief A Behaviour counting its hooks, and the systems that switch its entity off at tick 2 and on at tick 4.
+constexpr std::string_view kLamp = R"(
+    local Lamp = engine.behaviour("game.Lamp", {
+        fields = { enables = "f32", disables = "f32", starts = "f32", updates = "f32", enabledAtStart = "f32" },
+    })
+    function Lamp:onStart()
+        self.starts += 1
+        self.enabledAtStart = self.enables -- onEnable runs first
+    end
+    function Lamp:onEnable() self.enables += 1 end
+    function Lamp:onDisable()
+        assert(not self.ctx:isEnabled(self.entity))
+        self.disables += 1
+    end
+    function Lamp:onUpdate() self.updates += 1 end
+
+    engine.ecs.component("game.Room", { fields = {} })
+    engine.ecs.system("game.Build", {
+        phase = "Startup",
+        run = function(ctx)
+            local room = ctx.commands:spawn({ ["game.Room"] = {} })
+            ctx.commands:setParent(ctx.commands:spawn({ ["game.Lamp"] = {} }), room)
+        end,
+    })
+    engine.ecs.system("game.Switch", {
+        phase = "FixedUpdate",
+        query = { with = { "game.Room" }, optionalRead = { "aylo.Disabled" } },
+        run = function(ctx)
+            for room in ctx.query do
+                if ctx.time.tick == 2 then ctx.commands:add(room, "aylo.Disabled", {}) end
+                if ctx.time.tick == 4 then ctx.commands:remove(room, "aylo.Disabled") end
+            end
+        end,
+    })
+)";
+}  // namespace
+
+TEST(ScriptBehaviour, EnablesAndDisablesWithTheSubtreeItIsIn) {
+    Fixture fixture;
+    ASSERT_EQ(fixture.run("lamp.luau", std::string{kLamp}), "");
+    EXPECT_TRUE(fixture.hasSystem(aylo::ecs::Phase::kPreUpdate, "game.Lamp.onEnable"));
+    EXPECT_TRUE(fixture.hasSystem(aylo::ecs::Phase::kPreUpdate, "game.Lamp.onDisable"));
+    EXPECT_TRUE(fixture.hasSystem(aylo::ecs::Phase::kPostUpdate, "game.Lamp.onDestroy")) << "it takes the tags away";
+
+    testing::internal::CaptureStderr();
+    for (int frame = 0; frame < 8; ++frame) {
+        fixture.app.runFrame();
+    }
+    EXPECT_EQ(testing::internal::GetCapturedStderr(), "");
+    const aylo::ecs::Entity lamp = fixture.having("game.Lamp").front();
+    EXPECT_FLOAT_EQ(fixture.read(lamp, "game.Lamp", "starts"), 1.F);
+    EXPECT_FLOAT_EQ(fixture.read(lamp, "game.Lamp", "enabledAtStart"), 1.F);
+    EXPECT_FLOAT_EQ(fixture.read(lamp, "game.Lamp", "enables"), 2.F) << "at start, then when its room is switched on";
+    EXPECT_FLOAT_EQ(fixture.read(lamp, "game.Lamp", "disables"), 1.F) << "when its room is switched off";
+    const float updates = fixture.read(lamp, "game.Lamp", "updates");
+    EXPECT_GT(updates, 2.F);
+    EXPECT_LT(updates, 8.F) << "no update while it is switched off";
+}
+
+TEST(ScriptBehaviour, DestroysWhatLosesTheBehaviourOrDies) {
+    Fixture fixture;
+    ASSERT_EQ(fixture.run("mine.luau", R"lua(
+        local Mine = engine.behaviour("game.Mine", { fields = { armed = "bool", starts = "f32" } })
+        function Mine:onStart() self.starts += 1 end
+        function Mine:onDestroy()
+            local ok, message = pcall(function() return self.armed end)
+            assert(not ok and string.find(message, "cannot use self.armed: in onDestroy, the entity no longer has 'game.Mine'", 1, true), message)
+            assert(not self:hasComponent("game.Mine"))
+            self.ctx.commands:spawn({ ["game.Health"] = { value = 1 } }) -- counts the calls
+        end
+        engine.ecs.system("game.Lay", {
+            phase = "Startup",
+            run = function(ctx)
+                ctx.commands:spawn({ ["game.Mine"] = {}, ["game.Position"] = {} })
+                ctx.commands:spawn({ ["game.Mine"] = {}, ["game.Position"] = { x = 1 } })
+            end,
+        })
+        engine.ecs.system("game.Defuse", {
+            phase = "FixedUpdate",
+            query = { read = { "game.Position" }, with = { "game.Mine" } },
+            run = function(ctx)
+                if ctx.time.tick ~= 2 then return end
+                for entity, position in ctx.query do
+                    if position.x == 0 then
+                        ctx.commands:despawn(entity)
+                    else
+                        ctx.commands:remove(entity, "game.Mine")
+                    end
+                end
+            end,
+        })
+    )lua"),
+              "");
+    testing::internal::CaptureStderr();
+    for (int frame = 0; frame < 4; ++frame) {
+        fixture.app.runFrame();
+    }
+    EXPECT_EQ(testing::internal::GetCapturedStderr(), "");
+    EXPECT_EQ(fixture.having("game.Health").size(), 2U) << "once for the despawned mine, once for the defused one";
+    EXPECT_TRUE(fixture.having("game.Mine.Started").empty()) << "the tag goes with the Behaviour";
+
+    ASSERT_EQ(fixture.run("rearm.luau", R"(
+        engine.ecs.system("game.Rearm", {
+            phase = "Update",
+            query = { with = { "game.Position" }, without = { "game.Mine" } },
+            run = function(ctx)
+                for entity in ctx.query do ctx.commands:add(entity, "game.Mine", {}) end
+            end,
+        })
+    )"),
+              "");
+    fixture.app.runFrame();
+    fixture.app.runFrame();
+    ASSERT_EQ(fixture.having("game.Mine").size(), 1U);
+    EXPECT_FLOAT_EQ(fixture.read(fixture.having("game.Mine").front(), "game.Mine", "starts"), 1.F)
+        << "a Behaviour given back starts again";
+}
+
+TEST(ScriptBehaviour, CtxIsEnabledLooksUpTheHierarchy) {
+    Fixture fixture;
+    ASSERT_EQ(fixture.run("check.luau", R"lua(
+        engine.ecs.system("game.Check", {
+            phase = "Startup",
+            run = function(ctx)
+                local off = ctx.commands:spawn({ ["aylo.Disabled"] = {} })
+                local child = ctx.commands:spawn({ ["game.Position"] = {} })
+                ctx.commands:setParent(child, off)
+                ctx.commands:spawn({ ["game.Position"] = { x = 1 } })
+            end,
+        })
+        engine.ecs.system("game.Read", {
+            phase = "Update",
+            query = { read = { "game.Position" }, optionalRead = { "aylo.Disabled" } },
+            run = function(ctx)
+                for entity, position in ctx.query do
+                    assert(ctx:isEnabled(entity) == (position.x == 1), tostring(entity))
+                end
+                local ok, message = pcall(function() return ctx.isEnabled(3) end)
+                assert(not ok and string.find(message, "ctx:isEnabled expects an entity: ctx:isEnabled(entity)", 1, true), message)
+            end,
+        })
+    )lua"),
+              "");
+    testing::internal::CaptureStderr();
+    fixture.app.runFrame();
+    EXPECT_EQ(testing::internal::GetCapturedStderr(), "");
 }
