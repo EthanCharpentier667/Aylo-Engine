@@ -183,7 +183,7 @@ query = {
 | Term | Meaning |
 |---|---|
 | `read`, `write` | The entity must have the component, and the loop gets a view of it (read-only, or writable). |
-| `optionalRead`, `optionalWrite` | A view, or `nil` when the entity does not have it. |
+| `optionalRead`, `optionalWrite` | A view, or `nil` when the entity does not have it. A tag it has is a view with no fields, so `if dead then` tests it. |
 | `with`, `without` | The entity must have, or must not have, the component. No view. |
 | `added` | The entity must have it, and it was added since this system last ran. |
 | `changed` | The entity must have it, and it was added or written since this system last ran. |
@@ -192,6 +192,34 @@ query = {
 `for entity, a, b in ctx.query do` gives the entity, then one view per `read`/`write` term in the order read, write,
 optionalRead, optionalWrite (inside each, in the order you listed them). The views are valid only during the call to
 `run`. An unknown term name is an error.
+
+### Views by name
+
+Adding a `read` to a query shifts every variable of a `ctx.query` loop after it. `ctx.views` gives the same entities
+with their views by name instead, in one table, so the loop does not change when the query does:
+
+```luau
+engine.ecs.system("game.Regen", {
+	phase = "Update",
+	query = { read = { "game.Position" }, write = { "game.Shield" }, optionalRead = { "game.Dead" } },
+	run = function(ctx)
+		for entity, it in ctx.views do
+			if it.dead == nil then
+				it.shield.strength += it.position.x
+			end
+		end
+	end,
+})
+```
+
+Each view is there under the component's name, `it["game.Shield"]`, and under its short name: what follows the last
+`.`, its first letter in lower case (`game.Shield` is `it.shield`, `aylo.Transform2D` is `it.transform2D`). When two
+terms have the same short name (`game.Position` and `net.Position`), use the full names: `it.position` is then an
+error that says so. An optional view the entity lacks is `nil`; a name the query does not have is an error listing
+the ones it has.
+
+`it` is one table for the whole loop, filled again for each entity: it costs nothing per entity, but do not keep it,
+nor its views, past the step. Use `ctx.query` or `ctx.views`, whichever reads better; they visit the same entities.
 
 ### Reacting to a removal
 
@@ -327,7 +355,8 @@ runs, once the commands are applied.
 
 | Field | What it gives |
 |---|---|
-| `ctx.query` | The loop over matching entities. |
+| `ctx.query` | The loop over matching entities, with one view per term. |
+| `ctx.views` | The same loop, with the views by name in one table: see [Views by name](#views-by-name). |
 | `ctx.side` | The side the system runs on: `"server"` (the default), `"client"` or `"both"`. |
 | `ctx.time` | `delta` (seconds of the frame), `fixedDelta` (the fixed step), `elapsed`, `tick` and `alpha` (progress between two fixed steps). `ctx.delta` and `ctx.fixedDelta` also exist. |
 | `ctx.commands` | Deferred changes to the world, see below. |
@@ -446,6 +475,9 @@ A bad declaration (an unknown option, a missing `phase`, an unknown name in the 
 | `unknown component 'game.Helth': no script declared it and the world has none` | A command (`add`, `patch`, `remove`, `spawn`) names a component that does not exist |
 | `cannot remove 'aylo.Parent': use removeParent` | `ctx.commands:remove` on `aylo.Parent` or `aylo.Children` |
 | `a client system cannot remove 'game.Health': it is replicated or server-only` | A client system removes a component the server owns |
+| `the query of system 'game.Regen' has no view 'sheild' (it has: position, shield, dead)` | A name `ctx.views` does not have |
+| `'position' names several views of system 'game.Check': use it["game.Position"] or it["net.Position"]` | A short name two terms share |
+| `the views of system 'game.Regen' are read by name: ...` | Writing a new key in the table of `ctx.views` |
 | `ctx:get expects an entity and the name of a component: ...` | `ctx.get` written with a `.`, or an argument that is not an entity or a name |
 | `the view of 'game.Health' is read-only: system 'game.Damage' declared it under 'components.read' ...` | The component is listed under `components.read` |
 | `a client system cannot write 'game.Health': it is replicated: the server would overwrite it` | A client system writes a field of a replicated (or server-only) component it got with `ctx:get` |
