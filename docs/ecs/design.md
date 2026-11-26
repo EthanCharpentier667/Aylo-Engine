@@ -787,7 +787,7 @@ replication plugin uses to send only what changed. Serves: R3 above all.
 (`OnAdd`, `OnRemove`, `OnSet`).
 
 **Our choice.** v1 has only the **memory hooks** of `TypeHooks`. Gameplay reactions use
-`Added<T>` filters or events, which keep all logic in scheduled systems. Observers can come in v3 if a
+`Added<T>` and `Removed<T>` filters or events, which keep all logic in scheduled systems. Observers can come in v3 if a
 real need appears. Serves: Principles, R4.
 
 **Details:** [`features/16-hooks-and-observers.md`](features/16-hooks-and-observers.md).
@@ -1394,7 +1394,7 @@ is the same idea as Bevy's modules with a short prelude.
 | `command/` | `aylo::ecs` | `Commands.hpp/.tpp/.cpp` (`Commands`, `EntityCommands`: deferred spawn, add, remove, despawn) |
 | `world/` | `aylo::ecs` | `World.hpp/.tpp/.cpp`: the coordinator (entities, change tick, `getComponents()`, `getResources()`, `getEvents()`) |
 | `query/` | `aylo::ecs` | `QueryTerm`, `QueryBuilder`, `DynamicQuery` (the single query engine), `QueryIteration` / `QueryMatch`, `QueryTerms` (`Optional`, `With`, `Without`, `Added`, `Changed`), `TermTraits`, `QueryState` (typed) and `Query` (its per-run view); `detail::` `QueryMatcher` and `QueryCursor` (the join and the walk, shared) |
-| `system/` | `aylo::ecs` | `System` (type-erased, run, flush), `SystemParam` (parameter deduction, configured parameters), `SystemAccess`, `Side`, `ResourceParam` (`Res`, `ResMut`, `NonSend`, `NonSendMut`), `EventReader` / `EventWriter`, `DynamicQueries` + `QueryList`, `DynamicResources`, `DynamicEvents` (both can grow while the system runs), `ClientWrites` (`findClientWrite()`, what a client system may not write), `ScriptCallable` |
+| `system/` | `aylo::ecs` | `System` (type-erased, run, flush), `SystemParam` (parameter deduction, configured parameters), `SystemAccess`, `Side`, `ResourceParam` (`Res`, `ResMut`, `NonSend`, `NonSendMut`), `EventReader` / `EventWriter`, `DynamicQueries` + `QueryList`, `DynamicResources`, `DynamicEvents`, `DynamicComponents` + `ComponentList` (components of any entity; the three can grow while the system runs), `ClientWrites` (`findClientWrite()`, what a client system may not write), `ScriptCallable` |
 | `schedule/` | `aylo::ecs` | `Phase`, `RunMode`, `Schedule` (one phase: ordering, ambiguity checks, run, flush), `Schedules` (a world's schedules: unique names, whole frames, per-phase event updates), `FrameClock` (how many fixed ticks a frame runs), `detail::DependencyGraph` (sort, cycles, reachability) |
 | `time/` | `aylo::ecs` | `Time` (the time resource), `FixedTimestep` (the accumulator: ticks per frame, cap, alpha), `TimeClock` (the frame clock keeping `Time` up to date), `TimePlugin` (every App has one) |
 | `app/` | `aylo::ecs` | `App` (one world, its `Schedules`, one run mode, the loop), `Plugin`, `PluginGroup`, `MinimalPlugins`, `AppExit` |

@@ -38,11 +38,11 @@ namespace aylo::plugins::sprite {
 namespace {
 /// @brief Render, client: pushes the sprites whose texture is loaded to the SpriteQueue. A sprite whose material is
 /// created is drawn with it, and with its MaterialInstance's values or else its shader's defaults.
-void drawEntities(
-    ecs::Res<graphics::TextureAssets> textures, ecs::Res<shader::ShaderHandles> handles,
-    ecs::ResAppend<graphics::SpriteQueue> queue,
-    ecs::Query<const transform::GlobalTransform2D, const SpriteRenderer, ecs::Optional<const shader::MaterialInstance>>
-        sprites) {
+void drawEntities(ecs::Res<graphics::TextureAssets> textures, ecs::Res<shader::ShaderHandles> handles,
+                  ecs::ResAppend<graphics::SpriteQueue> queue,
+                  ecs::Query<const transform::GlobalTransform2D, const SpriteRenderer,
+                             ecs::Optional<const shader::MaterialInstance>, ecs::Enabled>
+                      sprites) {
     for (auto [entity, global, sprite, instance] : sprites) {
         const std::optional<contract::renderer::TextureId> texture = textures->getTexture(sprite.texture);
         if (!texture) {

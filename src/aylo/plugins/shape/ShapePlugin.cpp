@@ -22,6 +22,7 @@
 #include "aylo/contract/renderer/drawing/Shape.hpp"
 #include "aylo/ecs/app/App.hpp"
 #include "aylo/ecs/query/Query.hpp"
+#include "aylo/ecs/query/QueryTerms.hpp"
 #include "aylo/ecs/schedule/Phase.hpp"
 #include "aylo/ecs/system/ResourceParam.hpp"
 #include "aylo/ecs/system/Side.hpp"
@@ -57,7 +58,7 @@ contract::renderer::Shape shapeOf(const transform::GlobalTransform2D& global, co
 
 /// @brief Render, client: draws the entities with a GlobalTransform2D and a ShapeRenderer, by layer, over the sprites.
 void drawShapes(ecs::NonSendMut<plugins::graphics::Backend> backend,
-                ecs::Query<const transform::GlobalTransform2D, const ShapeRenderer> shapes) {
+                ecs::Query<const transform::GlobalTransform2D, const ShapeRenderer, ecs::Enabled> shapes) {
     if (backend->renderer == nullptr) {
         return;
     }

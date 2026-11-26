@@ -138,7 +138,7 @@ TEST(ReplicationPlugin, GivesEachComponentItsPresenceAndReplication) {
     EXPECT_EQ(input->type.presence, Presence::kBoth);
     EXPECT_EQ(input->type.replication, ReplicationMode::kNone);
 
-    EXPECT_EQ(replicatedNames(app), (std::vector<std::string_view>{"net.Owner", "aylo.Parent"}));
+    EXPECT_EQ(replicatedNames(app), (std::vector<std::string_view>{"net.Owner", "aylo.Parent", "aylo.Disabled"}));
 }
 
 TEST(ReplicationPlugin, ReplicatesParentButNotChildren) {

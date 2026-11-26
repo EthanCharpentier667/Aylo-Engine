@@ -26,6 +26,7 @@
 #include "aylo/ecs/command/Commands.hpp"
 #include "aylo/ecs/component/Components.hpp"
 #include "aylo/ecs/exceptions/StateException.hpp"
+#include "aylo/ecs/hierarchy/Disabled.hpp"
 #include "aylo/ecs/query/Query.hpp"
 #include "aylo/ecs/resource/ResourceTraits.hpp"
 #include "aylo/ecs/resource/Resources.hpp"
@@ -96,7 +97,11 @@ network::NetworkSettings makeNetworkSettings() {
 /// @brief Game (server): spawns a ship for each client that joins.
 void spawnShips(EventReader<ClientConnected> joined, Commands& commands) {
     for (const ClientConnected& event : joined) {
-        commands.spawn().add(Owner{.client = event.client}).add(PlayerInput{}).add(Position{.x = 1.F, .y = 2.F});
+        commands.spawn()
+            .add(Owner{.client = event.client})
+            .add(PlayerInput{})
+            .add(Position{.x = 1.F, .y = 2.F})
+            .add(aylo::ecs::Disabled{});  // a replicated tag: only its presence travels
     }
 }
 
@@ -257,6 +262,7 @@ TEST(ClientPlugin, MirrorsTheServersEntitiesAfterThePreUpdatePhase) {
     ASSERT_TRUE(runUntil(server, client, [&] { return world.getComponents().get<Position>(*player)->x > 3.F; }));
     EXPECT_EQ(world.getComponents().get<NetworkId>(*player)->value, 1U);
     EXPECT_EQ(client.state().find(1), *player);
+    EXPECT_TRUE(world.getComponents().has(*player, *world.getComponents().find("aylo.Disabled")));
 }
 
 TEST(ClientPlugin, GivesScriptsTheClientsIdOnceConnected) {

@@ -9,6 +9,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <span>
 #include <vector>
 
@@ -35,8 +36,8 @@ class AYLO_ECS_API DynamicQuery {
     static constexpr std::uint32_t kNoPosition = detail::kNoPosition;
 
     /// @brief Checks the terms and builds the query.
-    /// @details Rejected: an id not registered in `components`, no required term (read, write, with, added or
-    /// changed: a query of optional terms only would match every entity), a component in two data terms (read,
+    /// @details Rejected: an id not registered in `components`, no required term (read, write, with, added, changed
+    /// or removed: a query of optional terms only would match every entity), a component in two data terms (read,
     /// write and their optional forms), a component both excluded (without) and used by another term, and the same
     /// term twice. A data term may be combined with with, added or changed on the same component.
     /// @param components The components of the world the query iterates; they must outlive the query.
@@ -60,7 +61,7 @@ class AYLO_ECS_API DynamicQuery {
     [[nodiscard]] std::span<const std::size_t> getDataTerms() const noexcept;
 
     /// @return Each component whose values the query reads or writes, once (written wins over read). With and
-    /// without access no value; added and changed read the ticks, so they count as reads.
+    /// without access no value; added, changed and removed read the ticks or the removals, so they count as reads.
     [[nodiscard]] std::span<const ComponentAccess> getAccess() const noexcept;
 
     /// @brief Starts a pass over the world's matching entities.
@@ -74,6 +75,14 @@ class AYLO_ECS_API DynamicQuery {
     /// @endcode
     [[nodiscard]] QueryIteration iter(Tick lastRun) const;
 
+    /// @brief Tells the removal logs of the removed terms that the query has seen everything up to `lastRun`: they may
+    /// drop it. iter() does it; a typed Query calls it for its own passes.
+    void markSeen(Tick lastRun) const noexcept;
+
+    /// @return The pool of Parent when the query has an enabled term and the world has a hierarchy, else null: an
+    /// enabled term looks for Disabled on the ancestors too.
+    [[nodiscard]] const storage::SparseSetStorage* findParents() const noexcept;
+
     /// @brief Looks up the pool of every term, in term order. Pools are looked up at each pass, not kept: the world's
     /// pool list may have grown (and moved) since the query was built.
     /// @param pools One slot per term.
@@ -86,5 +95,7 @@ class AYLO_ECS_API DynamicQuery {
     std::vector<QueryTerm> _terms;         ///< Every term, in the order given.
     std::vector<std::size_t> _dataTerms;   ///< Index in _terms of each data term, in order.
     std::vector<ComponentAccess> _access;  ///< One entry per accessed component.
+    /// What the query has seen of each removed term's removals; a copy of the query shares them.
+    std::vector<std::shared_ptr<Tick>> _removalReaders;
 };
 }  // namespace aylo::ecs

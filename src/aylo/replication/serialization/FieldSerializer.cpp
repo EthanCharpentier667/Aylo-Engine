@@ -273,7 +273,7 @@ bool readList(network::bytes::ByteReader& reader, const ecs::FieldInfo& field, s
 
 bool isSerializable(const ecs::TypeInfo& info) noexcept {
     if (info.fields.empty()) {
-        return false;
+        return info.size == 0;  // a tag: its presence is all there is to send
     }
     const bool plain = info.hooks.destruct == nullptr && info.hooks.move == nullptr && info.hooks.copy == nullptr;
     const bool hasList = std::ranges::any_of(info.fields, &isList);

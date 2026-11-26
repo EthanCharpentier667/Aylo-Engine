@@ -25,6 +25,12 @@ struct ComponentOptions {
     ReplicationMode replication{ReplicationMode::kNone};  ///< How the server sends it.
 };
 
+/// @brief The options a C++ component is registered with when none are given (Components::registerType()). An
+/// engine component that must be registered alike on every side, whoever registers it first (Parent, Disabled),
+/// specializes it next to its declaration.
+template <typename T>
+inline constexpr ComponentOptions kDefaultComponentOptions{};
+
 /// @brief Compares what only components have when a component name is registered again: the storage.
 /// @return Nothing when it matches, or an ErrorKind::kOptionsMismatch error naming both values.
 [[nodiscard]] AYLO_ECS_API Result<void> checkSameStorage(const ComponentInfo& registered,

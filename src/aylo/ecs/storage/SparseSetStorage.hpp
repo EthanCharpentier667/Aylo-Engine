@@ -20,6 +20,7 @@
 #include "aylo/ecs/entity/Entity.hpp"
 #include "aylo/ecs/storage/ByteColumn.hpp"
 #include "aylo/ecs/storage/PagedSparseArray.hpp"
+#include "aylo/ecs/storage/RemovalLog.hpp"
 
 namespace aylo::ecs::storage {
 /// @brief The pool of one component: every value of that component, packed, with the entity it belongs to.
@@ -133,6 +134,11 @@ class AYLO_ECS_API SparseSetStorage {
     /// @brief Grows every dense array so the pool holds at least `capacity` values without growing again.
     void reserve(std::size_t capacity);
 
+    /// @return The entities that lost the component, for the queries with a `removed` term. The pool does not fill
+    /// it: Components records each removal and despawn, with the world's tick.
+    [[nodiscard]] RemovalLog& getRemovalLog() noexcept;
+    [[nodiscard]] const RemovalLog& getRemovalLog() const noexcept;
+
   private:
     /// @brief Records the value just appended to the column for `entity`: dense entity, ticks and sparse entry.
     /// @details If that throws, the appended value is removed again, so the pool is unchanged.
@@ -144,5 +150,6 @@ class AYLO_ECS_API SparseSetStorage {
     ByteColumn _data;            ///< Values, in the order of `_dense`; only counted for a tag.
     std::vector<Tick> _added;    ///< When each value was added.
     std::vector<Tick> _changed;  ///< When each value was last written.
+    RemovalLog _removals;        ///< The entities that lost the component, while a query watches them.
 };
 }  // namespace aylo::ecs::storage

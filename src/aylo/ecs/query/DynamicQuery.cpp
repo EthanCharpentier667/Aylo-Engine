@@ -11,6 +11,7 @@
 #include <cstddef>
 #include <format>
 #include <iterator>
+#include <memory>
 #include <span>
 #include <string_view>
 #include <tl/expected.hpp>
@@ -22,9 +23,12 @@
 #include "aylo/ecs/component/Components.hpp"
 #include "aylo/ecs/error/Error.hpp"
 #include "aylo/ecs/error/Result.hpp"
+#include "aylo/ecs/hierarchy/Disabled.hpp"
+#include "aylo/ecs/hierarchy/Parent.hpp"
 #include "aylo/ecs/query/QueryIteration.hpp"
 #include "aylo/ecs/query/QueryTerm.hpp"
 #include "aylo/ecs/storage/SparseSetStorage.hpp"
+#include "aylo/ecs/type/TypeTraits.hpp"
 
 namespace aylo::ecs {
 namespace {
@@ -56,10 +60,15 @@ namespace {
             return fail(ErrorKind::kInvalidQuery,
                         std::format("Query: component id {} is not registered in this world", term.id));
         }
+        if (term.kind == TermKind::kEnabled && nameOf(components, term.id) != TypeTraits<Disabled>::kName) {
+            return fail(ErrorKind::kInvalidQuery,
+                        std::format("Query: enabled() takes the id of '{}', not of '{}'", TypeTraits<Disabled>::kName,
+                                    nameOf(components, term.id)));
+        }
     }
-    if (std::ranges::none_of(terms, [](const QueryTerm& term) { return isRequiredTerm(term.kind); })) {
+    if (std::ranges::none_of(terms, [](const QueryTerm& term) { return isDriverTerm(term.kind); })) {
         return fail(ErrorKind::kInvalidQuery,
-                    "Query: it needs at least one required term (read, write, with, added or changed)");
+                    "Query: it needs at least one required term (read, write, with, added, changed or removed)");
     }
     for (auto first = terms.begin(); first != terms.end(); ++first) {
         for (auto second = std::next(first); second != terms.end(); ++second) {
@@ -90,7 +99,11 @@ DynamicQuery::DynamicQuery(Components& components, std::vector<QueryTerm> terms)
             _dataTerms.push_back(index);
         }
         ++index;
-        if (!isDataTerm(term.kind) && term.kind != TermKind::kAdded && term.kind != TermKind::kChanged) {
+        if (term.kind == TermKind::kRemoved) {
+            _removalReaders.push_back(components.findPool(term.id)->getRemovalLog().watch(components.getChangeTick()));
+        }
+        if (!isDataTerm(term.kind) && term.kind != TermKind::kAdded && term.kind != TermKind::kChanged &&
+            term.kind != TermKind::kRemoved && term.kind != TermKind::kEnabled) {
             continue;  // with and without access no value
         }
         const bool write = isWriteTerm(term.kind);
@@ -112,7 +125,21 @@ std::span<const std::size_t> DynamicQuery::getDataTerms() const noexcept { retur
 std::span<const ComponentAccess> DynamicQuery::getAccess() const noexcept { return _access; }
 
 QueryIteration DynamicQuery::iter(Tick lastRun) const {
+    markSeen(lastRun);
     return QueryIteration{*this, lastRun, _components->getChangeTick()};
+}
+
+void DynamicQuery::markSeen(const Tick lastRun) const noexcept {
+    for (const std::shared_ptr<Tick>& reader : _removalReaders) {
+        *reader = lastRun;
+    }
+}
+
+const storage::SparseSetStorage* DynamicQuery::findParents() const noexcept {
+    const bool needed =
+        std::ranges::any_of(_terms, [](const QueryTerm& term) { return term.kind == TermKind::kEnabled; });
+    const ComponentInfo* parent = needed ? _components->getRegistry().find<Parent>() : nullptr;
+    return parent != nullptr ? _components->findPool(parent->type.id) : nullptr;
 }
 
 void DynamicQuery::resolvePools(std::span<storage::SparseSetStorage*> pools) const noexcept {

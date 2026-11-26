@@ -48,6 +48,7 @@ constexpr std::array kTerms{
     TermName{.name = "without", .kind = ecs::TermKind::kWithout},
     TermName{.name = "added", .kind = ecs::TermKind::kAdded},
     TermName{.name = "changed", .kind = ecs::TermKind::kChanged},
+    TermName{.name = "removed", .kind = ecs::TermKind::kRemoved},
 };
 
 constexpr std::array kPhases{
@@ -230,6 +231,25 @@ template <typename Use>
     return resources;
 }
 
+/// @brief The components of `components = { read = {...}, write = {...} }`; a name in both lists is written.
+[[nodiscard]] Result<std::vector<ComponentDeclaration>> readComponents(const Source& source, const luau::Value& value) {
+    constexpr std::array<std::string_view, 2> kKeys{"read", "write"};
+    std::vector<ComponentDeclaration> components;
+    auto read =
+        readUses(source, value, "components", kKeys, [&components](const std::string_view key, std::string name) {
+            const auto found = std::ranges::find(components, name, &ComponentDeclaration::name);
+            if (found == components.end()) {
+                components.push_back({.name = std::move(name), .write = key == "write"});
+            } else {
+                found->write = found->write || key == "write";
+            }
+        });
+    if (!read) {
+        return tl::unexpected{std::move(read.error())};
+    }
+    return components;
+}
+
 /// @brief The events of `events = { read = {...}, send = {...} }`; a name in both lists is read and sent.
 [[nodiscard]] Result<std::vector<EventDeclaration>> readEvents(const Source& source, const luau::Value& value) {
     constexpr std::array<std::string_view, 2> kKeys{"read", "send"};
@@ -255,6 +275,7 @@ struct Options {
     std::optional<std::vector<TermDeclaration>> terms;
     std::optional<luau::FunctionRef> run;
     std::vector<ResourceDeclaration> resources;
+    std::vector<ComponentDeclaration> components;
     std::vector<EventDeclaration> events;
     std::vector<std::string> after;
     std::vector<std::string> before;
@@ -326,6 +347,32 @@ struct Options {
     return option == "calls" ? &options.calls : nullptr;
 }
 
+/// @brief Reads `resources`, `components` or `events` into `options`.
+[[nodiscard]] Result<void> readUseOption(const std::string_view system, const std::string_view option,
+                                         const luau::Value& value, Options& options) {
+    const Source source{.system = system};
+    if (option == "resources") {
+        auto resources = readResources(source, value);
+        if (!resources) {
+            return tl::unexpected{std::move(resources.error())};
+        }
+        options.resources = std::move(*resources);
+    } else if (option == "components") {
+        auto components = readComponents(source, value);
+        if (!components) {
+            return tl::unexpected{std::move(components.error())};
+        }
+        options.components = std::move(*components);
+    } else {
+        auto events = readEvents(source, value);
+        if (!events) {
+            return tl::unexpected{std::move(events.error())};
+        }
+        options.events = std::move(*events);
+    }
+    return {};
+}
+
 /// @brief Reads one option of the declaration table into `options`.
 [[nodiscard]] Result<void> readOption(const std::string_view system, const std::string& option,
                                       const luau::Value& value, Options& options) {
@@ -347,18 +394,8 @@ struct Options {
             return tl::unexpected{std::move(terms.error())};
         }
         options.terms = std::move(*terms);
-    } else if (option == "resources") {
-        auto resources = readResources({.system = system}, value);
-        if (!resources) {
-            return tl::unexpected{std::move(resources.error())};
-        }
-        options.resources = std::move(*resources);
-    } else if (option == "events") {
-        auto events = readEvents({.system = system}, value);
-        if (!events) {
-            return tl::unexpected{std::move(events.error())};
-        }
-        options.events = std::move(*events);
+    } else if (option == "resources" || option == "components" || option == "events") {
+        return readUseOption(system, option, value, options);
     } else if (auto* const list = nameListOf(option, options); list != nullptr) {
         auto names = readNames(system, value, option);
         if (!names) {
@@ -374,10 +411,11 @@ struct Options {
         }
         options.run = *function;
     } else {
-        return invalid(system,
-                       std::format("unknown option '{}' (expected 'phase', 'side', 'query', 'resources', "
-                                   "'events', 'calls', 'after', 'before', 'inState', 'onEnter', 'onExit' or 'run')",
-                                   option));
+        return invalid(
+            system,
+            std::format("unknown option '{}' (expected 'phase', 'side', 'query', 'resources', "
+                        "'components', 'events', 'calls', 'after', 'before', 'inState', 'onEnter', 'onExit' or 'run')",
+                        option));
     }
     return {};
 }
@@ -414,6 +452,7 @@ Result<SystemDeclaration> readSystemDeclaration(std::string name, const luau::Ta
         .side = options.side,
         .terms = std::move(options.terms).value_or(std::vector<TermDeclaration>{}),  // no query: visits no entity
         .resources = std::move(options.resources),
+        .components = std::move(options.components),
         .events = std::move(options.events),
         .calls = std::move(options.calls),
         .after = std::move(options.after),

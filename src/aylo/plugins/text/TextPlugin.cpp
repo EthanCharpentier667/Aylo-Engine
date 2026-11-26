@@ -56,11 +56,11 @@ void queueFontTextures(ecs::ResMut<FontAssets> fonts, ecs::ResAppend<graphics::T
 
 /// @brief Render, client: lays out the texts and pushes them to the SpriteQueue. A text whose material is created is
 /// drawn with it, and with its MaterialInstance's values or else its shader's defaults.
-void drawTexts(
-    ecs::Res<FontAssets> fonts, ecs::Res<graphics::TextureAssets> textures, ecs::Res<shader::ShaderHandles> handles,
-    ecs::ResAppend<graphics::SpriteQueue> queue,
-    ecs::Query<const transform::GlobalTransform2D, const TextRenderer, ecs::Optional<const shader::MaterialInstance>>
-        texts) {
+void drawTexts(ecs::Res<FontAssets> fonts, ecs::Res<graphics::TextureAssets> textures,
+               ecs::Res<shader::ShaderHandles> handles, ecs::ResAppend<graphics::SpriteQueue> queue,
+               ecs::Query<const transform::GlobalTransform2D, const TextRenderer,
+                          ecs::Optional<const shader::MaterialInstance>, ecs::Enabled>
+                   texts) {
     for (auto [entity, global, drawn, instance] : texts) {
         const Font* font = fonts->get(drawn.font);
         if (font == nullptr || drawn.text.empty()) {

@@ -14,6 +14,7 @@
 #include "aylo/ecs/change/Tick.hpp"
 #include "aylo/ecs/query/DynamicQuery.hpp"
 #include "aylo/ecs/query/QueryMatch.hpp"
+#include "aylo/ecs/query/QueryMatcher.hpp"
 #include "aylo/ecs/storage/SparseSetStorage.hpp"
 
 namespace aylo::ecs {
@@ -46,7 +47,8 @@ bool QueryIteration::Iterator::operator==(std::default_sentinel_t /*sentinel*/) 
 
 QueryIteration::QueryIteration(const DynamicQuery& query, Tick lastRun, Tick thisRun)
     : _cursor{query.getTerms(), resolvePools(query),
-              std::vector<std::uint32_t>(query.getTerms().size(), DynamicQuery::kNoPosition), lastRun, thisRun},
+              std::vector<std::uint32_t>(query.getTerms().size(), DynamicQuery::kNoPosition),
+              detail::MatchContext{.lastRun = lastRun, .thisRun = thisRun, .parents = query.findParents()}},
       _match{query, _cursor.getPools(), _cursor.getPositions(), thisRun} {}
 
 QueryIteration::Iterator QueryIteration::begin() noexcept { return Iterator{*this}; }

@@ -19,6 +19,7 @@
 #include "aylo/ecs/component/ComponentTraits.hpp"
 #include "aylo/ecs/component/Components.hpp"
 #include "aylo/ecs/entity/Entity.hpp"
+#include "aylo/ecs/hierarchy/Disabled.hpp"
 #include "aylo/ecs/system/Side.hpp"
 #include "aylo/ecs/type/String.hpp"
 #include "aylo/ecs/world/World.hpp"
@@ -359,4 +360,14 @@ test.text.Guard = { stance = "sleep" })");
         message.find(R"(field 'stance' of 'test.text.Guard' takes one of "idle", "guard", "charge", not "sleep")"),
         std::string::npos)
         << message;
+}
+
+TEST_F(CapsuleTextTest, KeepsASwitchedOffNode) {
+    static_cast<void>(world.getComponents().registerType<aylo::ecs::Disabled>());
+    const capsule::Capsule first = read(R"([node path="."]
+[node path="Light"]
+aylo.Disabled = {})");
+    EXPECT_TRUE(first.getNodes()[1].values.has(*world.getComponents().find("aylo.Disabled")));
+    EXPECT_NE(format::writeCapsule(first, world.getComponents(), capsules).find("aylo.Disabled = {}"),
+              std::string::npos);
 }

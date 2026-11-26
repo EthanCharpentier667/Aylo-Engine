@@ -30,6 +30,12 @@ struct ResourceDeclaration {
     bool write{false};  ///< Whether the system may write it (`resources.write`), false when it only reads it.
 };
 
+/// @brief A component a script system reads or writes on any entity (`ctx:get`), named as the script wrote it.
+struct ComponentDeclaration {
+    std::string name;   ///< Name of the component, "game.Health".
+    bool write{false};  ///< Whether the system may write it (`components.write`), false when it only reads it.
+};
+
 /// @brief An event type a script system uses, named as the script wrote it.
 struct EventDeclaration {
     std::string name;  ///< Name of the event, "aylo.Collision".
@@ -57,12 +63,13 @@ struct SystemDeclaration {
     std::optional<ecs::Side> side;               ///< Where it runs; empty for the ECS default (the server).
     std::vector<TermDeclaration> terms;          ///< Terms of its query, in the fixed order of readSystemDeclaration().
     std::vector<ResourceDeclaration> resources;  ///< Resources it uses, one entry per name.
-    std::vector<EventDeclaration> events;        ///< Event types it uses, one entry per name.
-    std::vector<std::string> calls;              ///< Engine calls `ctx.call` may make, in the order written.
-    std::vector<std::string> after;              ///< Names of the systems it runs after.
-    std::vector<std::string> before;             ///< Names of the systems it runs before.
-    luau::FunctionRef run;                       ///< The `run` function of the declaration.
-    std::optional<StateDeclaration> state;       ///< The machine and value of its state condition, if any.
+    std::vector<ComponentDeclaration> components;  ///< Components it uses on any entity, one entry per name.
+    std::vector<EventDeclaration> events;          ///< Event types it uses, one entry per name.
+    std::vector<std::string> calls;                ///< Engine calls `ctx.call` may make, in the order written.
+    std::vector<std::string> after;                ///< Names of the systems it runs after.
+    std::vector<std::string> before;               ///< Names of the systems it runs before.
+    luau::FunctionRef run;                         ///< The `run` function of the declaration.
+    std::optional<StateDeclaration> state;         ///< The machine and value of its state condition, if any.
     StateTrigger trigger{StateTrigger::kInState};  ///< What `state` means; StateTransition for onEnter and onExit.
 };
 }  // namespace aylo::scripting::system

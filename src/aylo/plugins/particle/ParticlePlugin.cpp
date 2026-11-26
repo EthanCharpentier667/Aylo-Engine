@@ -211,8 +211,10 @@ void updateEmitter(UpdateContext& context, ecs::Entity entity, const transform::
 void updateEmitters(
     ecs::NonSendMut<plugins::graphics::Backend> backend, ecs::Res<ParticleEffectAssets> effects,
     ecs::ResMut<ParticleSystems> systems, ecs::Res<ecs::Time> time,
-    ecs::Query<const transform::GlobalTransform2D, const ParticleEmitter, ecs::Without<ParticleOneShot>> emitters,
-    ecs::Query<const transform::GlobalTransform2D, const ParticleEmitter, ecs::With<ParticleOneShot>> oneShots,
+    ecs::Query<const transform::GlobalTransform2D, const ParticleEmitter, ecs::Without<ParticleOneShot>, ecs::Enabled>
+        emitters,
+    ecs::Query<const transform::GlobalTransform2D, const ParticleEmitter, ecs::With<ParticleOneShot>, ecs::Enabled>
+        oneShots,
     ecs::EventWriter<ParticlesFinished> finished, ecs::Commands& commands) {
     UpdateContext context{.renderer = getRenderer(*backend),
                           .effects = &*effects,
@@ -242,10 +244,11 @@ void updateEmitters(
 /// @brief Render, client: simulates the GPU systems and pushes every emitter to the SpriteQueue. An emitter whose
 /// material (its own, or else its effect's) is created is drawn with it, and with its MaterialInstance's values or
 /// else its shader's defaults.
-void drawEmitters(ecs::NonSendMut<plugins::graphics::Backend> backend, ecs::Res<ParticleEffectAssets> effects,
-                  ecs::Res<graphics::TextureAssets> textures, ecs::Res<shader::ShaderHandles> handles,
-                  ecs::ResMut<ParticleSystems> systems, ecs::ResAppend<graphics::SpriteQueue> queue,
-                  ecs::Query<const ParticleEmitter, ecs::Optional<const shader::MaterialInstance>> emitters) {
+void drawEmitters(
+    ecs::NonSendMut<plugins::graphics::Backend> backend, ecs::Res<ParticleEffectAssets> effects,
+    ecs::Res<graphics::TextureAssets> textures, ecs::Res<shader::ShaderHandles> handles,
+    ecs::ResMut<ParticleSystems> systems, ecs::ResAppend<graphics::SpriteQueue> queue,
+    ecs::Query<const ParticleEmitter, ecs::Optional<const shader::MaterialInstance>, ecs::Enabled> emitters) {
     contract::renderer::IRenderer* renderer = getRenderer(*backend);
     const bool framed = renderer != nullptr && backend->platform->getFramebufferSize().x != 0 &&
                         backend->platform->getFramebufferSize().y != 0;

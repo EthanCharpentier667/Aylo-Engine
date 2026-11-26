@@ -28,8 +28,10 @@
 #include "aylo/ecs/component/ComponentRegistry.hpp"
 #include "aylo/ecs/component/Components.hpp"
 #include "aylo/ecs/entity/Entity.hpp"
+#include "aylo/ecs/hierarchy/Disabled.hpp"
 #include "aylo/ecs/resource/Resources.hpp"
 #include "aylo/ecs/system/Side.hpp"
+#include "aylo/ecs/type/TypeTraits.hpp"
 #include "aylo/ecs/world/World.hpp"
 #include "editor/EditorState.hpp"
 #include "editor/gui/Text.hpp"
@@ -129,6 +131,22 @@ bool editNameAndSide(EditorState& state, capsule::Capsule& edited, std::uint32_t
     return changed;
 }
 
+/// @brief Shows the "Active" box of something that `Disabled` switches off: ticked while it does not have it.
+/// @param active Whether it is active now.
+/// @return The new state when the user clicked the box, or nothing.
+std::optional<bool> editActive(const bool active) {
+    bool ticked = active;
+    if (ImGui::Checkbox("Active", &ticked)) {
+        return ticked;
+    }
+    if (ImGui::IsItemHovered()) {
+        gui::tooltip(
+            "Unticked, it has aylo.Disabled: the drawing, physics, audio and script systems skip it and its "
+            "children");
+    }
+    return std::nullopt;
+}
+
 /// @brief Shows the components of node @p index of @p edited, changed and removed in place.
 /// @return Whether the user changed them.
 bool editNodeComponents(const EditorState& state, capsule::Capsule& edited, std::uint32_t index) {
@@ -185,6 +203,17 @@ void drawNode(EditorState& state, capsule::CapsuleId id, std::uint32_t index) {
     if (const capsule::CapsuleNode& node = edited.editNode(index); node.instance) {
         line(std::format("Instance of {}", node.instance->path));
     }
+    if (const auto disabled = components.find(ecs::TypeTraits<ecs::Disabled>::kName)) {
+        capsule::ComponentValues& values = edited.editNode(index).values;
+        if (const auto active = editActive(!values.has(*disabled))) {
+            if (*active) {
+                static_cast<void>(values.remove(*disabled));
+            } else {
+                values.set(components, *disabled, {});
+            }
+            changed = true;
+        }
+    }
     ImGui::Separator();
     changed = editNodeComponents(state, edited, index) || changed;
     ImGui::Separator();
@@ -208,8 +237,17 @@ void drawEntity(EditorState& state) {
     const ecs::Entity entity = state.selected;
     line(std::format("Entity #{} (generation {})", entity.getIndex(), entity.getGeneration()));
     gui::textDisabled("Changes while playing are lost at Stop.");
-    ImGui::Separator();
     ecs::Components& components = world.getComponents();
+    if (const auto disabled = components.find(ecs::TypeTraits<ecs::Disabled>::kName)) {
+        if (const auto active = editActive(!components.has(entity, *disabled))) {
+            if (*active) {
+                static_cast<void>(components.remove(entity, *disabled));
+            } else {
+                static_cast<void>(components.add(entity, *disabled, {}));
+            }
+        }
+    }
+    ImGui::Separator();
     const std::size_t count = components.getRegistry().getCount();
     std::optional<ecs::ComponentId> removed;
     for (std::size_t index = 0; index < count; ++index) {

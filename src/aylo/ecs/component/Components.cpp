@@ -106,7 +106,11 @@ std::span<std::byte> Components::getMut(Entity entity, ComponentId id) noexcept 
 
 bool Components::remove(Entity entity, ComponentId id) noexcept {
     storage::SparseSetStorage* pool = findPool(id);
-    return pool != nullptr && pool->remove(entity);
+    if (pool == nullptr || !pool->remove(entity)) {
+        return false;
+    }
+    pool->getRemovalLog().record(entity, getChangeTick());
+    return true;
 }
 
 std::optional<ComponentTicks> Components::getTicks(Entity entity, ComponentId id) const noexcept {
@@ -132,8 +136,11 @@ const storage::SparseSetStorage* Components::findPool(ComponentId id) const noex
 
 void Components::removeAll(Entity entity) noexcept {
     // Every pool is checked: an O(1) lookup each. A per-entity list of its pools may replace the scan later.
+    const Tick tick = getChangeTick();
     for (storage::SparseSetStorage& pool : _pools) {
-        pool.remove(entity);
+        if (pool.remove(entity)) {
+            pool.getRemovalLog().record(entity, tick);
+        }
     }
 }
 
@@ -191,6 +198,7 @@ void Components::clampTicks(Tick now) noexcept {
         for (Tick& tick : pool.getChangedTicks()) {
             clampTick(tick, now);
         }
+        pool.getRemovalLog().clampTicks(now);
     }
 }
 

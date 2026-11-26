@@ -28,4 +28,13 @@ struct Added {};
 /// @brief Query filter: the entity's component was added or written since the query last ran.
 template <typename T>
 struct Changed {};
+
+/// @brief Query filter: the entity lost the component (removed, or despawned) since the query last ran. It yields
+/// nothing, and the entity may be dead.
+template <typename T>
+struct Removed {};
+
+/// @brief Query filter: neither the entity nor one of its ancestors is switched off with Disabled. The systems that
+/// draw, simulate or play an entity use it; a query without it sees disabled entities too.
+struct Enabled {};
 }  // namespace aylo::ecs

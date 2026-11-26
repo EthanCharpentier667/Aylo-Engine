@@ -12,6 +12,7 @@
 #include "aylo/ecs/change/Mut.hpp"
 #include "aylo/ecs/change/Tick.hpp"
 #include "aylo/ecs/component/ComponentTraits.hpp"
+#include "aylo/ecs/hierarchy/Disabled.hpp"
 #include "aylo/ecs/query/QueryTerm.hpp"
 #include "aylo/ecs/query/QueryTerms.hpp"
 #include "aylo/ecs/storage/SparseSetStorage.hpp"
@@ -21,7 +22,8 @@ namespace aylo::ecs {
 ///
 /// @details Only the specializations below exist: `T` (written, yields Mut<T>), `const T` (read, yields `const T&`),
 /// `Optional<T>` (yields a Mut<T> that may be empty), `Optional<const T>` (yields a `const T*` that may be null), and
-/// the filters `With<T>`, `Without<T>`, `Added<T>`, `Changed<T>` (yield nothing). `T` must be a Component.
+/// the filters `With<T>`, `Without<T>`, `Added<T>`, `Changed<T>`, `Removed<T>` and `Enabled` (yield nothing). `T` must
+/// be a Component.
 template <typename Term>
 struct TermTraits;
 
@@ -103,6 +105,14 @@ struct TermTraits<Added<T>> : detail::FilterTraits<T, TermKind::kAdded> {};
 /// @brief `Changed<T>`: required, added or written since the query last ran.
 template <Component T>
 struct TermTraits<Changed<T>> : detail::FilterTraits<T, TermKind::kChanged> {};
+
+/// @brief `Removed<T>`: lost since the query last ran; the entity may be dead or have it again.
+template <Component T>
+struct TermTraits<Removed<T>> : detail::FilterTraits<T, TermKind::kRemoved> {};
+
+/// @brief `Enabled`: neither the entity nor an ancestor has Disabled.
+template <>
+struct TermTraits<Enabled> : detail::FilterTraits<Disabled, TermKind::kEnabled> {};
 
 /// @brief A C++ type usable as a query term: a component, `const` component, Optional, With, Without, Added or
 /// Changed of a component.

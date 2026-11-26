@@ -33,6 +33,7 @@
 #include "aylo/ecs/event/Events.hpp"
 #include "aylo/ecs/exceptions/ScheduleException.hpp"
 #include "aylo/ecs/hierarchy/Children.hpp"
+#include "aylo/ecs/hierarchy/Disabled.hpp"
 #include "aylo/ecs/hierarchy/Parent.hpp"
 #include "aylo/ecs/query/QueryBuilder.hpp"
 #include "aylo/ecs/query/QueryTerm.hpp"
@@ -42,6 +43,7 @@
 #include "aylo/ecs/schedule/Schedules.hpp"
 #include "aylo/ecs/state/StateConditions.hpp"
 #include "aylo/ecs/state/States.hpp"
+#include "aylo/ecs/system/DynamicComponents.hpp"
 #include "aylo/ecs/system/DynamicEvents.hpp"
 #include "aylo/ecs/system/DynamicQueries.hpp"
 #include "aylo/ecs/system/DynamicResources.hpp"
@@ -86,6 +88,12 @@ void addTerm(ecs::QueryBuilder& builder, const ecs::TermKind kind, const ecs::Co
         case ecs::TermKind::kChanged:
             builder.changed(id);
             break;
+        case ecs::TermKind::kRemoved:
+            builder.removed(id);
+            break;
+        case ecs::TermKind::kEnabled:
+            builder.enabled(id);
+            break;
     }
 }
 
@@ -110,6 +118,13 @@ void addTerm(ecs::QueryBuilder& builder, const ecs::TermKind kind, const ecs::Co
                                     component));
         }
         addTerm(builder, kind, *id);
+    }
+    // A script query skips what is switched off, unless it names aylo.Disabled (to find, or turn back on, those).
+    const bool namesDisabled = std::ranges::any_of(declaration.terms, [](const TermDeclaration& term) {
+        return term.component == ecs::TypeTraits<ecs::Disabled>::kName;
+    });
+    if (!namesDisabled) {
+        builder.enabled(components.registerType<ecs::Disabled>());
     }
     if (const auto built = builder.build(components); !built) {
         return fail(ErrorKind::kInvalidDeclaration,
@@ -151,6 +166,28 @@ void addTerm(ecs::QueryBuilder& builder, const ecs::TermKind kind, const ecs::Co
         }
         made.first.push_back({.type = &info->type, .write = write});
         made.second.resources.push_back({.id = info->type.id, .write = write});
+    }
+    return made;
+}
+
+/// @return The components the system declared for `ctx:get`, checked against the world, with the access they ask of
+/// the scheduler.
+[[nodiscard]] Result<std::pair<std::vector<ComponentTerm>, ecs::ComponentList>> makeComponents(
+    const ecs::Components& components, const SystemDeclaration& declaration) {
+    std::pair<std::vector<ComponentTerm>, ecs::ComponentList> made;
+    for (const auto& [name, write] : declaration.components) {
+        const ecs::ComponentInfo* info = components.getRegistry().findByName(name);
+        if (info == nullptr) {
+            return fail(ErrorKind::kInvalidDeclaration,
+                        std::format("System '{}': unknown component '{}'", declaration.name, name));
+        }
+        if (write && (name == ecs::TypeTraits<ecs::Parent>::kName || name == ecs::TypeTraits<ecs::Children>::kName)) {
+            return fail(
+                ErrorKind::kInvalidDeclaration,
+                std::format("System '{}': '{}' cannot be written: use commands:setParent()", declaration.name, name));
+        }
+        made.first.push_back({.info = info, .write = write});
+        made.second.components.push_back({.id = info->type.id, .write = write});
     }
     return made;
 }
@@ -261,14 +298,16 @@ namespace {
 /// component, an event of the audio plugin, the server's net.applyInputs).
 [[nodiscard]] Result<BuiltSystem> makeStandIn(ecs::App& app, const SystemDeclaration& declaration) {
     const ecs::ScriptCallable never{[](const ecs::DynamicQueries /*queries*/, ecs::DynamicResources /*resources*/,
-                                       const ecs::DynamicEvents /*events*/, const ecs::DynamicCalls /*calls*/,
-                                       const ecs::Res<ecs::Time> /*time*/, ecs::Commands& /*commands*/) {}};
+                                       const ecs::DynamicComponents /*components*/, const ecs::DynamicEvents /*events*/,
+                                       const ecs::DynamicCalls /*calls*/, const ecs::Res<ecs::Time> /*time*/,
+                                       ecs::Commands& /*commands*/) {}};
     try {
         return BuiltSystem{
             .phase = declaration.phase,
             .side = declaration.side,
-            .spec = {.system = ecs::System{app.getWorld(), declaration.name, never, ecs::QueryList{},
-                                           ecs::ResourceList{}, ecs::EventList{}, ecs::CallList{}}},
+            .spec = {.system =
+                         ecs::System{app.getWorld(), declaration.name, never, ecs::QueryList{}, ecs::ResourceList{},
+                                     ecs::ComponentList{}, ecs::EventList{}, ecs::CallList{}}},
         };
     } catch (const ecs::exceptions::ScheduleException& error) {
         return fail(ErrorKind::kRegistration, error.what());
@@ -289,6 +328,10 @@ Result<BuiltSystem> makeSystem(ecs::App& app, SystemDeclaration declaration, std
     if (!resources) {
         return tl::unexpected{std::move(resources.error())};
     }
+    auto entityComponents = makeComponents(components, declaration);
+    if (!entityComponents) {
+        return tl::unexpected{std::move(entityComponents.error())};
+    }
     auto events = makeEvents(app.getWorld().getEvents(), declaration);
     if (!events) {
         return tl::unexpected{std::move(events.error())};
@@ -302,6 +345,7 @@ Result<BuiltSystem> makeSystem(ecs::App& app, SystemDeclaration declaration, std
         .run = std::move(declaration.run),
         .terms = makeDataTerms(components, declaration),
         .resources = std::move(resources->first),
+        .entityComponents = std::move(entityComponents->first),
         .events = std::move(events->first),
         .calls = std::move(calls->first),
         .clientSide = declaration.side == ecs::Side::kClient,
@@ -315,9 +359,10 @@ Result<BuiltSystem> makeSystem(ecs::App& app, SystemDeclaration declaration, std
     // is gone.
     ecs::ScriptCallable callable{
         [system = std::move(system)](const ecs::DynamicQueries queries, ecs::DynamicResources resources,
-                                     const ecs::DynamicEvents events, const ecs::DynamicCalls calls,
-                                     const ecs::Res<ecs::Time> time, ecs::Commands& commands) {
-            runScriptSystem(*system, queries, resources, events, calls, time.get(), commands);
+                                     const ecs::DynamicComponents components, const ecs::DynamicEvents events,
+                                     const ecs::DynamicCalls calls, const ecs::Res<ecs::Time> time,
+                                     ecs::Commands& commands) {
+            runScriptSystem(*system, queries, resources, components, events, calls, time.get(), commands);
         },
     };
     auto condition = makeStateCondition(app.getWorld(), declaration);
@@ -331,6 +376,7 @@ Result<BuiltSystem> makeSystem(ecs::App& app, SystemDeclaration declaration, std
                            std::move(callable),
                            ecs::QueryList{std::move(*query)},
                            std::move(resources->second),
+                           std::move(entityComponents->second),
                            std::move(events->second),
                            std::move(calls->second)};
         if (*condition) {

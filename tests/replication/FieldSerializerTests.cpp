@@ -422,7 +422,12 @@ TEST(FieldSerializer, PlainDataWithFieldsIsSerializable) {
     EXPECT_TRUE(isSerializable(owner));
 }
 
-TEST(FieldSerializer, ATypeWithoutFieldsIsNotSerializable) { EXPECT_FALSE(isSerializable(TypeInfo{})); }
+TEST(FieldSerializer, ATypeWithoutFieldsIsSerializableOnlyAsATag) {
+    EXPECT_TRUE(isSerializable(TypeInfo{}));  // a tag: nothing to write but its presence
+    TypeInfo opaque;
+    opaque.size = 4;
+    EXPECT_FALSE(isSerializable(opaque));
+}
 
 TEST(FieldSerializer, ATypeWithLifecycleHooksIsNotSerializable) {
     TypeInfo withDestruct = makeSmallInfo();

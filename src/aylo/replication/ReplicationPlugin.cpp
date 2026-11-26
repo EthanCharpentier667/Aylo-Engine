@@ -12,6 +12,7 @@
 #include "aylo/ecs/app/App.hpp"
 #include "aylo/ecs/component/Components.hpp"
 #include "aylo/ecs/event/Events.hpp"
+#include "aylo/ecs/hierarchy/Disabled.hpp"
 #include "aylo/ecs/hierarchy/Parent.hpp"
 #include "aylo/ecs/schedule/RunMode.hpp"
 #include "aylo/ecs/system/Side.hpp"
@@ -41,6 +42,8 @@ void ReplicationPlugin::build(ecs::App& app) {
     static_cast<void>(components.registerType<component::Owner>(
         {.presence = ecs::Presence::kBoth, .replication = ecs::ReplicationMode::kEveryChange}));
     static_cast<void>(components.registerType<ecs::Parent>(ecs::kParentOptions));
+    static_cast<void>(
+        components.registerType<ecs::Disabled>());  // replicated: a client hides what the server switched off
     static_cast<void>(components.registerType<component::PlayerInput>(
         {.presence = ecs::Presence::kBoth, .replication = ecs::ReplicationMode::kNone}));
 

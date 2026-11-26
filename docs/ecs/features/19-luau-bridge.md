@@ -119,6 +119,16 @@ system made from a [`ScriptCallable`](12-systems.md#script-callables): a lambda 
 whose `DynamicQueries` parameter declares the access to the scheduler. `shield` is a **view** over the component bytes, valid only
 during `run`; writing a field stamps the changed tick.
 
+`ctx:get(entity, name)` gives a view of a component of any other entity (`nil` when it is dead or lacks it) and
+`ctx:has(entity, name)` tests it, through a `DynamicComponents` parameter: the component is declared with
+`components = { read, write }`, or discovered at its first use, read, then written at the first write to a field of
+its view, which marks it changed (`system/EntityComponents.hpp`). `aylo.Parent` and `aylo.Children` stay read-only
+there, as in a query.
+`ctx:getParent(entity)` and `ctx:getChildren(entity)` walk the hierarchy through the same parameter: they read
+`aylo.Parent` and `aylo.Children` (discovered, read) with the typed `DynamicComponents::get<T>()`, and give an entity
+or `nil`, and a new list of entities (a copy, which outlives the run). Before the world registers the hierarchy (at the
+first parent), they give `nil` and an empty list.
+
 ### Engine calls
 
 What a plugin does through a C++ API rather than through plain data (load an atlas, bind an input action, play a
@@ -298,7 +308,7 @@ engine.ecs.system("game.Ships", {
 | Nothing throws into Luau | The type-erased API returns failures; the bridge raises a Luau error with an `ErrorKind` |
 | Component views are only valid during `run` | Same reason as handles |
 | Writes to read-only terms are refused | Keeps access sets truthful for the scheduler |
-| `client` systems may not write replicated or server-only components, in their query terms or through `ctx.commands` (checked when the side is set and when a command is recorded; `both` systems are not checked) | Replication would overwrite anything else |
+| `client` systems may not write replicated or server-only components, in their query terms, through `ctx:get` or through `ctx.commands` (checked when the side is set, at the first write of a `ctx:get` view and when a command is recorded; `both` systems are not checked) | Replication would overwrite anything else |
 | Hot reload re-registers a component only if its `layoutHash` is unchanged | Existing data keeps its meaning |
 
 ### Where scripts run

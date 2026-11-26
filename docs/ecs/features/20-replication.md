@@ -157,6 +157,9 @@ last one if it is missing).
 | Spawn (in a snapshot) | server → client | network id `u32`, capsule id `u16`, count `u8`, then count × (component id `u16`, fields…) |
 | Update (in a snapshot) | server → client | network id `u32`, component id `u16`, field mask, fields… |
 
+A replicated tag (no field, no byte, such as `Disabled`) has no fields to write: its component id is all a spawn or an
+update carries (`serialization::isSerializable()` accepts it).
+
 Component and capsule ids are the short numbers from the **manifest**. Fields are written by the
 reflection serializer, so Luau components need no network code.
 

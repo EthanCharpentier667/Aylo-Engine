@@ -43,6 +43,7 @@
 #include "aylo/ecs/app/AppExit.hpp"
 #include "aylo/ecs/event/Events.hpp"
 #include "aylo/ecs/query/Query.hpp"
+#include "aylo/ecs/query/QueryTerms.hpp"
 #include "aylo/ecs/resource/Resources.hpp"
 #include "aylo/ecs/schedule/Phase.hpp"
 #include "aylo/ecs/schedule/Schedule.hpp"
@@ -203,7 +204,7 @@ graphics::VisibleArea visibleAreaOf(const contract::renderer::View& view, glm::v
 /// one found wins a tie. Records what the frame shows in the VisibleArea resource.
 void applyCamera(ecs::NonSendMut<plugins::graphics::Backend> backend, ecs::ResMut<graphics::VisibleArea> visible,
                  ecs::ResMut<graphics::ViewInfo> info,
-                 ecs::Query<const transform::GlobalTransform2D, const graphics::Camera2D> cameras) {
+                 ecs::Query<const transform::GlobalTransform2D, const graphics::Camera2D, ecs::Enabled> cameras) {
     plugins::graphics::Backend& started = *backend;
     if (isStarted(started)) {
         // A scene drawn into a texture is seen as a window of its size: that is the framebuffer the game places things
@@ -276,7 +277,7 @@ bool draws3D(plugins::graphics::Backend& backend) {
 /// @brief Render: shows the 3D world from the Camera3D entity with the highest priority, at its GlobalTransform3D; the
 /// first one found wins a tie. Without one, the frame draws no 3D world.
 void applyCamera3D(ecs::NonSendMut<plugins::graphics::Backend> backend,
-                   ecs::Query<const transform::GlobalTransform3D, const graphics::Camera3D> cameras) {
+                   ecs::Query<const transform::GlobalTransform3D, const graphics::Camera3D, ecs::Enabled> cameras) {
     std::optional<contract::renderer::View3D> shown;
     std::int32_t shownPriority = 0;
     for (auto [entity, global, camera] : cameras) {
@@ -340,8 +341,8 @@ contract::renderer::Environment3D toEnvironment(const graphics::Environment3D& s
 /// the Environment3D with the highest priority, with its sky (its image once loaded). Nothing when no light and no
 /// environment exist, so a game without them costs nothing.
 void applyLights3D(ecs::NonSendMut<plugins::graphics::Backend> backend, ecs::Res<TextureAssets> textures,
-                   ecs::Query<const transform::GlobalTransform3D, const graphics::Light3D> lights,
-                   ecs::Query<const graphics::Environment3D> environments) {
+                   ecs::Query<const transform::GlobalTransform3D, const graphics::Light3D, ecs::Enabled> lights,
+                   ecs::Query<const graphics::Environment3D, ecs::Enabled> environments) {
     std::vector<contract::renderer::Light3D> given;
     for (auto [entity, global, light] : lights) {
         if (light.enabled) {
@@ -372,7 +373,7 @@ void applyLights3D(ecs::NonSendMut<plugins::graphics::Backend> backend, ecs::Res
 
 /// @brief Render: draws every Lines3D at its entity's GlobalTransform3D.
 void drawLines3D(ecs::NonSendMut<plugins::graphics::Backend> backend,
-                 ecs::Query<const transform::GlobalTransform3D, const graphics::Lines3D> sets) {
+                 ecs::Query<const transform::GlobalTransform3D, const graphics::Lines3D, ecs::Enabled> sets) {
     bool checked = false;
     for (auto [entity, global, lines] : sets) {
         if (!checked) {

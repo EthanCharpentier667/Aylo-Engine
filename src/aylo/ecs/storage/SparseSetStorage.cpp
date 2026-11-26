@@ -19,6 +19,7 @@
 #include "aylo/ecs/change/Tick.hpp"
 #include "aylo/ecs/component/ComponentInfo.hpp"
 #include "aylo/ecs/entity/Entity.hpp"
+#include "aylo/ecs/storage/RemovalLog.hpp"
 
 namespace aylo::ecs::storage {
 namespace {
@@ -167,4 +168,7 @@ void SparseSetStorage::track(Entity entity, Tick tick) {
         throw;
     }
 }
+RemovalLog& SparseSetStorage::getRemovalLog() noexcept { return _removals; }
+
+const RemovalLog& SparseSetStorage::getRemovalLog() const noexcept { return _removals; }
 }  // namespace aylo::ecs::storage

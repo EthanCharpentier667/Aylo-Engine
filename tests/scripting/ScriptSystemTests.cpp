@@ -73,12 +73,15 @@ TEST(ScriptSystem, IsListedUnderItsNameWithTheAccessOfItsTerms) {
     const auto* system = fixture.find(aylo::ecs::Phase::kFixedUpdate, "game.ShieldRegen");
     ASSERT_NE(system, nullptr);
     const auto access = system->getAccess().getComponents();
-    ASSERT_EQ(access.size(), 2U);
-    // Terms come out as read, write..., whatever the order of the keys.
+    ASSERT_EQ(access.size(), 3U);
+    // Terms come out as read, write..., whatever the order of the keys; then aylo.Disabled, read to skip what is
+    // switched off.
     EXPECT_EQ(access[0].id, fixture.id("game.Position"));
     EXPECT_FALSE(access[0].write);
     EXPECT_EQ(access[1].id, fixture.id("game.Shield"));
     EXPECT_TRUE(access[1].write);
+    EXPECT_EQ(access[2].id, fixture.id("aylo.Disabled"));
+    EXPECT_FALSE(access[2].write);
     EXPECT_EQ(fixture.find(aylo::ecs::Phase::kUpdate, "game.ShieldRegen"), nullptr);
 }
 

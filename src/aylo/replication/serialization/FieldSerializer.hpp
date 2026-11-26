@@ -29,7 +29,8 @@ namespace aylo::replication::serialization {
 /// can be copied, moved and destroyed as bytes (no destruct, move or copy hook).
 ///
 /// @details A construct hook is allowed: it only applies default member initializers, and readFields() writes every
-/// byte of the value anyway. The manifest refuses to replicate a type that is not serializable.
+/// byte of the value anyway. A tag (no field, no byte) is serializable: only its presence is sent. The manifest refuses
+/// to replicate a type that is not serializable.
 /// @param info The description of the type.
 /// @return True when writeFields() and readFields() can handle the type.
 [[nodiscard]] AYLO_REPLICATION_API bool isSerializable(const ecs::TypeInfo& info) noexcept;

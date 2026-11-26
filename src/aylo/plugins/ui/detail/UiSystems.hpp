@@ -37,7 +37,7 @@ void pickNodes(
     ecs::EventReader<contract::platform::event::MouseButtonPressed> presses,
     ecs::EventReader<contract::platform::event::MouseButtonReleased> releases,
     ecs::Query<const UiComputed, const UiNode, ecs::Optional<const ecs::Parent>, ecs::Optional<const UiBackground>,
-               ecs::Optional<const UiImage>, ecs::Optional<const UiInteraction>>
+               ecs::Optional<const UiImage>, ecs::Optional<const UiInteraction>, ecs::Enabled>
         nodes);
 
 /// @brief PreUpdate, client: moves the focus with a click, Tab, the arrows or the directional pad, and activates it.
@@ -85,7 +85,7 @@ void drawUi(ecs::ResAppend<graphics::OverlayQueue> overlay, ecs::Res<text::FontA
             ecs::Res<graphics::TextureAssets> textures,
             ecs::Query<const UiComputed, ecs::Optional<const UiBackground>, ecs::Optional<const UiImage>,
                        ecs::Optional<const UiText>, ecs::Optional<const UiToggle>, ecs::Optional<const UiSlider>,
-                       ecs::Optional<const UiTextInput>, ecs::Optional<const UiInteraction>>
+                       ecs::Optional<const UiTextInput>, ecs::Optional<const UiInteraction>, ecs::Enabled>
                 nodes);
 
 }  // namespace aylo::plugins::ui::detail

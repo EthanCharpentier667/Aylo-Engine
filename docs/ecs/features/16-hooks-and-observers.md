@@ -74,6 +74,9 @@ void checkNewSprites(aylo::ecs::Query<const SpriteRenderer, aylo::ecs::Added<Spr
 }
 ```
 
+"When an enemy dies, drop loot" is the same with `Removed<Enemy>`, which visits the entities that lost the
+component or were despawned since the system last ran (see [Change detection](08-change-detection.md#removals)).
+
 The reaction happens at a known point of the frame, in a known order with other systems, and is visible
 in the schedule. An observer would run in the middle of whatever triggered it.
 

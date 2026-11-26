@@ -25,4 +25,8 @@ AYLO_ECS_COMPONENT(Parent, "aylo.Parent", entity);
 /// needs the hierarchy to place what the server sends.
 inline constexpr ComponentOptions kParentOptions{.presence = Presence::kBoth,
                                                  .replication = ReplicationMode::kEveryChange};
+
+/// @brief Parent is registered with kParentOptions when no options are given.
+template <>
+inline constexpr ComponentOptions kDefaultComponentOptions<Parent> = kParentOptions;
 }  // namespace aylo::ecs

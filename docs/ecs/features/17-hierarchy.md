@@ -101,6 +101,24 @@ since every spawn of a snapshot comes first. A parent the client does not know y
 snapshot sends `Parent` again: complete snapshots do, and delta snapshots will have to (NET-20). A replicated child of
 an entity that is not replicated stays a root on the client, its relative `Transform` read as a world position.
 
+### Switching a subtree off
+
+`Disabled` (`aylo.Disabled`, a tag in `hierarchy/Disabled.hpp`) switches an entity and its descendants off without
+despawning them. The `Enabled` filter (`TermKind::kEnabled`, `QueryBuilder::enabled()`) skips an entity when it or an
+ancestor has the tag: `detail::isSwitchedOff()` walks `Parent` up from the entity, at match time.
+
+- **Computed at match time, not propagated.** No marker component is kept on the descendants, so there is no system to
+  run before the others and no frame where a child is still on: adding the tag takes effect at the next pass. The
+  cost is free while no entity is disabled (the pool of `Disabled` is empty, checked first), and one lookup per level
+  of the tree otherwise.
+- **Opt in, in C++.** A query without `Enabled` sees everything, so replication, capsules, transforms and the editor
+  keep working on switched-off entities. The systems that draw (sprites, meshes, text, shapes, tilemaps, particles, UI,
+  cameras, lights, 3D lines), the physics bodies and the audio sources carry `Enabled`. The physics body pass destroys
+  the body of an entity it does not visit, and creates it again when it is back; an audio voice stops the same way.
+- **Implicit, in scripts.** A script query gets an enabled term unless one of its terms names `aylo.Disabled`.
+- **Registered alike everywhere.** `kDefaultComponentOptions<Disabled>` (replicated, both sides), like `Parent`'s: whoever
+  registers it first gives the same options. The replication plugin and the script host register it.
+
 ### From scripts
 
 `ctx.commands:setParent(child, parent)` and `removeParent(child)` change a hierarchy. A system reads it with

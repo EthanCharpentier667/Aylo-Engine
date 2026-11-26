@@ -57,11 +57,11 @@ class AYLO_ECS_API Components {
 
     /// @brief Registers a C++ component, or returns its id if it is already registered with the same options.
     /// @details Call it before the component is first added to set non-default options: adding registers the
-    /// component with the default ones.
+    /// component with the default ones, kDefaultComponentOptions<T>.
     /// @throws exceptions::ComponentRegistrationException When the name is taken by another layout, other
     /// options, a resource or an event.
     template <Component T>
-    ComponentId registerType(ComponentOptions options = {});
+    ComponentId registerType(ComponentOptions options = kDefaultComponentOptions<T>);
 
     /// @brief Registers a component described at run time (a Luau component), and creates its pool.
     /// @return Its id (the existing one if the same description was registered before), or why it was refused.

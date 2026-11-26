@@ -48,6 +48,7 @@ At tick 102, `replication` sees `Changed<Position>` for `e5` because 101 > 97 (i
 |---|---|
 | `Added<T>` | `added > lastRun` |
 | `Changed<T>` | `changed > lastRun` (adding counts as changing) |
+| `Removed<T>` | removed or despawned after `lastRun` (see [Removals](#removals)) |
 
 ### `Mut<T>`: detecting a write
 
@@ -74,6 +75,26 @@ The type-erased `world.getComponents().getMut(e, id)` (used by Luau and the netw
 (`std::span<std::byte>`) and marks on access, since it cannot know what the caller will do with them.
 `getComponents().getTicks(e, id)` / `getTicks<T>(e)` return a `ComponentTicks` (`added`, `changed`) with
 `isAdded(lastRun, thisRun)` and `isChanged(lastRun, thisRun)`.
+
+### Removals
+
+A component that is gone has no ticks, so `Removed<T>` (`removed(id)`, the `removed` term of scripts) reads another
+record: each pool keeps a `storage::RemovalLog`, the entities that lost the component (`Components::remove()` and
+`removeAll()`, which despawn uses) with the world's tick.
+
+- **Only while watched.** A query with a removed term watches the log of its component when it is built: it gets a
+  reader, a shared `Tick`. A log with no reader records nothing, so removals cost nothing until a query asks.
+- **Kept until every reader saw it.** Each pass sets its reader to its `lastRun` (`DynamicQuery::markSeen()`, called by
+  `iter()`); when a removal is recorded, the log first drops the oldest ones that no reader can still see. A reader is
+  dropped with its query (a `weak_ptr` in the log). A query that stops running keeps the removals newer than its last
+  pass.
+- **The pass walks the log.** The entity is no longer in the pool, so a removed term is always the driver: the pass
+  visits each removal newer than `lastRun`, and checks the other terms on the entity as it is now. A despawned entity
+  is dead and has nothing, so only filters it passes (`Without<T>`, other removed terms) match it. Nothing is yielded:
+  the value is gone.
+- **Once per removal.** An entity that lost the component twice since the last run is visited twice.
+
+The log's ticks are clamped with the pools' (`checkChangeTicks()`).
 
 ### Wraparound
 

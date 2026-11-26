@@ -17,7 +17,7 @@ functions that plugins give to scripts). Shared library `ecs`.
   serialization, replication. A new kind of data goes through that description, never around it.
 - Every component, resource and event says which side it lives on (server, client or both).
 - A system's accesses are declared by its parameters; the scheduler orders and parallelizes from them. A dynamic
-  parameter (`DynamicCalls`, `DynamicResources`, `DynamicEvents`, used by script systems) may grow them while the
+  parameter (`DynamicCalls`, `DynamicResources`, `DynamicEvents`, `DynamicComponents`, used by script systems) may grow them while the
   system runs (`SystemContext::access`): an ambiguity found that way is a warning, never an error, and only what was
   declared is refused when a schedule is built.
 - Structural changes during a frame are deferred commands.

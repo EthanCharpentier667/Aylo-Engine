@@ -16,8 +16,8 @@ namespace aylo::ecs {
 /// @details A query is a list of terms, and each term is one condition on one component: "the entity must have
 /// `Position` and the query writes it", "the entity must not have `Dead`", "`Health` changed since the last run".
 /// An entity matches the query when it satisfies every term. Data terms (read, write and their optional forms) also
-/// give the query access to the component's value; the others (with, without, added, changed) are filters that only
-/// decide which entities match.
+/// give the query access to the component's value; the others (with, without, added, changed, removed) are filters
+/// that only decide which entities match, as does enabled, which skips the entities switched off with Disabled.
 /// @code
 /// // Query<Position, const Velocity, Without<Dead>> is three terms:
 /// // {Position, kWrite}, {Velocity, kRead}, {Dead, kWithout}
@@ -31,6 +31,8 @@ enum class TermKind : std::uint8_t {
     kWithout,        ///< The entity must not have it.
     kAdded,          ///< The entity must have it, added since the query last ran.
     kChanged,        ///< The entity must have it, added or written since the query last ran.
+    kRemoved,        ///< The entity lost it (removed, or despawned) since the query last ran; it may be dead.
+    kEnabled,        ///< Neither the entity nor one of its ancestors has it: only on Disabled (the Enabled filter).
 };
 
 /// @brief Why two terms on the same component cannot be in one query.
@@ -38,7 +40,7 @@ enum class TermConflict : std::uint8_t {
     kNone,          ///< They can: a data term with with, added or changed, or added with changed.
     kSameTerm,      ///< The same term twice (two writes, with twice...).
     kTwoDataTerms,  ///< Two data terms (a read and a write...): which one gives the value?
-    kExcluded,      ///< One is without: the query could never match.
+    kExcluded,      ///< One is without (or enabled): the query could never match, or says it twice.
 };
 
 /// @brief One term of a query: a component, and what the query asks of it (see TermKind).
@@ -73,6 +75,12 @@ struct ComponentAccess {
            kind == TermKind::kChanged;
 }
 
+/// @return Whether the term can drive the iteration: a required term walks its pool, a removed term the pool's
+/// removals.
+[[nodiscard]] constexpr bool isDriverTerm(TermKind kind) noexcept {
+    return isRequiredTerm(kind) || kind == TermKind::kRemoved;
+}
+
 /// @return Whether the term writes the component's value.
 [[nodiscard]] constexpr bool isWriteTerm(TermKind kind) noexcept {
     return kind == TermKind::kWrite || kind == TermKind::kOptionalWrite;
@@ -86,7 +94,8 @@ struct ComponentAccess {
     if (isDataTerm(first) && isDataTerm(second)) {
         return TermConflict::kTwoDataTerms;
     }
-    if (first == TermKind::kWithout || second == TermKind::kWithout) {
+    if (first == TermKind::kWithout || second == TermKind::kWithout || first == TermKind::kEnabled ||
+        second == TermKind::kEnabled) {
         return TermConflict::kExcluded;
     }
     return TermConflict::kNone;

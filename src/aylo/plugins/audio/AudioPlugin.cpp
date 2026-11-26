@@ -260,11 +260,12 @@ void playEvents(ecs::NonSendMut<Audio> audio, ecs::Res<AudioAssets> sounds, ecs:
 }
 
 /// @brief PostUpdate: keeps one voice per AudioSource, and stops the voices of the sources that went.
-void followSources(ecs::NonSendMut<Audio> audio, ecs::Res<AudioAssets> sounds,
-                   ecs::Query<const AudioSource, ecs::Optional<const transform::GlobalTransform2D>,
-                              ecs::Optional<const transform::Transform2D>, ecs::Optional<const ecs::Parent>>
-                       sources,
-                   Listeners listeners) {
+void followSources(
+    ecs::NonSendMut<Audio> audio, ecs::Res<AudioAssets> sounds,
+    ecs::Query<const AudioSource, ecs::Optional<const transform::GlobalTransform2D>,
+               ecs::Optional<const transform::Transform2D>, ecs::Optional<const ecs::Parent>, ecs::Enabled>
+        sources,
+    Listeners listeners) {
     if (!audio->device) {
         return;
     }
