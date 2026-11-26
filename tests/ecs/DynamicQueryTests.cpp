@@ -351,3 +351,19 @@ TEST_F(DynamicQueryTest, EqualsABruteForceReferenceOnRandomWorlds) {
     EXPECT_GT(built, kQueryCount / 4);  // enough valid queries to mean something
     EXPECT_GT(nonEmpty, built / 3);     // and many of them match entities
 }
+
+TEST_F(DynamicQueryTest, TellsAnOptionalTagTheEntityHasFromOneItLacks) {
+    const Entity corpse = world.spawn(Position{}, Dead{});
+    world.spawn(Position{});
+    const Result<DynamicQuery> query = QueryBuilder{}.read(position).optionalRead(dead).build(components);
+    ASSERT_TRUE(query);
+    int count = 0;
+    for (const QueryMatch& match : query->iter(0)) {
+        EXPECT_TRUE(match.has(0));
+        EXPECT_EQ(match.has(1), match.getEntity() == corpse);
+        EXPECT_TRUE(match.get(1).empty()) << "a tag has no bytes, had or not";
+        EXPECT_FALSE(match.has(2)) << "no such data term";
+        ++count;
+    }
+    EXPECT_EQ(count, 2);
+}
