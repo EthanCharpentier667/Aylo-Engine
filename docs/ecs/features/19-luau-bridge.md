@@ -261,6 +261,15 @@ the system `<name>.onStart` in `PreUpdate`, querying `name` without the tag: it 
 a Behaviour has `onStart`, the other hook systems skip an entity until `ctx:has` finds the tag, so the order holds
 whichever phase spawned the entity, and a reload starts nothing again since the tag is in the world.
 
+`onEnable` and `onDisable` declare both their systems and the tag `<name>.Active`: `<name>.onEnable` queries `name`
+without the tag (the implicit enabled filter keeps the switched-on entities) and adds it; `<name>.onDisable` queries
+`name` with the tag, names `aylo.Disabled` (so the filter is off) and takes the tag from what `ctx:isEnabled` finds
+switched off. The three `PreUpdate` systems are ordered `onDisable`, `onEnable`, `onStart`, by `after` / `before` on
+whichever is declared second. `<name>.onDestroy` (`PostUpdate`) queries `removed = { name }` (and names
+`aylo.Disabled`); it takes the tags away, so it is declared with the first tag even without the hook, and calls the hook
+with a `self` that has no view: its fields raise an error. `ctx:isEnabled(entity)` (`system/EntityComponents.hpp`)
+walks `aylo.Parent` up to `ecs::detail::kMaxHierarchyDepth`, as the enabled filter does.
+
 Each visit builds a `self`, a table whose metatable maps the declared fields to the query's view, `entity` and `ctx` to
 the visit, and the methods (`getComponent`, `hasComponent`, `getParent`, `getChildren`, `getHandle`, `addComponent`,
 `removeComponent`, `destroy`) to `ctx:get`, `ctx:has`, `ctx:getParent`, `ctx:getChildren` and `ctx.commands`; other
