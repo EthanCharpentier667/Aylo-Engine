@@ -270,6 +270,12 @@ whichever is declared second. `<name>.onDestroy` (`PostUpdate`) queries `removed
 with a `self` that has no view: its fields raise an error. `ctx:isEnabled(entity)` (`system/EntityComponents.hpp`)
 walks `aylo.Parent` up to `ecs::detail::kMaxHierarchyDepth`, as the enabled filter does.
 
+The `ScriptingPlugin` requires every `.luau` file of `scripts/behaviours/` (`FileSource::list`, so a pack too; sorted,
+at any depth) after the `main` entry and before `server` / `client`, and warns about one that declared no Behaviour:
+the prelude takes `engine.noteBehaviour` out of `engine` before any game script runs and calls it from
+`engine.behaviour`, so the host records the Behaviours of each file (`ScriptHost::declaresBehaviour`). A reload runs a
+new file of that folder as a root (`ScriptHost::setAdoptedFolder`), though the plugin turns adoption off elsewhere.
+
 Each visit builds a `self`, a table whose metatable maps the declared fields to the query's view, `entity` and `ctx` to
 the visit, and the methods (`getComponent`, `hasComponent`, `getParent`, `getChildren`, `getHandle`, `addComponent`,
 `removeComponent`, `destroy`) to `ctx:get`, `ctx:has`, `ctx:getParent`, `ctx:getChildren` and `ctx.commands`; other
