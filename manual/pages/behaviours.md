@@ -11,7 +11,7 @@ about components holds: a Behaviour is saved in capsules, edited in the editor, 
 place.
 
 ```luau
--- scripts/behaviours/spinner.luau, required by an entry point
+-- scripts/behaviours/spinner.luau: runs without a require
 local Spinner = engine.behaviour("game.Spinner", {
 	fields = { speed = "f32" },
 	defaults = { speed = 3.14 }, -- radians per second: half a turn
@@ -33,7 +33,10 @@ Then give the component to an entity, like any other: in a [capsule](capsules.md
 ctx.commands:spawn({ ["game.Spinner"] = {}, ["aylo.Transform2D"] = {}, ["aylo.SpriteRenderer"] = { texture = star } })
 ```
 
-Like every script, the file runs only when an entry point `require`s it, see [Modules and `require`](modules.md).
+Put the file in `scripts/behaviours/` and it runs by itself, on every side, before the `server` and `client` entries:
+no `require` needed, and a new file there runs as soon as you save it (see
+[The Behaviours folder](modules.md#the-behaviours-folder)). Anywhere else in `scripts/`, it runs when a file
+`require`s it, like any [module](modules.md).
 
 ## The declaration
 

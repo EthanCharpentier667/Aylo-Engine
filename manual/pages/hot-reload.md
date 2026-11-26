@@ -31,7 +31,8 @@ nothing changes: the old code keeps running and the error is logged. Fix it and 
 
 A module that no file requires any more is unloaded, and its systems are removed. A file that no module requires
 (a new one, or one you have not wired in yet) is ignored when you save it: it runs from the moment a saved file requires
-it, and the file that does is run again to find it.
+it, and the file that does is run again to find it. A new file of `scripts/behaviours/` is the exception: it runs as
+soon as you save it, as when the game starts (see [The Behaviours folder](modules.md#the-behaviours-folder)).
 
 Some changes cannot be applied in place, so the game is rebuilt (and the log says why):
 
