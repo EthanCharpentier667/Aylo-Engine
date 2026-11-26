@@ -28,6 +28,7 @@
 #include "aylo/ecs/resource/Resources.hpp"
 #include "aylo/ecs/world/World.hpp"
 #include "editor/EditorState.hpp"
+#include "editor/behaviour/BehaviourFiles.hpp"
 #include "editor/gui/Text.hpp"
 #include "editor/scene/Isolation.hpp"
 #include "editor/scene/SceneEdit.hpp"
@@ -105,6 +106,13 @@ void folderMenu(EditorState& state, const std::string& folder) {
     }
     if (ImGui::MenuItem("New folder")) {
         request(state, AssetAction::kNewFolder, folder, "folder");
+    }
+    ImGui::Separator();
+    if (ImGui::MenuItem("New Behaviour")) {
+        request(state, AssetAction::kNewBehaviour, folder, "Spinner");
+    }
+    if (ImGui::IsItemHovered()) {
+        gui::tooltip("A script to attach to nodes, written in scripts/behaviours/ and opened in the text editor");
     }
 }
 
@@ -443,6 +451,23 @@ void runAction(EditorState& state) {
             state.materialError.clear();
             return;
         }
+        case AssetAction::kNewBehaviour: {
+            std::filesystem::path file;
+            if (std::string failure = behaviour::createBehaviour(behaviour::behavioursFolder(state.assets), text, file);
+                !failure.empty()) {
+                state.status = std::move(failure);
+                return;
+            }
+            const std::string name = file.stem().string();
+            state.status = std::format(
+                "Wrote scripts/behaviours/{}.luau: game.{} is in Add component once the game "
+                "reloads it",
+                name, name);
+            if (!shell::openInTextEditor(state.textEditor, file)) {
+                state.status = std::format("Wrote {}, but could not run '{}'", file.generic_string(), state.textEditor);
+            }
+            return;
+        }
         case AssetAction::kRename: {
             const std::filesystem::path renamed = target.parent_path() / text;
             std::filesystem::rename(target, renamed, error);
@@ -467,6 +492,14 @@ void runAction(EditorState& state) {
     state.status = error ? std::format("'{}': {}", state.assetTarget, error.message()) : std::string{};
 }
 
+/// @return What the popup asks to type for @p action.
+const char* nameLabel(AssetAction action) {
+    if (action == AssetAction::kRename) {
+        return "New name";
+    }
+    return action == AssetAction::kNewBehaviour ? "Name (game.<Name>, in scripts/behaviours/)" : "Name";
+}
+
 /// @brief The popup of the panel's action: a name to type, or a deletion to confirm.
 void drawPopup(EditorState& state) {
     if (state.openAssetPopup) {
@@ -480,7 +513,7 @@ void drawPopup(EditorState& state) {
     if (state.assetAction == AssetAction::kDelete) {
         ImGui::TextUnformatted(std::format("Delete '{}'? This cannot be undone.", state.assetTarget).c_str());
     } else {
-        ImGui::TextUnformatted(state.assetAction == AssetAction::kRename ? "New name" : "Name");
+        ImGui::TextUnformatted(nameLabel(state.assetAction));
         if (ImGui::IsWindowAppearing()) {
             ImGui::SetKeyboardFocusHere();
         }
