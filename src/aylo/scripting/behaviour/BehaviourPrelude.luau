@@ -21,6 +21,9 @@
 local forms = engine.forms
 local declareComponent = engine.ecs.component
 local declareSystem = engine.ecs.system
+-- Tells the host which file declared a Behaviour (a file of scripts/behaviours/ that declares none is a warning).
+local noteBehaviour = engine.noteBehaviour
+engine.noteBehaviour = nil
 
 -- The hooks a Behaviour can define, with the phase of their system and the time step they receive.
 local hookSpecs = {
@@ -241,6 +244,7 @@ function engine.behaviour(name, spec)
 	if tagPresence[side] == nil then
 		forms.fail(context, "'side' must be \"server\", \"client\" or \"both\"")
 	end
+	noteBehaviour(name)
 	declareComponent(name, {
 		fields = spec.fields,
 		defaults = spec.defaults,

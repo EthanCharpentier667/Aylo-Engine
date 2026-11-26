@@ -204,6 +204,13 @@ luau::Result<> ScriptHost::require(const std::string_view path) {
 
 void ScriptHost::setAdoptsNewFiles(const bool adopts) noexcept { _adoptsNewFiles = adopts; }
 
+void ScriptHost::setAdoptedFolder(std::string folder) { _adoptedFolder = std::move(folder); }
+
+bool ScriptHost::declaresBehaviour(const std::string& name) const {
+    const auto found = _files.find(name);
+    return found != _files.end() && !found->second.behaviours.empty();
+}
+
 std::optional<std::string> ScriptHost::moduleKeyOf(const std::string_view name) const {
     constexpr std::string_view kPrefix = "scripts/";
     if (!_loader || !name.starts_with(kPrefix) || name.size() == kPrefix.size()) {
@@ -335,6 +342,11 @@ luau::Result<> ScriptHost::installEngine(const Options options) {
         luau::ValuePack result;
         result.add(luau::Value{std::move(*id)});
         return result;
+    });
+    // Only for the Behaviour prelude, which takes it out of `engine` before any game script runs.
+    engineBuilder.function("noteBehaviour").bind([this](const std::string& name) {
+        (_staging ? _staging->declared[_owner] : _files[_owner]).behaviours.insert(name);
+        return luau::ValuePack{};
     });
     engineBuilder.function("call").setHandler(
         [this](const luau::CallContext& arguments) { return callEngine(arguments); });
@@ -634,7 +646,7 @@ core::reload::ReloadOutcome ScriptHost::reloadModules(const std::map<std::string
         sources.insert_or_assign(*key, source);
         if (_loader->isLoaded(*key)) {
             seeds.push_back(*key);
-        } else if (_adoptsNewFiles) {
+        } else if (_adoptsNewFiles || (!_adoptedFolder.empty() && key->starts_with(_adoptedFolder))) {
             added.push_back(*key);
             plan.roots.insert(*key);
         }
