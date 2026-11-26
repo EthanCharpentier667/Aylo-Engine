@@ -229,3 +229,41 @@ TEST(ScriptTransform, TheManualsRotationRecipesRun) {
         }
     }
 }
+
+TEST(ScriptTransform, TheManualsSpinnerTurnsItsEntity) {
+    Scripts scripts;
+    ASSERT_EQ(scripts.run(R"(
+        local Spinner = engine.behaviour("game.Spinner", {
+            fields = { speed = "f32" },
+            defaults = { speed = 3.14 }, -- radians per second: half a turn
+            side = "client",
+        })
+
+        function Spinner:onUpdate(dt)
+            local transform = self:getComponent("aylo.Transform2D")
+            transform.rotation += self.speed * dt
+        end
+
+        engine.ecs.system("test.Spawn", {
+            phase = "Startup",
+            run = function(ctx)
+                ctx.commands:spawn({ ["game.Spinner"] = {}, ["aylo.Transform2D"] = {} })
+            end,
+        })
+    )"),
+              "");
+    testing::internal::CaptureStderr();
+    for (int frame = 0; frame < 4; ++frame) {
+        scripts.app.runFrame();
+    }
+    EXPECT_EQ(testing::internal::GetCapturedStderr(), "");
+
+    const aylo::ecs::QueryState<const Transform2D> state{scripts.app.getWorld().getComponents()};
+    aylo::ecs::Query<const Transform2D> spinners{state, 0};
+    int seen = 0;
+    for (auto [entity, transform] : spinners) {
+        EXPECT_NEAR(transform.rotation, 3.14F * 0.2F, 1e-4F);  // four frames of 50 ms
+        ++seen;
+    }
+    EXPECT_EQ(seen, 1);
+}
