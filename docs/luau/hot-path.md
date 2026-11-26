@@ -23,6 +23,8 @@ What the raw paths save:
 
 - **The iterator** pushes the `Entity` and one `ComponentView` per term with `Pusher::userdata`, instead of a
   `ValuePack` of userdata each held through the registry, and reads none of the arguments the generic `for` passes it.
+  `ctx.views` pushes the table it made at its first step (`Pusher::value`), then moves each view into it under its
+  names (`Pusher::setInTable`, raw sets of keys the table already has): no table per step.
 - **A field read** pushes a number or a boolean directly, a `vec2`/`vec4` as a new table (`Pusher::record`), an entity
   as a userdata. Other types (strings, asset ids, lists) go through `readField()` and a `Value`, as before.
 - **A field write** reads a number or a boolean with `StackSlot::number()`/`boolean()`, and visits a vector table where

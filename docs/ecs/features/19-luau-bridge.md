@@ -119,6 +119,14 @@ system made from a [`ScriptCallable`](12-systems.md#script-callables): a lambda 
 whose `DynamicQueries` parameter declares the access to the scheduler. `shield` is a **view** over the component bytes, valid only
 during `run`; writing a field stamps the changed tick.
 
+`ctx.views` steps the same pass (`QueryStepper::nextNamed`, `system/SystemRun.cpp`), and gives the entity and one
+table holding the views by the component's name (`it["game.Ship"]`) and by its short key, the name after the last `.`
+with a lower-case first letter (`it.ship`). The table is made at the first step and refilled in place on every step,
+through `luau::Pusher::setInTable()`, so a step makes no table. A short key two terms share is left out; its
+metatable's `__index` answers `nil` for an optional view the entity lacks, and an error naming the keys to use or the
+keys there are otherwise, and its `__newindex` refuses a new key. A tag the entity has is a view with no fields in both
+iterators (`QueryMatch::has()`), and `nil` only when an optional one is missing.
+
 `ctx:get(entity, name)` gives a view of a component of any other entity (`nil` when it is dead or lacks it) and
 `ctx:has(entity, name)` tests it, through a `DynamicComponents` parameter: the component is declared with
 `components = { read, write }`, or discovered at its first use, read, then written at the first write to a field of
