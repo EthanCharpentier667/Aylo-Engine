@@ -9,9 +9,15 @@
 --   end
 --   return Spinner
 --
--- `onStart` is the system `<name>.onStart`, in the PreUpdate phase: it visits the entities without the tag
--- `<name>.Started`, calls the hook and gives them the tag, so it runs once per entity, and the other hooks skip an
--- entity until it has the tag. The state stays in the world: a hot reload does not start the entities again.
+-- The lifecycle is kept in the world, with tags the hooks' side has and never sends, so a hot reload neither starts nor
+-- enables the entities again:
+-- - `onStart` (PreUpdate) visits the entities without `<name>.Started`, tags them and calls the hook; the other hooks
+--   skip an entity until it has the tag.
+-- - `onEnable` (PreUpdate) visits the enabled entities without `<name>.Active` and tags them; `onDisable` (PreUpdate)
+--   visits the tagged ones `ctx:isEnabled` finds switched off and takes the tag away. They come together: each tracks
+--   what the other needs.
+-- - `onDestroy` (PostUpdate) visits the entities that lost the component (`removed`), and takes the tags away. It is
+--   there as soon as a tag is, to keep a component given back from looking started.
 local forms = engine.forms
 local declareComponent = engine.ecs.component
 local declareSystem = engine.ecs.system
@@ -19,15 +25,20 @@ local declareSystem = engine.ecs.system
 -- The hooks a Behaviour can define, with the phase of their system and the time step they receive.
 local hookSpecs = {
 	onStart = { phase = "PreUpdate" },
+	onEnable = { phase = "PreUpdate" },
+	onDisable = { phase = "PreUpdate" },
 	onUpdate = { phase = "Update", delta = "delta" },
 	onFixedUpdate = { phase = "FixedUpdate", delta = "fixedDelta" },
+	onDestroy = { phase = "PostUpdate" },
 }
-local hookList = "onStart, onUpdate, onFixedUpdate"
+-- The order of the systems of the lifecycle in PreUpdate.
+local lifecycleOrder = { "onDisable", "onEnable", "onStart" }
+local hookList = "onStart, onEnable, onDisable, onUpdate, onFixedUpdate, onDestroy"
 
 local optionKeys = { "fields", "defaults", "replication", "presence", "side" }
 
--- The presence of the tag `<name>.Started` for each side: it lives only where the hooks run, and is never sent.
-local startedPresence = { server = "serverOnly", client = "clientOnly", both = "both" }
+-- The presence of the tags `<name>.Started` and `<name>.Active` for each side: they live only where the hooks run.
+local tagPresence = { server = "serverOnly", client = "clientOnly", both = "both" }
 
 -- What a self or a handle holds (ctx, entity, and the view of a self), under a key no script can name.
 local STATE = {}
@@ -146,11 +157,25 @@ end
 
 -- The metatable of the selves of one Behaviour: its fields read and write the view of its component.
 local function newSelfMeta(name, fields, behaviour)
+	-- The view of the self of `state`; in onDestroy, there is none.
+	local function viewOf(state, key)
+		if state.view == nil then
+			error(
+				"cannot use self."
+					.. tostring(key)
+					.. ": in onDestroy, the entity no longer has '"
+					.. name
+					.. "' and its fields are gone",
+				3
+			)
+		end
+		return state.view
+	end
 	local meta = {}
 	meta.__index = function(object, key)
 		local state = rawget(object, STATE)
 		if fields[key] then
-			return state.view[key]
+			return viewOf(state, key)[key]
 		end
 		if key == "entity" then
 			return state.entity
@@ -187,7 +212,7 @@ local function newSelfMeta(name, fields, behaviour)
 				2
 			)
 		end
-		rawget(object, STATE).view[key] = entityOf(value) or value
+		viewOf(rawget(object, STATE), key)[key] = entityOf(value) or value
 	end
 	meta.__eq = handleMeta.__eq
 	meta.__tostring = function(object)
@@ -213,7 +238,7 @@ function engine.behaviour(name, spec)
 		fields[field] = true
 	end
 	local side = forms.string(context, spec, "side") or "server"
-	if startedPresence[side] == nil then
+	if tagPresence[side] == nil then
 		forms.fail(context, "'side' must be \"server\", \"client\" or \"both\"")
 	end
 	declareComponent(name, {
@@ -227,7 +252,10 @@ function engine.behaviour(name, spec)
 	local replicated = spec.replication ~= nil and spec.replication ~= "none"
 	local access = (side ~= "server" and replicated) and "read" or "write"
 	local started = name .. ".Started"
+	local active = name .. ".Active"
 	local hooks = {}
+	local declared = {} -- the systems declared, by hook
+	local tags = {} -- the tags declared, by name
 	local behaviour = {}
 	local selfMeta = newSelfMeta(name, fields, behaviour)
 
@@ -235,27 +263,118 @@ function engine.behaviour(name, spec)
 		return setmetatable({ [STATE] = { ctx = ctx, entity = entity, view = view } }, selfMeta)
 	end
 
-	local function declareStart()
-		declareComponent(started, { fields = {}, presence = startedPresence[side] })
-		declareSystem(name .. ".onStart", {
-			phase = hookSpecs.onStart.phase,
-			side = side,
-			query = { [access] = { name }, without = { started } },
+	local function system(hook, options)
+		declared[hook] = true
+		options.phase = hookSpecs[hook].phase
+		options.side = side
+		declareSystem(name .. "." .. hook, options)
+	end
+
+	local declareDestroy
+
+	local function declareTag(tag)
+		if not tags[tag] then
+			tags[tag] = true
+			declareComponent(tag, { fields = {}, presence = tagPresence[side] })
+			declareDestroy()
+		end
+	end
+
+	-- `<name>.onDestroy`: what lost the component. An entity that has it again (taken away and given back between two
+	-- runs) is not destroyed.
+	function declareDestroy()
+		if declared.onDestroy then
+			return
+		end
+		system("onDestroy", {
+			-- Names aylo.Disabled, so a switched-off entity that loses the component is visited too.
+			query = { removed = { name }, optionalRead = { "aylo.Disabled" } },
 			run = function(ctx)
-				for entity, view in ctx.query do
-					-- Tagged first: a hook that fails is not called again on every frame.
-					ctx.commands:add(entity, started, {})
-					hooks.onStart(newSelf(ctx, entity, view))
+				for entity in ctx.query do
+					if not ctx:has(entity, name) then
+						for tag in tags do
+							ctx.commands:remove(entity, tag)
+						end
+						if hooks.onDestroy then
+							hooks.onDestroy(newSelf(ctx, entity, nil))
+						end
+					end
 				end
 			end,
 		})
 	end
 
+	-- Orders the PreUpdate systems of the lifecycle, onDisable, onEnable, then onStart, whichever is written first.
+	local function orderLifecycle(options, hook)
+		local after, before = {}, {}
+		local seen = false
+		for _, other in lifecycleOrder do
+			if other == hook then
+				seen = true
+			elseif declared[other] then
+				table.insert(seen and before or after, name .. "." .. other)
+			end
+		end
+		options.after = #after > 0 and after or nil
+		options.before = #before > 0 and before or nil
+		return options
+	end
+
+	local function declareStart()
+		declareTag(started)
+		system(
+			"onStart",
+			orderLifecycle({
+				query = { [access] = { name }, without = { started } },
+				run = function(ctx)
+					for entity, view in ctx.query do
+						-- Tagged first: a hook that fails is not called again on every frame.
+						ctx.commands:add(entity, started, {})
+						hooks.onStart(newSelf(ctx, entity, view))
+					end
+				end,
+			}, "onStart")
+		)
+	end
+
+	-- `<name>.onEnable` and `<name>.onDisable`, declared together with the tag `<name>.Active`.
+	local function declareActivity()
+		if declared.onEnable then
+			return
+		end
+		declareTag(active)
+		system(
+			"onEnable",
+			orderLifecycle({
+				query = { [access] = { name }, without = { active } }, -- only the enabled ones: the query skips the others
+				run = function(ctx)
+					for entity, view in ctx.query do
+						ctx.commands:add(entity, active, {})
+						if hooks.onEnable then
+							hooks.onEnable(newSelf(ctx, entity, view))
+						end
+					end
+				end,
+			}, "onEnable")
+		)
+		system("onDisable", orderLifecycle({
+			query = { [access] = { name }, with = { active }, optionalRead = { "aylo.Disabled" } },
+			run = function(ctx)
+				for entity, view in ctx.query do
+					if not ctx:isEnabled(entity) then
+						ctx.commands:remove(entity, active)
+						if hooks.onDisable then
+							hooks.onDisable(newSelf(ctx, entity, view))
+						end
+					end
+				end
+			end,
+		}, "onDisable"))
+	end
+
 	local function declareHook(hook)
 		local delta = hookSpecs[hook].delta
-		declareSystem(name .. "." .. hook, {
-			phase = hookSpecs[hook].phase,
-			side = side,
+		system(hook, {
 			query = { [access] = { name } },
 			run = function(ctx)
 				local call = hooks[hook]
@@ -269,6 +388,13 @@ function engine.behaviour(name, spec)
 			end,
 		})
 	end
+
+	local declareFor = {
+		onStart = declareStart,
+		onEnable = declareActivity,
+		onDisable = declareActivity,
+		onDestroy = declareDestroy,
+	}
 
 	return setmetatable(behaviour, {
 		__index = hooks,
@@ -292,8 +418,9 @@ function engine.behaviour(name, spec)
 					error(context .. ": '" .. key .. "' is defined twice", 2)
 				end
 				hooks[key] = value
-				if key == "onStart" then
-					declareStart()
+				local declare = declareFor[key]
+				if declare then
+					declare()
 				else
 					declareHook(key)
 				end
