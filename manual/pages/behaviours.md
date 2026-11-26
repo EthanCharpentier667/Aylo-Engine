@@ -1,7 +1,7 @@
 # Behaviours
 
 A Behaviour is a script you attach to entities, in the style of Unity: you declare its fields, write the hooks
-(`onStart`, `onUpdate`, `onFixedUpdate`) as methods, and each entity that has it runs them with its own `self`. You
+(`onStart`, `onUpdate`, `onDestroy`...) as methods, and each entity that has it runs them with its own `self`. You
 need no knowledge of queries to write one. `engine.behaviour` is always there: there is nothing to turn on in
 `project.luau`.
 
@@ -56,13 +56,47 @@ Write a hook as a method of the Behaviour, `function Spinner:onUpdate(dt)`. Defi
 
 | Hook | When it runs, for each entity that has the Behaviour |
 |---|---|
-| `onStart(self)` | Once, at the start of the first frame the entity has the Behaviour (the `PreUpdate` phase), before its first other hook. |
+| `onEnable(self)` | When the entity is switched on: once at the start, before `onStart`, then each time it is [switched on](systems.md#switching-an-entity-off) again (`PreUpdate` phase). |
+| `onStart(self)` | Once, at the start of the first frame the entity has the Behaviour (the `PreUpdate` phase), before its first `onUpdate` or `onFixedUpdate`. |
 | `onUpdate(self, dt)` | Every frame (`Update` phase). `dt` is the length of the frame, in seconds. |
 | `onFixedUpdate(self, dt)` | Every fixed tick (`FixedUpdate` phase), where server gameplay goes. `dt` is the fixed step, in seconds. |
+| `onDisable(self)` | When the entity is switched off: it, or one of its parents, got `aylo.Disabled` (`PreUpdate` phase). |
+| `onDestroy(self)` | Once the entity lost the Behaviour: it was despawned, or the component was removed (`PostUpdate` phase, the frame it happened). |
 
 An entity that gets the Behaviour during a frame starts at the beginning of the next one: its first `onUpdate` comes
-after its `onStart`, never before. An entity [switched off](systems.md#switching-an-entity-off) runs no hook, and
-starts when it is switched on.
+after its `onStart`, never before. In one frame the lifecycle hooks run in this order: `onDisable`, `onEnable`, then
+`onStart`.
+
+While an entity is switched off, it runs no hook but `onDisable` (once, when it goes off): no `onUpdate`, no
+`onFixedUpdate`, and it does not start. When it is switched on, `onEnable` runs, then the rest goes on.
+
+```luau
+local Lamp = engine.behaviour("game.Lamp", { fields = { lit = "bool" }, side = "client" })
+
+function Lamp:onEnable()
+	self.lit = true
+end
+
+function Lamp:onDisable()
+	self.lit = false
+end
+```
+
+`onDestroy` comes after the fact: **the fields are gone**, so reading `self.armed` in it is an error. `self.entity`,
+`self.ctx` and the methods still work: on an entity that lost only the component, `getComponent` reads its other
+components; on a despawned one, it gives `nil`, and `getParent` too. Spawn what must outlive it:
+
+```luau
+engine.ecs.component("game.Explosion", { fields = {} })
+local Mine = engine.behaviour("game.Mine", { fields = { damage = "f32" } })
+
+function Mine:onDestroy()
+	self.ctx.commands:spawn({ ["game.Explosion"] = {} }) -- the mine is gone: start what comes after it
+end
+```
+
+`onDisable` does not run when an entity is destroyed: only `onDestroy` does. A Behaviour given back to an entity that
+lost it is a new one: it starts again.
 
 Other functions you put on the Behaviour are helpers, called on `self` like the hooks:
 
@@ -144,13 +178,19 @@ engine.ecs.system("game.Spinner.onUpdate", {
   your systems can run `after` or `before` them.
 - `onStart` is the system `game.Spinner.onStart`, in `PreUpdate`. It visits the entities without the tag
   `game.Spinner.Started`, gives them the tag and calls the hook; the other hooks skip an entity until it has the tag.
-  The tag lives only on the side of the hooks and is never sent.
+- `onEnable` and `onDisable` come together, with the tag `game.Spinner.Active`: `game.Spinner.onEnable` visits the
+  entities switched on without the tag and gives it, `game.Spinner.onDisable` visits those with the tag that
+  `ctx:isEnabled` finds switched off and takes it away. Writing one of the two hooks makes both systems.
+- `game.Spinner.onDestroy` is a query with `removed = { "game.Spinner" }` (see
+  [Reacting to a removal](systems.md#reacting-to-a-removal)). It takes the tags away too, so it exists as soon as a
+  Behaviour has a tag, even without an `onDestroy` hook.
+- The tags live only on the side of the hooks and are never sent.
 - On a client (`side = "client"` or `"both"`), a Behaviour with `replication` reads its component instead of writing
   it: the server owns those fields, so `self.speed = 2` is an error there.
 
 Since a Behaviour is a component and systems, the rest of the engine sees nothing new: a system can query
 `game.Spinner` like any component, and a [hot reload](hot-reload.md) of the file replaces the hooks in place. The
-entities keep their fields, and the ones already started are not started again.
+entities keep their fields, and the ones already started (or enabled) are not started (or enabled) again.
 
 ## Cost
 
@@ -180,12 +220,13 @@ pickups. For thousands of entities that all do the same thing, such as bullets o
 | `engine.behaviour 'game.Spinner': 'fields' is required: ...` | The declaration has no `fields` table |
 | `engine.behaviour 'game.Spinner': unexpected 'phase', expected 'fields', ...` | An option that does not exist |
 | `engine.behaviour 'game.Spinner': the field 'getParent' has the name of a method of self: rename it` | A field named `entity`, `ctx`, like a hook or like a method of `self` |
-| `engine.behaviour 'game.Spinner': 'onUpdat' is not a hook (hooks are onStart, onUpdate, onFixedUpdate); ...` | A function whose name starts with `on` and a capital letter, and is not a hook |
+| `engine.behaviour 'game.Spinner': 'onUpdat' is not a hook (hooks are onStart, onEnable, onDisable, onUpdate, onFixedUpdate, onDestroy); ...` | A function whose name starts with `on` and a capital letter, and is not a hook |
 | `engine.behaviour 'game.Spinner': 'onUpdate' is defined twice` | The same hook written twice |
 | `engine.behaviour 'game.Spinner': 'speed' is a field or a method of self, a function cannot take its name` | A helper named like a field or a method |
 | `'game.Spinner' has no field 'cooldown': a Behaviour keeps its state in its declared fields, add it to 'fields'` | Writing a field that is not declared |
 | `'game.Spinner' has no field 'cooldown'` | Reading a field that is not declared, and is no method or helper |
 | `cannot keep a view in self.transform: a view only lives during the hook, call self:getComponent in each hook` | Writing a view into a field |
+| `cannot use self.armed: in onDestroy, the entity no longer has 'game.Mine' and its fields are gone` | A field read or written in `onDestroy` |
 | `getComponent is a method: call it with ':', as in self:getComponent(...)` | `self.getComponent(...)` written with a `.` (any method) |
 | `getComponent expects the name of a component: ...` | A name that is not a string (also `hasComponent`, `addComponent`, `removeComponent`) |
 | `getHandle expects an entity: ...` | `self:getHandle` with something that is not an entity |

@@ -76,6 +76,7 @@ What the engine finds:
 | `ctx.resources[name]` | reads the resource; the first time you write a field of it, it writes it |
 | `ctx:get(entity, name)`, `ctx:has(entity, name)` | reads the component; the first time you write a field of it, it writes it |
 | `ctx:getParent(entity)`, `ctx:getChildren(entity)` | reads `aylo.Parent` or `aylo.Children` |
+| `ctx:isEnabled(entity)` | reads `aylo.Disabled` and `aylo.Parent` |
 | `ctx.events.read(name)` | reads the event, from the oldest one still queued |
 | `ctx.events.send(name, ...)` | sends the event |
 
@@ -246,7 +247,8 @@ engine.ecs.system("game.WakeUp", {
 ```
 
 `aylo.Disabled` is replicated: only the server switches an entity off, and its clients hide it too. `ctx:get` still
-reads a switched-off entity: only queries skip it. In the editor, the Inspector's **Active** box adds or removes it, and
+reads a switched-off entity: only queries skip it. `ctx:isEnabled(entity)` makes the test a query makes: it is `false`
+when the entity or one of its parents has `aylo.Disabled` (and `true` for an entity that is gone). In the editor, the Inspector's **Active** box adds or removes it, and
 a capsule saves it like any component.
 
 ## Other entities
@@ -334,6 +336,7 @@ runs, once the commands are applied.
 | `ctx.call(name, args)` | Makes an engine call. |
 | `ctx:get(entity, name)`, `ctx:has(entity, name)` | A component of any entity, see [Other entities](#other-entities). |
 | `ctx:getParent(entity)`, `ctx:getChildren(entity)` | The parent and the children of an entity, see [The hierarchy](#the-hierarchy). |
+| `ctx:isEnabled(entity)` | Whether the entity is switched on, see [Switching an entity off](#switching-an-entity-off). |
 
 ### Commands
 
@@ -446,7 +449,7 @@ A bad declaration (an unknown option, a missing `phase`, an unknown name in the 
 | `ctx:get expects an entity and the name of a component: ...` | `ctx.get` written with a `.`, or an argument that is not an entity or a name |
 | `the view of 'game.Health' is read-only: system 'game.Damage' declared it under 'components.read' ...` | The component is listed under `components.read` |
 | `a client system cannot write 'game.Health': it is replicated: the server would overwrite it` | A client system writes a field of a replicated (or server-only) component it got with `ctx:get` |
-| `ctx:getParent expects an entity: ctx:getParent(entity)` | `ctx.getParent` written with a `.`, or an argument that is not an entity (also `ctx:getChildren`) |
+| `ctx:getParent expects an entity: ctx:getParent(entity)` | `ctx.getParent` written with a `.`, or an argument that is not an entity (also `ctx:getChildren`, `ctx:isEnabled`) |
 | `'aylo.Parent' cannot be written: use commands:setParent()` | A field of `aylo.Parent` or `aylo.Children` written through `ctx:get` |
 | `cannot write 'count': the view of 'game.Points' is read-only` | The resource is listed under `resources.read` |
 | `event 'aylo.PlayMusic' is declared to be read by system 'game.Music', not sent: ...` | The event is listed under `events.read` and the system sends it |
