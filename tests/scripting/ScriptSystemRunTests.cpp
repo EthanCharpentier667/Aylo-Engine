@@ -535,3 +535,83 @@ TEST(ScriptSystemRun, CommandsRemoveAComponentOrSayWhyNot) {
     EXPECT_FALSE(fixture.app.getWorld().getComponents().has(
         entity, *fixture.app.getWorld().getComponents().find("game.Shield")));
 }
+
+namespace {
+/// @brief The manual's example of ctx.views: the views by name, whatever the order of the terms.
+constexpr std::string_view kManualViews = R"(
+engine.ecs.system("game.Regen", {
+	phase = "Update",
+	query = { read = { "game.Position" }, write = { "game.Shield" }, optionalRead = { "game.Dead" } },
+	run = function(ctx)
+		for entity, it in ctx.views do
+			if it.dead == nil then
+				it.shield.strength += it.position.x
+			end
+		end
+	end,
+})
+)";
+}  // namespace
+
+TEST(ScriptSystemRun, CtxViewsGivesTheViewsByName) {
+    Fixture fixture;
+    ASSERT_EQ(fixture.run(std::string{kManualViews}), "");
+    ASSERT_EQ(fixture.run(R"lua(
+        engine.ecs.component("test.Position", { fields = { x = "f32" } })
+        engine.ecs.system("game.Check", {
+            phase = "Update",
+            query = { read = { "game.Position", "test.Position" }, write = { "game.Shield" } },
+            after = { "game.Regen" },
+            run = function(ctx)
+                local first
+                for entity, it in ctx.views do
+                    first = first or it
+                    assert(rawequal(first, it), "one table for the whole run")
+                    assert(rawequal(it.shield, it["game.Shield"]))
+                    assert(it["test.Position"].x == 0)
+                    local ok, message = pcall(function() return it.position end)
+                    assert(not ok and string.find(message, [=['position' names several views of system 'game.Check': use it["game.Position"] or it["test.Position"]]=], 1, true), message)
+                    ok, message = pcall(function() return it.sheild end)
+                    assert(not ok and string.find(message, "the query of system 'game.Check' has no view 'sheild' (it has: game.Position, test.Position, shield)", 1, true), message)
+                    ok, message = pcall(function() it.dead = 1 end)
+                    assert(not ok and string.find(message, "are read by name", 1, true), message)
+                end
+            end,
+        })
+    )lua"),
+              "");
+    const auto alive = fixture.spawn(fixture.app.getWorld().spawn(), "game.Shield", {{"strength", 1.F}});
+    fixture.spawn(alive, "game.Position", {{"x", 2.F}});
+    fixture.spawn(alive, "test.Position", {});
+    const auto dead = fixture.spawn(fixture.app.getWorld().spawn(), "game.Shield", {{"strength", 1.F}});
+    fixture.spawn(dead, "game.Position", {{"x", 2.F}});
+    fixture.spawn(dead, "game.Dead", {});
+
+    testing::internal::CaptureStderr();
+    fixture.app.runFrame();
+    EXPECT_EQ(testing::internal::GetCapturedStderr(), "");
+    EXPECT_FLOAT_EQ(fixture.read(alive, "game.Shield", "strength"), 3.F);
+    EXPECT_FLOAT_EQ(fixture.read(dead, "game.Shield", "strength"), 1.F) << "it.dead reads its view";
+}
+
+TEST(ScriptSystemRun, AnOptionalTagIsAViewWhenTheEntityHasIt) {
+    Fixture fixture;
+    ASSERT_EQ(fixture.run(R"(
+        engine.ecs.system("game.Mark", {
+            phase = "Update",
+            query = { write = { "game.Shield" }, optionalRead = { "game.Dead" } },
+            run = function(ctx)
+                for entity, shield, dead in ctx.query do
+                    shield.strength = dead and 1 or 2
+                end
+            end,
+        })
+    )"),
+              "");
+    const auto dead = fixture.spawn(fixture.app.getWorld().spawn(), "game.Shield", {});
+    fixture.spawn(dead, "game.Dead", {});
+    const auto alive = fixture.spawn(fixture.app.getWorld().spawn(), "game.Shield", {});
+    fixture.app.runFrame();
+    EXPECT_FLOAT_EQ(fixture.read(dead, "game.Shield", "strength"), 1.F);
+    EXPECT_FLOAT_EQ(fixture.read(alive, "game.Shield", "strength"), 2.F);
+}
