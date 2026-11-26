@@ -46,6 +46,10 @@ class AYLO_ECS_API QueryMatch {
     /// @brief Sets the matched entity. Called by the iteration.
     void setEntity(Entity entity) noexcept;
 
+    /// @return Whether the entity has the component of data term `index`: false for an optional term it lacks, or an
+    /// `index` that is no data term. What tells a tag the entity has from one it lacks, since both have no bytes.
+    [[nodiscard]] bool has(std::size_t index) const noexcept;
+
     /// @return The bytes of the value of data term `index`; empty if it is an optional term the entity lacks, a
     /// tag, or `index` is not a data term. Never marks the value changed.
     [[nodiscard]] std::span<const std::byte> get(std::size_t index) const noexcept;
