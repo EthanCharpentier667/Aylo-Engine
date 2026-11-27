@@ -212,12 +212,21 @@ std::string ScriptHost::generateTypes() const {
         return {};
     }
     const luau::Table engine = _engine->table();
+    // The forms describe their own types (engine.forms.describe).
+    std::optional<luau::Table> signatures;
+    if (const auto forms = engine.get("forms"); forms && forms->is<luau::Table>()) {
+        if (const auto described = forms->as<luau::Table>().get("signatures");
+            described && described->is<luau::Table>()) {
+            signatures = described->as<luau::Table>();
+        }
+    }
     ecs::World& world = _app.getWorld();
     return types::generateDefinitions({
         .components = &world.getComponents().getRegistry(),
         .events = &world.getEvents().getRegistry(),
         .calls = &world.getCalls(),
         .engine = &engine,
+        .signatures = signatures ? &*signatures : nullptr,
     });
 }
 

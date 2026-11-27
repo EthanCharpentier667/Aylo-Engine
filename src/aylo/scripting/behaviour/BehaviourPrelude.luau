@@ -230,6 +230,11 @@ local function newSelfMeta(name, fields, behaviour)
 	return meta
 end
 
+forms.describe(
+	"engine.behaviour",
+	"(name: string, spec: { fields: { [string]: string }, defaults: Fields?, replication: string?, presence: string?, side: Side? }) -> Self"
+)
+
 function engine.behaviour(name, spec)
 	if type(name) ~= "string" then
 		forms.fail("engine.behaviour", "expected the name of the Behaviour first, such as 'game.Spinner'")

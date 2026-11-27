@@ -13,6 +13,7 @@
 #include <format>
 #include <map>
 #include <optional>
+#include <set>
 #include <span>
 #include <string>
 #include <string_view>
@@ -43,6 +44,12 @@ constexpr std::string_view kPrelude{kPreludeBytes.data(), kPreludeBytes.size() -
 constexpr std::array<std::string_view, 21> kKeywords{"and", "break",    "do",     "else", "elseif", "end",   "false",
                                                      "for", "function", "if",     "in",   "local",  "nil",   "not",
                                                      "or",  "repeat",   "return", "then", "true",   "until", "while"};
+
+/// @return Whether @p letter can be part of a Luau name.
+[[nodiscard]] bool isNameCharacter(const char letter) {
+    return (letter >= 'a' && letter <= 'z') || (letter >= 'A' && letter <= 'Z') || (letter >= '0' && letter <= '9') ||
+           letter == '_';
+}
 
 /// @return Whether @p name can be written bare as a key of a Luau table type.
 [[nodiscard]] bool isIdentifier(const std::string_view name) {
@@ -169,7 +176,9 @@ class Writer {
         text += components();
         text += events();
         text += calls();
-        text += std::format("\ndeclare engine: {}\n", walk(*_sources->engine, "engine", 0));
+        const std::string engine = walk(*_sources->engine, "engine", 0);
+        text += missingResults(engine);
+        text += std::format("\ndeclare engine: {}\n", engine);
         return text;
     }
 
@@ -223,7 +232,7 @@ class Writer {
         for (const ecs::CallInfo* call : calls) {
             const std::string result = typeNameOf("R_", call->name);
             text += std::format("type {} = {}\n", result, resultOf(*call));
-            _results.insert_or_assign(call->name, result);
+            _known.insert(result);
             const std::string arguments = call->arguments ? recordOf(call->arguments->fields, true) : std::string{"{}"};
             overloads.push_back(std::format("(name: \"{}\", args: {}?) -> {}", call->name, arguments,
                                             givesNothing(*call) ? std::string{"()"} : result));
@@ -232,47 +241,38 @@ class Writer {
         return text;
     }
 
-    /// @return The result type of the call @p name, or `any` when the game does not have it.
-    [[nodiscard]] std::string resultOr(const std::string& name) const {
-        const auto found = _results.find(name);
-        return found == _results.end() ? std::string{"any"} : found->second;
+    /// @return The type of the function at @p path: what its form describes, or one taking and giving anything.
+    [[nodiscard]] std::string functionAt(const std::string& path) const {
+        if (_sources->signatures != nullptr) {
+            if (const auto signature = _sources->signatures->get(path); signature && signature->is<std::string>()) {
+                return signature->as<std::string>();
+            }
+        }
+        return "(...any) -> ...any";
     }
 
-    /// @return The type of the function at @p path: the one of a known form, or one taking and giving anything.
-    [[nodiscard]] std::string functionAt(const std::string& path) const {
-        const std::map<std::string_view, std::string> known{
-            {"engine.call", "Call"},
-            {"engine.behaviour",
-             "(name: string, spec: { fields: { [string]: string }, defaults: Fields?, replication: string?, presence: "
-             "string?, side: Side? }) -> Self"},
-            {"engine.ecs.component",
-             "(name: string, spec: { fields: { [string]: string }, defaults: Fields?, replication: string?, presence: "
-             "string? }) -> ()"},
-            {"engine.ecs.event", "(name: string, spec: { fields: { [string]: string } }) -> ()"},
-            {"engine.ecs.system", "(name: string, spec: SystemSpec) -> ()"},
-            {"engine.ecs.state", "(name: string, values: { string }, options: { replicate: boolean? }?) -> ()"},
-            {"engine.state.get", "(ctx: CtxLike, machine: string) -> string"},
-            {"engine.state.set", "(ctx: CtxLike, machine: string, value: string) -> ()"},
-            {"engine.input.read",
-             std::format("((ctx: CtxLike, action: string) -> {}) & ((ctx: CtxLike, entity: Entity, "
-                         "action: string) -> {})",
-                         resultOr("aylo.input.read"), resultOr("aylo.replication.readInput"))},
-            {"engine.audio.play",
-             "(ctx: CtxLike, sound: AssetId | string, options: { bus: string?, volume: number?, pitch: number?, "
-             "position: Vec2?, loop: boolean?, startAt: number?, lowpass: number? }?) -> number"},
-            {"engine.net.localClient", "(ctx: CtxLike) -> { connected: boolean, client: number }"},
-            {"engine.physics.moveAndSlide",
-             std::format("(ctx: CtxLike, entity: Entity, from: Vec2, delta: Vec2, options: {{ skin: number?, "
-                         "maxSlides: number? }}?) -> {}",
-                         resultOr("aylo.physics.moveAndSlide"))},
-            {"engine.capsule.spawn", "(ctx: CtxLike, path: string, overrides: { [string]: Fields }?) -> Entity"},
-            {"engine.capsule.load", "(ctx: CtxLike, path: string, overrides: { [string]: Fields }?) -> Entity"},
-            {"engine.capsule.reload", "(ctx: CtxLike, root: Entity) -> boolean"},
-            {"engine.assetId", "(path: string) -> AssetId"},
-            {"engine.hasCall", "(name: string) -> boolean"},
-        };
-        const auto found = known.find(path);
-        return found == known.end() ? std::string{"(...any) -> ...any"} : found->second;
+    /// @return A `type R_<call> = any` for each call result @p text names that the game does not have, so the form of
+    /// a plugin whose call this side lacks still reads.
+    [[nodiscard]] std::string missingResults(const std::string_view text) const {
+        std::set<std::string> missing;
+        for (std::size_t at = text.find("R_"); at != std::string_view::npos; at = text.find("R_", at + 2)) {
+            if (at > 0 && isNameCharacter(text.at(at - 1))) {
+                continue;  // inside another name
+            }
+            std::size_t end = at + 2;
+            while (end < text.size() && isNameCharacter(text.at(end))) {
+                ++end;
+            }
+            std::string name{text.substr(at, end - at)};
+            if (!_known.contains(name)) {
+                missing.insert(std::move(name));
+            }
+        }
+        std::string types;
+        for (const std::string& name : missing) {
+            types += std::format("type {} = any -- this side of the game has no such engine call\n", name);
+        }
+        return types;
     }
 
     /// @return The type of the table @p table at @p path, its keys sorted; the helpers of the forms are left out.
@@ -319,8 +319,8 @@ class Writer {
         return "any";
     }
 
-    const TypeSources* _sources;                  ///< What the file describes.
-    std::map<std::string, std::string> _results;  ///< The result type of each call, by name.
+    const TypeSources* _sources;   ///< What the file describes.
+    std::set<std::string> _known;  ///< The result type of each call the game has (`R_<call>`).
 };
 }  // namespace
 

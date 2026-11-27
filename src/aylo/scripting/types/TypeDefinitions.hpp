@@ -28,12 +28,16 @@ struct TypeSources {
     const ecs::EventRegistry* events{nullptr};  ///< Every event, with its fields.
     const ecs::Calls* calls{nullptr};           ///< Every engine call, with its arguments and result.
     const luau::Table* engine{nullptr};         ///< The `engine` global, walked for its tree of tables and forms.
+    /// The type of each function of `engine` by its path, as the forms describe themselves (`engine.forms.describe`,
+    /// `engine.forms.signatures`); null, or a path it lacks: the function takes and gives anything.
+    const luau::Table* signatures{nullptr};
 };
 
 /// @return A luau-lsp definition file (`.d.luau`) for the scripts of the game: the `Entity` and `AssetId` classes, one
 /// view type per component and per event, `ctx` (with `ctx:get`, `ctx.call` and `ctx.events` overloaded on the names
-/// as string literals), a Behaviour's `self` and its handles, and `engine`: its tree as the game has it, the common
-/// forms typed, every other function taking and giving anything.
+/// as string literals), a Behaviour's `self` and its handles, and `engine`: its tree as the game has it, each function
+/// with the type its form describes, or taking and giving anything. A call result a signature names (`R_<call>`) and
+/// the game does not have is `any`.
 /// @details Deterministic: the same game gives the same text, so the file is rewritten only when it changes.
 [[nodiscard]] AYLO_SCRIPTING_API std::string generateDefinitions(const TypeSources& sources);
 

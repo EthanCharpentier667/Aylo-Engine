@@ -4,6 +4,34 @@ engine.input = {}
 local forms = {}
 engine.forms = forms
 
+-- The luau-lsp type of each function of `engine`, by its path, given to it in the types of a game (types/aylo.d.luau,
+-- ScriptHost::generateTypes()). The file of a form describes its own forms, next to them; a function nobody describes
+-- takes and gives anything. A signature names the types of TypesPrelude.d.luau (CtxLike, Entity, Vec2, Fields...),
+-- and R_<call> for what the engine call <call> gives, its dots made `_` (R_aylo_input_read); `any` when the game does
+-- not have that call.
+forms.signatures = {}
+
+function forms.describe(path, signature)
+	if type(path) ~= "string" or type(signature) ~= "string" then
+		error("engine.forms.describe: expected the function's path and its type, two strings", 2)
+	end
+	forms.signatures[path] = signature
+end
+
+-- The functions of engine the host makes, which this module owns.
+forms.describe("engine.call", "Call")
+forms.describe("engine.assetId", "(path: string) -> AssetId")
+forms.describe("engine.hasCall", "(name: string) -> boolean")
+forms.describe(
+	"engine.ecs.component",
+	"(name: string, spec: { fields: { [string]: string }, defaults: Fields?, replication: string?, presence: string? }) -> ()"
+)
+forms.describe("engine.ecs.event", "(name: string, spec: { fields: { [string]: string } }) -> ()")
+forms.describe("engine.ecs.system", "(name: string, spec: SystemSpec) -> ()")
+forms.describe("engine.ecs.state", "(name: string, values: { string }, options: { replicate: boolean? }?) -> ()")
+forms.describe("engine.ecs.plugin", "(name: string, spec: Fields) -> ()")
+forms.describe("engine.ecs.addPlugin", "(name: string) -> ()")
+
 -- Fails with a message about `context`, the form and the part of it being read.
 function forms.fail(context, what)
 	error(context .. ": " .. what, 0)
@@ -192,6 +220,12 @@ end
 -- Returns a form that asks for one file: `form(path, options)`, whose boolean options go to `call` as they are named.
 -- Without the plugin, it gives the id the asset would have.
 function forms.file(form, call, options)
+	local keys = {}
+	for _, option in options do
+		table.insert(keys, option .. ": boolean?")
+	end
+	local optionsType = #keys > 0 and ", options: { " .. table.concat(keys, ", ") .. " }?" or ""
+	forms.describe(form, "(path: string" .. optionsType .. ") -> AssetId")
 	return function(...)
 		forms.arguments(form, 2, ...)
 		local path, given = ...
@@ -221,6 +255,9 @@ local function machineOf(form, machine)
 	end
 	return machine
 end
+
+forms.describe("engine.state.get", "(ctx: CtxLike, machine: string) -> string")
+forms.describe("engine.state.set", "(ctx: CtxLike, machine: string, value: string) -> ()")
 
 -- engine.state.get(ctx, machine) -> its value, "" before its first frame.
 function engine.state.get(...)
