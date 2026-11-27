@@ -1152,6 +1152,11 @@ TEST(Engine, WritesTheScriptTypesOfAGameItFollows) {
             std::ifstream stream{file};
             const std::string text{std::istreambuf_iterator<char>{stream}, std::istreambuf_iterator<char>{}};
             EXPECT_TRUE(text.contains("type C_game_Ship = { speed: number }")) << text.substr(0, 200);
+            // Every form describes its type next to it (engine.forms.describe): none is left taking anything.
+            const std::size_t untyped = text.find("(...any) -> ...any");
+            EXPECT_EQ(untyped, std::string::npos)
+                << "a function of engine has no engine.forms.describe: "
+                << text.substr(text.rfind('\n', untyped) + 1, text.find('\n', untyped) - text.rfind('\n', untyped));
         }
     }
 }
