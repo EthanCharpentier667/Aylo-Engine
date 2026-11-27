@@ -182,6 +182,10 @@ is named by this path, the same on every side.
 Two ways of changing a running game: a full rebuild of the `App`, and an in-place swap of what a script file declares.
 Both are driven by the `HotReloader` of `core` (`core/reload/`), which the `Engine` owns.
 
+While it follows the files, the `Engine` also writes the luau-lsp types of the game, `<game>/types/aylo.d.luau`
+(`ScriptHost::generateTypes()`), at the end of each build and after a reload that changed something, when the text
+differs; a file it cannot write is a warning.
+
 ### The reloader
 
 A `core::reload::Reloadable` names the files it follows (`watched()`) and applies the changed ones (`reload()`), which

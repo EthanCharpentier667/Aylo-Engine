@@ -266,6 +266,18 @@ plugins it adds are not), it skips them and returns the id the asset would have,
 same script loads on the server and the clients. What only a plugin knows, such as a control name or an animation
 direction, is checked where the plugin runs, and a call's error is prefixed with the form's name.
 
+### Types
+
+`ScriptHost::generateTypes()` (`types/TypeDefinitions.hpp`) writes a luau-lsp definition file, after the fixed start of `types/TypesPrelude.d.luau` (embedded), from what the App knows
+at run time: the classes `Entity` and `AssetId`, one table type per component (`C_<name>`), event (`E_<name>`) and call
+result (`R_<name>`), the fields in layout order with the Luau type a script reads (an enum's names as a union of
+literals, a `vec3` as `vector`), `ctx:get`, `getComponent`, `ctx.events.read` / `send` and `ctx.call` as intersections
+of one overload per name (a string literal), the overload of any name last since Luau takes the first that fits, and
+`declare engine` walked from the live `engine` table, where a few forms have a known signature and every other function
+is `(...any) -> ...any`. A Behaviour's `self` is a table type with its hooks as properties, so a method written on it
+is checked with `self: Self`. The `Engine` writes it to `<game>/types/aylo.d.luau` at the end of a build and after a
+hot reload that changed something, when it follows the game's files and the text differs (`Engine::writeScriptTypes`).
+
 ### Events
 
 `engine.ecs.event(name, { fields })` (`ScriptHost::declareEvent`) reads its table with
