@@ -135,6 +135,7 @@ end
 -- "aylo.net.sendToServer" under `calls`. Returns whether it was sent.
 engine.net.sendToServer = function(ctx, name, values)
 	local form = "engine.net.sendToServer"
+	ctx = forms.context(form, ctx)
 	local ok, result = pcall(ctx.call, "aylo.net.sendToServer", { name = name, values = encode(form, name, values) })
 	if not ok then
 		forms.fail(form, tostring(result))
@@ -146,6 +147,7 @@ end
 -- `client`. `ctx` lists "aylo.net.sendToClients" under `calls`.
 engine.net.sendToClients = function(ctx, name, values, client)
 	local form = "engine.net.sendToClients"
+	ctx = forms.context(form, ctx)
 	local ok, result = pcall(ctx.call, "aylo.net.sendToClients", {
 		name = name,
 		client = client or 0,
@@ -161,6 +163,7 @@ end
 -- is a table of the packet's fields. The system lists `events = { read = { "net.PacketReceived" } }`. A packet this
 -- script did not declare is skipped, and so is one travelling toward the other side (see ctx.side).
 engine.net.received = function(ctx)
+	ctx = forms.context("engine.net.received", ctx)
 	local list = {}
 	-- A packet from the server has sender 0, one from a client has a client id. On the network a side only gets its own;
 	-- in a standalone world both travel in one, so a system gets those toward its side (both: all of them).

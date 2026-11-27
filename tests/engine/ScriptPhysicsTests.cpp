@@ -754,7 +754,7 @@ TEST(ScriptPhysics, TheFormsSayWhatIsWrongWithTheirArguments) {
         return server.run(std::format("assert(string.find(probe.{}, {}, 1, true), probe.{})", field,
                                       std::format("\"{}\"", text), field));
     };
-    EXPECT_EQ(says("noContext", "engine.physics.raycast: expected the system's ctx first"), "");
+    EXPECT_EQ(says("noContext", "engine.physics.raycast: expected the system's ctx (or a Behaviour's self) first"), "");
     EXPECT_EQ(says("badVector", "engine.physics.raycast: 'origin' must be a table { x, y }"), "");
     EXPECT_EQ(says("badOption", "engine.physics.raycast: the options"), "");
     EXPECT_EQ(says("misspelled", "engine.physics.shapeCast3D: the shape"), "");

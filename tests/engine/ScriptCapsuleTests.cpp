@@ -224,7 +224,7 @@ TEST(ScriptCapsule, TheFormsCheckWhatTheyAreGiven) {
               "");
     script.app.runFrame();
     const std::vector<std::string> expected{
-        "engine.capsule.spawn: expected the system's ctx first",
+        "engine.capsule.spawn: expected the system's ctx (or a Behaviour's self) first",
         "engine.capsule.spawn: expected the capsule's path second",
         "engine.capsule.spawn: overrides: 'test.scriptcapsule.Armor' must be a table of fields",
         "engine.capsule.spawn: ",  // the call's own error follows

@@ -11,13 +11,6 @@ local forms = engine.forms
 
 engine.capsule = {}
 
--- Fails unless `ctx` is the context a system's `run` received.
-local function checkContext(form, ctx)
-	if type(ctx) ~= "table" or type(ctx.call) ~= "function" or ctx.commands == nil then
-		forms.fail(form, "expected the system's ctx first")
-	end
-end
-
 -- Fails unless `capsule` is the path of a capsule file.
 local function checkCapsule(form, capsule)
 	if type(capsule) ~= "string" or capsule == "" then
@@ -64,7 +57,7 @@ local function spawningForm(form, name)
 	return function(...)
 		forms.arguments(form, 3, ...)
 		local ctx, capsule, overrides = ...
-		checkContext(form, ctx)
+		ctx = forms.context(form, ctx)
 		checkCapsule(form, capsule)
 		local entries = readOverrides(form, overrides)
 		local root = call(form, ctx, name, { capsule = capsule })
@@ -85,7 +78,7 @@ function engine.capsule.reload(...)
 	local form = "engine.capsule.reload"
 	forms.arguments(form, 2, ...)
 	local ctx, root = ...
-	checkContext(form, ctx)
+	ctx = forms.context(form, ctx)
 	if root == nil then
 		forms.fail(form, "expected the capsule's root second")
 	end

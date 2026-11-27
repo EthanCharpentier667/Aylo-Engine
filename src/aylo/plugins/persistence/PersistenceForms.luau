@@ -3,8 +3,8 @@ engine.persistence = {}
 
 -- Makes `call` through the system's ctx (which lists it under `calls`), or through the engine while the script loads.
 local function invoke(form, ctx, call, fields)
-	if ctx ~= nil and type(ctx) ~= "table" then
-		forms.fail(form, "expected a system's ctx (or nil) first")
+	if ctx ~= nil then
+		ctx = forms.context(form, ctx, "expected a system's ctx, a Behaviour's self or nil first")
 	end
 	if ctx == nil then
 		return forms.call(form, call, fields)

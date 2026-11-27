@@ -17,13 +17,6 @@ local shapeKeys = { "shape", "size", "radius", "halfHeight", "offset" }
 -- A copy of a collider may carry its other fields: they are allowed, and not read.
 local colliderKeys = { "shape", "size", "radius", "halfHeight", "offset", "sensor", "friction", "restitution", "layer", "mask" }
 
--- Fails unless `ctx` is the context a system's `run` received.
-local function checkContext(form, ctx)
-	if type(ctx) ~= "table" or type(ctx.call) ~= "function" then
-		forms.fail(form, "expected the system's ctx first")
-	end
-end
-
 -- Fails unless `value` is a 2D vector: a table { x, y }.
 local function vec2(form, value, name)
 	if type(value) ~= "table" or type(value.x) ~= "number" or type(value.y) ~= "number" then
@@ -130,7 +123,7 @@ local function rayForm(form, name, vector)
 	return function(...)
 		forms.arguments(form, 5, ...)
 		local ctx, origin, direction, maxDistance, options = ...
-		checkContext(form, ctx)
+		ctx = forms.context(form, ctx)
 		local fields = {
 			origin = vector(form, origin, "origin"),
 			direction = vector(form, direction, "direction"),
@@ -145,7 +138,7 @@ local function castForm(form, name, vector, extra)
 	return function(...)
 		forms.arguments(form, 6, ...)
 		local ctx, shape, from, direction, maxDistance, options = ...
-		checkContext(form, ctx)
+		ctx = forms.context(form, ctx)
 		local fields = readShape(form, shape, {})
 		fields.from = vector(form, from, "from")
 		fields.direction = vector(form, direction, "direction")
@@ -159,7 +152,7 @@ local function overlapForm(form, name, vector, extra)
 	return function(...)
 		forms.arguments(form, 4, ...)
 		local ctx, shape, at, options = ...
-		checkContext(form, ctx)
+		ctx = forms.context(form, ctx)
 		local fields = readShape(form, shape, {})
 		fields.at = vector(form, at, "at")
 		local result = call(form, ctx, name, readOptions(form, options, fields, extra))
@@ -175,7 +168,7 @@ local function pushForm(form, name, read)
 	return function(...)
 		forms.arguments(form, 3, ...)
 		local ctx, target, value = ...
-		checkContext(form, ctx)
+		ctx = forms.context(form, ctx)
 		call(form, ctx, name, { entity = entity(form, target), value = read(form, value, "value") })
 	end
 end
@@ -185,7 +178,7 @@ local function gravityForm(form, name, vector)
 	return function(...)
 		forms.arguments(form, 2, ...)
 		local ctx, gravity = ...
-		checkContext(form, ctx)
+		ctx = forms.context(form, ctx)
 		call(form, ctx, name, { gravity = vector(form, gravity, "gravity") })
 	end
 end
@@ -195,7 +188,7 @@ local function slideForm(form, name, vector, keys)
 	return function(...)
 		forms.arguments(form, 5, ...)
 		local ctx, target, from, delta, options = ...
-		checkContext(form, ctx)
+		ctx = forms.context(form, ctx)
 		local fields = forms.options(form .. ": the options", options, keys)
 		for _, key in keys do
 			if fields[key] ~= nil then
@@ -225,7 +218,7 @@ function engine.physics.applyTorque(...)
 	local form = "engine.physics.applyTorque"
 	forms.arguments(form, 3, ...)
 	local ctx, target, torque = ...
-	checkContext(form, ctx)
+	ctx = forms.context(form, ctx)
 	call(form, ctx, "aylo.physics.applyTorque", { entity = entity(form, target), torque = number(form, torque, "torque") })
 end
 
