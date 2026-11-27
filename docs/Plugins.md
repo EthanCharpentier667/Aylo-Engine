@@ -151,6 +151,13 @@ links Luau: its forms are source text, written with the helpers of `engine.forms
 Registering them from the library matters on a server: the plugin is not added there, yet its forms exist, and give the
 id the asset would have. They test `engine.hasCall()` for that, and use `engine.assetId()`.
 
+**Every form describes its type**, next to it: `engine.forms.describe("engine.audio.play", "(ctx: CtxLike, sound:
+AssetId | string, ...) -> number")`. The luau-lsp types of a game (`types/aylo.d.luau`, `ScriptHost::generateTypes()`)
+give each function of `engine` the type its form describes, with the names of `scripting/types/TypesPrelude.d.luau`
+(`CtxLike`, `Entity`, `Vec2`, `Fields`...) and `R_<call>` for what an engine call gives. `engine.forms.file` describes
+the forms it makes, and a builder of several forms (the physics ones, the screen effects) describes each one it builds.
+A form left undescribed fails `Engine.WritesTheScriptTypesOfAGameItFollows`.
+
 ## Writing a game's plugin
 
 Three steps, and no file of the engine changes:

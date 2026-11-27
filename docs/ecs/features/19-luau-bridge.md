@@ -273,8 +273,11 @@ at run time: the classes `Entity` and `AssetId`, one table type per component (`
 result (`R_<name>`), the fields in layout order with the Luau type a script reads (an enum's names as a union of
 literals, a `vec3` as `vector`), `ctx:get`, `getComponent`, `ctx.events.read` / `send` and `ctx.call` as intersections
 of one overload per name (a string literal), the overload of any name last since Luau takes the first that fits, and
-`declare engine` walked from the live `engine` table, where a few forms have a known signature and every other function
-is `(...any) -> ...any`. A Behaviour's `self` is a table type with its hooks as properties, so a method written on it
+`declare engine` walked from the live `engine` table, each function typed by what its owner described with
+`engine.forms.describe(path, signature)` (`engine.forms.signatures`): the forms prelude describes the host's functions
+(`engine.call`, `engine.ecs.*`), each plugin's forms file its own forms, and a call result a signature names but this
+side lacks (`R_<call>`) is emitted as `any`. A function nobody described would be `(...any) -> ...any`; a test keeps
+there being none. A Behaviour's `self` is a table type with its hooks as properties, so a method written on it
 is checked with `self: Self`. The `Engine` writes it to `<game>/types/aylo.d.luau` at the end of a build and after a
 hot reload that changed something, when it follows the game's files and the text differs (`Engine::writeScriptTypes`).
 
