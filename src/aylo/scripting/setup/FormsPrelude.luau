@@ -145,6 +145,33 @@ function forms.named(context, value)
 	return entries
 end
 
+-- Returns the ctx a form makes its calls through: `value` itself when it is a system's ctx, the ctx of a Behaviour's
+-- self (or of a handle) otherwise, so every form that takes a ctx takes a self too. Fails with `what` unless it is one;
+-- by default the message asks for it first.
+function forms.context(form, value, what)
+	if type(value) == "table" then
+		if type(rawget(value, "call")) == "function" then
+			return value
+		end
+		-- Set by the Behaviour prelude: the ctx of a self, nil for any other table.
+		local ctx = forms.contextOf ~= nil and forms.contextOf(value) or nil
+		if ctx ~= nil then
+			return ctx
+		end
+	end
+	forms.fail(form, what or "expected the system's ctx (or a Behaviour's self) first")
+	return nil
+end
+
+-- Makes the engine call `name` through a system's `ctx`, its errors starting with the form.
+function forms.callIn(form, ctx, name, fields)
+	local results = table.pack(pcall(ctx.call, name, fields))
+	if not results[1] then
+		forms.fail(form, (string.gsub(tostring(results[2]), "^native function '[^']*': ", "")))
+	end
+	return table.unpack(results, 2, results.n)
+end
+
 -- Fails if a form got more than `count` arguments.
 function forms.arguments(form, count, ...)
 	local given = select("#", ...)

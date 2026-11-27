@@ -77,6 +77,12 @@ local function entityOf(value)
 	return state and state.entity
 end
 
+-- A self or a handle in place of ctx, for every form (forms.context).
+function forms.contextOf(value)
+	local state = rawget(value, STATE)
+	return state and state.ctx
+end
+
 function methods.getComponent(object, name)
 	local state = stateOf(object, "getComponent")
 	checkName("getComponent", name)
