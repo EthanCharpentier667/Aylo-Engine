@@ -21,7 +21,8 @@ real.
   without them is not done.
 - Engine calls from scripts go through the generic call mechanism of `ecs`; the bridge never special-cases a plugin.
 - The setup forms (`engine.assets`, `engine.input`...) belong to the plugins, which bring them as `<Name>Forms.luau`
-  files; this module holds only `setup/FormsPrelude.luau` (`engine.forms` helpers), `behaviour/BehaviourPrelude.luau`
+  files; this module holds only `setup/FormsPrelude.luau` (`engine.forms` helpers, and `engine.state`, whose calls
+  are the ECS's), `behaviour/BehaviourPrelude.luau`
   (`engine.behaviour`, sugar over `engine.ecs.component` and `engine.ecs.system`) and runs what the plugins register.
 
 ## Tests and docs
