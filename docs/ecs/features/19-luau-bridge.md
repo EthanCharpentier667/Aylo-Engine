@@ -240,6 +240,15 @@ engine.input.action("fire", "button", { bind = { "Space", "GamepadSouth" } })
 | `engine.input.action(name, type, {bind})` | `aylo.input.addAction` (`type`: `"button"` by default, `"axis"` or `"vector2"`), then one bind call per binding, in order | nothing |
 | `engine.capsule.spawn(ctx, path, overrides)`, `engine.capsule.load(ctx, path, overrides)` (in a system) | `aylo.capsule.spawn` / `load` through `ctx.call`, then `ctx.commands:patch` of the root per override | the root `Entity` |
 | `engine.capsule.reload(ctx, root)` (in a system) | `aylo.capsule.reload` through `ctx.call` | `true` if `root` was a capsule's root |
+| `engine.input.read(ctx, action)` / `engine.input.read(ctx, entity, action)` (in a system; `InputForms.luau`) | `aylo.input.read` / `aylo.replication.readInput` (an `Entity` second picks it) | the action's state |
+| `engine.state.get(ctx, machine)`, `engine.state.set(ctx, machine, value)` (in a system; `FormsPrelude.luau`, since states are the ECS's) | `aylo.state.get` / `aylo.state.set` | the value / nothing |
+| `engine.audio.play(ctx, sound, options)` (in a system; `AudioForms.luau`) | `aylo.audio.playSound` | the voice id |
+| `engine.net.localClient(ctx)` (in a system; `NetForms.luau`) | `aylo.replication.localClient` | `{ connected, client }` |
+
+Every form that takes a `ctx` reads it with `forms.context(form, value)`: a table with a raw `call` function is a ctx;
+anything else goes to `forms.contextOf`, which the Behaviour prelude sets to give the ctx of a `self` (or of a handle),
+so a form takes a Behaviour's `self` in place of `ctx` (D9). `forms.callIn(form, ctx, name, fields)` makes the call
+through it, its errors prefixed with the form.
 
 - An atlas's `grid` takes `frameSize` and `count` (both needed), `spacing`, `columns` and `offset`; a frame takes a
   `position` and a `size`, and an optional `name` (its index otherwise) and `origin` (its centre otherwise). `grid`,
