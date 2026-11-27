@@ -424,8 +424,51 @@ end
 ```
 
 Events are local to one machine and are not replicated: to tell the other side something, put it in a replicated
-component. Declaring your own event types from Luau is not available yet (*planned*); you use the engine's, such as
-`aylo.CollisionStarted`, `aylo.PlayMusic`, and the network ones in [Networking](networking.md).
+component (or a [packet](networking.md#your-own-messages)). The engine has its own, such as `aylo.CollisionStarted`,
+`aylo.PlayMusic`, and the network ones in [Networking](networking.md).
+
+#### Your own events
+
+Declare an event type with `engine.ecs.event`, in a file every side that uses it loads, then send and read it like the
+engine's:
+
+```luau
+engine.ecs.component("game.Health", { fields = { value = "f32" } })
+engine.ecs.event("game.Hit", { fields = { target = "entity", damage = "u32" } })
+
+engine.ecs.system("game.Shoot", {
+	phase = "Update",
+	query = { with = { "game.Health" } },
+	run = function(ctx)
+		for enemy in ctx.query do
+			ctx.events.send("game.Hit", { target = enemy, damage = 3 })
+		end
+	end,
+})
+
+engine.ecs.system("game.TakeHits", {
+	phase = "PostUpdate",
+	run = function(ctx)
+		for hit in ctx.events.read("game.Hit") do
+			local health = ctx:get(hit.target, "game.Health")
+			if health then
+				health.value -= hit.damage
+			end
+		end
+	end,
+})
+```
+
+`fields` takes the [field types](components.md#field-types) of components, and nothing else: an event has no
+`defaults` (a field you do not send is zero), no `replication` and no `presence`, since it never leaves the machine.
+Like a component's, its fields are fixed while the game runs: a [hot reload](hot-reload.md) that changes them, or
+stops declaring the event, rebuilds the game. A name cannot be both a component's and an event's.
+
+| Message | Cause |
+|---|---|
+| `Event 'game.Hit': unknown option 'replication' (an event takes only 'fields')` | Another key than `fields` |
+| `Event 'game.Hit': needs a 'fields' table` | No `fields` |
+| `Event 'game.Hit': ...` | A field type that does not exist, as for a component |
 
 ## Where a system runs
 

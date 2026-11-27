@@ -37,6 +37,7 @@ soon as you save it, as when the game starts (see [The Behaviours folder](module
 Some changes cannot be applied in place, so the game is rebuilt (and the log says why):
 
 - a component whose fields changed, a new replicated component, or a component you removed;
+- an [event](systems.md#your-own-events) whose fields changed, or one you removed;
 - a system that changed phase, or that has the name of a system of another script;
 - a deleted script file.
 
