@@ -57,21 +57,26 @@ engine.ecs.system("game.SpawnPlayers", {
 
 `net.ClientDisconnected` has the same `client` field. `net.Owner { client }` ties an entity to a client and is
 replicated, so a client can find its own entities; `net.PlayerInput` receives that client's inputs on the server. A
-client learns its own id with `aylo.replication.localClient`, which returns `{ connected, client }`.
+client learns its own id with `engine.net.localClient(ctx)` (the call `aylo.replication.localClient`), which returns
+`{ connected, client }`.
 
 ## Inputs
 
 1. Declare the actions with `engine.input.action` in a file both sides load. The actions are part of the network
    layout; the client and the server must declare the same ones.
 2. On a client, the engine fills the input it sends from the actions of the same names. You write no input code.
-3. On the server, read a player's action with `aylo.replication.readInput`, in a system that lists the call and
-   queries entities with `net.PlayerInput`:
+3. On the server, read a player's action with `engine.input.read(ctx, entity, action)`, in a system that queries
+   entities with `net.PlayerInput`:
 
 ```luau
-local move = ctx.call("aylo.replication.readInput", { entity = entity, action = "move" })
+local move = engine.input.read(ctx, entity, "move")
 -- move.held, move.pressed, move.released, move.axis, move.vector
 if move.vector.x > 0 then ... end
 ```
+
+The form makes the engine call `aylo.replication.readInput` (`ctx.call("aylo.replication.readInput", { entity =
+entity, action = "move" })` does the same). Without an entity, `engine.input.read(ctx, "move")` reads the action on this
+machine instead, as a client or a single-player game does.
 
 `pressed` is true on the tick the action went down. Order your system after `net.applyInputs`, which stores the tick's
 inputs.

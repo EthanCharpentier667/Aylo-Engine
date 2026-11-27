@@ -132,7 +132,7 @@ than a hook that never runs: name your helpers without that prefix.
 | `self:addComponent(name, fields)` | Gives the entity the component, its defaults with `fields` over them (`ctx.commands:add`). |
 | `self:removeComponent(name)` | Takes the component away (`ctx.commands:remove`). |
 | `self:destroy()` | Despawns the entity (`ctx.commands:despawn`). |
-| `self.ctx` | The `ctx` of the generated system: [engine calls](engine-calls.md), resources, events, time. See [`ctx`](systems.md#ctx). |
+| `self.ctx` | The `ctx` of the generated system: [engine calls](engine-calls.md), resources, events, time. See [`ctx`](systems.md#ctx). A [form](setup-forms.md#forms-you-use-in-a-system) takes `self` itself: `engine.audio.play(self, sound)`. |
 
 A **handle** is another entity seen the same way: it has `entity` and every method of the table above (`getComponent`,
 `getParent`, `destroy`...), and no fields. Two handles on the same entity are equal (`child:getParent() == self`), and

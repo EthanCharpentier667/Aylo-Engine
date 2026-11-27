@@ -9,11 +9,10 @@ engine.ecs.system("game.MoveShips", {
 	phase = "FixedUpdate",
 	side = "server",
 	query = { write = { "game.Ship", "aylo.Transform2D" }, with = { "net.PlayerInput" } },
-	calls = { "aylo.replication.readInput" },
 	after = { "net.applyInputs" },
 	run = function(ctx)
 		for entity, ship, transform in ctx.query do
-			local move = ctx.call("aylo.replication.readInput", { entity = entity, action = "move" }).vector
+			local move = engine.input.read(ctx, entity, "move").vector
 			transform.position = { x = transform.position.x + move.x * 4, y = transform.position.y - move.y * 4 }
 		end
 	end,
@@ -362,7 +361,7 @@ runs, once the commands are applied.
 | `ctx.commands` | Deferred changes to the world, see below. |
 | `ctx.resources` | The resources: `ctx.resources["aylo.Input"]` is a view, `nil` while the resource has no value (read-only when listed under `resources.read`). |
 | `ctx.events` | `ctx.events.read(name)` loops over the events not read yet; `ctx.events.send(name, fields)` sends one. |
-| `ctx.call(name, args)` | Makes an engine call. |
+| `ctx.call(name, args)` | Makes an engine call. Most have a [form](setup-forms.md#forms-you-use-in-a-system) that makes it for you: `engine.input.read(ctx, ...)`, `engine.state.get(ctx, ...)`. |
 | `ctx:get(entity, name)`, `ctx:has(entity, name)` | A component of any entity, see [Other entities](#other-entities). |
 | `ctx:getParent(entity)`, `ctx:getChildren(entity)` | The parent and the children of an entity, see [The hierarchy](#the-hierarchy). |
 | `ctx:isEnabled(entity)` | Whether the entity is switched on, see [Switching an entity off](#switching-an-entity-off). |

@@ -129,7 +129,7 @@ call. Nothing is spawned then. The forms start their errors with their name:
 
 | Message | Cause |
 |---|---|
-| `engine.capsule.spawn: expected the system's ctx first` | The first argument is not the `ctx` of `run` |
+| `engine.capsule.spawn: expected the system's ctx (or a Behaviour's self) first` | The first argument is not the `ctx` of `run` |
 | `engine.capsule.spawn: expected the capsule's path second ("actors/bydo.actor")` | The path is missing, empty or not a string |
 | `engine.capsule.spawn: overrides: 'aylo.Transform2D' must be a table of fields` | An override is not a table |
 | `engine.capsule.spawn: overrides: ...` followed by the field's error | An override names a field the component does not have, or a value that does not fit; the capsule is spawned without it |

@@ -145,7 +145,7 @@ scene names no component of a client's plugin: a dedicated server reads it too, 
   with `game.Seat`, sent to that client only: the seat, or `granted = false` when both are taken. It removes the ship
   of a client that sends `game.Leave` or that the engine reports in `net.ClientDisconnected`. A client that is
   connected but did not ask has no ship: it watches the match from its menu. See [Networking](networking.md).
-- **`round.luau`** walks `game.Round` with `aylo.state.get` and `aylo.state.set`. An `Update` system starts the round
+- **`round.luau`** walks `game.Round` with `engine.state.get` and `engine.state.set`. An `Update` system starts the round
   (`Live`) once both seats are taken, and goes back to `Waiting` when a player leaves. On entering `Live` (`onEnter`),
   each ship is spawned again from its actor and the lasers left in flight vanish, so every round starts clean. On
   entering `Over`, a clock starts; a `FixedUpdate` system that runs only `inState` `Over` counts it down and sets
@@ -155,8 +155,8 @@ scene names no component of a client's plugin: a dedicated server reads it too, 
   `PostUpdate` before `net.snapshot`, for the clients to draw it there.
 - **`ships.luau`** moves the ships in `FixedUpdate`, only while the round is `Live` (`inState = { "game.Round",
   "Live" }`), after `net.applyInputs` and before the physics syncs, reading the
-  player's `move` action with `aylo.replication.readInput` and sliding along the obstacles with
-  `aylo.physics.moveAndSlide`. On `shoot.pressed` it spawns `actors/laser.actor` (a dynamic body with a
+  player's `move` action with `engine.input.read(ctx, entity, "move")` and sliding along the obstacles with
+  `engine.physics.moveAndSlide`. On `shoot.pressed` it spawns `actors/laser.actor` (a dynamic body with a
   `aylo.Velocity`, no gravity and continuous collision), with overrides for its place, its shooter, its direction and
   the ship it can hit. One shot in ten misfires: a `game.Misfire` replaces the laser so the clients play
   another sound.
@@ -178,18 +178,18 @@ scene names no component of a client's plugin: a dedicated server reads it too, 
   and the planets that pass.
 - **`sprites.luau`** finds the new `game.Ship` and `game.Laser` entities with `added = {...}` and gives them a
   `aylo.SpriteRenderer` and `aylo.SpriteAnimator` from the atlases, and spawns the explosion for the loser.
-- **`sounds.luau`** sends `aylo.PlayMusic` at start and calls `aylo.audio.playSound` for each new laser or misfire.
+- **`sounds.luau`** sends `aylo.PlayMusic` at start and calls `engine.audio.play` for each new laser or misfire.
 - **`menu.luau`** declares the client's own state machine, `game.Screen` (`Menu`, `Joining`, `Playing`), with no
   `replicate`: each client has its own. Entering `Menu` or `Joining` spawns that screen with `engine.ui.spawn` (the
   arena dimmed, a panel, the buttons), and leaving it despawns every node marked with a `game.ScreenNode`. **Quick
-  join** enters `Joining`, where a system sends `game.Join` as soon as `aylo.replication.localClient` says the server
+  join** enters `Joining`, where a system sends `game.Join` as soon as `engine.net.localClient` says the server
   answered, and reads the `game.Seat` reply: a seat enters `Playing`, a refusal (or no server after five seconds)
   goes back to `Menu`, which says why. The UI pack's buttons are images: a system switches each button's
   `aylo.UiImage` texture by its `aylo.UiInteraction` (`hovered`, `pressed`), and another steps the loading wheel's
   `source` through its frames. See [User interface](ui.md).
 - **`hud.luau`** spawns `aylo.TextRenderer` entities for the names (marking this player's), a line at the bottom that
   says where the round is (`Waiting for an opponent...`, `Next round in 3`), and when `game.Winner` appears says who
-  won, using `aylo.replication.localClient` and `net.Owner` to know whether this client is the winner (with the network
+  won, using `engine.net.localClient` and `net.Owner` to know whether this client is the winner (with the network
   only). Those texts go when the client follows the round out of `Over` (`onExit`).
 - **`controls.luau`** adds a local Escape action, `back`, with engine calls instead of `engine.input.action`, so it is
   not sent to the server; `menu.luau` reads it.
