@@ -75,3 +75,25 @@ engine.input.action = function(...)
 		forms.call(form, "aylo.replication.addInput", { name = name, kind = kind })
 	end
 end
+
+-- engine.input.read(ctx, action) -> { value, held, pressed, released }: the action on this machine (aylo.input.read),
+-- on a client or in single player.
+-- engine.input.read(ctx, entity, action) -> { held, pressed, released, axis, vector, clientTime }: the action as the
+-- player who owns `entity` sent it (aylo.replication.readInput), on the server.
+-- `ctx` is a system's, or a Behaviour's self.
+engine.input.read = function(...)
+	local reading = "engine.input.read"
+	forms.arguments(reading, 3, ...)
+	local ctx, first, second = ...
+	ctx = forms.context(reading, ctx)
+	if typeof(first) == "Entity" then
+		if type(second) ~= "string" or second == "" then
+			forms.fail(reading, "expected the action's name after the entity")
+		end
+		return forms.callIn(reading, ctx, "aylo.replication.readInput", { entity = first, action = second })
+	end
+	if type(first) ~= "string" or first == "" or second ~= nil then
+		forms.fail(reading, "expected the action's name, or an entity and the action's name, after ctx")
+	end
+	return forms.callIn(reading, ctx, "aylo.input.read", { action = first })
+end

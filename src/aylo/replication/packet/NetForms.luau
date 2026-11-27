@@ -177,3 +177,12 @@ engine.net.received = function(ctx)
 	end
 	return list
 end
+
+-- engine.net.localClient(ctx) -> { connected, client }: whether the server gave this client its id, and the id (as
+-- net.Owner carries it). On a client, from a system (or a Behaviour's self) with aylo.replication.localClient.
+engine.net.localClient = function(...)
+	local form = "engine.net.localClient"
+	forms.arguments(form, 1, ...)
+	local ctx = forms.context(form, (...))
+	return forms.callIn(form, ctx, "aylo.replication.localClient", {})
+end
