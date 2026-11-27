@@ -304,6 +304,10 @@ luau::Result<> ScriptHost::installEngine(const Options options) {
         declareComponent(std::move(name), spec);
         return luau::ValuePack{};
     });
+    ecsBuilder.function("event").bind([this](std::string name, const luau::Table& spec) {
+        declareEvent(std::move(name), spec);
+        return luau::ValuePack{};
+    });
     ecsBuilder.function("system").bind([this](std::string name, const luau::Table& spec) {
         declareSystem(std::move(name), spec);
         return luau::ValuePack{};
@@ -392,6 +396,23 @@ void ScriptHost::declareComponent(std::string name, const luau::Table& spec) {
     }
     (_staging ? _staging->declared[_owner] : _files[_owner]).components.insert(declaration->name);
     _components.insert_or_assign(declaration->name, std::move(*layout));
+}
+
+void ScriptHost::declareEvent(std::string name, const luau::Table& spec) {
+    const auto declaration = component::readEventDeclaration(std::move(name), spec);
+    if (!declaration) {
+        throw luau::exceptions::RuntimeError{std::string{declaration.error().message()}};
+    }
+    auto layout = component::registerEvent(_app.getWorld().getEvents(), *declaration);
+    if (!layout) {
+        // As a component: the queue of the old layout cannot hold the new one, in place.
+        if (_staging && (layout.error().kind() == ErrorKind::kLayoutMismatch ||
+                         layout.error().kind() == ErrorKind::kRegistration)) {
+            _staging->rebuild = std::format("event '{}' changed: {}", declaration->name, layout.error().message());
+        }
+        throw luau::exceptions::RuntimeError{std::string{layout.error().message()}};
+    }
+    (_staging ? _staging->declared[_owner] : _files[_owner]).events.insert(declaration->name);
 }
 
 void ScriptHost::declareState(std::string name, const luau::Table& values, const std::optional<luau::Table>& options) {
@@ -778,6 +799,12 @@ core::reload::ReloadOutcome ScriptHost::applyReload(const ReloadPlan& plan) {
                     std::format("component '{}' is no longer declared by '{}'", component, owner));
             }
         }
+        for (const std::string& event : before.events) {
+            if (!after.events.contains(event)) {
+                return ReloadOutcome::needsRebuild(
+                    std::format("event '{}' is no longer declared by '{}'", event, owner));
+            }
+        }
         for (const auto& [name, phase] : before.systems) {
             // A system another script of the batch declares now has moved: it is replaced, not removed.
             const bool taken = std::ranges::any_of(
@@ -834,7 +861,10 @@ core::reload::ReloadOutcome ScriptHost::applyReload(const ReloadPlan& plan) {
         for (const std::string& component : after.components) {
             what.push_back(std::format("component {}", component));
         }
-        if (after.components.empty() && after.systems.empty()) {
+        for (const std::string& event : after.events) {
+            what.push_back(std::format("event {}", event));
+        }
+        if (after.components.empty() && after.systems.empty() && after.events.empty()) {
             _files.erase(owner);
         } else {
             _files.insert_or_assign(owner, std::move(after));

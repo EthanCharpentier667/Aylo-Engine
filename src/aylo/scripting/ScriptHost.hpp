@@ -252,6 +252,11 @@ class AYLO_SCRIPTING_API ScriptHost {
     /// @throws luau::exceptions::RuntimeError When the declaration is wrong or the component cannot be registered.
     void declareComponent(std::string name, const luau::Table& spec);
 
+    /// @brief The body of `engine.ecs.event`: an event type of the world, read and sent by the systems like the
+    /// engine's, local to this machine. A reload that changes its fields, or no longer declares it, needs a rebuild.
+    /// @throws luau::exceptions::RuntimeError When the declaration is wrong or the event cannot be registered.
+    void declareEvent(std::string name, const luau::Table& spec);
+
     /// @brief The body of `engine.ecs.system`.
     /// @throws luau::exceptions::RuntimeError When the declaration is wrong or the system cannot be added.
     void declareSystem(std::string name, const luau::Table& spec);
@@ -304,6 +309,7 @@ class AYLO_SCRIPTING_API ScriptHost {
         std::set<std::string> components;           ///< The components it declared.
         std::map<std::string, ecs::Phase> systems;  ///< The systems it declared, with their phase.
         std::set<std::string> behaviours;           ///< The Behaviours it declared (engine.behaviour).
+        std::set<std::string> events;               ///< The events it declared (engine.ecs.event).
     };
 
     /// @brief What a reload in progress holds back until the whole script ran.
