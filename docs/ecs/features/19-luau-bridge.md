@@ -266,6 +266,15 @@ plugins it adds are not), it skips them and returns the id the asset would have,
 same script loads on the server and the clients. What only a plugin knows, such as a control name or an animation
 direction, is checked where the plugin runs, and a call's error is prefixed with the form's name.
 
+### Events
+
+`engine.ecs.event(name, { fields })` (`ScriptHost::declareEvent`) reads its table with
+`component::readEventDeclaration` (only `fields`, with the field types of components) and lays it out as a component of
+the same fields (`component::registerEvent`), registered with `Events::registerType(EventInfo)`: never replicated,
+sent from zeros with the fields the sender writes, read and sent through `ctx.events` like a C++ event, its access
+declared or discovered. A reload that changes its layout, or no longer declares it, needs a rebuild, as for a
+component (`FileDeclarations::events`).
+
 ### Behaviours
 
 `engine.behaviour(name, { fields, defaults, replication, presence, side })` (`scripting/behaviour/BehaviourPrelude.luau`,
