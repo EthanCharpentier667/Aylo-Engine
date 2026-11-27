@@ -223,6 +223,11 @@ class AYLO_ENGINE_API Engine {
     /// @brief Makes the reloader follow `project.luau` and the scripts.
     void addHotReloadSources();
 
+    /// @brief Writes `types/aylo.d.luau` in the game's folder, the luau-lsp types of what the game runs now
+    /// (scripting::ScriptHost::generateTypes()), when it follows its files (hot reload, not a pack) and the text
+    /// changed. A file that cannot be written is a warning: the game goes on.
+    void writeScriptTypes() const;
+
     /// @brief Loads the plugin libraries, once, and registers them in the App, with the settings.
     void registerLibraries();
 
