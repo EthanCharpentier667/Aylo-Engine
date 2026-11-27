@@ -176,7 +176,8 @@ Every game folder has a `.luaurc` next to `project.luau`:
 ```
 
 With it, [luau-lsp](https://github.com/JohnnyMorganz/luau-lsp) understands `@scripts/...` paths and completes them. The
-template game has it already; copy it to your game folder if you started another way. The engine itself does not read
+template game has it already; copy it to your game folder if you started another way. For types and completion of the
+engine and your components, see [Types and completion](#types-and-completion). The engine itself does not read
 this file: `@scripts` always exists.
 
 To add an alias of your own, declare it in `project.luau` with `engine.settings.scripts.aliases`
@@ -190,6 +191,36 @@ To add an alias of your own, declare it in `project.luau` with `engine.settings.
 	}
 }
 ```
+
+### Types and completion
+
+While the game runs with [hot reload](hot-reload.md) on (the default in a debug build), the engine writes
+`types/aylo.d.luau` in your game folder: a luau-lsp definition file of everything your scripts can use, as the game
+has it now. It describes:
+
+- `engine`, its tables and forms (`engine.input.read`, `engine.state.get`, `engine.behaviour`... typed; the other
+  functions take and give anything);
+- `ctx`, a [Behaviour's](behaviours.md) `self` and its handles;
+- every component, the engine's and yours, with its fields: `self:getComponent("aylo.Transform2D")` and
+  `ctx:get(entity, "game.Ship")` give the view of that component, so its fields complete and a misspelled one is
+  underlined (`Cannot add property 'rotatoin' to table 'C_aylo_Transform2D'`, in `--!strict` files);
+- every event (`ctx.events.read`, `ctx.events.send`) and every engine call (`ctx.call`, `engine.call`) with what it
+  takes and gives.
+
+The file is written when the game starts and again when a script reloads, only when it changes. Tell luau-lsp to read
+it, in the settings of your editor (Visual Studio Code: `.vscode/settings.json` in the game folder):
+
+```json
+{
+	"luau-lsp.platform.type": "standard",
+	"luau-lsp.types.definitionFiles": ["types/aylo.d.luau"],
+	"luau-lsp.sourcemap.enabled": false
+}
+```
+
+The template game has these settings already. The file follows the game you run: a client has the sprites and sounds a
+server has not, so run the client (or the [editor](editor.md)) to get them all. It is generated, so do not edit it; you
+can leave it out of version control. A [shipped](shipping.md) game, which has no hot reload, does not write it.
 
 ## See also
 
