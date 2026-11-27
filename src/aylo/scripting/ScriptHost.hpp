@@ -162,6 +162,10 @@ class AYLO_SCRIPTING_API ScriptHost {
     /// @return As reloadScript(): a component or a plugin of the script cannot be removed in place.
     [[nodiscard]] core::reload::ReloadOutcome removeScript(const std::string& name);
 
+    /// @return The luau-lsp definition file of the game as it runs now (types::generateDefinitions()): its components,
+    /// events, engine calls and `engine` tree.
+    [[nodiscard]] std::string generateTypes() const;
+
     /// @brief Chooses what a reload does with a file no module loaded.
     /// @param adopts True (the default): it is a new root and runs. False (what the ScriptingPlugin sets, with entry
     /// points): it is ignored until a module requires it.

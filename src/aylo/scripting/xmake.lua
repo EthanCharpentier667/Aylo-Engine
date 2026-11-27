@@ -17,3 +17,5 @@ target("scripting")
     add_files("console/ConsolePrelude.luau")
     -- And engine.behaviour, which runs after the forms prelude.
     add_files("behaviour/BehaviourPrelude.luau")
+    -- And the start of the luau-lsp definitions of a game (types/TypeDefinitions.cpp).
+    add_files("types/TypesPrelude.d.luau")

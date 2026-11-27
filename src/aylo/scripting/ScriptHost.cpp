@@ -69,6 +69,7 @@
 #include "system/RuntimeHandle.hpp"
 #include "system/SystemDeclarationReader.hpp"
 #include "system/SystemRegistration.hpp"
+#include "types/TypeDefinitions.hpp"
 #include "view/ViewTypes.hpp"
 
 namespace aylo::scripting {
@@ -205,6 +206,20 @@ luau::Result<> ScriptHost::require(const std::string_view path) {
 void ScriptHost::setAdoptsNewFiles(const bool adopts) noexcept { _adoptsNewFiles = adopts; }
 
 void ScriptHost::setAdoptedFolder(std::string folder) { _adoptedFolder = std::move(folder); }
+
+std::string ScriptHost::generateTypes() const {
+    if (!_engine) {
+        return {};
+    }
+    const luau::Table engine = _engine->table();
+    ecs::World& world = _app.getWorld();
+    return types::generateDefinitions({
+        .components = &world.getComponents().getRegistry(),
+        .events = &world.getEvents().getRegistry(),
+        .calls = &world.getCalls(),
+        .engine = &engine,
+    });
+}
 
 bool ScriptHost::declaresBehaviour(const std::string& name) const {
     const auto found = _files.find(name);
