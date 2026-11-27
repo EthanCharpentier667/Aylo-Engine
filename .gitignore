@@ -9,6 +9,8 @@ compile_commands.json
 # Editors
 .vscode/
 .idea/
+# ...but the template game ships its luau-lsp settings
+!examples/games/template/game/.vscode/
 
 # Binaries copied to the repository root by the aylo.copy_to_root rule
 /aylo-runtime
