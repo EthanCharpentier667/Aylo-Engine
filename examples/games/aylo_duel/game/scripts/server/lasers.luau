@@ -39,7 +39,7 @@ engine.ecs.system("game.DetectHits", {
 		for entity in ctx.query do
 			ships[entity.bits] = true
 		end
-		local live = ctx.call("aylo.state.get", { state = "game.Round" }) == "Live"
+		local live = engine.state.get(ctx, "game.Round") == "Live"
 		local spent = {}
 		for collision in ctx.events.read("aylo.CollisionStarted") do
 			for _, pair in { { collision.first, collision.second }, { collision.second, collision.first } } do
@@ -53,7 +53,7 @@ engine.ecs.system("game.DetectHits", {
 				if live and ships[other.bits] then
 					live = false -- no other hit wins this round
 					ctx.commands:spawn({ ["game.Winner"] = { player = shooter } })
-					ctx.call("aylo.state.set", { state = "game.Round", value = "Over" })
+					engine.state.set(ctx, "game.Round", "Over")
 					print(`[server] player {shooter + 1} wins the round`)
 				end
 			end

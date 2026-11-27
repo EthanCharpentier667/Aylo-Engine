@@ -21,14 +21,10 @@ engine.ecs.system("game.MoveShips", {
 	before = { "aylo.Physics.SyncToPhysics" },
 	run = function(ctx)
 		for entity, ship, transform in ctx.query do
-			local move = ctx.call("aylo.replication.readInput", { entity = entity, action = "move" }).vector
+			local move = engine.input.read(ctx, entity, "move").vector
 			-- Up is +1 in the input, and Y goes down on screen.
 			local step = Duel.shipSpeed * ctx.time.fixedDelta
-			local slid = ctx.call("aylo.physics.moveAndSlide", {
-				entity = entity,
-				from = transform.position,
-				delta = { x = move.x * step, y = -move.y * step },
-			})
+			local slid = engine.physics.moveAndSlide(ctx, entity, transform.position, { x = move.x * step, y = -move.y * step })
 			local left = ship.player == 0
 			local minX = if left then Duel.shipHalfSize.x else Duel.middleX + Duel.shipHalfSize.x
 			local maxX = if left then Duel.middleX - Duel.shipHalfSize.x else Duel.viewWidth - Duel.shipHalfSize.x
@@ -38,7 +34,7 @@ engine.ecs.system("game.MoveShips", {
 			}
 			transform.position = position
 			ship.position = position
-			if ctx.call("aylo.replication.readInput", { entity = entity, action = "shoot" }).pressed then
+			if engine.input.read(ctx, entity, "shoot").pressed then
 				Weapons.fire(ctx, ship.player, position)
 			end
 		end
