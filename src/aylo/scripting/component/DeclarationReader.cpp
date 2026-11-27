@@ -233,4 +233,29 @@ Result<ComponentDeclaration> readComponentDeclaration(std::string name, const lu
     }
     return declaration;
 }
+
+Result<ComponentDeclaration> readEventDeclaration(std::string name, const luau::Table& spec) {
+    const auto entries = namedEntries(name, spec, "the declaration");
+    if (!entries) {
+        return tl::unexpected{entries.error()};
+    }
+    for (const auto& [key, value] : *entries) {
+        if (key.as<std::string>() != "fields") {
+            return fail(ErrorKind::kInvalidDeclaration,
+                        std::format("Event '{}': unknown option '{}' (an event takes only 'fields')", name,
+                                    key.as<std::string>()));
+        }
+    }
+    auto declaration = readComponentDeclaration(name, spec);
+    if (!declaration) {
+        // The same rules as a component's fields: the message names an event.
+        std::string message{declaration.error().message()};
+        const std::string prefix = std::format("Component '{}'", name);
+        if (message.starts_with(prefix)) {
+            message.replace(0, prefix.size(), std::format("Event '{}'", name));
+        }
+        return fail(declaration.error().kind(), std::move(message));
+    }
+    return declaration;
+}
 }  // namespace aylo::scripting::component
