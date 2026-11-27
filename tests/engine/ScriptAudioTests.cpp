@@ -304,3 +304,42 @@ TEST(ScriptAudio, AScriptReadsTheLengthOfASoundAndWhyAnotherIsMissingOnTheNullBa
     EXPECT_TRUE(after) << after.error().message();
     std::filesystem::remove_all(folder);
 }
+
+TEST(ScriptAudio, ThePlayFormPlaysFromACtxOrASelf) {
+    ScriptAudio script;
+    script.app.runFrame();  // the device is created at startup
+    ASSERT_EQ(script.run(R"lua(
+        local kick = engine.assets.sound("kick.wav")
+        local played = false
+        local Drum = engine.behaviour("game.Drum", { fields = { voice = "f32" }, side = "client" })
+        function Drum:onStart()
+            self.voice = engine.audio.play(self, kick, { volume = 0.5, loop = true })
+        end
+        engine.ecs.system("game.Pew", {
+            side = "client",
+            phase = "Update",
+            run = function(ctx)
+                if played then return end
+                played = true
+                ctx.commands:spawn({ ["game.Drum"] = {} }) -- the startup already ran: spawned here
+                assert(engine.audio.play(ctx, "kick.wav", { bus = "effects", pitch = 2, position = { x = 1, y = 2 } }) ~= 0)
+                local ok, message = pcall(engine.audio.play, ctx, kick, { volum = 1 })
+                assert(not ok and string.find(message, "engine.audio.play: options: unexpected 'volum'", 1, true), message)
+                ok, message = pcall(engine.audio.play, ctx, 4)
+                assert(not ok and string.find(message, "engine.audio.play: expected the sound second", 1, true), message)
+            end,
+        })
+    )lua"),
+              "");
+    testing::internal::CaptureStderr();
+    script.app.runFrame();
+    script.app.runFrame();
+    script.app.runFrame();
+    EXPECT_EQ(testing::internal::GetCapturedStderr(), "");
+    ASSERT_GE(script.state->plays.size(), 2U);
+    bool looped = false;
+    for (const auto& play : script.state->plays) {
+        looped = looped || (play.params.loop && play.params.volume == 0.5F);
+    }
+    EXPECT_TRUE(looped) << "the Behaviour's sound";
+}

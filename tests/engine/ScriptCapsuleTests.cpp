@@ -241,3 +241,35 @@ TEST(ScriptCapsule, TheFormsCheckWhatTheyAreGiven) {
               "");
     EXPECT_EQ(script.run(R"(assert(string.find(probe.errors[6], "extar", 1, true), probe.errors[6]))"), "");
 }
+
+TEST(ScriptCapsule, ABehaviourSpawnsACapsuleWithItsSelf) {
+    ScriptApp script;
+    ASSERT_EQ(script.run(R"(
+        local Spawner = engine.behaviour("game.Spawner", { fields = { spawned = "bool" } })
+        function Spawner:onStart()
+            engine.capsule.spawn(self, "actors/bydo.actor", { ["test.scriptcapsule.Armor"] = { extra = 7 } })
+            self.spawned = true
+        end
+        engine.ecs.system("game.Begin", {
+            phase = "Update",
+            run = function(ctx)
+                if not probe.begun then
+                    probe.begun = true
+                    ctx.commands:spawn({ ["game.Spawner"] = {} })
+                end
+            end,
+        })
+    )"),
+              "");
+    testing::internal::CaptureStderr();
+    script.app.runFrame();  // the spawner
+    script.app.runFrame();  // its onStart spawns the bydo
+    EXPECT_EQ(testing::internal::GetCapturedStderr(), "");
+    std::vector<std::int32_t> extras;
+    const aylo::ecs::QueryState<const sc::Armor> state{script.app.getWorld().getComponents()};
+    aylo::ecs::Query<const sc::Armor> query{state, 0};
+    for (auto [entity, armor] : query) {
+        extras.push_back(armor.extra);
+    }
+    EXPECT_EQ(extras, std::vector<std::int32_t>{7});
+}
