@@ -6,6 +6,10 @@ engine.audio = {}
 
 local playKeys = { "bus", "volume", "pitch", "position", "loop", "startAt", "lowpass" }
 
+engine.forms.describe(
+	"engine.audio.play",
+	"(ctx: CtxLike, sound: AssetId | string, options: { bus: string?, volume: number?, pitch: number?, position: Vec2?, loop: boolean?, startAt: number?, lowpass: number? }?) -> number"
+)
 engine.audio.play = function(...)
 	local form = "engine.audio.play"
 	local forms = engine.forms

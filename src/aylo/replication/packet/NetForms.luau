@@ -21,6 +21,7 @@ end
 
 -- engine.net.packet(name, { direction = "toServer" | "toClients", channel = "reliable" | "unreliable", fields = { { name,
 -- type, maxLength? }, ... } }): declares a packet, on both sides, while the scripts load. Returns its name.
+forms.describe("engine.net.packet", "(name: string, spec: Fields) -> ()")
 engine.net.packet = function(...)
 	local form = "engine.net.packet"
 	forms.arguments(form, 2, ...)
@@ -133,6 +134,7 @@ end
 
 -- engine.net.sendToServer(ctx, name, values): a client sends a `toServer` packet. `ctx` is a system's, which lists
 -- "aylo.net.sendToServer" under `calls`. Returns whether it was sent.
+forms.describe("engine.net.sendToServer", "(ctx: CtxLike, name: string, values: Fields?) -> boolean")
 engine.net.sendToServer = function(ctx, name, values)
 	local form = "engine.net.sendToServer"
 	ctx = forms.context(form, ctx)
@@ -145,6 +147,7 @@ end
 
 -- engine.net.sendToClients(ctx, name, values, client?): the server sends a `toClients` packet to every client, or to
 -- `client`. `ctx` lists "aylo.net.sendToClients" under `calls`.
+forms.describe("engine.net.sendToClients", "(ctx: CtxLike, name: string, values: Fields?, client: number?) -> boolean")
 engine.net.sendToClients = function(ctx, name, values, client)
 	local form = "engine.net.sendToClients"
 	ctx = forms.context(form, ctx)
@@ -162,6 +165,7 @@ end
 -- engine.net.received(ctx): the packets that arrived this frame, as a list of { name =, sender =, values = } where `values`
 -- is a table of the packet's fields. The system lists `events = { read = { "net.PacketReceived" } }`. A packet this
 -- script did not declare is skipped, and so is one travelling toward the other side (see ctx.side).
+forms.describe("engine.net.received", "(ctx: CtxLike) -> { { name: string, sender: number, values: Fields } }")
 engine.net.received = function(ctx)
 	ctx = forms.context("engine.net.received", ctx)
 	local list = {}
@@ -180,6 +184,7 @@ end
 
 -- engine.net.localClient(ctx) -> { connected, client }: whether the server gave this client its id, and the id (as
 -- net.Owner carries it). On a client, from a system (or a Behaviour's self) with aylo.replication.localClient.
+forms.describe("engine.net.localClient", "(ctx: CtxLike) -> R_aylo_replication_localClient")
 engine.net.localClient = function(...)
 	local form = "engine.net.localClient"
 	forms.arguments(form, 1, ...)

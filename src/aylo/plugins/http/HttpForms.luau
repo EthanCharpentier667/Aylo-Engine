@@ -21,6 +21,10 @@ end
 -- engine.http.request(ctx, { url, method, headers, body, timeout, priority }): sends a request and returns its id, which the
 -- aylo.HttpResponse event carries. `ctx` is a system's (which lists "aylo.http.request" under `calls`), or nil
 -- while the script loads.
+forms.describe(
+	"engine.http.request",
+	"(ctx: CtxLike?, request: { url: string, method: string?, headers: { [string]: string }?, body: string?, timeout: number?, priority: number? }) -> number"
+)
 engine.http.request = function(...)
 	forms.arguments(form, 2, ...)
 	local ctx, given = ...

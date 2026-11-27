@@ -66,6 +66,10 @@ local function spawningForm(form, name)
 	end
 end
 
+forms.describe("engine.capsule.spawn", "(ctx: CtxLike, path: string, overrides: { [string]: Fields }?) -> Entity")
+forms.describe("engine.capsule.load", "(ctx: CtxLike, path: string, overrides: { [string]: Fields }?) -> Entity")
+forms.describe("engine.capsule.reload", "(ctx: CtxLike, root: Entity) -> boolean")
+
 -- Spawns a copy of `capsule` and returns its root. Needs "aylo.capsule.spawn" in the system's `calls`.
 engine.capsule.spawn = spawningForm("engine.capsule.spawn", "aylo.capsule.spawn")
 

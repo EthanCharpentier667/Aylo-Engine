@@ -51,6 +51,10 @@ local function readBinding(action, number, value)
 	return nil
 end
 
+forms.describe(
+	"engine.input.action",
+	'(name: string, kind: ("button" | "axis" | "vector2")?, options: { bind: { any }? }?) -> ()'
+)
 engine.input.action = function(...)
 	forms.arguments(form, 3, ...)
 	local name, kind, given = ...
@@ -81,6 +85,10 @@ end
 -- engine.input.read(ctx, entity, action) -> { held, pressed, released, axis, vector, clientTime }: the action as the
 -- player who owns `entity` sent it (aylo.replication.readInput), on the server.
 -- `ctx` is a system's, or a Behaviour's self.
+forms.describe(
+	"engine.input.read",
+	"((ctx: CtxLike, action: string) -> R_aylo_input_read) & ((ctx: CtxLike, entity: Entity, action: string) -> R_aylo_replication_readInput)"
+)
 engine.input.read = function(...)
 	local reading = "engine.input.read"
 	forms.arguments(reading, 3, ...)

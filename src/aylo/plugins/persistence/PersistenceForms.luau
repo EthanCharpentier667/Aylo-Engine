@@ -16,6 +16,11 @@ local function invoke(form, ctx, call, fields)
 	return results[2]
 end
 
+for _, verb in { "read", "delete", "exists" } do
+	forms.describe("engine.persistence." .. verb, "(ctx: CtxLike?, spec: { name: string }) -> R_aylo_persistence_" .. verb)
+end
+forms.describe("engine.persistence.write", "(ctx: CtxLike?, spec: { name: string, data: any }) -> R_aylo_persistence_write")
+
 local function nameOf(form, given, fields)
 	local spec = forms.table(form, given, fields or { "name" })
 	local name = forms.string(form, spec, "name")

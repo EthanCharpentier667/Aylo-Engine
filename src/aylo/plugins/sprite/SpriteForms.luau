@@ -68,6 +68,7 @@ local function readAnimation(name, value)
 	return fields
 end
 
+engine.forms.describe("engine.assets.atlas", "(spec: Fields) -> AssetId")
 engine.assets.atlas = function(...)
 	forms.arguments(form, 1, ...)
 	local spec = forms.table(form, (...), { "path", "texture", "name", "linear", "grid", "frames", "animations" })

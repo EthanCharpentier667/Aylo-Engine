@@ -187,3 +187,13 @@ function quat.slerp(a, b, t: number)
 end
 
 engine.math.quat = quat
+engine.forms.describe("engine.math.quat.identity", "() -> Vec4")
+engine.forms.describe("engine.math.quat.normalize", "(q: Vec4) -> Vec4")
+engine.forms.describe("engine.math.quat.fromAxisAngle", "(axis: vector | Vec3, angle: number) -> Vec4")
+engine.forms.describe("engine.math.quat.multiply", "(a: Vec4, b: Vec4) -> Vec4")
+engine.forms.describe("engine.math.quat.inverse", "(q: Vec4) -> Vec4")
+engine.forms.describe("engine.math.quat.rotate", "(q: Vec4, v: vector | Vec3) -> vector")
+engine.forms.describe("engine.math.quat.fromEuler", "(x: number, y: number, z: number) -> Vec4")
+engine.forms.describe("engine.math.quat.toEuler", "(q: Vec4) -> (number, number, number)")
+engine.forms.describe("engine.math.quat.lookRotation", "(direction: vector | Vec3, up: (vector | Vec3)?) -> Vec4")
+engine.forms.describe("engine.math.quat.slerp", "(a: Vec4, b: Vec4, t: number) -> Vec4")

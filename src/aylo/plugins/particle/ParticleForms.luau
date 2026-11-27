@@ -131,6 +131,7 @@ local function readKeys(spec, key, isColor)
 	return keys
 end
 
+forms.describe("engine.assets.particle", "(spec: Fields) -> AssetId")
 engine.assets.particle = function(...)
 	forms.arguments(form, 1, ...)
 	local spec = forms.table(form, (...), {
