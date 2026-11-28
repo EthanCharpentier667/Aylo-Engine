@@ -14,6 +14,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "FakeAudioDevice.hpp"
@@ -217,4 +218,59 @@ TEST(AudioAssets, ProbesASoundGivenInMemoryAfterItsBytesAreFreed) {
     const std::optional<aylo::plugins::audio::SoundProbe> probe = fixture.assets.probe(id);
     ASSERT_TRUE(probe && probe->info);
     EXPECT_EQ(probe->info->frames, 300U);
+}
+
+namespace {
+/// @brief Writes @p text as the file @p name of @p folder.
+void writeText(const SoundFolder& folder, const char* name, const char* text) {
+    std::ofstream{folder.getPath() / name} << text;
+}
+}  // namespace
+
+TEST(AudioAssets, StreamsASoundItsImportFileAsksTo) {
+    // An option beside the file holds wherever the sound is asked for from: a form, a capsule, a path (#167).
+    AudioAssetsFixture fixture;
+    const SoundFolder folder;
+    writeText(folder, "theme.ogg.import", R"({ "stream": true })");
+    fixture.assets.setDirectory(folder.getPath());
+
+    const aylo::core::asset::AssetId theme = fixture.assets.load("theme.ogg");
+    const aylo::core::asset::AssetId shot = fixture.assets.load("shot.wav");
+
+    EXPECT_TRUE(fixture.assets.get(theme)->desc.stream);
+    EXPECT_FALSE(fixture.assets.get(shot)->desc.stream) << "no import file: the defaults";
+}
+
+TEST(AudioAssets, AStreamAScriptAsksForHoldsOverItsImportFile) {
+    AudioAssetsFixture fixture;
+    const SoundFolder folder;
+    writeText(folder, "theme.ogg.import", R"({ "stream": false })");
+    fixture.assets.setDirectory(folder.getPath());
+
+    const aylo::core::asset::AssetId theme = fixture.assets.load("theme.ogg", {.stream = true});
+
+    EXPECT_TRUE(fixture.assets.get(theme)->desc.stream);
+}
+
+TEST(AudioAssets, RefusesABrokenImportFileNamingIt) {
+    AudioAssetsFixture fixture;
+    const SoundFolder folder;
+    writeText(folder, "theme.ogg.import", R"({ "stream": true, "loop": true })");
+    writeText(folder, "shot.wav.import", R"({ "stream": "yes" })");
+    writeText(folder, "hit.wav.import", "[true]");
+    fixture.assets.setDirectory(folder.getPath());
+
+    for (const auto& [path, part] :
+         {std::pair{"theme.ogg", "unknown key 'loop'"}, std::pair{"shot.wav", "'stream' takes true or false"},
+          std::pair{"hit.wav", "expected an object"}}) {
+        try {
+            static_cast<void>(fixture.assets.load(path));
+            ADD_FAILURE() << path << " was accepted";
+        } catch (const aylo::contract::audiodevice::exceptions::AudioLoadException& error) {
+            const std::string message = error.what();
+            EXPECT_TRUE(message.contains(std::string{path} + ".import")) << message;
+            EXPECT_TRUE(message.contains(part)) << message;
+        }
+        EXPECT_EQ(fixture.assets.get(aylo::core::asset::AssetId::fromPath(path)), nullptr) << "nothing is queued";
+    }
 }
