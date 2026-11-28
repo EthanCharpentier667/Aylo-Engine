@@ -1,4 +1,5 @@
--- The music, and a sound at each shot: the laser's, or the misfire's, a little different each time.
+-- A sound at each shot: the laser's, or the misfire's, a little different each time. The music is a node of the arena
+-- (assets/scenes/arena.scene).
 
 local assets = require("@scripts/client/assets")
 
@@ -13,17 +14,6 @@ local function playShot(ctx, sound, position)
 		position = position,
 	})
 end
-
--- Startup: the music fades in.
-engine.ecs.system("game.PlayMusic", {
-	phase = "Startup",
-	side = "client",
-	query = {},
-	events = { send = { "aylo.PlayMusic" } },
-	run = function(ctx)
-		ctx.events.send("aylo.PlayMusic", { sound = assets.music, crossfade = 1 })
-	end,
-})
 
 -- Update: each laser the server spawned sounds where it was fired.
 engine.ecs.system("game.PlayLasers", {

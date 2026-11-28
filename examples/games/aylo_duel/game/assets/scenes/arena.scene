@@ -22,6 +22,10 @@ aylo.Transform2D = { position = (400, 300) }
 aylo.Camera2D = {}
 aylo.AudioListener = {}
 
+# The music, from the start, again and again; it streams (maint.ogg.import).
+[node path="Music" side=client]
+aylo.AudioSource = { sound = "maint.ogg", bus = "music", loop = true, spatial = false }
+
 # Each player's name at the top of the middle of their half, over every sprite (layer 10).
 [node path="LeftName" side=client]
 game.PlayerName = { player = 0 }
