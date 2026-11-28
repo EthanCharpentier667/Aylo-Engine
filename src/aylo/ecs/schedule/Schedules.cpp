@@ -90,7 +90,7 @@ void Schedules::build() {
     }
 }
 
-void Schedules::run(Phase phase) { at(phase).run(); }
+void Schedules::run(Phase phase, bool simulates) { at(phase).run(simulates); }
 
 bool Schedules::isPaused() const noexcept { return _paused; }
 
@@ -116,7 +116,7 @@ void Schedules::runFrame() {
         run(Phase::kStartup);
         _started = true;
     }
-    run(Phase::kPreUpdate);
+    run(Phase::kPreUpdate, simulates);
     if (simulates) {
         runStateTransitions();  // after the inputs and the network of the frame, before the gameplay
     }
@@ -133,8 +133,8 @@ void Schedules::runFrame() {
         }
         run(Phase::kUpdate);
     }
-    run(Phase::kPostUpdate);
-    run(Phase::kRender);
+    run(Phase::kPostUpdate, simulates);
+    run(Phase::kRender, simulates);
     updateFrameEvents();
 }
 

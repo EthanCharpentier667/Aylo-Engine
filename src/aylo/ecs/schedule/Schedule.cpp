@@ -104,6 +104,11 @@ Schedule::SystemConfig& Schedule::SystemConfig::runIf(System::RunCondition condi
     return *this;
 }
 
+Schedule::SystemConfig& Schedule::SystemConfig::whilePaused(bool runs) {
+    _schedule->_entries.at(_index).system.setRunsWhilePaused(runs);
+    return *this;
+}
+
 Schedule::SystemConfig& Schedule::SystemConfig::setSide(Side side) {
     System& system = std::next(_schedule->_entries.begin(), static_cast<std::ptrdiff_t>(_index))->system;
     if (side == Side::kClient) {
@@ -265,14 +270,14 @@ void Schedule::build() {
     _built = true;
 }
 
-void Schedule::run() {
+void Schedule::run(bool simulates) {
     if (!_built) {
         build();
     }
     bool discovered = false;
     for (const std::size_t index : _order) {
         System& system = _entries.at(index).system;
-        if (runsIn(system.getSide(), _mode) && system.canRun()) {
+        if (runsIn(system.getSide(), _mode) && (simulates || system.runsWhilePaused()) && system.canRun()) {
             system.run();
             discovered = system.takeAccessGrowth() || discovered;
         }

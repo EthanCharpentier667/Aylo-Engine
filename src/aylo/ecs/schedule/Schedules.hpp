@@ -100,8 +100,9 @@ class AYLO_ECS_API Schedules {
     void build();
 
     /// @brief Runs one phase's schedule (Schedule::run()); neither the clock nor the event queues are touched.
+    /// @param simulates Whether the frame simulates (Schedule::run()).
     /// @throws exceptions::ScheduleException When the schedule cannot be built.
-    void run(Phase phase);
+    void run(Phase phase, bool simulates = true);
 
     /// @brief Runs a whole frame: Startup on the first frame only, PreUpdate, FixedUpdate once per fixed tick the
     /// clock gives, Update, PostUpdate, then Render, each followed by its commands. While paused, FixedUpdate and
