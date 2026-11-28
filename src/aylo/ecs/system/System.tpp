@@ -123,6 +123,7 @@ template <typename... Params, typename... Configs>
 System::System(World& world, std::string name, void (*function)(Params...), Configs... configs)
     : _world{&world},
       _name{std::move(name)},
+      _access{},
       _commands{world},
       _lastRun{world.getChangeTick() - kMaxChangeAge},  // the first run sees everything as added
       _body{makeBody(world, function, std::type_identity<void(Params...)>{}, _access, std::move(configs)...)},
@@ -137,6 +138,7 @@ template <typename Callable, typename... Configs>
 System::System(World& world, std::string name, ScriptCallable<Callable> script, Configs... configs)
     : _world{&world},
       _name{std::move(name)},
+      _access{},  // listed so the compiler sees it built before the body fills it (declared before _body)
       _commands{world},
       _lastRun{world.getChangeTick() - kMaxChangeAge},  // the first run sees everything as added
       _body{makeScriptBody(world, std::move(script.callable), _access, std::move(configs)...)},
