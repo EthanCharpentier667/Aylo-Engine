@@ -31,12 +31,18 @@ starts, after your scripts, so a file can use the components they declare. A cap
 `assets/`, for example `actors/boss.actor`.
 
 The models (`.gltf`, `.glb`, `.fbx`, `.obj`), materials (`.material`), images (`.png`, `.jpg`, `.bmp`, `.tga`,
-`.hdr`), [atlas files](setup-forms.md#atlas-files) (`.atlas`) and sounds (`.wav`, `.mp3`, `.ogg`, `.flac`) a capsule names are loaded when its file is read, and again when
+`.hdr`), [atlas files](setup-forms.md#atlas-files) (`.atlas`), fonts (`.json`) and sounds (`.wav`, `.mp3`, `.ogg`,
+`.flac`) a capsule names are loaded when its file is read, and again when
 you save it: `aylo.MeshRenderer = { mesh = "models/statue.obj" }` draws without an `engine.assets.mesh` in a script,
 and `aylo.AudioSource = { sound = "sfx/engine.ogg", loop = true }` plays without an `engine.assets.sound`. An asset
 loads with the defaults of its setup form: an image pixelated and not repeated, a sound decoded once. For other
 options (a smooth image, a music that streams), load it in a script with them first: the first load wins. A file that
 cannot be loaded is reported on the output, and the game goes on.
+
+!!! note "A `.json` in a capsule is a font"
+    A `.json` file a capsule names is loaded as a font (`engine.assets.font`). To name an Aseprite or TexturePacker
+    atlas in a capsule, give it a [`.atlas` file](setup-forms.md#atlas-files) that points to the export:
+    `{ "path": "ship.json" }`.
 
 ```
 [capsule format=1]
