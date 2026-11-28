@@ -145,7 +145,9 @@ architecture rules, and this file keeps the detail, which changes with every fea
       `ComponentValues`), the `Capsules` resource (by the `AssetId` of their path, `define()` again for hot reload),
       `spawnCapsule()`, `loadCapsule()` (switches levels, with the `LoadedCapsule` resource) and `reloadCapsule()`,
       each recorded in a `Commands` buffer (`CapsuleSpawn.hpp`), the `CapsuleInstance` component on
-      every spawned root, and the `aylo.capsule.spawn` / `load` / `reload` calls (`CapsuleCalls.hpp`).
+      every spawned root, the replicated `SpawnedCapsule` of a root the server spawned, whose client part a client
+      spawns (`spawnClientPart()`, system `aylo.Capsule.SpawnReplicated`), and the `aylo.capsule.spawn` / `load` /
+      `reload` calls (`CapsuleCalls.hpp`).
       `format/CapsuleText.hpp` (`aylo::plugins::capsule::format`) reads and writes the capsule file format
       (`docs/CapsuleFormat.md`);
       `CapsuleFiles` (the `aylo.CapsuleFiles` resource) reads a game's `.capsule` / `.scene` / `.actor` files from the

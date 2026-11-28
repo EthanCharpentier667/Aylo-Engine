@@ -166,6 +166,27 @@ A level is a capsule whose root has no `Transform`: the `TransformPlugin` treats
 world space. A capsule that moves as one gives its root a `Transform`. Despawning a root despawns the capsule: its
 descendants go with it.
 
+### Actors the server spawns
+
+A capsule the server spawns while the game runs reaches the clients as the entities replication sends, and a client
+spawns the rest of it, as Unity's Netcode and Godot's `MultiplayerSpawner` instance the same prefab on every peer:
+
+- `spawnCapsule()` gives the root a `SpawnedCapsule { capsule }` (`SpawnedCapsule.hpp`, `"aylo.SpawnedCapsule"`,
+  replicated `kSpawnOnly`, registered with those options whoever does it first) on the side that keeps server-only
+  components (a server, standalone), when the root has a replicated component (`detail::rootReplicates()`, through its
+  instance): a capsule with none stays off the network. `loadCapsule()` gives none: a level is loaded by both sides.
+- On a client, the Update system `aylo.Capsule.SpawnReplicated` (client side) finds the roots with a `SpawnedCapsule`
+  and no `CapsuleInstance`, and calls `spawnClientPart()`: `spawnTree()` with `clientPart` into that root, which adds
+  the root's values of components that are not replicated (`ComponentValues::isReplicated()`), spawns its `side=client`
+  children with their subtrees, then its `Name` and `CapsuleInstance`. Its `server` and `both` children are the
+  server's: they come through replication (`Parent` is replicated) with their replicated components only.
+- A capsule the client spawned or loaded itself already has its `CapsuleInstance`, and so has a standalone world's: it
+  is never spawned twice. A capsule id the client does not know (bytes from the network) is reported once, and the
+  root gets a `CapsuleInstance` so it is not tried again.
+- The client's hot reload leaves these roots alone: reloading them would despawn the server's children.
+
+Overrides of non-replicated components given at spawn stay on the server: a game replicates what differs per instance.
+
 ### Loading: switching levels
 
 `loadCapsule()` (and the `aylo.capsule.load` call) switches the level: it despawns the root the `LoadedCapsule`
@@ -247,4 +268,6 @@ engine.ecs.system("game.Waves", {
   node of its own capsule). (Later)
 - Saving part of a running world back to a capsule file. The editor edits the capsules themselves and writes them with
   `writeCapsule()` (`docs/Editor.md`), so this is only for "save the world as it is now". (Later)
-- Spawning by capsule over the network: the spawn record already has a `capsule` short id, still unused. (Later)
+- Spawning by capsule over the network in fewer bytes: the spawn record already has a `capsule` short id, still unused;
+  `SpawnedCapsule` sends the capsule as a component meanwhile ([Actors the server spawns](#actors-the-server-spawns)).
+  (Later)
