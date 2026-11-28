@@ -7,6 +7,9 @@
 
 #include <gtest/gtest.h>
 
+#include <string>
+#include <vector>
+
 #include "editor/panels/AssetKind.hpp"
 
 using aylo::editor::panels::AssetKind;
@@ -61,4 +64,24 @@ TEST(EditorAssetKind, EncodesCodePointsAsUtf8) {
     EXPECT_EQ(aylo::editor::panels::toUtf8(U'\u00e9'), "\xC3\xA9");
     EXPECT_EQ(aylo::editor::panels::toUtf8(U'\uf07b'), "\xEF\x81\xBB");
     EXPECT_EQ(aylo::editor::panels::toUtf8(U'\U0001F600'), "\xF0\x9F\x98\x80");
+}
+
+TEST(EditorAssetKind, TellsTheScriptsApartByWhatTheyAreToTheGame) {
+    // In scripts/, a file says where the code that runs comes from (#180): a Behaviour, an entry point, a module.
+    using aylo::editor::panels::scriptKindOf;
+    const std::vector<std::string> entries{"shared/main", "server/main", "client/main"};
+    EXPECT_EQ(scriptKindOf("behaviours/Lifetime.luau", entries, false), AssetKind::kBehaviour);
+    EXPECT_EQ(scriptKindOf("behaviours/fx/Spark.luau", entries, false), AssetKind::kBehaviour);
+    EXPECT_EQ(scriptKindOf("server/main.luau", entries, false), AssetKind::kEntry);
+    EXPECT_EQ(scriptKindOf("shared/main.luau", entries, false), AssetKind::kEntry);
+    EXPECT_EQ(scriptKindOf("server/weapons.luau", entries, false), AssetKind::kScript);
+    EXPECT_EQ(scriptKindOf("main.luau", entries, false), AssetKind::kScript) << "not named by project.luau here";
+    EXPECT_EQ(scriptKindOf("types/aylo.d.luau", entries, false), AssetKind::kTypes);
+    EXPECT_EQ(scriptKindOf("behaviours", entries, true), AssetKind::kFolder);
+    EXPECT_EQ(scriptKindOf("notes.md", entries, false), AssetKind::kText);
+
+    using aylo::editor::panels::iconOf;
+    EXPECT_NE(iconOf(AssetKind::kBehaviour), iconOf(AssetKind::kScript));
+    EXPECT_NE(iconOf(AssetKind::kEntry), iconOf(AssetKind::kScript));
+    EXPECT_NE(iconOf(AssetKind::kTypes), iconOf(AssetKind::kScript));
 }
