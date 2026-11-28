@@ -230,6 +230,7 @@ void EditorPlugin::build(ecs::App& app) {
     state->windowTitle =
         _options.gameTitle.empty() ? "AYLO Editor" : std::format("AYLO Editor - {}", _options.gameTitle);
     state->textEditor = _options.textEditor.empty() ? shell::defaultTextEditor() : _options.textEditor;
+    state->scriptEntries = _options.scriptEntries;
     ecs::Resources& resources = app.getWorld().getResources();
     // The graphics plugin, which this one requires, inserted both hooks; they live and die with this App.
     resources.getMut<plugins::graphics::PlatformEventFilter>()->filter =

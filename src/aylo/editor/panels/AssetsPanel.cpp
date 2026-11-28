@@ -47,10 +47,38 @@ constexpr float kMinIcon = 32.0F;               ///< The smallest icon the slide
 constexpr float kMaxIcon = 128.0F;              ///< The biggest.
 constexpr float kIconScale = 0.8F;              ///< The glyph's size relative to its cell, so it fits with margin.
 
-/// @return @p path in the assets, with forward slashes; "" for the assets themselves.
-std::string relativeOf(const EditorState& state, const std::filesystem::path& path) {
-    const std::string relative = path.lexically_relative(state.assets).generic_string();
+/// @return The folder of the game @p root is: its assets or its scripts.
+const std::filesystem::path& rootPath(const EditorState& state, AssetRoot root) {
+    return root == AssetRoot::kScripts ? state.scripts : state.assets;
+}
+
+/// @return The name the panel gives @p root.
+const char* rootName(AssetRoot root) { return root == AssetRoot::kScripts ? "scripts" : "assets"; }
+
+/// @return @p path in @p root, with forward slashes; "" for the root itself.
+std::string relativeOf(const EditorState& state, AssetRoot root, const std::filesystem::path& path) {
+    const std::string relative = path.lexically_relative(rootPath(state, root)).generic_string();
     return relative == "." ? std::string{} : relative;
+}
+
+/// @return The kind of the entry @p relative of @p root: a script by what it is to the game, any other file by its
+/// extension.
+AssetKind kindIn(const EditorState& state, AssetRoot root, const std::string& relative, bool isFolder) {
+    return root == AssetRoot::kScripts ? scriptKindOf(relative, state.scriptEntries, isFolder)
+                                       : kindOf(relative, isFolder);
+}
+
+/// @return Whether @p kind is Luau, which a double-click opens in the text editor.
+bool isLuau(AssetKind kind) {
+    return kind == AssetKind::kScript || kind == AssetKind::kBehaviour || kind == AssetKind::kEntry ||
+           kind == AssetKind::kTypes;
+}
+
+/// @brief Opens @p file in the text editor; why not goes to the status line.
+void openText(EditorState& state, const std::filesystem::path& file) {
+    if (!shell::openInTextEditor(state.textEditor, file)) {
+        state.status = std::format("Could not run '{}'", state.textEditor);
+    }
 }
 
 /// @return @p folder and @p name joined, in the assets.
@@ -58,9 +86,10 @@ std::string join(std::string_view folder, std::string_view name) {
     return folder.empty() ? std::string{name} : std::format("{}/{}", folder, name);
 }
 
-/// @brief Asks for the popup of @p action on @p target.
-void request(EditorState& state, AssetAction action, std::string target, std::string_view text = {}) {
+/// @brief Asks for the popup of @p action on @p target, in @p root.
+void request(EditorState& state, AssetRoot root, AssetAction action, std::string target, std::string_view text = {}) {
     state.assetAction = action;
+    state.assetActionRoot = root;
     state.assetTarget = std::move(target);
     state.textField.fill('\0');
     std::memcpy(state.textField.data(), text.data(), std::min(text.size(), state.textField.size() - 1));
@@ -93,23 +122,27 @@ bool ensureLoaded(EditorState& state, const std::string& path) {
     return true;
 }
 
-/// @brief The menu of a folder: what can be made in it.
-void folderMenu(EditorState& state, const std::string& folder) {
-    if (ImGui::MenuItem("New scene")) {
-        request(state, AssetAction::kNewScene, folder, "level");
-    }
-    if (ImGui::MenuItem("New actor")) {
-        request(state, AssetAction::kNewActor, folder, "actor");
-    }
-    if (ImGui::MenuItem("New material")) {
-        request(state, AssetAction::kNewMaterial, folder, "material");
+/// @brief The menu of a folder of @p root: what can be made in it.
+void folderMenu(EditorState& state, AssetRoot root, const std::string& folder) {
+    if (root == AssetRoot::kAssets) {
+        if (ImGui::MenuItem("New scene")) {
+            request(state, root, AssetAction::kNewScene, folder, "level");
+        }
+        if (ImGui::MenuItem("New actor")) {
+            request(state, root, AssetAction::kNewActor, folder, "actor");
+        }
+        if (ImGui::MenuItem("New material")) {
+            request(state, root, AssetAction::kNewMaterial, folder, "material");
+        }
+    } else if (ImGui::MenuItem("New script")) {
+        request(state, root, AssetAction::kNewScript, folder, "module");
     }
     if (ImGui::MenuItem("New folder")) {
-        request(state, AssetAction::kNewFolder, folder, "folder");
+        request(state, root, AssetAction::kNewFolder, folder, "folder");
     }
     ImGui::Separator();
     if (ImGui::MenuItem("New Behaviour")) {
-        request(state, AssetAction::kNewBehaviour, folder, "Spinner");
+        request(state, root, AssetAction::kNewBehaviour, folder, "Spinner");
     }
     if (ImGui::IsItemHovered()) {
         gui::tooltip("A script to attach to nodes, written in scripts/behaviours/ and opened in the text editor");
@@ -144,20 +177,21 @@ void openCapsule(EditorState& state, const std::string& relative) {
     }
 }
 
-/// @brief The menu of the file @p relative, named @p name.
-void fileMenu(EditorState& state, const std::string& relative, const std::string& name, bool isCapsule) {
+/// @brief The menu of the file @p relative of @p root, named @p name.
+void fileMenu(EditorState& state, AssetRoot root, const std::string& relative, const std::string& name,
+              bool isCapsule) {
     const bool isScene = std::filesystem::path{relative}.extension() == ".scene";
     if (isCapsule && ImGui::MenuItem(isScene ? "Open" : "Open alone")) {
         openCapsule(state, relative);
     }
-    if (ImGui::MenuItem("Open in text editor") && !shell::openInTextEditor(state.textEditor, state.assets / relative)) {
-        state.status = std::format("Could not run '{}'", state.textEditor);
+    if (ImGui::MenuItem("Open in text editor")) {
+        openText(state, rootPath(state, root) / relative);
     }
     if (ImGui::MenuItem("Rename")) {
-        request(state, AssetAction::kRename, relative, name);
+        request(state, root, AssetAction::kRename, relative, name);
     }
     if (ImGui::MenuItem("Delete")) {
-        request(state, AssetAction::kDelete, relative);
+        request(state, root, AssetAction::kDelete, relative);
     }
 }
 
@@ -169,8 +203,9 @@ ImU32 toImColor(std::uint32_t rgb) {
                                                  static_cast<float>(rgb & 0xFFU) / kByte, 1.0F});
 }
 
-/// @brief Shows the folder @p relative in the content area, with nothing selected.
-void enter(EditorState& state, const std::string& relative) {
+/// @brief Shows the folder @p relative of @p root in the content area, with nothing selected.
+void enter(EditorState& state, AssetRoot root, const std::string& relative) {
+    state.assetRoot = root;
     state.assetFolder = relative;
     state.assetSelected.clear();
 }
@@ -189,31 +224,33 @@ ImGuiTreeNodeFlags treeFlags(bool isLeaf, bool isShown, ImGuiTreeNodeFlags extra
 }
 // NOLINTEND(bugprone-signed-bitwise)
 
-/// @brief The menu of the folder @p relative, named @p name, right-clicked.
-void folderItemMenu(EditorState& state, const std::string& relative, const std::string& name) {
-    folderMenu(state, relative);
+/// @brief The menu of the folder @p relative of @p root, named @p name, right-clicked.
+void folderItemMenu(EditorState& state, AssetRoot root, const std::string& relative, const std::string& name) {
+    folderMenu(state, root, relative);
     ImGui::Separator();
     if (ImGui::MenuItem("Rename")) {
-        request(state, AssetAction::kRename, relative, name);
+        request(state, root, AssetAction::kRename, relative, name);
     }
     if (ImGui::MenuItem("Delete")) {
-        request(state, AssetAction::kDelete, relative);
+        request(state, root, AssetAction::kDelete, relative);
     }
 }
 
-/// @brief Draws the tree of the folders under @p folder (the files are in the content area), the one shown selected.
-// NOLINTNEXTLINE(misc-no-recursion): the depth is the depth of the assets' folders.
-void drawTree(EditorState& state, const std::filesystem::path& folder) {
+/// @brief Draws the tree of the folders under @p folder of @p root (the files are in the content area), the one shown
+/// selected.
+// NOLINTNEXTLINE(misc-no-recursion): the depth is the depth of the game's folders.
+void drawTree(EditorState& state, AssetRoot root, const std::filesystem::path& folder) {
+    const bool browsed = root == state.assetRoot;
     for (const auto& entry : listFolder(folder)) {
         if (!entry.is_directory()) {
             continue;
         }
-        const std::string relative = relativeOf(state, entry.path());
+        const std::string relative = relativeOf(state, root, entry.path());
         const std::string name = entry.path().filename().string();
-        const bool isShown = relative == state.assetFolder;
+        const bool isShown = browsed && relative == state.assetFolder;
         const bool isLeaf =
             std::ranges::none_of(listFolder(entry.path()), [](const auto& child) { return child.is_directory(); });
-        const bool onPath = state.assetFolder.starts_with(relative + "/");
+        const bool onPath = browsed && state.assetFolder.starts_with(relative + "/");
         ImGui::PushID(relative.c_str());
         if (onPath) {
             ImGui::SetNextItemOpen(true, ImGuiCond_Once);
@@ -224,14 +261,14 @@ void drawTree(EditorState& state, const std::filesystem::path& folder) {
         const bool open = ImGui::TreeNodeEx("##folder", treeFlags(isLeaf, isShown), "%s", label.c_str());
         ImGui::PopStyleColor();
         if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
-            enter(state, relative);
+            enter(state, root, relative);
         }
         if (ImGui::BeginPopupContextItem()) {
-            folderItemMenu(state, relative, name);
+            folderItemMenu(state, root, relative, name);
             ImGui::EndPopup();
         }
         if (open && !isLeaf) {
-            drawTree(state, entry.path());
+            drawTree(state, root, entry.path());
             ImGui::TreePop();
         }
         ImGui::PopID();
@@ -241,7 +278,7 @@ void drawTree(EditorState& state, const std::filesystem::path& folder) {
 /// @brief The folders on the way to the folder shown, as buttons that go back to them, and the icon size slider.
 void drawPathBar(EditorState& state) {
     if (ImGui::SmallButton(toUtf8(U'\uf062').c_str()) && !state.assetFolder.empty()) {
-        enter(state, std::filesystem::path{state.assetFolder}.parent_path().generic_string());
+        enter(state, state.assetRoot, std::filesystem::path{state.assetFolder}.parent_path().generic_string());
     }
     ImGui::SameLine();
     std::optional<std::string> target;
@@ -259,14 +296,14 @@ void drawPathBar(EditorState& state) {
         }
         ImGui::PopID();
     };
-    crumb("assets", "");
+    crumb(rootName(state.assetRoot), "");
     std::string path;
     for (const auto& part : std::filesystem::path{state.assetFolder}) {
         path = join(path, part.string());
         crumb(part.string(), path);
     }
     if (target) {
-        enter(state, *target);
+        enter(state, state.assetRoot, *target);
     }
     constexpr float kSliderWidth = 90.0F;
     ImGui::SameLine(ImGui::GetContentRegionMax().x - kSliderWidth);
@@ -275,20 +312,22 @@ void drawPathBar(EditorState& state) {
 }
 
 /// @brief Draws one entry of the folder shown as an icon with its name: a click selects it, a double-click enters a
-/// folder or opens a capsule, a drag carries its path, a right-click opens its menu.
+/// folder, opens a capsule or a script, a drag carries an asset's path, a right-click opens its menu.
 void drawItem(EditorState& state, const std::filesystem::directory_entry& entry, const ImVec2& cell) {
-    const std::string relative = relativeOf(state, entry.path());
+    const AssetRoot root = state.assetRoot;
+    const bool inAssets = root == AssetRoot::kAssets;
+    const std::string relative = relativeOf(state, root, entry.path());
     const std::string name = entry.path().filename().string();
     const bool isFolder = entry.is_directory();
-    const AssetKind kind = kindOf(name, isFolder);
-    const bool isCapsule = !isFolder && capsule::format::isCapsuleFile(relative);
+    const AssetKind kind = kindIn(state, root, relative, isFolder);
+    const bool isCapsule = inAssets && !isFolder && capsule::format::isCapsuleFile(relative);
     const bool isOpen = isCapsule && state.getEdited() == capsule::CapsuleId::fromPath(relative);
     ImGui::PushID(relative.c_str());
     ImGui::Selectable("##item", relative == state.assetSelected || isOpen, ImGuiSelectableFlags_AllowDoubleClick, cell);
     const ImVec2 min = ImGui::GetItemRectMin();
     if (ImGui::IsItemClicked()) {
         state.assetSelected = relative;
-        if (kind == AssetKind::kMaterial && state.inspectedMaterial != relative) {
+        if (inAssets && kind == AssetKind::kMaterial && state.inspectedMaterial != relative) {
             state.inspectedMaterial = relative;  // the Inspector shows it, as Unity does
             state.materialUnsaved = false;
             state.materialError.clear();
@@ -296,12 +335,17 @@ void drawItem(EditorState& state, const std::filesystem::directory_entry& entry,
     }
     if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
         if (isFolder) {
-            enter(state, relative);
+            enter(state, root, relative);
         } else if (isCapsule) {
             openCapsule(state, relative);
+        } else if (isLuau(kind)) {
+            openText(state, entry.path());
         }
     }
-    if (!isFolder && ImGui::BeginDragDropSource()) {
+    if (ImGui::IsItemHovered() && !isFolder) {
+        gui::tooltip(std::format("{}: {}/{}", labelOf(kind), rootName(root), relative));
+    }
+    if (inAssets && !isFolder && ImGui::BeginDragDropSource()) {
         ImGui::SetDragDropPayload(kAssetPayload, relative.data(), relative.size());
         ImGui::TextUnformatted(std::format("{}  {}", toUtf8(iconOf(kind)), relative).c_str());
         ImGui::EndDragDropSource();
@@ -310,12 +354,12 @@ void drawItem(EditorState& state, const std::filesystem::directory_entry& entry,
         state.assetSelected = relative;
         if (isFolder) {
             if (ImGui::MenuItem("Open")) {
-                enter(state, relative);
+                enter(state, root, relative);
             }
             ImGui::Separator();
-            folderItemMenu(state, relative, name);
+            folderItemMenu(state, root, relative, name);
         } else {
-            fileMenu(state, relative, name, isCapsule);
+            fileMenu(state, root, relative, name, isCapsule);
         }
         ImGui::EndPopup();
     }
@@ -339,7 +383,7 @@ void drawItem(EditorState& state, const std::filesystem::directory_entry& entry,
 
 /// @brief The content area: the files and folders of the folder shown, as a grid of icons.
 void drawGrid(EditorState& state) {
-    const std::filesystem::path folder = state.assets / state.assetFolder;
+    const std::filesystem::path folder = rootPath(state, state.assetRoot) / state.assetFolder;
     const std::vector<std::filesystem::directory_entry> entries = listFolder(folder);
     const ImVec2 cell{state.assetIconSize + 20.0F, state.assetIconSize + ImGui::GetTextLineHeight() + 14.0F};
     const float spacing = ImGui::GetStyle().ItemSpacing.x;
@@ -360,7 +404,7 @@ void drawGrid(EditorState& state) {
     ImGui::SetCursorPos(ImVec2{0.0F, 0.0F});
     if (ImGui::BeginPopupContextWindow("##background",
                                        ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems)) {
-        folderMenu(state, state.assetFolder);
+        folderMenu(state, state.assetRoot, state.assetFolder);
         ImGui::EndPopup();
     }
     if (ImGui::IsWindowHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGui::IsAnyItemHovered()) {
@@ -371,8 +415,8 @@ void drawGrid(EditorState& state) {
 /// @brief The explorer: the folders in a narrow tree on the left, the folder shown as a grid of icons on the right.
 void drawExplorer(EditorState& state) {
     std::error_code error;
-    if (!std::filesystem::is_directory(state.assets / state.assetFolder, error)) {
-        enter(state, "");  // it was renamed or deleted
+    if (!std::filesystem::is_directory(rootPath(state, state.assetRoot) / state.assetFolder, error)) {
+        enter(state, AssetRoot::kAssets, "");  // it was renamed or deleted
     }
     constexpr float kTreeWidth = 180.0F;
     // NOLINTBEGIN(bugprone-signed-bitwise): ImGui's flags are ints.
@@ -387,22 +431,30 @@ void drawExplorer(EditorState& state) {
     ImGui::TableNextRow();
     ImGui::TableSetColumnIndex(0);
     if (ImGui::BeginChild("##tree", ImVec2{0.0F, 0.0F})) {
-        const bool rootShown = state.assetFolder.empty();
-        const std::string label = std::format("{}  assets", toUtf8(iconOf(AssetKind::kFolder, rootShown)));
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg): a constant format.
-        if (ImGui::TreeNodeEx("##root", treeFlags(false, rootShown, ImGuiTreeNodeFlags_DefaultOpen), "%s",
-                              label.c_str())) {
-            if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
-                enter(state, "");
+        for (const AssetRoot root : {AssetRoot::kAssets, AssetRoot::kScripts}) {
+            if (!std::filesystem::is_directory(rootPath(state, root), error)) {
+                continue;  // a game with no scripts folder yet
             }
-            if (ImGui::BeginPopupContextItem()) {
-                folderMenu(state, "");
-                ImGui::EndPopup();
+            const bool rootShown = state.assetRoot == root && state.assetFolder.empty();
+            const std::string label =
+                std::format("{}  {}", toUtf8(iconOf(AssetKind::kFolder, rootShown)), rootName(root));
+            ImGui::PushID(rootName(root));
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg): a constant format.
+            if (ImGui::TreeNodeEx("##root", treeFlags(false, rootShown, ImGuiTreeNodeFlags_DefaultOpen), "%s",
+                                  label.c_str())) {
+                if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
+                    enter(state, root, "");
+                }
+                if (ImGui::BeginPopupContextItem()) {
+                    folderMenu(state, root, "");
+                    ImGui::EndPopup();
+                }
+                drawTree(state, root, rootPath(state, root));
+                ImGui::TreePop();
+            } else if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
+                enter(state, root, "");
             }
-            drawTree(state, state.assets);
-            ImGui::TreePop();
-        } else if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
-            enter(state, "");
+            ImGui::PopID();
         }
     }
     ImGui::EndChild();
@@ -416,73 +468,102 @@ void drawExplorer(EditorState& state) {
     ImGui::EndTable();
 }
 
+/// @brief Writes the module @p text in the folder of `scripts/` the popup is on, and opens it.
+void newScript(EditorState& state, const std::filesystem::path& base, const std::string& text) {
+    const std::string path = join(state.assetTarget, text.ends_with(".luau") ? text : text + ".luau");
+    if (std::filesystem::exists(base / path)) {
+        state.status = std::format("scripts/{} exists already", path);
+        return;
+    }
+    std::error_code error;
+    std::filesystem::create_directories((base / path).parent_path(), error);
+    std::ofstream{base / path} << std::format(
+        "-- scripts/{}: a module. Another file runs it with require(\"@scripts/{}\").\n\nlocal Module = {{}}\n\n"
+        "return Module\n",
+        path, std::filesystem::path{path}.replace_extension().generic_string());
+    openText(state, base / path);
+}
+
+/// @brief Writes the material @p text in the folder of the assets the popup is on, and inspects it.
+void newMaterial(EditorState& state, const std::string& text) {
+    const std::string_view extension = plugins::shader::kMaterialExtension;
+    const std::string path = join(state.assetTarget, text.ends_with(extension) ? text : text + std::string{extension});
+    if (std::filesystem::exists(state.assets / path)) {
+        state.status = std::format("{} exists already", path);
+        return;
+    }
+    std::ofstream{state.assets / path} << plugins::shader::MaterialFile{}.write();
+    state.inspectedMaterial = path;
+    state.materialUnsaved = false;
+    state.materialError.clear();
+}
+
+/// @brief Writes the Behaviour @p text in `scripts/behaviours/`, and opens it.
+void newBehaviour(EditorState& state, const std::string& text) {
+    std::filesystem::path file;
+    if (std::string failure = behaviour::createBehaviour(behaviour::behavioursFolder(state.assets), text, file);
+        !failure.empty()) {
+        state.status = std::move(failure);
+        return;
+    }
+    const std::string name = file.stem().string();
+    state.status = std::format("Wrote scripts/behaviours/{}.luau: game.{} is in Add component once the game reloads it",
+                               name, name);
+    if (!shell::openInTextEditor(state.textEditor, file)) {
+        state.status = std::format("Wrote {}, but could not run '{}'", file.generic_string(), state.textEditor);
+    }
+}
+
+/// @brief Writes the scene or actor @p text in the folder of the assets the popup is on, and opens it.
+void newCapsule(EditorState& state, const std::string& text) {
+    const std::string_view extension = state.assetAction == AssetAction::kNewScene ? ".scene" : ".actor";
+    const std::string path = join(state.assetTarget, text.ends_with(extension) ? text : text + std::string{extension});
+    if (const auto failure = scene::createCapsuleFile(*state.world, state.assets, path)) {
+        state.status = *failure;
+        return;
+    }
+    openScene(state, path);
+}
+
 /// @brief Does what the popup asked for, once confirmed.
 void runAction(EditorState& state) {
     std::error_code error;
     const std::string text{state.textField.data()};
-    const std::filesystem::path target = state.assets / state.assetTarget;
+    const bool inAssets = state.assetActionRoot == AssetRoot::kAssets;
+    const std::filesystem::path& base = rootPath(state, state.assetActionRoot);
+    const std::filesystem::path target = base / state.assetTarget;
     switch (state.assetAction) {
         case AssetAction::kNewScene:
-        case AssetAction::kNewActor: {
-            const std::string_view extension = state.assetAction == AssetAction::kNewScene ? ".scene" : ".actor";
-            const std::string path =
-                join(state.assetTarget, text.ends_with(extension) ? text : text + std::string{extension});
-            if (const auto failure = scene::createCapsuleFile(*state.world, state.assets, path)) {
-                state.status = *failure;
-                return;
-            }
-            openScene(state, path);
+        case AssetAction::kNewActor:
+            newCapsule(state, text);
             return;
-        }
         case AssetAction::kNewFolder:
-            std::filesystem::create_directories(state.assets / join(state.assetTarget, text), error);
+            std::filesystem::create_directories(base / join(state.assetTarget, text), error);
             break;
-        case AssetAction::kNewMaterial: {
-            const std::string_view extension = plugins::shader::kMaterialExtension;
-            const std::string path =
-                join(state.assetTarget, text.ends_with(extension) ? text : text + std::string{extension});
-            if (std::filesystem::exists(state.assets / path)) {
-                state.status = std::format("{} exists already", path);
-                return;
-            }
-            std::ofstream{state.assets / path} << plugins::shader::MaterialFile{}.write();
-            state.inspectedMaterial = path;
-            state.materialUnsaved = false;
-            state.materialError.clear();
+        case AssetAction::kNewScript:
+            newScript(state, base, text);
             return;
-        }
-        case AssetAction::kNewBehaviour: {
-            std::filesystem::path file;
-            if (std::string failure = behaviour::createBehaviour(behaviour::behavioursFolder(state.assets), text, file);
-                !failure.empty()) {
-                state.status = std::move(failure);
-                return;
-            }
-            const std::string name = file.stem().string();
-            state.status = std::format(
-                "Wrote scripts/behaviours/{}.luau: game.{} is in Add component once the game "
-                "reloads it",
-                name, name);
-            if (!shell::openInTextEditor(state.textEditor, file)) {
-                state.status = std::format("Wrote {}, but could not run '{}'", file.generic_string(), state.textEditor);
-            }
+        case AssetAction::kNewMaterial:
+            newMaterial(state, text);
             return;
-        }
+        case AssetAction::kNewBehaviour:
+            newBehaviour(state, text);
+            return;
         case AssetAction::kRename: {
             const std::filesystem::path renamed = target.parent_path() / text;
             std::filesystem::rename(target, renamed, error);
-            if (!error && capsule::format::isCapsuleFile(renamed)) {
-                const std::string path = relativeOf(state, renamed);
+            if (!error && inAssets && capsule::format::isCapsuleFile(renamed)) {
+                const std::string path = relativeOf(state, AssetRoot::kAssets, renamed);
                 static_cast<void>(scene::readFiles(*state.world, std::span{&path, 1}));
             }
-            if (!error) {
+            if (!error && inAssets) {
                 forget(state, capsule::CapsuleId::fromPath(state.assetTarget));  // its capsule keeps the old path
             }
             break;
         }
         case AssetAction::kDelete:
             std::filesystem::remove_all(target, error);
-            if (!error) {
+            if (!error && inAssets) {
                 forget(state, capsule::CapsuleId::fromPath(state.assetTarget));
             }
             break;
@@ -496,6 +577,9 @@ void runAction(EditorState& state) {
 const char* nameLabel(AssetAction action) {
     if (action == AssetAction::kRename) {
         return "New name";
+    }
+    if (action == AssetAction::kNewScript) {
+        return "Name (a module, in this folder of scripts/)";
     }
     return action == AssetAction::kNewBehaviour ? "Name (game.<Name>, in scripts/behaviours/)" : "Name";
 }
