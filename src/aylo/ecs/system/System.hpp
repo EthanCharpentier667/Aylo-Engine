@@ -161,6 +161,14 @@ class AYLO_ECS_API System {
     /// @brief Sets where the system runs.
     void setSide(Side side) noexcept;
 
+    /// @return Whether the system runs in a frame that does not simulate (Schedules::setPaused()): true by default.
+    [[nodiscard]] bool runsWhilePaused() const noexcept;
+
+    /// @brief Sets whether the system runs in a frame that does not simulate: while the editor edits, or after Pause,
+    /// a paused frame still runs PreUpdate, PostUpdate and Render, and a system that only makes sense while the game
+    /// plays (a script's gameplay hook) is left out of them. A step simulates, so it runs then. Startup ignores it.
+    void setRunsWhilePaused(bool runs) noexcept;
+
     /// @brief Builds the parameters and calls the function, then moves the world's change tick forward.
     /// @details Values written during the run are stamped with the current tick; the next run only reports what
     /// changed after it, so a system does not see its own changes. If the function throws (a missing resource), the
@@ -192,6 +200,7 @@ class AYLO_ECS_API System {
     World* _world;                              ///< The world the system runs on.
     std::string _name;                          ///< Its stable name.
     Side _side{Side::kServer};                  ///< Where it runs.
+    bool _whilePaused{true};                    ///< Whether it runs in a frame that does not simulate.
     RunCondition _condition;                    ///< When it runs; always when empty.
     SystemAccess _access;                       ///< What it reads and writes; filled by the body when it is made.
     Commands _commands;                         ///< Its command buffer.

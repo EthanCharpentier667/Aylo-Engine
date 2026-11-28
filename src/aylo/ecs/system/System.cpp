@@ -39,6 +39,10 @@ Tick System::getLastRun() const noexcept { return _lastRun; }
 
 void System::setSide(Side side) noexcept { _side = side; }
 
+bool System::runsWhilePaused() const noexcept { return _whilePaused; }
+
+void System::setRunsWhilePaused(bool runs) noexcept { _whilePaused = runs; }
+
 void System::setRunCondition(RunCondition condition) { _condition = std::move(condition); }
 
 bool System::hasRunCondition() const noexcept { return static_cast<bool>(_condition); }

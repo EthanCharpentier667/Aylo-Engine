@@ -312,6 +312,14 @@ refuses writes to anything declared as read-only. On the C++ side the bridge add
 In standalone mode (single player), the App runs server and client systems in one world, so the same
 game code works solo and online (see [App and plugins](14-app-and-plugins.md)).
 
+### While paused
+
+`Schedules::setPaused(true)` (the editor editing, a Pause) makes a frame that does not simulate: Startup once,
+PreUpdate, PostUpdate and Render, with neither FixedUpdate nor Update (`step()` simulates one frame). A system of those
+phases runs in it by default; `SystemConfig::whilePaused(false)` (`System::setRunsWhilePaused()`) leaves it out of
+the frames that do not simulate, for gameplay that sits in PreUpdate or PostUpdate (a Behaviour's lifecycle hooks).
+`Schedule::run(simulates)` skips it; Startup is always run whole. A script system says it with `whilePaused`.
+
 ### State
 
 A system keeps **no hidden state**. A cooldown is a component on the weapon; a wave counter is a

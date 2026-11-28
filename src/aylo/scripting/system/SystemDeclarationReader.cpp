@@ -282,6 +282,7 @@ struct Options {
     std::vector<std::string> calls;
     std::optional<StateDeclaration> state;
     std::optional<StateTrigger> trigger;
+    std::optional<bool> whilePaused;
 };
 
 /// @return The machine and value of a state option, `{ "game.Phase", "Playing" }`, or an error naming @p option.
@@ -404,6 +405,12 @@ struct Options {
         *list = std::move(*names);
     } else if (const auto trigger = triggerOf(option)) {
         return readTrigger(system, option, *trigger, value, options);
+    } else if (option == "whilePaused") {
+        const auto* runs = value.tryAs<bool>();
+        if (runs == nullptr) {
+            return invalid(system, "'whilePaused' must be true or false");
+        }
+        options.whilePaused = *runs;
     } else if (option == "run") {
         const auto* function = value.tryAs<luau::FunctionRef>();
         if (function == nullptr) {
@@ -413,9 +420,11 @@ struct Options {
     } else {
         return invalid(
             system,
-            std::format("unknown option '{}' (expected 'phase', 'side', 'query', 'resources', "
-                        "'components', 'events', 'calls', 'after', 'before', 'inState', 'onEnter', 'onExit' or 'run')",
-                        option));
+            std::format(
+                "unknown option '{}' (expected 'phase', 'side', 'query', 'resources', "
+                "'components', 'events', 'calls', 'after', 'before', 'inState', 'onEnter', 'onExit', 'whilePaused' "
+                "or 'run')",
+                option));
     }
     return {};
 }
@@ -460,6 +469,7 @@ Result<SystemDeclaration> readSystemDeclaration(std::string name, const luau::Ta
         .run = std::move(*options.run),
         .state = std::move(options.state),
         .trigger = options.trigger.value_or(StateTrigger::kInState),
+        .whilePaused = options.whilePaused.value_or(true),
     };
 }
 }  // namespace aylo::scripting::system

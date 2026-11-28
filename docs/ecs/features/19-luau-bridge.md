@@ -293,7 +293,7 @@ component (`FileDeclarations::events`).
 
 ### Behaviours
 
-`engine.behaviour(name, { fields, defaults, replication, presence, side })` (`scripting/behaviour/BehaviourPrelude.luau`,
+`engine.behaviour(name, { fields, defaults, replication, presence, side, whilePaused })` (`scripting/behaviour/BehaviourPrelude.luau`,
 run after the forms prelude) is sugar over the two declarations above, with no concept of its own
 (`docs/scripting/dx-plan.md`, D1 and D2). It declares the component `name` and returns a table whose `__newindex`
 turns each hook assigned to it into a system: `onUpdate` (`Update`, `dt = ctx.delta`) and `onFixedUpdate`
@@ -302,6 +302,10 @@ component is replicated). `onStart` declares the tag `<name>.Started` (not repli
 the system `<name>.onStart` in `PreUpdate`, querying `name` without the tag: it adds the tag, then calls the hook. While
 a Behaviour has `onStart`, the other hook systems skip an entity until `ctx:has` finds the tag, so the order holds
 whichever phase spawned the entity, and a reload starts nothing again since the tag is in the world.
+
+Every hook system is declared with `whilePaused` (the system option, `ecs::System::setRunsWhilePaused()`): `false`
+unless the Behaviour says `whilePaused = true`. A Behaviour is gameplay, so its lifecycle hooks, in PreUpdate and
+PostUpdate, do not run while the game is paused (the editor editing): an actor opened in the editor does not start.
 
 `onEnable` and `onDisable` declare both their systems and the tag `<name>.Active`: `<name>.onEnable` queries `name`
 without the tag (the implicit enabled filter keeps the switched-on entities) and adds it; `<name>.onDisable` queries

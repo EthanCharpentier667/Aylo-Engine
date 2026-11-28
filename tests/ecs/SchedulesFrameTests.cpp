@@ -77,6 +77,9 @@ void traceFixedUpdate(ResMut<Trace> trace) { trace->steps.push_back(3); }
 void traceUpdate(ResMut<Trace> trace) { trace->steps.push_back(4); }
 void tracePostUpdate(ResMut<Trace> trace) { trace->steps.push_back(5); }
 void traceRender(ResMut<Trace> trace) { trace->steps.push_back(6); }
+void traceGameplayStartup(ResMut<Trace> trace) { trace->steps.push_back(10); }
+void traceGameplayPreUpdate(ResMut<Trace> trace) { trace->steps.push_back(20); }
+void traceGameplayPostUpdate(ResMut<Trace> trace) { trace->steps.push_back(50); }
 
 void sendPending(EventWriter<Hit> hits, ResMut<Pending> pending) {
     if (pending->count > 0) {
@@ -276,6 +279,30 @@ TEST_F(SchedulesFrame, AStepRunsOneWholeFrameWithOneTick) {
     EXPECT_EQ(takeTrace(), (std::vector<int>{7, 2, 3, 8, 9, 4, 5, 6}));
     schedules.runFrame();
     EXPECT_EQ(takeTrace(), (std::vector<int>{7, 2, 5, 6}));  // one step, one frame
+}
+
+TEST_F(SchedulesFrame, LeavesTheSystemsThatWaitWhilePausedOutOfAPausedFrame) {
+    // A gameplay hook in PreUpdate or PostUpdate waits while paused (#179); a step simulates, so it runs then. Startup
+    // runs once, whatever the system says.
+    schedules.addSystem(Phase::kStartup, "gameplayStartup", &traceGameplayStartup).after("startup").whilePaused(false);
+    schedules.addSystem(Phase::kPreUpdate, "gameplayPreUpdate", &traceGameplayPreUpdate)
+        .after("preUpdate")
+        .whilePaused(false);
+    schedules.addSystem(Phase::kPostUpdate, "gameplayPostUpdate", &traceGameplayPostUpdate)
+        .after("postUpdate")
+        .whilePaused(false);
+    useTicks(schedules, {0, 0, 0, 0});
+    schedules.setPaused(true);
+    schedules.runFrame();
+    EXPECT_EQ(takeTrace(), (std::vector<int>{7, 1, 10, 2, 5, 6}));
+    schedules.step();
+    schedules.runFrame();
+    EXPECT_EQ(takeTrace(), (std::vector<int>{7, 2, 20, 3, 8, 9, 4, 5, 50, 6}));  // a step has one tick
+    schedules.runFrame();
+    EXPECT_EQ(takeTrace(), (std::vector<int>{7, 2, 5, 6}));
+    schedules.setPaused(false);
+    schedules.runFrame();
+    EXPECT_EQ(takeTrace(), (std::vector<int>{7, 2, 20, 9, 4, 5, 50, 6}));
 }
 
 TEST_F(SchedulesFrame, AStepWithoutAClockRunsUpdateOnly) {

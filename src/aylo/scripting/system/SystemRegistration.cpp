@@ -382,6 +382,7 @@ Result<BuiltSystem> makeSystem(ecs::App& app, SystemDeclaration declaration, std
         if (*condition) {
             system.setRunCondition(std::move(*condition));
         }
+        system.setRunsWhilePaused(declaration.whilePaused);
         return BuiltSystem{
             .phase = declaration.phase,
             .side = declaration.side,

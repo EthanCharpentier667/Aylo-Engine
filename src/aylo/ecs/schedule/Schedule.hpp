@@ -73,6 +73,9 @@ class AYLO_ECS_API Schedule {
         /// and onExit() for a system of the StateTransition phase.
         SystemConfig& runIf(System::RunCondition condition);
 
+        /// @brief Sets whether the system runs in a frame that does not simulate (System::setRunsWhilePaused()).
+        SystemConfig& whilePaused(bool runs);
+
       private:
         Schedule* _schedule;  ///< The schedule the system was added to.
         std::size_t _index;   ///< The system's position among the schedule's systems.
@@ -147,8 +150,10 @@ class AYLO_ECS_API Schedule {
 
     /// @brief Runs the systems in order, skipping those whose side does not run in this mode, then applies the
     /// commands they recorded, in the same order. Builds the schedule first if it changed.
+    /// @param simulates Whether the frame simulates: false in a paused frame, which leaves out the systems that do not
+    /// run while paused (System::runsWhilePaused()).
     /// @throws exceptions::ScheduleException When the schedule cannot be built.
-    void run();
+    void run(bool simulates = true);
 
   private:
     /// @brief Each system's position in _entries, by name.

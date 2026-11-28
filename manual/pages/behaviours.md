@@ -50,8 +50,20 @@ on. Return it from the file so other files can require it.
 | `replication` | `"none"` (default), `"everyChange"` or `"spawnOnly"`: whether the server sends the fields to the clients, see [Where components live](components.md#where-components-live). |
 | `presence` | `"both"` (default), `"serverOnly"` or `"clientOnly"`: which side the component exists on. |
 | `side` | `"server"` (default), `"client"` or `"both"`: where the hooks run. One side for the whole Behaviour. |
+| `whilePaused` | `false` (default) or `true`: whether the hooks run while the game is paused, see below. |
 
 Any other option is an error. The first four are those of [`engine.ecs.component`](components.md#the-declaration).
+
+### While the game is paused
+
+A Behaviour is gameplay: none of its hooks runs while the game is paused, that is while the [editor](editor.md) edits
+a scene, and after **Pause** until **Resume** or **Step**. An actor you open in the editor stays as you wrote it, and
+its `onStart` runs when you press Play, as in Unity or Godot. A Behaviour that must run in the editor too (a preview
+that follows what you edit) says `whilePaused = true`, as `@tool` does in Godot:
+
+```luau
+local Preview = engine.behaviour("game.Preview", { fields = {}, whilePaused = true })
+```
 
 ## Hooks
 

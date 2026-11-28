@@ -97,7 +97,9 @@ system.
 
 The editor starts **editing**: `Schedules::setPaused(true)` (`ecs`). A paused frame runs Startup, PreUpdate, PostUpdate
 and Render, but neither FixedUpdate nor Update: the events come in, the global transforms, the animations and the
-particles still run, the gameplay does not move. The clock still measures the frames, so `Time::delta` keeps its value
+particles still run, the gameplay does not move. A system that says it waits while paused
+(`System::setRunsWhilePaused(false)`, a script's `whilePaused = false`) is left out of those phases too: the hooks of
+a Behaviour wait by default, so an actor opened in the editor does not start. The clock still measures the frames, so `Time::delta` keeps its value
 (an effect previews at its speed) and the fixed ticks of a paused frame are dropped, never caught up.
 
 | Button | `PlaySession` | What happens |

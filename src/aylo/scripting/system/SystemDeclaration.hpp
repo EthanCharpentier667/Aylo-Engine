@@ -71,5 +71,6 @@ struct SystemDeclaration {
     luau::FunctionRef run;                         ///< The `run` function of the declaration.
     std::optional<StateDeclaration> state;         ///< The machine and value of its state condition, if any.
     StateTrigger trigger{StateTrigger::kInState};  ///< What `state` means; StateTransition for onEnter and onExit.
+    bool whilePaused{true};  ///< Whether it runs in a paused frame (`whilePaused`, ecs::System::setRunsWhilePaused()).
 };
 }  // namespace aylo::scripting::system
