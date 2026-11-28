@@ -23,6 +23,7 @@
 #include "aylo/ecs/time/TimePlugin.hpp"
 #include "aylo/ecs/world/World.hpp"
 #include "core/asset/AssetId.hpp"
+#include "plugins/AssetLoaders.hpp"
 #include "plugins/graphics/GraphicsPlugin.hpp"
 #include "plugins/graphics/TextureAssets.hpp"
 #include "plugins/shader/MaterialAssets.hpp"
@@ -100,6 +101,20 @@ TEST(TextPlugin, ComesWithTheGraphicsPlugin) {
     EXPECT_TRUE(app.app().hasPlugin(aylo::plugins::text::TextPlugin::kName));
     EXPECT_TRUE(app.world().getResources().has<FontAssets>());
     EXPECT_TRUE(app.world().getComponents().find("aylo.TextRenderer"));
+}
+
+TEST(TextPlugin, LoadsTheFontsOfTheAssetLoaders) {
+    // A .json a capsule names reaches the text plugin through the AssetLoaders, as engine.assets.font would (#159). One
+    // that cannot be read is recorded as failed, and nothing stops.
+    TextApp app;
+    const auto* loaders = app.world().getResources().get<aylo::plugins::AssetLoaders>();
+    ASSERT_NE(loaders, nullptr);
+
+    EXPECT_TRUE(loaders->load("fonts/missing.JSON"));
+
+    const auto& fonts = app.world().getResources().require<FontAssets>();
+    EXPECT_NE(fonts.getEntry(AssetId::fromPath("fonts/missing.JSON")), nullptr);
+    EXPECT_EQ(fonts.get(AssetId::fromPath("fonts/missing.JSON")), nullptr);
 }
 
 TEST(TextPlugin, DrawsATextAtItsEntity) {
