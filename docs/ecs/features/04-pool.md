@@ -100,7 +100,8 @@ hooks are null (plain data, and every Luau component).
 **emplace(e):**
 
 1. Append `e` to the dense entity array.
-2. Grow the data column by one element: `construct` hook, or zero-fill when it is null.
+2. Grow the data column by one element: `construct` hook, else the type's default bytes (`TypeInfo::defaults`, a
+   type declared in Luau gives its `defaults` there), else zero-fill.
 3. Append the current tick to the added and changed tick arrays.
 4. Set the sparse entry of `e`'s index to the new dense position (`size - 1`).
 

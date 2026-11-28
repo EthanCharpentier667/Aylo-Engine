@@ -49,11 +49,14 @@ struct TypeHooks {
 `detail::makeHooks<T>()` (in the type core, used by `AYLO_ECS_COMPONENT` and later by resources)
 generates them from the C++ type, and leaves them **null** when the operation is trivial, or when the type
 does not support it (no default constructor: no `construct`; move-only: no `copy`). A null hook means "use `memset` / `memcpy` / nothing", which is the fast path and
-the case for every Luau component.
+the case for every Luau component. A type without a `construct` hook may give **default bytes** instead
+(`TypeInfo::defaults`, the size of a value, outside the layout hash): a Luau component puts its declared `defaults`
+there, so a value made anywhere (a capsule, the editor's Add component, C++) starts from them, not from zeros.
+Registering the same layout again takes its new defaults; a column keeps those it was made with.
 
 | Storage action | Hook called | When null |
 |---|---|---|
-| `emplace` | `construct` | zero-fill |
+| `emplace` | `construct` | the type's default bytes (`TypeInfo::defaults`), or zero-fill without them |
 | swap-and-pop `remove` | `move` (last → hole), then `destruct` (last) | `memcpy`, nothing |
 | Column growth | `move` for each element | `memcpy` of the whole block |
 | [Capsule](18-capsules.md) spawn | `copy` | `memcpy` |

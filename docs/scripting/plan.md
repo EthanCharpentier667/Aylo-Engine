@@ -235,7 +235,8 @@ Each task is one issue and one pull request. Ids `LUA-xx`. Tests go in `tests/sc
 - `engine.ecs.component(name, {fields, defaults, replication})`, a statement that returns nothing:
     - registers the component;
     - applies the defaults over zeroed bytes (the value used when a field is omitted by `Commands::add` and by
-      `spawn` tables).
+      `spawn` tables), and gives them to the ECS type (`TypeInfo::defaults`), so a capsule or the editor starts a
+      value from them too.
 
 **Done when**
 
