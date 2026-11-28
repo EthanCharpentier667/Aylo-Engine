@@ -172,6 +172,10 @@ its lifecycle in (`game.Spinner.Started`, `game.Spinner.Active`) never show.
 | **Step** | While paused: one frame, with one fixed tick |
 | **Stop** | Back to editing: everything spawned since Play goes, and the scene is spawned again as you left it |
 
+While editing, and while paused, the gameplay waits: `FixedUpdate` and `Update` do not run, nor do the hooks of the
+[Behaviours](behaviours.md#while-the-game-is-paused). An actor with a Behaviour stays as you wrote it until you press
+Play.
+
 While playing, the Hierarchy shows every entity of the game, and the Inspector changes them as they run. Those changes
 are lost at Stop: they are for trying things. Click in the Game panel before you press the game's keys, or the keys go to
 the editor.

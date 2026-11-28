@@ -33,6 +33,7 @@ engine.ecs.system("game.MoveShips", {
 | `calls` | Optional. [Engine calls](engine-calls.md) it makes, checked when the script loads. |
 | `after`, `before` | Names of systems it must run after or before. |
 | `inState`, `onEnter`, `onExit` | `{ machine, value }`: runs only in a game state, or once when the game enters or leaves it. See [States](states.md). |
+| `whilePaused` | `true` (default) or `false`: whether it runs in a paused frame, see [Phases](#phases). |
 
 Any other option is an error naming the system.
 
@@ -119,6 +120,11 @@ A frame runs its phases in this order.
 
 Gameplay on the server goes in `FixedUpdate`; what a client shows goes in `Update`. Use `after` and `before` to order
 systems of the same phase, including the engine's (the physics names are in [Physics](physics.md)).
+
+While the game is paused (the [editor](editor.md) editing, or after **Pause**), a frame runs `PreUpdate`, `PostUpdate`
+and `Render` only: the transforms, the animations and the editor's view keep going, the gameplay does not. A system of
+those phases runs then too, unless it says `whilePaused = false`; a [Behaviour](behaviours.md)'s hooks wait by
+default. `Startup` runs once whatever it says.
 
 ## Smooth movement
 
