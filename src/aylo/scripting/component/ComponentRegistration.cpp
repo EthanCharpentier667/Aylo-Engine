@@ -120,6 +120,8 @@ Result<ComponentLayout> registerComponent(ecs::Components& components, const Com
     info.type.replication = declaration.replication;
     info.type.presence = declaration.presence;
     info.type.fields = layout.fields;
+    // The declared defaults: every new value starts from them, however it is made (a capsule, the editor, C++).
+    info.type.defaults = layout.defaults;
 
     const ecs::Result<ecs::ComponentId> registered = components.registerType(std::move(info));
     if (!registered) {
