@@ -120,6 +120,54 @@ the top-right corner of its parent, whatever the size of the window.
 A node with no parent node is a root and is laid out over the whole view. The result of the layout (position, size) is
 in the node's `aylo.UiComputed` component, which you can read.
 
+## An interface in a capsule file
+
+An interface that does not change while it is shown (a title screen, a pause panel, a HUD frame) can be a
+[capsule file](capsules.md) instead of a script: each node is a `[node]` section with the UI components, written by
+hand or saved by the [editor](editor.md). Spawn it with `engine.capsule.spawn(ctx, "ui/pause.capsule")` and despawn its
+root to close it.
+
+```
+[capsule format=1]
+
+# ui/pause.capsule: a panel in the middle of the view, with a title and a button.
+[node path="."]
+aylo.UiNode = { position = "absolute", left = "30%", top = "25%", width = "40%", paddingLeft = 16, paddingTop = 16, paddingRight = 16, paddingBottom = 16 }
+aylo.UiBackground = { color = (0.1, 0.1, 0.2, 0.9), cornerRadius = 8 }
+
+[node path="Title" side=client]
+aylo.UiNode = { marginBottom = 12 }
+aylo.UiText = { text = "Paused", font = "fonts/orbitron.json", size = 32, align = "center" }
+
+[node path="Resume" side=client]
+aylo.UiNode = { height = 40, paddingLeft = 16, paddingRight = 16, justify = "center" }
+aylo.UiBackground = { color = (0.2, 0.2, 0.4, 1), cornerRadius = 6 }
+aylo.UiButton = { action = "pause.resume", hoveredColor = (0.3, 0.3, 0.6, 1) }
+aylo.UiInteraction = {}
+aylo.UiText = { text = "Resume", font = "fonts/orbitron.json", size = 20, align = "center" }
+```
+
+A file names each component's own fields, not the shortcuts of `engine.ui.spawn`:
+
+| In `engine.ui.spawn` | In a capsule file |
+|---|---|
+| `style = { ... }` | `aylo.UiNode = { ... }`, with the long names only: `marginLeft`, `paddingTop`, `rowGap`, `columnGap` (no `margin`, `paddingX` or `gap`) |
+| `background = { radius = 8 }` | `aylo.UiBackground = { cornerRadius = 8 }` |
+| `button = { hovered = ... }` | `aylo.UiButton = { hoveredColor = ... }`, and `normalColor`, `pressedColor`, `disabledColor`; add `aylo.UiInteraction = {}` yourself |
+| colors `{ 1, 0, 0, 1 }` | `(1, 0, 0, 1)` |
+| lengths `120`, `"50%"`, `"auto"` | the same |
+
+Enum fields are quoted names (`direction = "row"`, `position = "absolute"`, `justify = "space-between"`), and
+assets are paths (`font = "fonts/orbitron.json"`, `texture = "ui/panel.png"`), loaded with the file. Spawn the
+capsule from a client system (`side = "client"`), as you would call `engine.ui.spawn`.
+
+!!! warning "Mark the children `side=client`"
+    A node is server-side when you leave `side` out, so a child without `side=client` is not spawned on a client,
+    even by a client system. Only the root, which has no `side`, is always spawned.
+
+What changes while the interface is shown (a score, a reason a join failed) stays in a script: give that node a
+component of your own in the file (`game.ScoreText = {}`), and write its `aylo.UiText` from a system that queries it.
+
 ## Reacting
 
 A widget reports with the `action` you gave it: the name is yours, and one system can serve a whole menu. The UI runs

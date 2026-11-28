@@ -114,6 +114,7 @@ How you write a value depends on the type of the field (see [Components](compone
 | `i8`, `i16`, `i32`, `i64`, `u8`, `u16`, `u32`, `u64` | `42`, `-3`, `+7`, `0x2A` | a whole number that fits the type; hexadecimal after `0x`; no `-` for the `u` types |
 | `f32`, `f64` | `0.25`, `-40`, `2`, `1.5e3` | a number; write `0.5`, not `.5`; no `inf` or `nan` |
 | `vec2`, `vec3`, `vec4` | `(x, y)`, `(x, y, z)`, `(x, y, z, w)` | parentheses, exactly that many numbers |
+| a length (`width`, `left`, `marginTop`... of `aylo.UiNode`) | `120`, `"50%"`, `"120px"`, `"auto"` | as in a script: a number is pixels; a percentage or `auto` is quoted. See [User interface](ui.md#an-interface-in-a-capsule-file) |
 | `assetId` | `"sprites/ship.png"`, `"game.ship"` | the asset's path from `assets/`, or the `name` a script gave it (an atlas made with `engine.assets.atlas({ name = ... })`, an animation of `aylo.SpriteAnimator`) |
 | `string` | `"Player one"` | at most 255 bytes |
 | an enum field (`shape`, `type`, `blend`...) | `"circle"`, `1` | the name of its value, quoted, as in [Enum fields](components.md#enum-fields); its number also works |
@@ -162,7 +163,7 @@ the hot reload line in the log carries the message.
 | `unknown component 'x'` | a typo, a component no script declares, or one of a plugin `project.luau` does not list |
 | `component 'x' has no field 'f'` | a typo in a field name |
 | `component 'x' is set twice on this node` / `field 'f' is set twice` | |
-| `field 'f' of 'x' takes ..., not ...` | a value of the wrong kind: a number out of range, a vector of the wrong size, a string too long, a name the enum field does not have (`takes one of "box", "circle", "capsule", not "round"`) |
+| `field 'f' of 'x' takes ..., not ...` | a value of the wrong kind: a number out of range, a vector of the wrong size, a string too long, a name the enum field does not have (`takes one of "box", "circle", "capsule", not "round"`), a length without a unit it knows (`takes a number, "auto" or "50%", not "50em"`) |
 
 ## Reading and writing
 
