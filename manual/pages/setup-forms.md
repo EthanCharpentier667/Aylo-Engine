@@ -94,6 +94,30 @@ ctx.commands:add(entity, "aylo.SpriteAnimator", { atlas = assets.cyclist, animat
 
 An animation that plays a finite number of times stops on its last frame: `playing` turns `false`.
 
+### Import files
+
+A sound can keep its options beside it, so that every place that names it gets them: a capsule, a path in a script,
+`engine.assets.sound` without options. Write them in a file named like the sound with `.import` added, as JSON:
+
+```json
+{ "stream": true }
+```
+
+saved as `assets/maint.ogg.import`. The music then streams when `arena.scene` plays it:
+
+```
+aylo.AudioSource = { sound = "maint.ogg", bus = music, loop = true }
+```
+
+| Key | Value | Default |
+|---|---|---|
+| `stream` | `true` decodes while playing (for music); `false` decodes once | `false` |
+
+An option is on when the file or the script turns it on: `engine.assets.sound("maint.ogg", { stream = true })` streams
+whatever the file says. A key the file does not know, or a value that is not `true` or `false`, is an error that names
+the file (`Import file 'maint.ogg.import': unknown key 'loop'; a sound's import file takes 'stream'`), and the sound is
+not loaded. The file is read the first time the sound is asked for, so change it before the game runs, not during.
+
 ### Naming an asset by its path
 
 Everywhere an asset id goes, a component's field, an engine call's argument or a default of your component, you can
@@ -117,7 +141,7 @@ the same id as the form, so mixing both is fine.
 !!! note "When a form is still worth it"
     A path loads on its first use, so the first frame that uses it can miss it, and loading a big file there can
     hitch. Load what must be there at once (the music, a big atlas) with its form at start; a path is for the rest.
-    A sound that needs `stream = true` keeps its form: a path loads with the defaults.
+    A path loads with the defaults, or with the sound's [import file](#import-files).
 
 ## `engine.input`
 
