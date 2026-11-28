@@ -43,8 +43,8 @@ Game.assets = {
 
 ### Atlases
 
-An atlas names the frames of an image and the animations over them. Make it from a `path` to an atlas file (Aseprite
-or TexturePacker JSON), or from a `texture` with a `grid` or a list of `frames`.
+An atlas names the frames of an image and the animations over them. Make it from a `path` to an atlas file (a
+`.atlas` file, or an Aseprite or TexturePacker JSON export), or from a `texture` with a `grid` or a list of `frames`.
 
 - `grid`: `frameSize` and `count` (both needed), `spacing`, `columns`, `offset`.
 - `frames`: a list of `{ position, size, name?, origin? }`. A frame's name is its index when left out; its origin is its
@@ -52,6 +52,26 @@ or TexturePacker JSON), or from a `texture` with a `grid` or a list of `frames`.
 - `animations`: a table of animation name to `{ frames = {0, 1, 2} }` (consecutive frame indices, counted from 0) or
   `{ first, count }`, plus `frameDuration`, `direction` (for example `"pingPong"`) and `plays` (`0`: forever).
 - `grid`, `frames` and `name` make an atlas from a `texture`, not from a `path`.
+
+#### Atlas files
+
+A `.atlas` file holds the same fields on disk, as JSON, so a [capsule](capsules.md#capsule-files) can name the atlas
+without a script: `aylo.SpriteAnimator = { atlas = "ships/left.atlas", animation = "fly" }`. Write `texture` (an image)
+with a `grid` or `frames`, or `path` (an Aseprite or TexturePacker export, whose animations it adds to), and optionally
+`linear` and `animations`. Paths are relative to the `.atlas` file, and a vector is a list `[x, y]`. Unlike the form,
+an animation's `frames` may list any frame indices, in any order.
+
+```json
+{
+    "texture": "spritesheet24.gif",
+    "grid": { "frameSize": [48, 48], "count": 5, "spacing": [17, 0], "offset": [9, 9] },
+    "animations": { "fly": { "frames": [0, 1, 2, 3, 4], "frameDuration": 0.1 } }
+}
+```
+
+`engine.assets.atlas({ path = "ships/left.atlas" })` reads it too, and gives the same id as a capsule naming it: the
+file's path. A field the format does not have is an error (`Atlas 'ships/left.atlas': the atlas file: unknown field
+'grdi' ...`), reported on the output; the game goes on without the atlas.
 
 An atlas gives an entity its look through the `aylo.SpriteRenderer` component; an `aylo.SpriteAnimator` plays an
 animation:

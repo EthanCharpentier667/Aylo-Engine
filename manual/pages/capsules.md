@@ -31,7 +31,7 @@ starts, after your scripts, so a file can use the components they declare. A cap
 `assets/`, for example `actors/boss.actor`.
 
 The models (`.gltf`, `.glb`, `.fbx`, `.obj`), materials (`.material`), images (`.png`, `.jpg`, `.bmp`, `.tga`,
-`.hdr`) and sounds (`.wav`, `.mp3`, `.ogg`, `.flac`) a capsule names are loaded when its file is read, and again when
+`.hdr`), [atlas files](setup-forms.md#atlas-files) (`.atlas`) and sounds (`.wav`, `.mp3`, `.ogg`, `.flac`) a capsule names are loaded when its file is read, and again when
 you save it: `aylo.MeshRenderer = { mesh = "models/statue.obj" }` draws without an `engine.assets.mesh` in a script,
 and `aylo.AudioSource = { sound = "sfx/engine.ogg", loop = true }` plays without an `engine.assets.sound`. An asset
 loads with the defaults of its setup form: an image pixelated and not repeated, a sound decoded once. For other
