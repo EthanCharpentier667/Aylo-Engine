@@ -7,6 +7,7 @@
 
 #include "Capsules.hpp"
 
+#include <algorithm>
 #include <cstddef>
 #include <exception>
 #include <format>
@@ -15,6 +16,7 @@
 #include <string_view>
 #include <unordered_map>
 #include <utility>
+#include <vector>
 
 #include "aylo/ecs/resource/Resources.hpp"
 #include "aylo/ecs/schedule/RunMode.hpp"
@@ -30,6 +32,16 @@ namespace aylo::plugins::capsule {
 void Capsules::setRunMode(ecs::RunMode mode) noexcept { _mode = mode; }
 
 std::size_t Capsules::getCount() const noexcept { return _capsules.size(); }
+
+std::vector<const Capsule*> Capsules::list() const {
+    std::vector<const Capsule*> all;
+    all.reserve(_capsules.size());
+    for (const auto& [id, capsule] : _capsules) {
+        all.push_back(&capsule);
+    }
+    std::ranges::sort(all, {}, &Capsule::getPath);
+    return all;
+}
 
 Capsule& Capsules::define(Capsule capsule) {
     const auto found = _capsules.find(capsule.getId());

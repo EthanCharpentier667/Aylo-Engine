@@ -21,6 +21,7 @@
 #include "core/asset/AssetId.hpp"
 #include "editor/EditorSession.hpp"
 #include "editor/Export.hpp"
+#include "editor/behaviour/BehaviourCatalog.hpp"
 #include "editor/console/ConsoleLog.hpp"
 #include "editor/gui/GuiContext.hpp"
 #include "editor/gui/GuiInput.hpp"
@@ -167,21 +168,24 @@ struct AYLO_EDITOR_API EditorState {
     std::optional<SceneDrag> sceneDrag;                   ///< The gizmo handle being dragged; none: none is.
     bool previewUsed{false};  ///< Whether a panel set the renderer's preview this frame; reset each frame.
 
-    double lastTime{0.0};      ///< The platform's time at the previous frame, in seconds.
-    bool buildLayout{true};    ///< Whether the first frame docks the panels as by default, if no layout was kept.
-    bool dockActor{false};     ///< Whether focusActor's tab is new, so it docks next to the Game panel.
-    bool resetLayout{false};   ///< Whether the next frame docks them as by default anyway.
-    bool showGame{true};       ///< Whether the Game panel is open.
-    bool showScene{true};      ///< Whether the Scene panel is open.
-    bool showHierarchy{true};  ///< Whether the Hierarchy panel is open.
-    bool showInspector{true};  ///< Whether the Inspector panel is open.
-    bool showAssets{true};     ///< Whether the Assets panel is open.
-    bool showStats{true};      ///< Whether the Stats panel is open.
-    bool showParticles{true};  ///< Whether the Particles panel is open.
-    bool showConsole{true};    ///< Whether the Console panel is open.
-    bool showServer{true};     ///< Whether the Server panel is open.
-    bool showPlugins{true};    ///< Whether the Plugins panel is open.
-    bool showExport{false};    ///< Whether the Export panel is open (File > Export...).
+    double lastTime{0.0};       ///< The platform's time at the previous frame, in seconds.
+    bool buildLayout{true};     ///< Whether the first frame docks the panels as by default, if no layout was kept.
+    bool dockActor{false};      ///< Whether focusActor's tab is new, so it docks next to the Game panel.
+    bool resetLayout{false};    ///< Whether the next frame docks them as by default anyway.
+    bool showGame{true};        ///< Whether the Game panel is open.
+    bool showScene{true};       ///< Whether the Scene panel is open.
+    bool showHierarchy{true};   ///< Whether the Hierarchy panel is open.
+    bool showInspector{true};   ///< Whether the Inspector panel is open.
+    bool showAssets{true};      ///< Whether the Assets panel is open.
+    bool showStats{true};       ///< Whether the Stats panel is open.
+    bool showParticles{true};   ///< Whether the Particles panel is open.
+    bool showConsole{true};     ///< Whether the Console panel is open.
+    bool showServer{true};      ///< Whether the Server panel is open.
+    bool showPlugins{true};     ///< Whether the Plugins panel is open.
+    bool showBehaviours{true};  ///< Whether the Behaviours panel is open.
+    std::vector<behaviour::BehaviourEntry> behaviours;  ///< What the Behaviours panel shows (catalogBehaviours()).
+    double behavioursRead{-1.0};                    ///< When behaviours was read, in ImGui's seconds; below 0: never.
+    bool showExport{false};                         ///< Whether the Export panel is open (File > Export...).
     std::array<float, kFrameHistory> frameTimes{};  ///< The last frames' durations, in milliseconds, as a ring.
     std::size_t frameCursor{0};                     ///< Where the next frame time goes in frameTimes.
 

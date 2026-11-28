@@ -81,6 +81,7 @@ void buildDefaultLayout(ImGuiID dockspace) {
     ImGui::DockBuilderDockWindow("Assets", bottom);
     ImGui::DockBuilderDockWindow("Stats", bottom);
     ImGui::DockBuilderDockWindow("Plugins", bottom);
+    ImGui::DockBuilderDockWindow("Behaviours", bottom);
     ImGui::DockBuilderDockWindow("Particles", bottom);
     ImGui::DockBuilderDockWindow("Console", bottom);
     ImGui::DockBuilderDockWindow("Server", bottom);
@@ -183,6 +184,7 @@ void runFrame(EditorState& state, contract::platform::IPlatform& platform, contr
     panels::drawConsolePanel(state);
     panels::drawServerPanel(state);
     panels::drawPluginsPanel(state);
+    panels::drawBehavioursPanel(state);
     panels::drawExportPanel(state);
     state.session->online.update(*state.supervisor);
     ImGui::Render();

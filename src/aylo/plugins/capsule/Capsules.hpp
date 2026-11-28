@@ -11,6 +11,7 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <vector>
 
 #include "aylo/ecs/resource/ResourceTraits.hpp"
 #include "aylo/ecs/resource/Resources.hpp"
@@ -43,6 +44,9 @@ class AYLO_PLUGIN_CAPSULE_API Capsules {
 
     /// @return The number of capsules.
     [[nodiscard]] std::size_t getCount() const noexcept;
+
+    /// @return Every capsule, by path: what a tool shows of them (the editor's Behaviours panel).
+    [[nodiscard]] std::vector<const Capsule*> list() const;
 
     /// @brief Adds a capsule, or replaces the nodes of the one with its id and bumps its version, in one step (hot
     /// reload: its address stays; a file that fails to read never reaches it, so the old version stays). Entities
