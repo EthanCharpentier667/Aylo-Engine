@@ -120,6 +120,7 @@ What a value must look like depends on the type of the field it fills (`ecs::Fie
 | `i8` ... `i64`, `u8` ... `u64` | integers | `42`, `-3`, `+7`, `0x2A` | a whole number, decimal or hexadecimal after `0x`, that fits the type (`-` only for signed ones) |
 | `f32`, `f64` | `float`, `double` | `0.25`, `-40`, `2`, `1.5e3` | a decimal number, exponent allowed; finite; no hexadecimal |
 | `vec2`, `vec3`, `vec4` | `glm::vec2/3/4` | `(x, y)`, `(x, y, z)`, `(x, y, z, w)` | exactly that many numbers |
+| a value with units | a `vec2` of the number and its unit's index (`ecs::FieldUnits`: `ui::UiLength`) | `120`, `"50%"`, `"120px"`, `"auto"` | as a script writes it: a plain number is in the bare unit (`FieldUnits::kBareNumber`), a string ends with a unit's name or is a keyword unit; `(50, 2)` still reads. Written back the same way: the number alone in the bare unit, quoted with its unit otherwise, a keyword quoted (a unit index the field does not have is written as the vector) |
 | asset id | `core::asset::AssetId` | `"sprites/ship.png"` or `0x9e3779b97f4a7c15` | a path, normalized and hashed into the id (the path is remembered, to write it back), or the raw 64-bit id for an asset with no path |
 | string | `ecs::String` | `"Player one"` | at most 255 bytes |
 | text | `std::string` | `"any length"` | |

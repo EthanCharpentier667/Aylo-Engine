@@ -54,6 +54,14 @@ game's own, and returns the entity.
 Colours are `{ r, g, b, a }`, linear like every colour of the engine: on an sRGB window, 0.25 looks brighter than the
 hexadecimal `#404040`.
 
+### In a capsule file
+
+The components are plain data, so a capsule file holds an interface as node sections, written by hand or by the
+editor, and `engine.capsule.spawn` spawns it. A length is written with its unit, as a script writes it (`120`,
+`"50%"`, `"auto"`: `CapsuleFormat.md`, from `FieldUnits<UiLength>`); the shortcuts of `engine.ui.spawn` (`gap`,
+`margin`, `radius`, the button's colors) are the form's, so a file names the fields (`rowGap`, `marginLeft`,
+`cornerRadius`, `hoveredColor`) and adds the `UiInteraction` a widget needs. The manual's `ui.md` has an example.
+
 ## Layout
 
 `UiNode` holds every flexbox property of Yoga. Lengths are a number of pixels, `"50%"` or `"auto"`. A `UiLength` is
