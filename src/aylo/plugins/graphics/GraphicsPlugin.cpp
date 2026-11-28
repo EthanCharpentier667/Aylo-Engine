@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <array>
 #include <cstdint>
+#include <filesystem>
 #include <glm/common.hpp>
 #include <glm/ext/quaternion_float.hpp>
 #include <glm/ext/vector_float2.hpp>
@@ -54,6 +55,7 @@
 #include "core/asset/AssetId.hpp"
 #include "core/config/Settings.hpp"
 #include "plugins/AssetDirectory.hpp"
+#include "plugins/AssetLoaders.hpp"
 #include "plugins/graphics/BackendRegistry.hpp"
 #include "plugins/graphics/Camera.hpp"
 #include "plugins/graphics/CursorCapture.hpp"
@@ -496,6 +498,11 @@ void GraphicsPlugin::build(ecs::App& app) {
     resources.insertIfAbsent<CursorCapture>();
     resources.insertIfAbsent<TextureAssets>();
     resources.getMut<TextureAssets>()->setSource(assetSourceOf(resources));
+    // An image a capsule names is loaded as engine.assets.texture would, with its defaults (AssetLoaders.hpp).
+    addAssetLoader(resources, {".png", ".jpg", ".jpeg", ".bmp", ".tga", ".hdr"},
+                   [&resources](const std::filesystem::path& path) {
+                       static_cast<void>(resources.requireMut<TextureAssets>()->load(path));
+                   });
     resources.insertIfAbsent<graphics::SpriteQueue>();
     resources.insertIfAbsent<graphics::OverlayQueue>();
     resources.insertIfAbsent<graphics::ViewInfo>();
