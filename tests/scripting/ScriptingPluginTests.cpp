@@ -18,9 +18,11 @@
 #include <utility>
 
 #include "ScriptsDirectory.hpp"
+#include "aylo/core/reload/ReloadOutcome.hpp"
 #include "aylo/ecs/app/App.hpp"
 #include "aylo/ecs/time/FixedTimestep.hpp"
 #include "aylo/ecs/time/TimePlugin.hpp"
+#include "aylo/scripting/ScriptHost.hpp"
 #include "aylo/scripting/exceptions/ScriptLoadException.hpp"
 #include "aylo/scripting/plugin/ScriptingPlugin.hpp"
 
@@ -328,4 +330,81 @@ TEST(ScriptingPlugin, AClientSystemWritingAReplicatedComponentIsAnErrorNamingThe
         EXPECT_NE(std::string{e.what()}.find("game.Hud"), std::string::npos) << e.what();
         EXPECT_NE(std::string{e.what()}.find("game.Score"), std::string::npos) << e.what();
     }
+}
+
+TEST(ScriptingPlugin, RunsTheBehavioursAfterMainAndBeforeTheSides) {
+    const ScriptsDirectory scripts{"aylo-scripting-plugin-behaviours"};
+    scripts.write("main.luau", R"(engine.ecs.component("game.Health", { fields = { value = "f32" } }))");
+    // Reads game.Health, declared by main: it runs after it.
+    scripts.write("behaviours/enemies/turret.luau", R"(
+        local Turret = engine.behaviour("game.Turret", { fields = {} })
+        function Turret:onUpdate() end
+        engine.ecs.system("game.Heal", { phase = "Update", query = { write = { "game.Health" } }, run = function() end })
+        return Turret
+    )");
+    scripts.write("behaviours/spinner.luau", R"(return engine.behaviour("game.Spinner", { fields = {} }))");
+    // Uses game.Turret, declared by a Behaviour no file requires: it runs before the server entry.
+    scripts.write("server.luau", R"(
+        engine.ecs.system("game.Aim", { phase = "Update", query = { read = { "game.Turret" } }, run = function() end })
+    )");
+
+    aylo::ecs::App app;
+    testing::internal::CaptureStderr();
+    addPlugin(app, {.directory = scripts.path(), .main = "main", .server = "server", .options = {.isServer = true}});
+    EXPECT_EQ(testing::internal::GetCapturedStderr(), "");
+
+    EXPECT_TRUE(hasComponent(app, "game.Turret"));
+    EXPECT_TRUE(hasComponent(app, "game.Spinner"));
+}
+
+TEST(ScriptingPlugin, WarnsAboutAFileOfTheBehavioursThatDeclaresNone) {
+    const ScriptsDirectory scripts{"aylo-scripting-plugin-no-behaviour"};
+    scripts.write("main.luau", "");
+    scripts.write("behaviours/helpers.luau", R"(engine.ecs.component("game.Helper", { fields = {} }) return {})");
+    scripts.write("behaviours/readme.md", "not a script");
+
+    aylo::ecs::App app;
+    testing::internal::CaptureStderr();
+    addPlugin(app, scripts.path());
+    const std::string errors = testing::internal::GetCapturedStderr();
+
+    EXPECT_NE(errors.find("'scripts/behaviours/helpers.luau' declares no Behaviour"), std::string::npos) << errors;
+    EXPECT_TRUE(hasComponent(app, "game.Helper")) << "it still runs";
+}
+
+TEST(ScriptingPlugin, AFailingBehaviourFailsTheBuildNamingIt) {
+    const ScriptsDirectory scripts{"aylo-scripting-plugin-bad-behaviour"};
+    scripts.write("behaviours/broken.luau", R"(engine.behaviour("game.Broken", {}))");
+
+    aylo::ecs::App app;
+    try {
+        addPlugin(app, scripts.path());
+        FAIL() << "the build should fail";
+    } catch (const aylo::scripting::exceptions::ScriptLoadException& error) {
+        EXPECT_NE(std::string{error.what()}.find("Behaviour script 'scripts/behaviours/broken.luau' failed"),
+                  std::string::npos)
+            << error.what();
+        EXPECT_NE(std::string{error.what()}.find("'fields' is required"), std::string::npos) << error.what();
+    }
+}
+
+TEST(ScriptingPlugin, AReloadRunsANewBehaviourAndIgnoresOtherNewFiles) {
+    const ScriptsDirectory scripts{"aylo-scripting-plugin-new-behaviour"};
+    scripts.write("main.luau", "");
+    aylo::scripting::ScriptHost* host = nullptr;
+    aylo::ecs::App app;
+    addPlugin(app,
+              {.directory = scripts.path(), .onBuilt = [&host](aylo::scripting::ScriptHost& built) { host = &built; }});
+    ASSERT_NE(host, nullptr);
+
+    const std::string door = R"(return engine.behaviour("game.Door", { fields = {} }))";
+    const std::string loose = R"(engine.ecs.component("game.Loose", { fields = {} }))";
+    scripts.write("behaviours/door.luau", door);
+    scripts.write("loose.luau", loose);
+    const auto outcome =
+        host->reloadModules({{"scripts/behaviours/door.luau", door}, {"scripts/loose.luau", loose}}, {});
+
+    EXPECT_EQ(outcome.status, aylo::core::reload::ReloadOutcome::Status::kApplied) << outcome.message;
+    EXPECT_TRUE(hasComponent(app, "game.Door"));
+    EXPECT_FALSE(hasComponent(app, "game.Loose")) << "a new file elsewhere waits for a require";
 }

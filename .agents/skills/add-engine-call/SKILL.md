@@ -32,7 +32,9 @@ game reaches what plain data cannot do: load an asset, bind an input, play a sou
    or `engine.input` in the plugin's own `<Name>Forms.luau` (listed in `src/aylo/plugins/xmake.lua`, registered from
    its library and build step, written with the `engine.forms` helpers of `scripting/setup/FormsPrelude.luau`) so the
    script writes one readable table; keep forms thin over the call. The form tests `engine.hasCall()`, so a side without
-   the plugin skips it.
+   the plugin skips it. A form that takes a system's `ctx` reads it with `forms.context(form, ctx)`, so a Behaviour's
+   `self` works too. **Describe its type next to it** with `engine.forms.describe(path, signature)` (see
+   `docs/Plugins.md#setup-forms`): the generated luau-lsp types read it, and a test fails on a form left undescribed.
 5. **Tests.**
     - C++: the call itself in `tests/plugins/` (success, bad argument, the side it is absent on).
     - Script test in `tests/engine/` (see `ScriptEngineCallsTests`, `ScriptSetupFormsTests`, `ScriptPhysicsTests`):

@@ -29,4 +29,13 @@ namespace aylo::scripting::component {
 /// ErrorKind::kInvalidValue one when a default does not fit its field.
 [[nodiscard]] AYLO_SCRIPTING_API Result<ComponentDeclaration> readComponentDeclaration(std::string name,
                                                                                        const luau::Table& spec);
+
+/// @brief Reads the table a script gives to `engine.ecs.event` as a declaration: a `fields` table, as a component's,
+/// and nothing else. An event is local to one machine (both sides have its type, none sends it to the other), so it
+/// has no `replication` or `presence`; it is sent with its fields at zero but those the sender writes, so it has no
+/// `defaults` either.
+/// @param name Name of the event, "game.Hit".
+/// @return The declaration, or an ErrorKind::kInvalidDeclaration error naming the event and what is wrong.
+[[nodiscard]] AYLO_SCRIPTING_API Result<ComponentDeclaration> readEventDeclaration(std::string name,
+                                                                                   const luau::Table& spec);
 }  // namespace aylo::scripting::component

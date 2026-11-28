@@ -10,6 +10,7 @@
 #include "ComponentDeclaration.hpp"
 #include "ComponentLayout.hpp"
 #include "aylo/ecs/component/Components.hpp"
+#include "aylo/ecs/event/Events.hpp"
 #include "aylo/scripting/Export.hpp"
 #include "aylo/scripting/Result.hpp"
 
@@ -24,4 +25,10 @@ namespace aylo::scripting::component {
 /// (the ECS refused it for another reason).
 [[nodiscard]] AYLO_SCRIPTING_API Result<ComponentLayout> registerComponent(ecs::Components& components,
                                                                            const ComponentDeclaration& declaration);
+
+/// @brief Registers a script event (`engine.ecs.event`): the layout of a component of the same fields, registered as
+/// an event, local to the world (never replicated). Registering the same declaration twice returns the same id.
+/// @return The layout and id (an ecs::EventId), or the errors of registerComponent().
+[[nodiscard]] AYLO_SCRIPTING_API Result<ComponentLayout> registerEvent(ecs::Events& events,
+                                                                       const ComponentDeclaration& declaration);
 }  // namespace aylo::scripting::component

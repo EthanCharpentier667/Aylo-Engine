@@ -67,6 +67,7 @@
 #include "aylo/scripting/exceptions/ScriptLoadException.hpp"
 #include "aylo/scripting/modules/ScriptResolver.hpp"
 #include "aylo/scripting/plugin/ScriptingPlugin.hpp"
+#include "aylo/scripting/types/TypeDefinitions.hpp"
 #include "core/asset/exceptions/AssetExceptions.hpp"
 #include "core/config/exceptions/ConfigExceptions.hpp"
 #include "core/layout/GameName.hpp"
@@ -521,10 +522,40 @@ void Engine::pollHotReload() {
         return;
     }
     // The reloaders log what they did; a rebuild is the only thing left to do here.
+    bool changed = false;
+    bool rebuild = false;
     for (const core::reload::ReloadReport& report : _reloader.update(core::reload::HotReloader::Clock::now())) {
+        changed = true;
         if (report.needsRebuild()) {
+            rebuild = true;
             requestReload();
         }
+    }
+    if (changed && !rebuild) {
+        writeScriptTypes();  // a script may have declared a component, an event or a Behaviour
+    }
+}
+
+void Engine::writeScriptTypes() const {
+    if (!_hotReload || _game.packed || _scriptHost == nullptr) {
+        return;
+    }
+    const std::filesystem::path file = _gameDirectory / aylo::scripting::types::kDefinitionsFile;
+    const std::string text = _scriptHost->generateTypes();
+    {
+        std::ifstream current{file, std::ios::binary};
+        const std::string before{std::istreambuf_iterator<char>{current}, std::istreambuf_iterator<char>{}};
+        if (before == text) {
+            return;
+        }
+    }
+    std::error_code error;
+    std::filesystem::create_directories(file.parent_path(), error);
+    std::ofstream out{file, std::ios::binary | std::ios::trunc};
+    out << text;
+    if (!out) {
+        std::cerr << std::format("[Engine] Cannot write the script types to '{}': luau-lsp keeps the old ones\n",
+                                 file.string());
     }
 }
 
@@ -699,5 +730,6 @@ void Engine::build() {
     if (_config.mode == ecs::RunMode::kClient || _config.mode == ecs::RunMode::kStandalone) {
         addNetworkInput(app);
     }
+    writeScriptTypes();
 }
 }  // namespace aylo::engine

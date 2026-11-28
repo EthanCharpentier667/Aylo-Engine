@@ -34,8 +34,10 @@
 #include "aylo/ecs/type/TypeTraits.hpp"
 #include "aylo/ecs/world/World.hpp"
 #include "editor/EditorState.hpp"
+#include "editor/behaviour/BehaviourFiles.hpp"
 #include "editor/gui/Text.hpp"
 #include "editor/scene/SceneEdit.hpp"
+#include "editor/shell/TextEditor.hpp"
 #include "plugins/capsule/Capsule.hpp"
 #include "plugins/capsule/Capsules.hpp"
 #include "plugins/capsule/ComponentValues.hpp"
@@ -54,7 +56,25 @@ void fillTextField(EditorState& state, std::string_view text) {
     std::memcpy(state.textField.data(), text.data(), std::min(text.size(), state.textField.size() - 1));
 }
 
-/// @brief The "Add component" button and its list of the components @p has says are missing.
+/// @return Whether the Inspector shows the component @p name: neither one the editor hides nor a Behaviour's tag.
+bool isShown(const EditorState& state, const std::string& name, bool inScene) {
+    return !isHiddenComponent(name, inScene) &&
+           !behaviour::isBehaviourTag(state.world->getComponents().getRegistry(), name);
+}
+
+/// @brief Opens the file of `scripts/behaviours/` that declares the Behaviour @p name in the text editor, or says why
+/// it cannot on the status line.
+void openBehaviourScript(EditorState& state, const std::string& name) {
+    const auto file = behaviour::findBehaviourFile(behaviour::behavioursFolder(state.assets), name);
+    if (!file) {
+        state.status = std::format("No file of scripts/behaviours/ declares '{}'", name);
+    } else if (!shell::openInTextEditor(state.textEditor, *file)) {
+        state.status = std::format("Could not run '{}'", state.textEditor);
+    }
+}
+
+/// @brief The "Add component" button and its list of the components @p has says are missing, the Behaviours under
+/// their own heading.
 /// @return The component picked, if any.
 template <typename Has>
 std::optional<ecs::ComponentId> pickComponent(EditorState& state, bool inScene, const Has& has) {
@@ -69,30 +89,52 @@ std::optional<ecs::ComponentId> pickComponent(EditorState& state, bool inScene, 
     ImGui::InputTextWithHint("##componentFilter", "Search", state.componentFilter.data(), state.componentFilter.size());
     const std::string wanted{state.componentFilter.data()};
     const ecs::ComponentRegistry& registry = state.world->getComponents().getRegistry();
+    std::vector<const ecs::ComponentInfo*> behaviours;
+    const auto offer = [&picked](const ecs::ComponentInfo& info) {
+        if (ImGui::Selectable(info.type.name.c_str())) {
+            picked = info.type.id;
+            ImGui::CloseCurrentPopup();
+        }
+    };
     for (std::size_t index = 0; index < registry.getCount(); ++index) {
         const auto id = static_cast<ecs::ComponentId>(index);
         const ecs::ComponentInfo* info = registry.findById(id);
-        if (info == nullptr || has(id) || isHiddenComponent(info->type.name, inScene) ||
+        if (info == nullptr || has(id) || !isShown(state, info->type.name, inScene) ||
             (!wanted.empty() && !info->type.name.contains(wanted))) {
             continue;
         }
-        if (ImGui::Selectable(info->type.name.c_str())) {
-            picked = id;
-            ImGui::CloseCurrentPopup();
+        if (behaviour::isBehaviour(*state.app, info->type.name)) {
+            behaviours.push_back(info);
+        } else {
+            offer(*info);
+        }
+    }
+    if (!behaviours.empty()) {
+        ImGui::SeparatorText("Behaviours");
+        for (const ecs::ComponentInfo* info : behaviours) {
+            offer(*info);
         }
     }
     ImGui::EndPopup();
     return picked;
 }
 
-/// @brief Shows a component's header, with a button that removes it.
+/// @brief Shows a component's header, with a button that removes it; a Behaviour's has a menu that opens its script.
 /// @return Whether its fields are shown; @p removed is set if the user removed it.
-bool componentHeader(const ecs::ComponentInfo& info, std::size_t index, bool& removed) {
+bool componentHeader(EditorState& state, const ecs::ComponentInfo& info, std::size_t index, bool& removed) {
     bool kept = true;
     const std::string title = std::format("{}###component{}", shortName(info.type.name), index);
     const bool open = ImGui::CollapsingHeader(title.c_str(), &kept, ImGuiTreeNodeFlags_DefaultOpen);
+    const bool isBehaviour = behaviour::isBehaviour(*state.app, info.type.name);
     if (ImGui::IsItemHovered()) {
-        gui::tooltip(info.type.name);
+        gui::tooltip(isBehaviour ? std::format("{} (Behaviour: right-click to open its script)", info.type.name)
+                                 : info.type.name);
+    }
+    if (isBehaviour && ImGui::BeginPopupContextItem()) {
+        if (ImGui::MenuItem("Open script")) {
+            openBehaviourScript(state, info.type.name);
+        }
+        ImGui::EndPopup();
     }
     removed = !kept;
     return open && kept;
@@ -149,7 +191,7 @@ std::optional<bool> editActive(const bool active) {
 
 /// @brief Shows the components of node @p index of @p edited, changed and removed in place.
 /// @return Whether the user changed them.
-bool editNodeComponents(const EditorState& state, capsule::Capsule& edited, std::uint32_t index) {
+bool editNodeComponents(EditorState& state, capsule::Capsule& edited, std::uint32_t index) {
     const ecs::Components& components = state.world->getComponents();
     bool changed = false;
     // The ids first: changing a value while walking the values would move them.
@@ -162,12 +204,12 @@ bool editNodeComponents(const EditorState& state, capsule::Capsule& edited, std:
     for (std::size_t slot = 0; slot < ids.size(); ++slot) {
         const ecs::ComponentId id = ids.at(slot);
         const ecs::ComponentInfo* info = components.getRegistry().findById(id);
-        if (info == nullptr || isHiddenComponent(info->type.name, true)) {
+        if (info == nullptr || !isShown(state, info->type.name, true)) {
             continue;
         }
         bool removed = false;
         capsule::ComponentValues& values = edited.editNode(index).values;
-        if (componentHeader(*info, slot, removed)) {
+        if (componentHeader(state, *info, slot, removed)) {
             std::vector<std::byte> copy{values.get(id).begin(), values.get(id).end()};
             ImGui::PushID(static_cast<int>(slot));
             if (editFields(*state.world, info->type, copy)) {
@@ -253,11 +295,11 @@ void drawEntity(EditorState& state) {
     for (std::size_t index = 0; index < count; ++index) {
         const auto id = static_cast<ecs::ComponentId>(index);
         const ecs::ComponentInfo* info = components.getRegistry().findById(id);
-        if (info == nullptr || !components.has(entity, id) || isHiddenComponent(info->type.name, false)) {
+        if (info == nullptr || !components.has(entity, id) || !isShown(state, info->type.name, false)) {
             continue;
         }
         bool remove = false;
-        if (componentHeader(*info, index, remove)) {
+        if (componentHeader(state, *info, index, remove)) {
             std::vector<std::byte> copy{components.get(entity, id).begin(), components.get(entity, id).end()};
             ImGui::PushID(static_cast<int>(index));
             if (editFields(world, info->type, copy)) {

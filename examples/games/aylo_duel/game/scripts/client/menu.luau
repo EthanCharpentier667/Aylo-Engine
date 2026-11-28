@@ -208,7 +208,7 @@ engine.ecs.system("game.ShowServerStatus", {
 		if notice ~= nil then
 			return
 		end
-		local connected = ctx.call("aylo.replication.localClient", {}).connected
+		local connected = engine.net.localClient(ctx).connected
 		for _, text in ctx.query do
 			text.text = if connected then "Server online" else "Looking for the server..."
 			text.color = if connected then { x = fine[1], y = fine[2], z = fine[3], w = 1 } else { x = pale[1], y = pale[2], z = pale[3], w = 1 }
@@ -223,15 +223,15 @@ engine.ecs.system("game.ReadMenu", {
 	events = { read = { "aylo.UiClicked" }, send = { "aylo.AppExit" } },
 	calls = { "aylo.input.read", "aylo.state.get", "aylo.state.set", "aylo.net.sendToServer" },
 	run = function(ctx)
-		local screenNow = ctx.call("aylo.state.get", { state = "game.Screen" })
+		local screenNow = engine.state.get(ctx, "game.Screen")
 		local function go(value: string)
-			ctx.call("aylo.state.set", { state = "game.Screen", value = value })
+			engine.state.set(ctx, "game.Screen", value)
 		end
 		local action: string? = nil
 		for click in ctx.events.read("aylo.UiClicked") do
 			action = click.action
 		end
-		if action == nil and ctx.call("aylo.input.read", { action = "back" }).pressed then
+		if action == nil and engine.input.read(ctx, "back").pressed then
 			action = if screenNow == "Menu" then "menu.quit" elseif screenNow == "Joining" then "menu.cancel" else "menu.leave"
 		end
 		if action == "menu.quickJoin" and screenNow == "Menu" then
@@ -262,11 +262,11 @@ engine.ecs.system("game.QuickJoin", {
 	run = function(ctx)
 		local function back(why: string)
 			notice = why
-			ctx.call("aylo.state.set", { state = "game.Screen", value = "Menu" })
+			engine.state.set(ctx, "game.Screen", "Menu")
 		end
 		looking += ctx.time.delta
 		if not asked then
-			if ctx.call("aylo.replication.localClient", {}).connected then
+			if engine.net.localClient(ctx).connected then
 				asked = engine.net.sendToServer(ctx, "game.Join", {})
 			elseif looking > Duel.joinTimeout then
 				back("No server answered: is it running?")
@@ -277,7 +277,7 @@ engine.ecs.system("game.QuickJoin", {
 			if packet.name == "game.Seat" then
 				if packet.values.granted then
 					print(`[client] seated as player {packet.values.player + 1}`)
-					ctx.call("aylo.state.set", { state = "game.Screen", value = "Playing" })
+					engine.state.set(ctx, "game.Screen", "Playing")
 				else
 					back("The arena is full: try again later")
 				end
@@ -294,9 +294,9 @@ engine.ecs.system("game.WatchServer", {
 	calls = { "aylo.replication.localClient", "aylo.state.set" },
 	after = { "game.QuickJoin" },
 	run = function(ctx)
-		if Duel.networked and not ctx.call("aylo.replication.localClient", {}).connected then
+		if Duel.networked and not engine.net.localClient(ctx).connected then
 			notice = "Lost the server"
-			ctx.call("aylo.state.set", { state = "game.Screen", value = "Menu" })
+			engine.state.set(ctx, "game.Screen", "Menu")
 		end
 	end,
 })

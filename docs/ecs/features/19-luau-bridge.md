@@ -119,6 +119,14 @@ system made from a [`ScriptCallable`](12-systems.md#script-callables): a lambda 
 whose `DynamicQueries` parameter declares the access to the scheduler. `shield` is a **view** over the component bytes, valid only
 during `run`; writing a field stamps the changed tick.
 
+`ctx.views` steps the same pass (`QueryStepper::nextNamed`, `system/SystemRun.cpp`), and gives the entity and one
+table holding the views by the component's name (`it["game.Ship"]`) and by its short key, the name after the last `.`
+with a lower-case first letter (`it.ship`). The table is made at the first step and refilled in place on every step,
+through `luau::Pusher::setInTable()`, so a step makes no table. A short key two terms share is left out; its
+metatable's `__index` answers `nil` for an optional view the entity lacks, and an error naming the keys to use or the
+keys there are otherwise, and its `__newindex` refuses a new key. A tag the entity has is a view with no fields in both
+iterators (`QueryMatch::has()`), and `nil` only when an optional one is missing.
+
 `ctx:get(entity, name)` gives a view of a component of any other entity (`nil` when it is dead or lacks it) and
 `ctx:has(entity, name)` tests it, through a `DynamicComponents` parameter: the component is declared with
 `components = { read, write }`, or discovered at its first use, read, then written at the first write to a field of
@@ -232,6 +240,15 @@ engine.input.action("fire", "button", { bind = { "Space", "GamepadSouth" } })
 | `engine.input.action(name, type, {bind})` | `aylo.input.addAction` (`type`: `"button"` by default, `"axis"` or `"vector2"`), then one bind call per binding, in order | nothing |
 | `engine.capsule.spawn(ctx, path, overrides)`, `engine.capsule.load(ctx, path, overrides)` (in a system) | `aylo.capsule.spawn` / `load` through `ctx.call`, then `ctx.commands:patch` of the root per override | the root `Entity` |
 | `engine.capsule.reload(ctx, root)` (in a system) | `aylo.capsule.reload` through `ctx.call` | `true` if `root` was a capsule's root |
+| `engine.input.read(ctx, action)` / `engine.input.read(ctx, entity, action)` (in a system; `InputForms.luau`) | `aylo.input.read` / `aylo.replication.readInput` (an `Entity` second picks it) | the action's state |
+| `engine.state.get(ctx, machine)`, `engine.state.set(ctx, machine, value)` (in a system; `FormsPrelude.luau`, since states are the ECS's) | `aylo.state.get` / `aylo.state.set` | the value / nothing |
+| `engine.audio.play(ctx, sound, options)` (in a system; `AudioForms.luau`) | `aylo.audio.playSound` | the voice id |
+| `engine.net.localClient(ctx)` (in a system; `NetForms.luau`) | `aylo.replication.localClient` | `{ connected, client }` |
+
+Every form that takes a `ctx` reads it with `forms.context(form, value)`: a table with a raw `call` function is a ctx;
+anything else goes to `forms.contextOf`, which the Behaviour prelude sets to give the ctx of a `self` (or of a handle),
+so a form takes a Behaviour's `self` in place of `ctx` (D9). `forms.callIn(form, ctx, name, fields)` makes the call
+through it, its errors prefixed with the form.
 
 - An atlas's `grid` takes `frameSize` and `count` (both needed), `spacing`, `columns` and `offset`; a frame takes a
   `position` and a `size`, and an optional `name` (its index otherwise) and `origin` (its centre otherwise). `grid`,
@@ -248,6 +265,63 @@ the App does not have its calls (the plugin is not in this process: on a dedicat
 plugins it adds are not), it skips them and returns the id the asset would have, the hash of its path or name, so the
 same script loads on the server and the clients. What only a plugin knows, such as a control name or an animation
 direction, is checked where the plugin runs, and a call's error is prefixed with the form's name.
+
+### Types
+
+`ScriptHost::generateTypes()` (`types/TypeDefinitions.hpp`) writes a luau-lsp definition file, after the fixed start of `types/TypesPrelude.d.luau` (embedded), from what the App knows
+at run time: the classes `Entity` and `AssetId`, one table type per component (`C_<name>`), event (`E_<name>`) and call
+result (`R_<name>`), the fields in layout order with the Luau type a script reads (an enum's names as a union of
+literals, a `vec3` as `vector`), `ctx:get`, `getComponent`, `ctx.events.read` / `send` and `ctx.call` as intersections
+of one overload per name (a string literal), the overload of any name last since Luau takes the first that fits, and
+`declare engine` walked from the live `engine` table, each function typed by what its owner described with
+`engine.forms.describe(path, signature)` (`engine.forms.signatures`): the forms prelude describes the host's functions
+(`engine.call`, `engine.ecs.*`), each plugin's forms file its own forms, and a call result a signature names but this
+side lacks (`R_<call>`) is emitted as `any`. A function nobody described would be `(...any) -> ...any`; a test keeps
+there being none. A Behaviour's `self` is a table type with its hooks as properties, so a method written on it
+is checked with `self: Self`. The `Engine` writes it to `<game>/types/aylo.d.luau` at the end of a build and after a
+hot reload that changed something, when it follows the game's files and the text differs (`Engine::writeScriptTypes`).
+
+### Events
+
+`engine.ecs.event(name, { fields })` (`ScriptHost::declareEvent`) reads its table with
+`component::readEventDeclaration` (only `fields`, with the field types of components) and lays it out as a component of
+the same fields (`component::registerEvent`), registered with `Events::registerType(EventInfo)`: never replicated,
+sent from zeros with the fields the sender writes, read and sent through `ctx.events` like a C++ event, its access
+declared or discovered. A reload that changes its layout, or no longer declares it, needs a rebuild, as for a
+component (`FileDeclarations::events`).
+
+### Behaviours
+
+`engine.behaviour(name, { fields, defaults, replication, presence, side })` (`scripting/behaviour/BehaviourPrelude.luau`,
+run after the forms prelude) is sugar over the two declarations above, with no concept of its own
+(`docs/scripting/dx-plan.md`, D1 and D2). It declares the component `name` and returns a table whose `__newindex`
+turns each hook assigned to it into a system: `onUpdate` (`Update`, `dt = ctx.delta`) and `onFixedUpdate`
+(`FixedUpdate`, `ctx.fixedDelta`) are `<name>.<hook>`, querying `name` (written, or read on a client side when the
+component is replicated). `onStart` declares the tag `<name>.Started` (not replicated, present on the hooks' side) and
+the system `<name>.onStart` in `PreUpdate`, querying `name` without the tag: it adds the tag, then calls the hook. While
+a Behaviour has `onStart`, the other hook systems skip an entity until `ctx:has` finds the tag, so the order holds
+whichever phase spawned the entity, and a reload starts nothing again since the tag is in the world.
+
+`onEnable` and `onDisable` declare both their systems and the tag `<name>.Active`: `<name>.onEnable` queries `name`
+without the tag (the implicit enabled filter keeps the switched-on entities) and adds it; `<name>.onDisable` queries
+`name` with the tag, names `aylo.Disabled` (so the filter is off) and takes the tag from what `ctx:isEnabled` finds
+switched off. The three `PreUpdate` systems are ordered `onDisable`, `onEnable`, `onStart`, by `after` / `before` on
+whichever is declared second. `<name>.onDestroy` (`PostUpdate`) queries `removed = { name }` (and names
+`aylo.Disabled`); it takes the tags away, so it is declared with the first tag even without the hook, and calls the hook
+with a `self` that has no view: its fields raise an error. `ctx:isEnabled(entity)` (`system/EntityComponents.hpp`)
+walks `aylo.Parent` up to `ecs::detail::kMaxHierarchyDepth`, as the enabled filter does.
+
+The `ScriptingPlugin` requires every `.luau` file of `scripts/behaviours/` (`FileSource::list`, so a pack too; sorted,
+at any depth) after the `main` entry and before `server` / `client`, and warns about one that declared no Behaviour:
+the prelude takes `engine.noteBehaviour` out of `engine` before any game script runs and calls it from
+`engine.behaviour`, so the host records the Behaviours of each file (`ScriptHost::declaresBehaviour`). A reload runs a
+new file of that folder as a root (`ScriptHost::setAdoptedFolder`), though the plugin turns adoption off elsewhere.
+
+Each visit builds a `self`, a table whose metatable maps the declared fields to the query's view, `entity` and `ctx` to
+the visit, and the methods (`getComponent`, `hasComponent`, `getParent`, `getChildren`, `getHandle`, `addComponent`,
+`removeComponent`, `destroy`) to `ctx:get`, `ctx:has`, `ctx:getParent`, `ctx:getChildren` and `ctx.commands`; other
+entities are handles with the same methods and no fields. Writing an undeclared field (D3) or a `ComponentView` (D5) is
+an error. A name starting with `on` and a capital letter must be a hook; a field cannot take the name of a method.
 
 ### Plugins
 

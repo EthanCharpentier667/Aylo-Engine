@@ -4,6 +4,12 @@ Plain components cover most of a game. An engine call is for what data cannot ex
 input, playing a sound, asking the physics a question. It is a function the engine gives to scripts, with a name
 `aylo.<feature>.<verb>`, called with a table of arguments.
 
+The calls a game makes the most have a **form**, a function that makes the call for you and checks its arguments:
+`engine.input.read(ctx, "jump")` for `ctx.call("aylo.input.read", { action = "jump" })`, `engine.audio.play(ctx, sound)`
+for `aylo.audio.playSound`. Use the forms where they exist (see
+[Forms you use in a system](setup-forms.md#forms-you-use-in-a-system)); this page is what is underneath, and the
+reference of every call.
+
 ```luau
 -- while the script loads (top level of a file)
 local sound = engine.call("aylo.audio.loadSound", { path = "laser.mp3" })

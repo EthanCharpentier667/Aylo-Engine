@@ -23,8 +23,11 @@
 #include "aylo/ecs/component/Components.hpp"
 #include "aylo/ecs/error/Error.hpp"
 #include "aylo/ecs/error/Result.hpp"
+#include "aylo/ecs/event/EventInfo.hpp"
+#include "aylo/ecs/event/Events.hpp"
 #include "aylo/ecs/type/Field.hpp"
 #include "aylo/ecs/type/TypeInfo.hpp"
+#include "aylo/scripting/Error.hpp"
 #include "aylo/scripting/ErrorKind.hpp"
 #include "aylo/scripting/Result.hpp"
 
@@ -57,9 +60,10 @@ namespace {
     }
     return {};
 }
-}  // namespace
 
-Result<ComponentLayout> registerComponent(ecs::Components& components, const ComponentDeclaration& declaration) {
+/// @return The layout of the declaration: its fields sorted by alignment (largest first) then by name, their offsets,
+/// the size, the alignment and the defaults; no id yet.
+[[nodiscard]] Result<ComponentLayout> layOut(const ComponentDeclaration& declaration) {
     if (Result<void> valid = validateDeclaration(declaration); !valid) {
         return tl::unexpected{std::move(valid.error())};
     }
@@ -92,6 +96,23 @@ Result<ComponentLayout> registerComponent(ecs::Components& components, const Com
         std::ranges::copy(sorted.at(i)->defaultValue, layout.defaults.begin() + layout.fields.at(i).offset);
     }
 
+    return layout;
+}
+
+/// @return The error of the scripting module for a registration the ECS refused.
+[[nodiscard]] tl::unexpected<Error> refused(const ecs::Error& error) {
+    const ErrorKind kind =
+        error.getKind() == ecs::ErrorKind::kLayoutMismatch ? ErrorKind::kLayoutMismatch : ErrorKind::kRegistration;
+    return fail(kind, std::string{error.getMessage()});
+}
+}  // namespace
+
+Result<ComponentLayout> registerComponent(ecs::Components& components, const ComponentDeclaration& declaration) {
+    auto laidOut = layOut(declaration);
+    if (!laidOut) {
+        return tl::unexpected{std::move(laidOut.error())};
+    }
+    ComponentLayout layout = std::move(*laidOut);
     ecs::ComponentInfo info;
     info.type.name = declaration.name;
     info.type.size = layout.size;
@@ -102,14 +123,31 @@ Result<ComponentLayout> registerComponent(ecs::Components& components, const Com
 
     const ecs::Result<ecs::ComponentId> registered = components.registerType(std::move(info));
     if (!registered) {
-        const ErrorKind kind = registered.error().getKind() == ecs::ErrorKind::kLayoutMismatch
-                                   ? ErrorKind::kLayoutMismatch
-                                   : ErrorKind::kRegistration;
-        return fail(kind, std::string{registered.error().getMessage()});
+        return refused(registered.error());
     }
     layout.id = *registered;
     layout.clientWritable =
         declaration.replication == ecs::ReplicationMode::kNone && declaration.presence != ecs::Presence::kServerOnly;
+    return layout;
+}
+
+Result<ComponentLayout> registerEvent(ecs::Events& events, const ComponentDeclaration& declaration) {
+    auto laidOut = layOut(declaration);
+    if (!laidOut) {
+        return tl::unexpected{std::move(laidOut.error())};
+    }
+    ComponentLayout layout = std::move(*laidOut);
+    ecs::EventInfo info;
+    info.type.name = declaration.name;
+    info.type.size = layout.size;
+    info.type.alignment = layout.alignment;
+    info.type.fields = layout.fields;
+    const ecs::Result<ecs::EventId> registered = events.registerType(std::move(info));
+    if (!registered) {
+        return refused(registered.error());
+    }
+    layout.id = *registered;
+    layout.clientWritable = true;
     return layout;
 }
 }  // namespace aylo::scripting::component

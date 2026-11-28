@@ -110,7 +110,9 @@ engine.settings.scripts.client = "client/main"
 - A key you set whose file does not exist stops the start, with a message naming it
   (`Setting 'scripts.server' = 'server/main': ...`). A server does not look for the `client` entry, and a client
   does not look for the `server` one, so a game can ship without the other side's folder.
-- A file that no entry requires, directly or not, never runs, and saving it changes nothing while the game runs.
+- A file that no entry requires, directly or not, never runs, and saving it changes nothing while the game runs. The
+  files of `scripts/behaviours/` are the exception: they run after `main`, without a `require` (see
+  [The Behaviours folder](modules.md#the-behaviours-folder)).
 - The same entries work in every mode: you need no `if engine.isServer` in `project.luau` to choose them.
 
 An alias is a short name for a folder of your scripts, usable in `require`:

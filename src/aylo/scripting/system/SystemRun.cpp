@@ -8,6 +8,7 @@
 #include "SystemRun.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cstddef>
 #include <deque>
 #include <format>
@@ -100,7 +101,26 @@ namespace {
     return luau::Value{std::move(*userdata)};
 }
 
-/// @brief What the iterator of `ctx.query` steps: the pass over the matches and the views handed out for each.
+/// @return The short key of the view of @p component in `ctx.views`: its name after the last `.`, its first letter
+/// in lower case (`aylo.Transform2D`: `transform2D`).
+[[nodiscard]] std::string shortKeyOf(const std::string_view component) {
+    const std::size_t dot = component.rfind('.');
+    std::string key{dot == std::string_view::npos ? component : component.substr(dot + 1)};
+    if (!key.empty() && key.front() >= 'A' && key.front() <= 'Z') {
+        key.front() = static_cast<char>(key.front() - 'A' + 'a');
+    }
+    return key;
+}
+
+/// @brief The keys of one data term in the table of `ctx.views`.
+struct ViewKeys {
+    std::string full;       ///< The component's name: `game.Ship`.
+    std::string brief;      ///< Its short key: `ship`.
+    bool ambiguous{false};  ///< Whether another term has the same short key: it is then not given.
+};
+
+/// @brief What the iterators of `ctx.query` and `ctx.views` step: the pass over the matches and the views handed out
+/// for each.
 class QueryStepper {
   public:
     QueryStepper(ScriptSystem& system, const luau::Runtime& runtime, ecs::QueryIteration iteration)
@@ -120,15 +140,7 @@ class QueryStepper {
     /// @details Pushed straight onto the stack: this runs once per entity, so a pack of values held through the
     /// registry would cost more than the script's own work.
     void next(luau::Pusher& results) {
-        if (_done) {
-            return;
-        }
-        if (_started) {
-            ++_current;
-        }
-        _started = true;
-        if (_current == ecs::QueryIteration::end()) {
-            _done = true;
+        if (!advance()) {
             return;
         }
         ecs::QueryMatch& match = *_current;
@@ -138,10 +150,114 @@ class QueryStepper {
         }
     }
 
+    /// @brief As next(), but pushes the views in one table, by name: `it["game.Ship"]` and `it.ship`. The table is the
+    /// same for every match of the run, its fields replaced, so a step makes no table.
+    void nextNamed(const luau::Runtime& runtime, luau::Pusher& results) {
+        if (!advance()) {
+            return;
+        }
+        if (!_named) {
+            makeNamed(runtime);
+        }
+        ecs::QueryMatch& match = *_current;
+        results.userdata(_entities, match.getEntity());
+        results.value(luau::Value{*_named});
+        for (std::size_t index = 0; index < _system->terms.size(); ++index) {
+            const ViewKeys& keys = _keys.at(index);
+            pushView(match, index, results);
+            const std::array<std::string_view, 2> names{keys.full, keys.brief};
+            results.setInTable(std::span{names}.first(keys.ambiguous ? 1 : 2));
+        }
+    }
+
   private:
+    /// @brief Moves to the next match.
+    /// @return Whether there is one.
+    bool advance() {
+        if (_done) {
+            return false;
+        }
+        if (_started) {
+            ++_current;
+        }
+        _started = true;
+        if (_current == ecs::QueryIteration::end()) {
+            _done = true;
+            return false;
+        }
+        return true;
+    }
+
+    /// @brief Makes the table of ctx.views and the keys of each term. A key it does not have is an error naming the
+    /// keys it has, an ambiguous short key one saying which names to use; an optional term the entity lacks reads nil.
+    void makeNamed(const luau::Runtime& runtime) {
+        for (const auto& term : _system->terms) {
+            _keys.push_back({.full = term.info->type.name, .brief = shortKeyOf(term.info->type.name)});
+        }
+        for (ViewKeys& keys : _keys) {
+            keys.ambiguous = std::ranges::count(_keys, keys.brief, &ViewKeys::brief) > 1;
+        }
+        auto table = luau::Table::create(runtime, 0, static_cast<int>(_keys.size() * 2));
+        auto metatable = luau::Table::create(runtime, 0, 2);
+        if (!table || !metatable) {
+            throw luau::exceptions::RuntimeError{std::string{(table ? metatable.error() : table.error()).message()}};
+        }
+        auto& index = _functions.emplace_back(luau::Function::create(runtime, std::format("{}.views", _system->name)));
+        index.setHandler([this](const luau::CallContext& arguments) { return missingView(arguments); });
+        auto& newIndex =
+            _functions.emplace_back(luau::Function::create(runtime, std::format("{}.views", _system->name)));
+        newIndex.setHandler([this](const luau::CallContext& /*arguments*/) -> luau::ValuePack {
+            throw luau::exceptions::RuntimeError{
+                std::format("the views of system '{}' are read by name: write the fields of a view (it.ship.speed = 1)",
+                            _system->name)};
+        });
+        for (const auto& [name, function] :
+             {std::pair<std::string_view, luau::Function*>{"__index", &index}, {"__newindex", &newIndex}}) {
+            if (auto set = metatable->set(name, luau::Value{function->ref()}); !set) {
+                throw luau::exceptions::RuntimeError{std::string{set.error().message()}};
+            }
+        }
+        if (auto set = table->setMetatable(*metatable); !set) {
+            throw luau::exceptions::RuntimeError{std::string{set.error().message()}};
+        }
+        _named = std::make_unique<luau::Table>(std::move(*table));
+    }
+
+    /// @brief `it[key]` for a key the table does not hold: nil for an optional view the entity lacks, an error
+    /// otherwise.
+    [[nodiscard]] luau::ValuePack missingView(const luau::CallContext& arguments) const {
+        const auto args = arguments.args();
+        const auto* key = args.size() > 1 ? std::next(args.begin(), 1)->tryAs<std::string>() : nullptr;
+        const std::string wanted = key != nullptr ? *key : std::string{"?"};
+        std::string names;
+        for (const ViewKeys& keys : _keys) {
+            if (keys.full == wanted || (keys.brief == wanted && !keys.ambiguous)) {
+                luau::ValuePack pack;
+                pack.add(luau::Value{luau::Value::Nil{}});
+                return pack;
+            }
+            if (keys.brief == wanted) {
+                names += std::format("{}it[\"{}\"]", names.empty() ? "" : " or ", keys.full);
+            }
+        }
+        if (!names.empty()) {
+            throw luau::exceptions::RuntimeError{
+                std::format("'{}' names several views of system '{}': use {}", wanted, _system->name, names)};
+        }
+        for (const ViewKeys& keys : _keys) {
+            names += std::format("{}{}", names.empty() ? "" : ", ", keys.ambiguous ? keys.full : keys.brief);
+        }
+        throw luau::exceptions::RuntimeError{
+            std::format("the query of system '{}' has no view '{}' (it has: {})", _system->name, wanted, names)};
+    }
+
     /// @brief Pushes the view of data term `index` of the match, or `nil` when the entity has no such optional
-    /// component.
+    /// component. A tag the entity has gets a view, with no fields.
     void pushView(ecs::QueryMatch& match, const std::size_t index, luau::Pusher& results) const {
+        if (!match.has(index)) {
+            results.nil();
+            return;
+        }
         const auto& [info, readOnly] = _system->terms.at(index);
         std::span<std::byte> bytes;
         if (readOnly) {
@@ -151,10 +267,6 @@ class QueryStepper {
             bytes = {const_cast<std::byte*>(read.data()), read.size()};
         } else {
             bytes = match.getMut(index);
-        }
-        if (bytes.empty()) {
-            results.nil();
-            return;
         }
         results.userdata(_views, view::ComponentView{
                                      .type = &info->type,
@@ -170,6 +282,9 @@ class QueryStepper {
     luau::Usertype<view::ComponentView> _views;  ///< Makes the views of each match.
     ecs::QueryIteration _iteration;              ///< The pass over the query.
     ecs::QueryIteration::Iterator _current;      ///< The current match of the pass.
+    std::unique_ptr<luau::Table> _named;         ///< The table of ctx.views, made at its first step.
+    std::vector<ViewKeys> _keys;                 ///< The keys of each data term in it.
+    std::deque<luau::Function> _functions;       ///< Its metamethods; a deque keeps them where they are.
     bool _started{false};                        ///< Whether the first match was handed out.
     bool _done{false};                           ///< Whether the pass reached its end.
 };
@@ -378,6 +493,12 @@ class EventsContext {
             stepper->next(results);
         }
     });
+    auto views = luau::Function::create(runtime, std::format("{}.views", system.name));
+    views.setRawHandler([&stepper, &runtime](luau::Pusher& results) {
+        if (stepper) {
+            stepper->nextNamed(runtime, results);
+        }
+    });
 
     auto recorder = runtime.usertype<commands::ScriptCommands>().create(commands::ScriptCommands{
         .commands = &commands,
@@ -425,6 +546,10 @@ class EventsContext {
     children.setHandler([&system, &runtime, &components](const luau::CallContext& arguments) {
         return getChildren(system, runtime, components, arguments);
     });
+    auto enabled = luau::Function::create(runtime, std::format("{}.isEnabled", system.name));
+    enabled.setHandler([&system, &components](const luau::CallContext& arguments) {
+        return isEnabled(system, components, arguments);
+    });
     auto timeTable = luau::Table::create(runtime, 0, 5);
     if (!timeTable) {
         return tl::unexpected{std::move(timeTable.error())};
@@ -440,12 +565,13 @@ class EventsContext {
             return set;
         }
     }
-    auto ctx = luau::Table::create(runtime, 0, 13);
+    auto ctx = luau::Table::create(runtime, 0, 15);
     if (!ctx) {
         return tl::unexpected{std::move(ctx.error())};
     }
     for (const auto& [name, value] : {
              std::pair<std::string_view, luau::Value>{"query", luau::Value{iterator.ref()}},
+             {"views", luau::Value{views.ref()}},
              {"delta", luau::Value{static_cast<double>(time.delta)}},
              {"fixedDelta", luau::Value{static_cast<double>(time.fixedDelta)}},
              {"time", luau::Value{*timeTable}},
@@ -457,6 +583,7 @@ class EventsContext {
              {"has", luau::Value{has.ref()}},
              {"getParent", luau::Value{parent.ref()}},
              {"getChildren", luau::Value{children.ref()}},
+             {"isEnabled", luau::Value{enabled.ref()}},
              {"side", luau::Value{std::string{system.side}}},
          }) {
         if (auto set = ctx->set(name, value); !set) {

@@ -43,13 +43,14 @@ namespace aylo::editor {
 
 /// @brief What the Assets panel is asking for, through its popup.
 enum class AssetAction : std::uint8_t {
-    kNone,         ///< Nothing.
-    kNewScene,     ///< A new `.scene` in the target folder.
-    kNewActor,     ///< A new `.actor` in the target folder.
-    kNewFolder,    ///< A new folder in the target folder.
-    kNewMaterial,  ///< A new `.material` in the target folder.
-    kRename,       ///< A new name for the target file or folder.
-    kDelete,       ///< Removing the target file or folder.
+    kNone,          ///< Nothing.
+    kNewScene,      ///< A new `.scene` in the target folder.
+    kNewActor,      ///< A new `.actor` in the target folder.
+    kNewFolder,     ///< A new folder in the target folder.
+    kNewMaterial,   ///< A new `.material` in the target folder.
+    kNewBehaviour,  ///< A new Behaviour in `scripts/behaviours/`, whatever the target folder.
+    kRename,        ///< A new name for the target file or folder.
+    kDelete,        ///< Removing the target file or folder.
 };
 
 /// @brief A gizmo handle being dragged in the Scene panel.

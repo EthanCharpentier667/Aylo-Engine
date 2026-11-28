@@ -87,7 +87,7 @@ engine.ecs.system("game.MarkMyName", {
 	calls = { "aylo.replication.localClient" },
 	after = { "game.TrackOwners", "game.ShowServerStatus" },
 	run = function(ctx)
-		local me = ctx.call("aylo.replication.localClient", {})
+		local me = engine.net.localClient(ctx)
 		local mine = if me.connected then playerOf[me.client] else nil
 		for _, name, renderer in ctx.query do
 			local isMe = name.player == mine
@@ -117,8 +117,8 @@ engine.ecs.system("game.ShowBanner", {
 	calls = { "aylo.state.get" },
 	after = { "game.AnnounceWinner" },
 	run = function(ctx)
-		local playing = ctx.call("aylo.state.get", { state = "game.Screen" }) == "Playing"
-		local round = ctx.call("aylo.state.get", { state = "game.Round" })
+		local playing = engine.state.get(ctx, "game.Screen") == "Playing"
+		local round = engine.state.get(ctx, "game.Round")
 		local line = ""
 		if round == "Over" then
 			nextRoundIn = math.max(nextRoundIn - ctx.time.delta, 0)
@@ -141,7 +141,7 @@ engine.ecs.system("game.AnnounceWinner", {
 	after = { "game.MarkMyName" },
 	run = function(ctx)
 		for _, winner in ctx.query do
-			local me = ctx.call("aylo.replication.localClient", {})
+			local me = engine.net.localClient(ctx)
 			local seat = if me.connected then playerOf[me.client] else nil
 			local lines = { { text = `Player {winner.player + 1} wins!`, y = winnerY } }
 			if seat ~= nil then -- a player in the menu only watches

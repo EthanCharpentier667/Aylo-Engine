@@ -73,6 +73,14 @@ class AYLO_LUAU_API Pusher {
     /// @throws The exception of @p initialize, after removing the half-built userdata.
     void pushUserdata(const detail::UsertypeData& data, void (*initialize)(void* storage, void* source), void* source);
 
+    /// @brief Moves the value pushed last into the table pushed before it, under each of @p keys:
+    /// `table[key] = value`, raw (a metatable of the table runs no code). The value is no longer one of the results.
+    /// @details Fills a table pushed again on every step of a loop (Pusher::value() of a held table) without making a
+    /// new one: a key the table already has takes no allocation.
+    /// @throws exceptions::InvalidOperation If fewer than two values were pushed, or the one below the last is not a
+    /// table.
+    void setInTable(std::span<const std::string_view> keys);
+
     /// @return How many values were pushed.
     [[nodiscard]] int count() const noexcept;
 

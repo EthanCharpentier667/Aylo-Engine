@@ -31,6 +31,7 @@ local function readValue(uniform, value)
 	return fields
 end
 
+forms.describe("engine.assets.material", "(spec: Fields | string) -> AssetId")
 engine.assets.material = function(...)
 	forms.arguments(form, 1, ...)
 	if type((...)) == "string" then
@@ -126,6 +127,7 @@ end
 -- a pass { material, input, inputs, output, scale, size, lowPrecision } (aylo.shader.addScreenEffect), or what an
 -- engine.effects function returns. Where there is no screen to draw (a server), it does nothing, so a script shared by
 -- both sides can call it.
+forms.describe("engine.screenEffects", "(effects: { any }) -> ()")
 engine.screenEffects = function(...)
 	local name = "engine.screenEffects"
 	forms.arguments(name, 1, ...)
@@ -220,7 +222,17 @@ local singleEffects = {
 	fog = { shader = "fog", keys = { "color", "density", "start", "height", "heightFalloff" } },
 	tonemap = { shader = "tonemap", keys = { "exposure", "mode" } },
 }
+-- The type of an effect function, taking the values `keys` names.
+local function describeEffect(effect, keys)
+	local fields = {}
+	for _, key in keys do
+		table.insert(fields, key .. ": any?")
+	end
+	forms.describe("engine.effects." .. effect, "(values: { " .. table.concat(fields, ", ") .. " }?) -> { Fields }")
+end
+
 for effect, spec in singleEffects do
+	describeEffect(effect, spec.keys)
 	engine.effects[effect] = function(...)
 		local values = effectValues(effect, spec.keys, ...)
 		return { { material = effectMaterial(effect, spec.shader, values) } }
@@ -229,6 +241,7 @@ end
 
 -- A bloom on a chain of smaller and smaller images, down then back up: wide glows for little cost. Its values are
 -- those of @aylo/bloom.glsl; `radius` (pixels) chooses how many halvings it makes.
+forms.describe("engine.effects.bloom", "(values: Fields?) -> { Fields }")
 engine.effects.bloom = function(...)
 	local values, context = effectValues("bloom", { "threshold", "softKnee", "intensity", "radius" }, ...)
 	local radius = forms.number(context, values, "radius") or 24
@@ -266,6 +279,7 @@ end
 
 -- The Kuwahara filter, a painterly look: the classic one in one pass, or with `anisotropic = true` the one that follows
 -- the picture's strokes (four passes).
+forms.describe("engine.effects.kuwahara", "(values: Fields?) -> { Fields }")
 engine.effects.kuwahara = function(...)
 	local values, context = effectValues(
 		"kuwahara",
@@ -295,6 +309,7 @@ end
 
 -- Screen-space ambient occlusion: the 3D world darkened in its creases and corners, at half size, blurred, then laid
 -- over the picture (four passes).
+forms.describe("engine.effects.ssao", "(values: Fields?) -> { Fields }")
 engine.effects.ssao = function(...)
 	local values, context =
 		effectValues("ssao", { "radius", "intensity", "bias", "samples", "blur", "shadow" }, ...)

@@ -24,7 +24,9 @@
 #include "aylo/ecs/entity/Entity.hpp"
 #include "aylo/ecs/exceptions/ComponentExceptions.hpp"
 #include "aylo/ecs/hierarchy/Children.hpp"
+#include "aylo/ecs/hierarchy/Disabled.hpp"
 #include "aylo/ecs/hierarchy/Parent.hpp"
+#include "aylo/ecs/query/QueryMatcher.hpp"
 #include "aylo/ecs/system/DynamicComponents.hpp"
 #include "aylo/ecs/type/TypeTraits.hpp"
 #include "aylo/luau/CallContext.hpp"
@@ -225,6 +227,27 @@ luau::ValuePack hasComponent(ScriptSystem& system, const ecs::DynamicComponents&
     const Target target = readTarget(system, components, arguments, "has");
     luau::ValuePack pack;
     pack.add(luau::Value{components.has(target.entity, target.index)});
+    return pack;
+}
+luau::ValuePack isEnabled(ScriptSystem& system, const ecs::DynamicComponents& components,
+                          const luau::CallContext& arguments) {
+    ecs::Entity entity = readEntity(arguments, "isEnabled");
+    const std::size_t disabled = findOrDiscover(system, components, ecs::TypeTraits<ecs::Disabled>::kName);
+    bool enabled = true;
+    // As the enabled filter of a query: deeper than any real tree, the bound only stops a cycle of parents.
+    for (std::size_t depth = 0; depth < ecs::detail::kMaxHierarchyDepth; ++depth) {
+        if (components.has(entity, disabled)) {
+            enabled = false;
+            break;
+        }
+        const auto* parent = findHierarchy<ecs::Parent>(system, components, entity);
+        if (parent == nullptr) {
+            break;
+        }
+        entity = parent->entity;
+    }
+    luau::ValuePack pack;
+    pack.add(luau::Value{enabled});
     return pack;
 }
 }  // namespace aylo::scripting::system

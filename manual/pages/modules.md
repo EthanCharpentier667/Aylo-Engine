@@ -3,8 +3,8 @@
 A script file can use another one with `require`. The other file is a **module**: it runs once, and what it returns is
 what every `require` of it gives back. This is how you share configuration and helpers between files.
 
-Only the **entry points** you name in `project.luau` run by themselves; every other file runs because a file requires
-it. Each file has its own variables, so `require` is the only way files share data.
+Only the **entry points** you name in `project.luau`, and the [Behaviours](behaviours.md) of `scripts/behaviours/`, run
+by themselves; every other file runs because a file requires it. Each file has its own variables, so `require` is the only way files share data.
 
 ## Entry points
 
@@ -15,13 +15,27 @@ engine.settings.scripts.server = "server/main"
 engine.settings.scripts.client = "client/main"
 ```
 
-A process runs `main`, then `server` if it is a server, then `client` if it is a client (a standalone process is both).
+A process runs `main`, then every file of `scripts/behaviours/`, then `server` if it is a server, then `client` if it is
+a client (a standalone process is both).
 Without any of the three, the entry is `scripts/main.luau`. An entry is an ordinary module that returns nothing, and it
 requires the files of its side. See [Project settings](project-settings.md#scripts) for the rules, and
 [Getting started](getting-started.md#your-scripts) for a layout.
 
 A file that no entry requires, directly or not, never runs. If you forget to require a file, nothing complains: the
 components and systems it declares are simply missing.
+
+### The Behaviours folder
+
+Every `.luau` file of `scripts/behaviours/`, in its subfolders too, runs without a `require`, on every side: after
+`main`, so it can use what `main` declares, and before `server` and `client`, so they can query its Behaviours. The
+files run in the order of their paths (`behaviours/a.luau`, `behaviours/enemies/b.luau`, `behaviours/z.luau`). Drop
+`scripts/behaviours/spinner.luau` in the game, and `game.Spinner` exists, ready to give to an entity.
+
+Each file there is a module like any other: other files can `require` it (it still runs once), and it should `return`
+its Behaviour. The folder is for Behaviours: a file in it that declares none still runs, with a warning
+(`'scripts/behaviours/helpers.luau' declares no Behaviour`). Put your helpers elsewhere in `scripts/`. A file of the
+folder that fails stops the game from starting, as an entry does (`Behaviour script 'scripts/behaviours/door.luau'
+failed: ...`).
 
 ## Each file has its own globals
 
@@ -162,7 +176,8 @@ Every game folder has a `.luaurc` next to `project.luau`:
 ```
 
 With it, [luau-lsp](https://github.com/JohnnyMorganz/luau-lsp) understands `@scripts/...` paths and completes them. The
-template game has it already; copy it to your game folder if you started another way. The engine itself does not read
+template game has it already; copy it to your game folder if you started another way. For types and completion of the
+engine and your components, see [Types and completion](#types-and-completion). The engine itself does not read
 this file: `@scripts` always exists.
 
 To add an alias of your own, declare it in `project.luau` with `engine.settings.scripts.aliases`
@@ -176,6 +191,36 @@ To add an alias of your own, declare it in `project.luau` with `engine.settings.
 	}
 }
 ```
+
+### Types and completion
+
+While the game runs with [hot reload](hot-reload.md) on (the default in a debug build), the engine writes
+`types/aylo.d.luau` in your game folder: a luau-lsp definition file of everything your scripts can use, as the game
+has it now. It describes:
+
+- `engine`, its tables and forms (`engine.input.read`, `engine.state.get`, `engine.behaviour`... typed; the other
+  functions take and give anything);
+- `ctx`, a [Behaviour's](behaviours.md) `self` and its handles;
+- every component, the engine's and yours, with its fields: `self:getComponent("aylo.Transform2D")` and
+  `ctx:get(entity, "game.Ship")` give the view of that component, so its fields complete and a misspelled one is
+  underlined (`Cannot add property 'rotatoin' to table 'C_aylo_Transform2D'`, in `--!strict` files);
+- every event (`ctx.events.read`, `ctx.events.send`) and every engine call (`ctx.call`, `engine.call`) with what it
+  takes and gives.
+
+The file is written when the game starts and again when a script reloads, only when it changes. Tell luau-lsp to read
+it, in the settings of your editor (Visual Studio Code: `.vscode/settings.json` in the game folder):
+
+```json
+{
+	"luau-lsp.platform.type": "standard",
+	"luau-lsp.types.definitionFiles": ["types/aylo.d.luau"],
+	"luau-lsp.sourcemap.enabled": false
+}
+```
+
+The template game has these settings already. The file follows the game you run: a client has the sprites and sounds a
+server has not, so run the client (or the [editor](editor.md)) to get them all. It is generated, so do not edit it; you
+can leave it out of version control. A [shipped](shipping.md) game, which has no hot reload, does not write it.
 
 ## See also
 

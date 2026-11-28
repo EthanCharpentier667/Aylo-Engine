@@ -72,23 +72,22 @@ engine.ecs.system("game.HideTitle", {
 
 ## Changing the state
 
-A system changes the state with the engine call `aylo.state.set`, and reads it with `aylo.state.get`. List them in its
-`calls`.
+A system changes the state with `engine.state.set`, and reads it with `engine.state.get`. A Behaviour gives its `self`
+in place of `ctx`.
 
-| Call | Arguments | Result |
+| Form | Result | Engine call underneath |
 |---|---|---|
-| `aylo.state.get` | `state` (the machine) | its current value, `""` before its first frame |
-| `aylo.state.set` | `state`, `value` | nothing |
+| `engine.state.get(ctx, machine)` | its current value, `""` before its first frame | `aylo.state.get` (`state`) |
+| `engine.state.set(ctx, machine, value)` | nothing | `aylo.state.set` (`state`, `value`) |
 
 ```luau
 engine.ecs.system("game.StartOnSpace", {
 	phase = "Update",
 	side = "client",
 	inState = { "game.Phase", "Menu" },
-	calls = { "aylo.input.read", "aylo.state.set" },
 	run = function(ctx)
-		if ctx.call("aylo.input.read", { action = "start" }).pressed then
-			ctx.call("aylo.state.set", { state = "game.Phase", value = "Playing" })
+		if engine.input.read(ctx, "start").pressed then
+			engine.state.set(ctx, "game.Phase", "Playing")
 		end
 	end,
 })

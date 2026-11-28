@@ -55,6 +55,7 @@
 #include "aylo/luau/Value.hpp"
 #include "aylo/luau/ValuePack.hpp"
 #include "aylo/scripting/ErrorKind.hpp"
+#include "behaviour/BehaviourPrelude.hpp"
 #include "call/EngineCall.hpp"
 #include "commands/ScriptCommands.hpp"
 #include "component/ComponentLayout.hpp"
@@ -68,6 +69,7 @@
 #include "system/RuntimeHandle.hpp"
 #include "system/SystemDeclarationReader.hpp"
 #include "system/SystemRegistration.hpp"
+#include "types/TypeDefinitions.hpp"
 #include "view/ViewTypes.hpp"
 
 namespace aylo::scripting {
@@ -203,6 +205,36 @@ luau::Result<> ScriptHost::require(const std::string_view path) {
 
 void ScriptHost::setAdoptsNewFiles(const bool adopts) noexcept { _adoptsNewFiles = adopts; }
 
+void ScriptHost::setAdoptedFolder(std::string folder) { _adoptedFolder = std::move(folder); }
+
+std::string ScriptHost::generateTypes() const {
+    if (!_engine) {
+        return {};
+    }
+    const luau::Table engine = _engine->table();
+    // The forms describe their own types (engine.forms.describe).
+    std::optional<luau::Table> signatures;
+    if (const auto forms = engine.get("forms"); forms && forms->is<luau::Table>()) {
+        if (const auto described = forms->as<luau::Table>().get("signatures");
+            described && described->is<luau::Table>()) {
+            signatures = described->as<luau::Table>();
+        }
+    }
+    ecs::World& world = _app.getWorld();
+    return types::generateDefinitions({
+        .components = &world.getComponents().getRegistry(),
+        .events = &world.getEvents().getRegistry(),
+        .calls = &world.getCalls(),
+        .engine = &engine,
+        .signatures = signatures ? &*signatures : nullptr,
+    });
+}
+
+bool ScriptHost::declaresBehaviour(const std::string& name) const {
+    const auto found = _files.find(name);
+    return found != _files.end() && !found->second.behaviours.empty();
+}
+
 std::optional<std::string> ScriptHost::moduleKeyOf(const std::string_view name) const {
     constexpr std::string_view kPrefix = "scripts/";
     if (!_loader || !name.starts_with(kPrefix) || name.size() == kPrefix.size()) {
@@ -296,6 +328,10 @@ luau::Result<> ScriptHost::installEngine(const Options options) {
         declareComponent(std::move(name), spec);
         return luau::ValuePack{};
     });
+    ecsBuilder.function("event").bind([this](std::string name, const luau::Table& spec) {
+        declareEvent(std::move(name), spec);
+        return luau::ValuePack{};
+    });
     ecsBuilder.function("system").bind([this](std::string name, const luau::Table& spec) {
         declareSystem(std::move(name), spec);
         return luau::ValuePack{};
@@ -335,6 +371,11 @@ luau::Result<> ScriptHost::installEngine(const Options options) {
         result.add(luau::Value{std::move(*id)});
         return result;
     });
+    // Only for the Behaviour prelude, which takes it out of `engine` before any game script runs.
+    engineBuilder.function("noteBehaviour").bind([this](const std::string& name) {
+        (_staging ? _staging->declared[_owner] : _files[_owner]).behaviours.insert(name);
+        return luau::ValuePack{};
+    });
     engineBuilder.function("call").setHandler(
         [this](const luau::CallContext& arguments) { return callEngine(arguments); });
     _engine.emplace(engineBuilder.build());
@@ -352,7 +393,10 @@ luau::Result<> ScriptHost::installEngine(const Options options) {
     if (auto registered = _runtime.globals().registerLibrary(*_engine); !registered) {
         return registered;
     }
-    return runSource(std::string{setup::kFormsPreludeName}, std::string{setup::getFormsPrelude()});
+    if (auto ran = runSource(std::string{setup::kFormsPreludeName}, std::string{setup::getFormsPrelude()}); !ran) {
+        return ran;
+    }
+    return runSource(std::string{behaviour::kBehaviourPreludeName}, std::string{behaviour::getBehaviourPrelude()});
 }
 
 void ScriptHost::declareComponent(std::string name, const luau::Table& spec) {
@@ -376,6 +420,23 @@ void ScriptHost::declareComponent(std::string name, const luau::Table& spec) {
     }
     (_staging ? _staging->declared[_owner] : _files[_owner]).components.insert(declaration->name);
     _components.insert_or_assign(declaration->name, std::move(*layout));
+}
+
+void ScriptHost::declareEvent(std::string name, const luau::Table& spec) {
+    const auto declaration = component::readEventDeclaration(std::move(name), spec);
+    if (!declaration) {
+        throw luau::exceptions::RuntimeError{std::string{declaration.error().message()}};
+    }
+    auto layout = component::registerEvent(_app.getWorld().getEvents(), *declaration);
+    if (!layout) {
+        // As a component: the queue of the old layout cannot hold the new one, in place.
+        if (_staging && (layout.error().kind() == ErrorKind::kLayoutMismatch ||
+                         layout.error().kind() == ErrorKind::kRegistration)) {
+            _staging->rebuild = std::format("event '{}' changed: {}", declaration->name, layout.error().message());
+        }
+        throw luau::exceptions::RuntimeError{std::string{layout.error().message()}};
+    }
+    (_staging ? _staging->declared[_owner] : _files[_owner]).events.insert(declaration->name);
 }
 
 void ScriptHost::declareState(std::string name, const luau::Table& values, const std::optional<luau::Table>& options) {
@@ -630,7 +691,7 @@ core::reload::ReloadOutcome ScriptHost::reloadModules(const std::map<std::string
         sources.insert_or_assign(*key, source);
         if (_loader->isLoaded(*key)) {
             seeds.push_back(*key);
-        } else if (_adoptsNewFiles) {
+        } else if (_adoptsNewFiles || (!_adoptedFolder.empty() && key->starts_with(_adoptedFolder))) {
             added.push_back(*key);
             plan.roots.insert(*key);
         }
@@ -762,6 +823,12 @@ core::reload::ReloadOutcome ScriptHost::applyReload(const ReloadPlan& plan) {
                     std::format("component '{}' is no longer declared by '{}'", component, owner));
             }
         }
+        for (const std::string& event : before.events) {
+            if (!after.events.contains(event)) {
+                return ReloadOutcome::needsRebuild(
+                    std::format("event '{}' is no longer declared by '{}'", event, owner));
+            }
+        }
         for (const auto& [name, phase] : before.systems) {
             // A system another script of the batch declares now has moved: it is replaced, not removed.
             const bool taken = std::ranges::any_of(
@@ -818,7 +885,10 @@ core::reload::ReloadOutcome ScriptHost::applyReload(const ReloadPlan& plan) {
         for (const std::string& component : after.components) {
             what.push_back(std::format("component {}", component));
         }
-        if (after.components.empty() && after.systems.empty()) {
+        for (const std::string& event : after.events) {
+            what.push_back(std::format("event {}", event));
+        }
+        if (after.components.empty() && after.systems.empty() && after.events.empty()) {
             _files.erase(owner);
         } else {
             _files.insert_or_assign(owner, std::move(after));

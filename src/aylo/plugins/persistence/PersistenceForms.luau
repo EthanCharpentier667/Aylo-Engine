@@ -3,8 +3,8 @@ engine.persistence = {}
 
 -- Makes `call` through the system's ctx (which lists it under `calls`), or through the engine while the script loads.
 local function invoke(form, ctx, call, fields)
-	if ctx ~= nil and type(ctx) ~= "table" then
-		forms.fail(form, "expected a system's ctx (or nil) first")
+	if ctx ~= nil then
+		ctx = forms.context(form, ctx, "expected a system's ctx, a Behaviour's self or nil first")
 	end
 	if ctx == nil then
 		return forms.call(form, call, fields)
@@ -15,6 +15,11 @@ local function invoke(form, ctx, call, fields)
 	end
 	return results[2]
 end
+
+for _, verb in { "read", "delete", "exists" } do
+	forms.describe("engine.persistence." .. verb, "(ctx: CtxLike?, spec: { name: string }) -> R_aylo_persistence_" .. verb)
+end
+forms.describe("engine.persistence.write", "(ctx: CtxLike?, spec: { name: string, data: any }) -> R_aylo_persistence_write")
 
 local function nameOf(form, given, fields)
 	local spec = forms.table(form, given, fields or { "name" })

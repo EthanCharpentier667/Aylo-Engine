@@ -1,5 +1,9 @@
 local json = {}
 engine.json = json
+engine.forms.describe("engine.json.encode", "(value: any) -> string")
+engine.forms.describe("engine.json.decode", "(text: string) -> any")
+engine.forms.describe("engine.json.tryDecode", "(text: string) -> (any, string?)")
+engine.forms.describe("engine.json.map", "(entries: { { any } }) -> { any }")
 
 -- JSON for scripts (docs/Json.md): a thin Luau layer over the engine calls aylo.json.encode / aylo.json.decode
 -- (JsonCalls.hpp), which do the real work in C++ with nlohmann::json. This file only inspects a Luau value's shape

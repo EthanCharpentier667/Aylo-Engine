@@ -1,0 +1,5 @@
+{
+    "luau-lsp.platform.type": "standard",
+    "luau-lsp.types.definitionFiles": ["types/aylo.d.luau"],
+    "luau-lsp.sourcemap.enabled": false
+}

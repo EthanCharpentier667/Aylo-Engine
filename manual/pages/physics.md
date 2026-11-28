@@ -155,7 +155,7 @@ engine.ecs.system("game.Move", {
   also `stepHeight` and `maxSlope`, with the defaults of the calls.
 
 An error says which form and which argument: `engine.physics.raycast: 'origin' must be a table { x, y }`,
-`engine.physics.raycast: expected the system's ctx first`, `engine.physics.shapeCast3D: the shape:
+`engine.physics.raycast: expected the system's ctx (or a Behaviour's self) first`, `engine.physics.shapeCast3D: the shape:
 unexpected 'raduis', expected 'shape', 'size', ...`. An error of the call keeps its message after the form's name (`engine.physics.moveAndSlide3D: ... entity 7
 has no Collider3D`). As any error in a system, it is printed and the game goes on.
 

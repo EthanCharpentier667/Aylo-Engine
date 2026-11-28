@@ -1135,3 +1135,28 @@ TEST(Engine, AcceptsTheScriptLimitsAndZeroForNone) {
 
     EXPECT_NO_THROW(Engine{serverConfig(game)});
 }
+
+TEST(Engine, WritesTheScriptTypesOfAGameItFollows) {
+    for (const bool hotReload : {true, false}) {
+        const GameDirectory game{"aylo-engine-types", std::format(R"(
+            engine.settings.network.port = 0
+            engine.settings.hotReload = {}
+        )",
+                                                                  hotReload)};
+        game.write("scripts/main.luau", R"(engine.ecs.component("game.Ship", { fields = { speed = "f32" } }))");
+        const Engine engine{serverConfig(game)};
+
+        const std::filesystem::path file = game.path() / "types" / "aylo.d.luau";
+        ASSERT_EQ(std::filesystem::exists(file), hotReload);
+        if (hotReload) {
+            std::ifstream stream{file};
+            const std::string text{std::istreambuf_iterator<char>{stream}, std::istreambuf_iterator<char>{}};
+            EXPECT_TRUE(text.contains("type C_game_Ship = { speed: number }")) << text.substr(0, 200);
+            // Every form describes its type next to it (engine.forms.describe): none is left taking anything.
+            const std::size_t untyped = text.find("(...any) -> ...any");
+            EXPECT_EQ(untyped, std::string::npos)
+                << "a function of engine has no engine.forms.describe: "
+                << text.substr(text.rfind('\n', untyped) + 1, text.find('\n', untyped) - text.rfind('\n', untyped));
+        }
+    }
+}

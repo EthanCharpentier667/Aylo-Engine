@@ -1,18 +1,18 @@
 # Systems
 
 A system is a function that runs on a schedule, on the entities that match a query. You declare one with
-`engine.ecs.system`.
+`engine.ecs.system`. To attach a script to entities without writing a query, see [Behaviours](behaviours.md), which
+are made of systems.
 
 ```luau
 engine.ecs.system("game.MoveShips", {
 	phase = "FixedUpdate",
 	side = "server",
 	query = { write = { "game.Ship", "aylo.Transform2D" }, with = { "net.PlayerInput" } },
-	calls = { "aylo.replication.readInput" },
 	after = { "net.applyInputs" },
 	run = function(ctx)
 		for entity, ship, transform in ctx.query do
-			local move = ctx.call("aylo.replication.readInput", { entity = entity, action = "move" }).vector
+			local move = engine.input.read(ctx, entity, "move").vector
 			transform.position = { x = transform.position.x + move.x * 4, y = transform.position.y - move.y * 4 }
 		end
 	end,
@@ -75,6 +75,7 @@ What the engine finds:
 | `ctx.resources[name]` | reads the resource; the first time you write a field of it, it writes it |
 | `ctx:get(entity, name)`, `ctx:has(entity, name)` | reads the component; the first time you write a field of it, it writes it |
 | `ctx:getParent(entity)`, `ctx:getChildren(entity)` | reads `aylo.Parent` or `aylo.Children` |
+| `ctx:isEnabled(entity)` | reads `aylo.Disabled` and `aylo.Parent` |
 | `ctx.events.read(name)` | reads the event, from the oldest one still queued |
 | `ctx.events.send(name, ...)` | sends the event |
 
@@ -181,7 +182,7 @@ query = {
 | Term | Meaning |
 |---|---|
 | `read`, `write` | The entity must have the component, and the loop gets a view of it (read-only, or writable). |
-| `optionalRead`, `optionalWrite` | A view, or `nil` when the entity does not have it. |
+| `optionalRead`, `optionalWrite` | A view, or `nil` when the entity does not have it. A tag it has is a view with no fields, so `if dead then` tests it. |
 | `with`, `without` | The entity must have, or must not have, the component. No view. |
 | `added` | The entity must have it, and it was added since this system last ran. |
 | `changed` | The entity must have it, and it was added or written since this system last ran. |
@@ -190,6 +191,34 @@ query = {
 `for entity, a, b in ctx.query do` gives the entity, then one view per `read`/`write` term in the order read, write,
 optionalRead, optionalWrite (inside each, in the order you listed them). The views are valid only during the call to
 `run`. An unknown term name is an error.
+
+### Views by name
+
+Adding a `read` to a query shifts every variable of a `ctx.query` loop after it. `ctx.views` gives the same entities
+with their views by name instead, in one table, so the loop does not change when the query does:
+
+```luau
+engine.ecs.system("game.Regen", {
+	phase = "Update",
+	query = { read = { "game.Position" }, write = { "game.Shield" }, optionalRead = { "game.Dead" } },
+	run = function(ctx)
+		for entity, it in ctx.views do
+			if it.dead == nil then
+				it.shield.strength += it.position.x
+			end
+		end
+	end,
+})
+```
+
+Each view is there under the component's name, `it["game.Shield"]`, and under its short name: what follows the last
+`.`, its first letter in lower case (`game.Shield` is `it.shield`, `aylo.Transform2D` is `it.transform2D`). When two
+terms have the same short name (`game.Position` and `net.Position`), use the full names: `it.position` is then an
+error that says so. An optional view the entity lacks is `nil`; a name the query does not have is an error listing
+the ones it has.
+
+`it` is one table for the whole loop, filled again for each entity: it costs nothing per entity, but do not keep it,
+nor its views, past the step. Use `ctx.query` or `ctx.views`, whichever reads better; they visit the same entities.
 
 ### Reacting to a removal
 
@@ -245,7 +274,8 @@ engine.ecs.system("game.WakeUp", {
 ```
 
 `aylo.Disabled` is replicated: only the server switches an entity off, and its clients hide it too. `ctx:get` still
-reads a switched-off entity: only queries skip it. In the editor, the Inspector's **Active** box adds or removes it, and
+reads a switched-off entity: only queries skip it. `ctx:isEnabled(entity)` makes the test a query makes: it is `false`
+when the entity or one of its parents has `aylo.Disabled` (and `true` for an entity that is gone). In the editor, the Inspector's **Active** box adds or removes it, and
 a capsule saves it like any component.
 
 ## Other entities
@@ -324,15 +354,17 @@ runs, once the commands are applied.
 
 | Field | What it gives |
 |---|---|
-| `ctx.query` | The loop over matching entities. |
+| `ctx.query` | The loop over matching entities, with one view per term. |
+| `ctx.views` | The same loop, with the views by name in one table: see [Views by name](#views-by-name). |
 | `ctx.side` | The side the system runs on: `"server"` (the default), `"client"` or `"both"`. |
 | `ctx.time` | `delta` (seconds of the frame), `fixedDelta` (the fixed step), `elapsed`, `tick` and `alpha` (progress between two fixed steps). `ctx.delta` and `ctx.fixedDelta` also exist. |
 | `ctx.commands` | Deferred changes to the world, see below. |
 | `ctx.resources` | The resources: `ctx.resources["aylo.Input"]` is a view, `nil` while the resource has no value (read-only when listed under `resources.read`). |
 | `ctx.events` | `ctx.events.read(name)` loops over the events not read yet; `ctx.events.send(name, fields)` sends one. |
-| `ctx.call(name, args)` | Makes an engine call. |
+| `ctx.call(name, args)` | Makes an engine call. Most have a [form](setup-forms.md#forms-you-use-in-a-system) that makes it for you: `engine.input.read(ctx, ...)`, `engine.state.get(ctx, ...)`. |
 | `ctx:get(entity, name)`, `ctx:has(entity, name)` | A component of any entity, see [Other entities](#other-entities). |
 | `ctx:getParent(entity)`, `ctx:getChildren(entity)` | The parent and the children of an entity, see [The hierarchy](#the-hierarchy). |
+| `ctx:isEnabled(entity)` | Whether the entity is switched on, see [Switching an entity off](#switching-an-entity-off). |
 
 ### Commands
 
@@ -392,8 +424,51 @@ end
 ```
 
 Events are local to one machine and are not replicated: to tell the other side something, put it in a replicated
-component. Declaring your own event types from Luau is not available yet (*planned*); you use the engine's, such as
-`aylo.CollisionStarted`, `aylo.PlayMusic`, and the network ones in [Networking](networking.md).
+component (or a [packet](networking.md#your-own-messages)). The engine has its own, such as `aylo.CollisionStarted`,
+`aylo.PlayMusic`, and the network ones in [Networking](networking.md).
+
+#### Your own events
+
+Declare an event type with `engine.ecs.event`, in a file every side that uses it loads, then send and read it like the
+engine's:
+
+```luau
+engine.ecs.component("game.Health", { fields = { value = "f32" } })
+engine.ecs.event("game.Hit", { fields = { target = "entity", damage = "u32" } })
+
+engine.ecs.system("game.Shoot", {
+	phase = "Update",
+	query = { with = { "game.Health" } },
+	run = function(ctx)
+		for enemy in ctx.query do
+			ctx.events.send("game.Hit", { target = enemy, damage = 3 })
+		end
+	end,
+})
+
+engine.ecs.system("game.TakeHits", {
+	phase = "PostUpdate",
+	run = function(ctx)
+		for hit in ctx.events.read("game.Hit") do
+			local health = ctx:get(hit.target, "game.Health")
+			if health then
+				health.value -= hit.damage
+			end
+		end
+	end,
+})
+```
+
+`fields` takes the [field types](components.md#field-types) of components, and nothing else: an event has no
+`defaults` (a field you do not send is zero), no `replication` and no `presence`, since it never leaves the machine.
+Like a component's, its fields are fixed while the game runs: a [hot reload](hot-reload.md) that changes them, or
+stops declaring the event, rebuilds the game. A name cannot be both a component's and an event's.
+
+| Message | Cause |
+|---|---|
+| `Event 'game.Hit': unknown option 'replication' (an event takes only 'fields')` | Another key than `fields` |
+| `Event 'game.Hit': needs a 'fields' table` | No `fields` |
+| `Event 'game.Hit': ...` | A field type that does not exist, as for a component |
 
 ## Where a system runs
 
@@ -442,10 +517,13 @@ A bad declaration (an unknown option, a missing `phase`, an unknown name in the 
 | `unknown component 'game.Helth': no script declared it and the world has none` | A command (`add`, `patch`, `remove`, `spawn`) names a component that does not exist |
 | `cannot remove 'aylo.Parent': use removeParent` | `ctx.commands:remove` on `aylo.Parent` or `aylo.Children` |
 | `a client system cannot remove 'game.Health': it is replicated or server-only` | A client system removes a component the server owns |
+| `the query of system 'game.Regen' has no view 'sheild' (it has: position, shield, dead)` | A name `ctx.views` does not have |
+| `'position' names several views of system 'game.Check': use it["game.Position"] or it["net.Position"]` | A short name two terms share |
+| `the views of system 'game.Regen' are read by name: ...` | Writing a new key in the table of `ctx.views` |
 | `ctx:get expects an entity and the name of a component: ...` | `ctx.get` written with a `.`, or an argument that is not an entity or a name |
 | `the view of 'game.Health' is read-only: system 'game.Damage' declared it under 'components.read' ...` | The component is listed under `components.read` |
 | `a client system cannot write 'game.Health': it is replicated: the server would overwrite it` | A client system writes a field of a replicated (or server-only) component it got with `ctx:get` |
-| `ctx:getParent expects an entity: ctx:getParent(entity)` | `ctx.getParent` written with a `.`, or an argument that is not an entity (also `ctx:getChildren`) |
+| `ctx:getParent expects an entity: ctx:getParent(entity)` | `ctx.getParent` written with a `.`, or an argument that is not an entity (also `ctx:getChildren`, `ctx:isEnabled`) |
 | `'aylo.Parent' cannot be written: use commands:setParent()` | A field of `aylo.Parent` or `aylo.Children` written through `ctx:get` |
 | `cannot write 'count': the view of 'game.Points' is read-only` | The resource is listed under `resources.read` |
 | `event 'aylo.PlayMusic' is declared to be read by system 'game.Music', not sent: ...` | The event is listed under `events.read` and the system sends it |

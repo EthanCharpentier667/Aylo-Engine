@@ -4,6 +4,34 @@ engine.input = {}
 local forms = {}
 engine.forms = forms
 
+-- The luau-lsp type of each function of `engine`, by its path, given to it in the types of a game (types/aylo.d.luau,
+-- ScriptHost::generateTypes()). The file of a form describes its own forms, next to them; a function nobody describes
+-- takes and gives anything. A signature names the types of TypesPrelude.d.luau (CtxLike, Entity, Vec2, Fields...),
+-- and R_<call> for what the engine call <call> gives, its dots made `_` (R_aylo_input_read); `any` when the game does
+-- not have that call.
+forms.signatures = {}
+
+function forms.describe(path, signature)
+	if type(path) ~= "string" or type(signature) ~= "string" then
+		error("engine.forms.describe: expected the function's path and its type, two strings", 2)
+	end
+	forms.signatures[path] = signature
+end
+
+-- The functions of engine the host makes, which this module owns.
+forms.describe("engine.call", "Call")
+forms.describe("engine.assetId", "(path: string) -> AssetId")
+forms.describe("engine.hasCall", "(name: string) -> boolean")
+forms.describe(
+	"engine.ecs.component",
+	"(name: string, spec: { fields: { [string]: string }, defaults: Fields?, replication: string?, presence: string? }) -> ()"
+)
+forms.describe("engine.ecs.event", "(name: string, spec: { fields: { [string]: string } }) -> ()")
+forms.describe("engine.ecs.system", "(name: string, spec: SystemSpec) -> ()")
+forms.describe("engine.ecs.state", "(name: string, values: { string }, options: { replicate: boolean? }?) -> ()")
+forms.describe("engine.ecs.plugin", "(name: string, spec: Fields) -> ()")
+forms.describe("engine.ecs.addPlugin", "(name: string) -> ()")
+
 -- Fails with a message about `context`, the form and the part of it being read.
 function forms.fail(context, what)
 	error(context .. ": " .. what, 0)
@@ -145,6 +173,33 @@ function forms.named(context, value)
 	return entries
 end
 
+-- Returns the ctx a form makes its calls through: `value` itself when it is a system's ctx, the ctx of a Behaviour's
+-- self (or of a handle) otherwise, so every form that takes a ctx takes a self too. Fails with `what` unless it is one;
+-- by default the message asks for it first.
+function forms.context(form, value, what)
+	if type(value) == "table" then
+		if type(rawget(value, "call")) == "function" then
+			return value
+		end
+		-- Set by the Behaviour prelude: the ctx of a self, nil for any other table.
+		local ctx = forms.contextOf ~= nil and forms.contextOf(value) or nil
+		if ctx ~= nil then
+			return ctx
+		end
+	end
+	forms.fail(form, what or "expected the system's ctx (or a Behaviour's self) first")
+	return nil
+end
+
+-- Makes the engine call `name` through a system's `ctx`, its errors starting with the form.
+function forms.callIn(form, ctx, name, fields)
+	local results = table.pack(pcall(ctx.call, name, fields))
+	if not results[1] then
+		forms.fail(form, (string.gsub(tostring(results[2]), "^native function '[^']*': ", "")))
+	end
+	return table.unpack(results, 2, results.n)
+end
+
 -- Fails if a form got more than `count` arguments.
 function forms.arguments(form, count, ...)
 	local given = select("#", ...)
@@ -165,6 +220,12 @@ end
 -- Returns a form that asks for one file: `form(path, options)`, whose boolean options go to `call` as they are named.
 -- Without the plugin, it gives the id the asset would have.
 function forms.file(form, call, options)
+	local keys = {}
+	for _, option in options do
+		table.insert(keys, option .. ": boolean?")
+	end
+	local optionsType = #keys > 0 and ", options: { " .. table.concat(keys, ", ") .. " }?" or ""
+	forms.describe(form, "(path: string" .. optionsType .. ") -> AssetId")
 	return function(...)
 		forms.arguments(form, 2, ...)
 		local path, given = ...
@@ -182,4 +243,40 @@ function forms.file(form, call, options)
 		end
 		return forms.call(form, call, fields)
 	end
+end
+
+-- engine.state: the game states of engine.ecs.state, read and changed from a system (or a Behaviour's self) with
+-- the calls aylo.state.get and aylo.state.set.
+engine.state = {}
+
+local function machineOf(form, machine)
+	if type(machine) ~= "string" or machine == "" then
+		forms.fail(form, 'expected the state machine\'s name after ctx ("game.Round")')
+	end
+	return machine
+end
+
+forms.describe("engine.state.get", "(ctx: CtxLike, machine: string) -> string")
+forms.describe("engine.state.set", "(ctx: CtxLike, machine: string, value: string) -> ()")
+
+-- engine.state.get(ctx, machine) -> its value, "" before its first frame.
+function engine.state.get(...)
+	local form = "engine.state.get"
+	forms.arguments(form, 2, ...)
+	local ctx, machine = ...
+	ctx = forms.context(form, ctx)
+	return forms.callIn(form, ctx, "aylo.state.get", { state = machineOf(form, machine) })
+end
+
+-- engine.state.set(ctx, machine, value): asks for the change, made at the start of the next frame.
+function engine.state.set(...)
+	local form = "engine.state.set"
+	forms.arguments(form, 3, ...)
+	local ctx, machine, value = ...
+	ctx = forms.context(form, ctx)
+	machineOf(form, machine)
+	if type(value) ~= "string" then
+		forms.fail(form, "expected the new value third, a string")
+	end
+	forms.callIn(form, ctx, "aylo.state.set", { state = machine, value = value })
 end

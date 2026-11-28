@@ -84,9 +84,9 @@ Run `./aylo-runtime --server hello/game`. Read on to learn what every part of it
 
 ## Your scripts
 
-Nothing under `scripts/` runs by itself. The game starts from **entry points**, files you name in `project.luau`,
-and everything else runs because an entry (or a file an entry requires) calls `require` on it. A file nobody requires
-is never run.
+Nothing under `scripts/` runs by itself, except the [Behaviours](behaviours.md) of `scripts/behaviours/`. The game
+starts from **entry points**, files you name in `project.luau`, and everything else runs because an entry (or a file an
+entry requires) calls `require` on it. A file nobody requires is never run.
 
 ```
 my_game/game/

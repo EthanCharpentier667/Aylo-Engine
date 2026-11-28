@@ -186,3 +186,41 @@ TEST(ScriptState, AClientCannotSetAMachineOfTheServer) {
                                     tostring(probe.error)))"),
               "");
 }
+
+TEST(ScriptState, TheStateFormsReadAndChangeAMachineFromACtxOrASelf) {
+    Fixture fixture;
+    ASSERT_EQ(fixture.run(R"lua(
+        local Switch = engine.behaviour("game.Switch", { fields = {} })
+        function Switch:onUpdate()
+            if engine.state.get(self, "game.Phase") == "Playing" then
+                engine.state.set(self, "game.Phase", "Over")
+            end
+        end
+        engine.ecs.system("game.Start", {
+            phase = "Update",
+            before = { "game.Switch.onUpdate" }, -- the system of a Behaviour's hook is ordered by its name
+            run = function(ctx)
+                if engine.state.get(ctx, "game.Phase") == "Menu" then
+                    engine.state.set(ctx, "game.Phase", "Playing")
+                end
+                local ok, message = pcall(engine.state.set, ctx, "game.Phase", "Nope")
+                assert(not ok and string.find(message, "engine.state.set: ", 1, true), message)
+                ok, message = pcall(engine.state.get, ctx)
+                assert(not ok and string.find(message, "engine.state.get: expected the state machine's name after ctx", 1, true), message)
+                ok, message = pcall(engine.state.get, {}, "game.Phase")
+                assert(not ok and string.find(message, "engine.state.get: expected the system's ctx (or a Behaviour's self) first", 1, true), message)
+            end,
+        })
+        engine.ecs.system("game.Spawn", {
+            phase = "Startup",
+            run = function(ctx) ctx.commands:spawn({ ["game.Switch"] = {} }) end,
+        })
+    )lua"),
+              "");
+    testing::internal::CaptureStderr();
+    fixture.app.runFrame();  // Menu: the system asks for Playing
+    fixture.app.runFrame();  // Playing: the Behaviour asks for Over
+    fixture.app.runFrame();
+    EXPECT_EQ(testing::internal::GetCapturedStderr(), "");
+    EXPECT_EQ(fixture.phase(), "Over");
+}

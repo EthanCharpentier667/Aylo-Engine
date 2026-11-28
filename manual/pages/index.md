@@ -26,6 +26,8 @@ your game never needs a program of its own.
   components, see [2D and 3D](3d.md).
 - **Systems** are the rules that run on that data every tick or frame. See [Systems](systems.md), and
   [States](states.md) for the phases of a game (menu, match, game over).
+- **Behaviours** attach a script to entities, Unity style: fields, `onStart`, `onUpdate`. They are written as
+  components and systems underneath. See [Behaviours](behaviours.md).
 - **Engine calls** let scripts use what plain data cannot express: loading an asset, playing a sound, asking the
   physics. See [Engine calls](engine-calls.md) and [Setup forms](setup-forms.md).
 - **Capsules** are entity trees (an enemy, a boss and its turrets, a level) described in files under `assets/` and

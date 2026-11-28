@@ -781,8 +781,8 @@ flowchart LR
 ## 5. Later
 
 - **Hot reload**: reloading a file keeps a component if its `layoutHash` is unchanged; systems can always be replaced.
-- **`generateTypes()`**: still useful for editor completion (`.d.luau` of the `ecs` library and of the components), but
-  nothing depends on it now that there is no AST parsing.
+- **`generateTypes()`**: done in DX-10 (`ScriptHost::generateTypes()`, `docs/ecs/features/19-luau-bridge.md#types`):
+  the engine writes `types/aylo.d.luau` while it follows a game's files; nothing depends on it to run.
 
 ## 6. Task graph
 

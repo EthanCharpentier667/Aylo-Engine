@@ -24,12 +24,12 @@ engine.ecs.system("game.WatchSeats", {
 		for _ in ctx.query do
 			ships += 1
 		end
-		local round = ctx.call("aylo.state.get", { state = "game.Round" })
+		local round = engine.state.get(ctx, "game.Round")
 		if round == "Waiting" and ships == Duel.playerCount then
-			ctx.call("aylo.state.set", { state = "game.Round", value = "Live" })
+			engine.state.set(ctx, "game.Round", "Live")
 			print("[server] the round starts")
 		elseif round == "Live" and ships < Duel.playerCount then
-			ctx.call("aylo.state.set", { state = "game.Round", value = "Waiting" })
+			engine.state.set(ctx, "game.Round", "Waiting")
 			print("[server] a player left: waiting for another")
 		end
 	end,
@@ -98,7 +98,7 @@ engine.ecs.system("game.Rematch", {
 	run = function(ctx)
 		nextRoundIn -= ctx.time.fixedDelta
 		if nextRoundIn <= 0 then
-			ctx.call("aylo.state.set", { state = "game.Round", value = "Waiting" })
+			engine.state.set(ctx, "game.Round", "Waiting")
 		end
 	end,
 })

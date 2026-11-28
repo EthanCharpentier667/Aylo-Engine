@@ -7,8 +7,7 @@ local shotVolumeMin, shotVolumeMax = 0.8, 1.0
 
 --- Plays @p sound at @p position, its pitch and volume drawn at random.
 local function playShot(ctx, sound, position)
-	ctx.call("aylo.audio.playSound", {
-		sound = sound,
+	engine.audio.play(ctx, sound, {
 		volume = math.lerp(shotVolumeMin, shotVolumeMax, math.random()),
 		pitch = math.lerp(shotPitchMin, shotPitchMax, math.random()),
 		position = position,

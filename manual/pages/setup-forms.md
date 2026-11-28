@@ -110,13 +110,40 @@ effects from a system, use the call `aylo.shader.setScreenMaterials`. See [Post-
 
 ## Forms you use in a system
 
-Some forms work on the world, so they take what a system's `run` receives:
+Some forms work on the world, so they take what a system's `run` receives, its `ctx`, first. Use them rather than
+`ctx.call`: they check their arguments, and their errors name the form and the argument.
 
-| Form | Page |
-|---|---|
-| `engine.capsule.spawn(ctx, path, overrides)`, `engine.capsule.load(ctx, path, overrides)`, `engine.capsule.reload(ctx, root)` | [Capsules](capsules.md#spawning-switching-levels-reloading) |
-| `engine.ui.spawn(ctx.commands, spec, parent)` | [User interface](ui.md) |
-| `engine.physics.raycast(ctx, ...)`, `moveAndSlide`, `shapeCast`, `overlap`... one per physics call, 2D and 3D | [Physics](physics.md#forms) |
+```luau
+engine.ecs.system("game.MoveShips", {
+	phase = "FixedUpdate",
+	query = { write = { "aylo.Transform2D" }, with = { "aylo.Collider", "net.PlayerInput" } },
+	after = { "net.applyInputs", "aylo.Physics.SyncBodies" },
+	run = function(ctx)
+		for entity, transform in ctx.query do
+			local move = engine.input.read(ctx, entity, "move").vector
+			transform.position = engine.physics.moveAndSlide(ctx, entity, transform.position, { x = move.x * 4, y = -move.y * 4 })
+		end
+	end,
+})
+```
+
+| Form | Result | Engine call underneath | Page |
+|---|---|---|---|
+| `engine.input.read(ctx, action)` | `{ value, held, pressed, released }`: the action on this machine (a client, single player) | `aylo.input.read` | [Engine calls](engine-calls.md#input) |
+| `engine.input.read(ctx, entity, action)` | `{ held, pressed, released, axis, vector, clientTime }`: the action as the player who owns `entity` sent it (the server) | `aylo.replication.readInput` | [Networking](networking.md#inputs) |
+| `engine.state.get(ctx, machine)`, `engine.state.set(ctx, machine, value)` | the value (`""` before the first frame); nothing | `aylo.state.get`, `aylo.state.set` | [States](states.md#changing-the-state) |
+| `engine.audio.play(ctx, sound, { bus, volume, pitch, position, loop, startAt, lowpass })` | the voice id | `aylo.audio.playSound` | [Engine calls](engine-calls.md#audio) |
+| `engine.net.localClient(ctx)` | `{ connected, client }` | `aylo.replication.localClient` | [Networking](networking.md#players-and-presence) |
+| `engine.net.sendToServer(ctx, name, values)`, `engine.net.sendToClients(ctx, name, values, client)`, `engine.net.received(ctx)` | whether it was sent; the packets of the frame | `aylo.net.sendToServer`... | [Networking](networking.md#your-own-messages) |
+| `engine.capsule.spawn(ctx, path, overrides)`, `engine.capsule.load(ctx, path, overrides)`, `engine.capsule.reload(ctx, root)` | the root | `aylo.capsule.spawn`... | [Capsules](capsules.md#spawning-switching-levels-reloading) |
+| `engine.physics.raycast(ctx, ...)`, `moveAndSlide`, `shapeCast`, `overlap`... one per physics call, 2D and 3D | the hit, the position... | `aylo.physics.raycast`... | [Physics](physics.md#forms) |
+| `engine.http.request(ctx, request)`, `engine.persistence.read(ctx, ...)`... | | `aylo.http.request`... | [HTTP](http.md), [Persistence](persistence.md) |
+| `engine.ui.spawn(ctx.commands, spec, parent)` | the root | | [User interface](ui.md) |
+
+Every form that takes `ctx` takes a [Behaviour's](behaviours.md) `self` in its place:
+`engine.audio.play(self, sound)`, `engine.state.get(self, "game.Round")`. Anything else first is an error:
+`engine.state.get: expected the system's ctx (or a Behaviour's self) first`.
 
 A form makes an engine call, like `ctx.call`: the system does not need to list it (see
-[What a system uses](systems.md#what-a-system-uses)).
+[What a system uses](systems.md#what-a-system-uses)). `ctx.call` stays what is underneath, for the calls that have no
+form: see [Engine calls](engine-calls.md).

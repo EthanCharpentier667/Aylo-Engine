@@ -28,6 +28,11 @@ Entity QueryMatch::getEntity() const noexcept { return _entity; }
 
 void QueryMatch::setEntity(Entity entity) noexcept { _entity = entity; }
 
+bool QueryMatch::has(std::size_t index) const noexcept {
+    const std::optional<std::size_t> term = findTerm(index);
+    return term && *std::next(_positions.begin(), static_cast<std::ptrdiff_t>(*term)) != DynamicQuery::kNoPosition;
+}
+
 std::span<const std::byte> QueryMatch::get(std::size_t index) const noexcept {
     const std::optional<std::size_t> term = findTerm(index);
     if (!term) {

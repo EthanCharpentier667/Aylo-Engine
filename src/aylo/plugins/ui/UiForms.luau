@@ -251,6 +251,7 @@ local keys = {
 }
 
 -- Spawns `spec` and its children under `parent`, and returns the entity. `components` adds the game's own.
+forms.describe("engine.ui.spawn", "(commands: Commands, spec: Fields, parent: Entity?) -> Entity")
 function engine.ui.spawn(commands, spec, parent)
 	if not engine.isClient then
 		return nil

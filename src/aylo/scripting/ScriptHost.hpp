@@ -162,10 +162,23 @@ class AYLO_SCRIPTING_API ScriptHost {
     /// @return As reloadScript(): a component or a plugin of the script cannot be removed in place.
     [[nodiscard]] core::reload::ReloadOutcome removeScript(const std::string& name);
 
+    /// @return The luau-lsp definition file of the game as it runs now (types::generateDefinitions()): its components,
+    /// events, engine calls and `engine` tree.
+    [[nodiscard]] std::string generateTypes() const;
+
     /// @brief Chooses what a reload does with a file no module loaded.
     /// @param adopts True (the default): it is a new root and runs. False (what the ScriptingPlugin sets, with entry
     /// points): it is ignored until a module requires it.
     void setAdoptsNewFiles(bool adopts) noexcept;
+
+    /// @brief Names a folder whose new files a reload runs, as roots, even when setAdoptsNewFiles(false): the folder
+    /// of the Behaviours, which run without a `require`.
+    /// @param folder The folder in `scripts/`, ending with a `/` (`behaviours/`); empty for none.
+    void setAdoptedFolder(std::string folder);
+
+    /// @return Whether the script @p name (a chunk name, `scripts/<key>`, or the name given to run()) declared a
+    /// Behaviour with `engine.behaviour` the last time it ran.
+    [[nodiscard]] bool declaresBehaviour(const std::string& name) const;
 
     /// @brief What a console line reaches in the world, set by the tool that runs it.
     struct ConsoleTarget {
@@ -243,6 +256,11 @@ class AYLO_SCRIPTING_API ScriptHost {
     /// @throws luau::exceptions::RuntimeError When the declaration is wrong or the component cannot be registered.
     void declareComponent(std::string name, const luau::Table& spec);
 
+    /// @brief The body of `engine.ecs.event`: an event type of the world, read and sent by the systems like the
+    /// engine's, local to this machine. A reload that changes its fields, or no longer declares it, needs a rebuild.
+    /// @throws luau::exceptions::RuntimeError When the declaration is wrong or the event cannot be registered.
+    void declareEvent(std::string name, const luau::Table& spec);
+
     /// @brief The body of `engine.ecs.system`.
     /// @throws luau::exceptions::RuntimeError When the declaration is wrong or the system cannot be added.
     void declareSystem(std::string name, const luau::Table& spec);
@@ -294,6 +312,8 @@ class AYLO_SCRIPTING_API ScriptHost {
     struct FileDeclarations {
         std::set<std::string> components;           ///< The components it declared.
         std::map<std::string, ecs::Phase> systems;  ///< The systems it declared, with their phase.
+        std::set<std::string> behaviours;           ///< The Behaviours it declared (engine.behaviour).
+        std::set<std::string> events;               ///< The events it declared (engine.ecs.event).
     };
 
     /// @brief What a reload in progress holds back until the whole script ran.
@@ -356,6 +376,7 @@ class AYLO_SCRIPTING_API ScriptHost {
     std::set<std::string> _roots;                    ///< Keys of the modules required from outside: what stays loaded.
     bool _sealed{false};                             ///< Whether seal() ran: the scripts have globals of their own.
     bool _adoptsNewFiles{true};                      ///< Whether a new file is a root (see setAdoptsNewFiles()).
+    std::string _adoptedFolder;                      ///< Module keys under it are roots even when the above is off.
     std::vector<std::string> _ownerStack;            ///< The owners to give back when a module ends, innermost last.
     std::unique_ptr<luau::ModuleLoader> _loader;     ///< The module cache; null without a resolver. After `_runtime`.
     ///< What the handles of a console line are valid against.

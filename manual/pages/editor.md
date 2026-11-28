@@ -41,7 +41,7 @@ An `.actor` named there opens alone (see below).
 | **Scene** | The world seen from the editor's own camera, to look around, select and move things (see [The Scene panel](#the-scene-panel)). Docked with the Game panel |
 | **Hierarchy** | While editing, the tree of the scene's nodes. While playing, the entities of the game, by their parents |
 | **Inspector** | The components of what the Hierarchy selected, to change, add and remove |
-| **Assets** | An explorer for your `assets/` folder: the folders in a small tree on the left, the current folder as big icons on the right (one icon and color per kind of file). Double-click a folder to enter it, right-click to make a scene, an actor, a material or a folder, rename, delete, or drag a file. Click a `.material` to edit it in the Inspector (see [Materials](materials.md#in-the-editor)) |
+| **Assets** | An explorer for your `assets/` folder: the folders in a small tree on the left, the current folder as big icons on the right (one icon and color per kind of file). Double-click a folder to enter it, right-click to make a scene, an actor, a material, a folder or a [Behaviour](#behaviours), rename, delete, or drag a file. Click a `.material` to edit it in the Inspector (see [Materials](materials.md#in-the-editor)) |
 | **Particles** | Your particle effects, to tune and preview |
 | **Console** | What your game writes: your scripts' `print`, the engine's errors and warnings |
 | **Stats** | The frame rate, the last frame times, and what the frame drew |
@@ -104,7 +104,7 @@ scene looks as it will.
 | Spawn it on one side | Pick **Side** in the Inspector: `server` (the default), `client` or `both` |
 | Change a component | Drag a number, tick a box, type a text |
 | Give an asset | Drag a file from the Assets onto the field: an image is loaded as a texture at once |
-| Add a component | **Add component**, then pick it (search by name) |
+| Add a component | **Add component**, then pick it (search by name); your [Behaviours](#behaviours) are under their own heading |
 | Remove a component | The cross on its header |
 
 Every change shows in the Game panel at once. The Hierarchy says *not saved* until you save: **File**, **Save scene**, or
@@ -137,6 +137,21 @@ cannot be found, the status line says so. Name another editor in `project.luau`:
 ```luau
 engine.settings.editor.textEditor = "subl"  -- any command: it gets the file's path
 ```
+
+### Behaviours
+
+A [Behaviour](behaviours.md) is a script you attach to nodes. To make one, right-click in the Assets panel, **New
+Behaviour**, and type its name, `Spinner`: the editor writes `scripts/behaviours/Spinner.luau` (next to `assets/`,
+wherever you right-clicked) from a template and opens it in your text editor. The template declares `game.Spinner` with
+one field, `speed`, and the hooks `onStart` and `onFixedUpdate`, on the server; the other hooks are there in comments.
+
+The file runs without a `require`, and [hot reload](hot-reload.md) runs it as soon as you save it. Then select a node,
+**Add component**: `game.Spinner` is under **Behaviours**. Its fields show in the Inspector like any component's, and the
+scene saves them. Right-click the header of a Behaviour, **Open script**, to open its file again.
+
+A name is letters, digits and `_`, not starting with a digit: `Spinner`, `EnemyTurret`. A file of that name that exists
+already is kept, and the status line says so. A Behaviour shows under **Behaviours** once it has a hook; the tags it keeps
+its lifecycle in (`game.Spinner.Started`, `game.Spinner.Active`) never show.
 
 ### Fields
 

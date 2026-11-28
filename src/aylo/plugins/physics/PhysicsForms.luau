@@ -17,13 +17,6 @@ local shapeKeys = { "shape", "size", "radius", "halfHeight", "offset" }
 -- A copy of a collider may carry its other fields: they are allowed, and not read.
 local colliderKeys = { "shape", "size", "radius", "halfHeight", "offset", "sensor", "friction", "restitution", "layer", "mask" }
 
--- Fails unless `ctx` is the context a system's `run` received.
-local function checkContext(form, ctx)
-	if type(ctx) ~= "table" or type(ctx.call) ~= "function" then
-		forms.fail(form, "expected the system's ctx first")
-	end
-end
-
 -- Fails unless `value` is a 2D vector: a table { x, y }.
 local function vec2(form, value, name)
 	if type(value) ~= "table" or type(value.x) ~= "number" or type(value.y) ~= "number" then
@@ -125,12 +118,29 @@ local function hitOf(result)
 	return nil
 end
 
+-- The luau-lsp type of a vector argument read by `vector`, for the signature of a form (forms.describe).
+local function typeOf(vector)
+	if vector == vec2 then
+		return "Vec2"
+	end
+	if vector == vec3 then
+		return "vector | Vec3"
+	end
+	return "number"
+end
+
+-- The type of what the call `name` gives (R_<name>, its dots made `_`).
+local function resultOf(name)
+	return "R_" .. (string.gsub(name, "%.", "_"))
+end
+
 -- Returns a ray form: `form(ctx, origin, direction, maxDistance, options)`, the hit or nil.
 local function rayForm(form, name, vector)
+	forms.describe(form, "(ctx: CtxLike, origin: " .. typeOf(vector) .. ", direction: " .. typeOf(vector) .. ", maxDistance: number, options: Fields?) -> " .. resultOf(name) .. "?")
 	return function(...)
 		forms.arguments(form, 5, ...)
 		local ctx, origin, direction, maxDistance, options = ...
-		checkContext(form, ctx)
+		ctx = forms.context(form, ctx)
 		local fields = {
 			origin = vector(form, origin, "origin"),
 			direction = vector(form, direction, "direction"),
@@ -142,10 +152,11 @@ end
 
 -- Returns a shape cast form: `form(ctx, shape, from, direction, maxDistance, options)`, the hit or nil.
 local function castForm(form, name, vector, extra)
+	forms.describe(form, "(ctx: CtxLike, shape: any, from: " .. typeOf(vector) .. ", direction: " .. typeOf(vector) .. ", maxDistance: number, options: Fields?) -> " .. resultOf(name) .. "?")
 	return function(...)
 		forms.arguments(form, 6, ...)
 		local ctx, shape, from, direction, maxDistance, options = ...
-		checkContext(form, ctx)
+		ctx = forms.context(form, ctx)
 		local fields = readShape(form, shape, {})
 		fields.from = vector(form, from, "from")
 		fields.direction = vector(form, direction, "direction")
@@ -156,10 +167,11 @@ end
 
 -- Returns an overlap form: `form(ctx, shape, at, options)`, how many entities the shape covers and one of them.
 local function overlapForm(form, name, vector, extra)
+	forms.describe(form, "(ctx: CtxLike, shape: any, at: " .. typeOf(vector) .. ", options: Fields?) -> (number, Entity?)")
 	return function(...)
 		forms.arguments(form, 4, ...)
 		local ctx, shape, at, options = ...
-		checkContext(form, ctx)
+		ctx = forms.context(form, ctx)
 		local fields = readShape(form, shape, {})
 		fields.at = vector(form, at, "at")
 		local result = call(form, ctx, name, readOptions(form, options, fields, extra))
@@ -172,30 +184,37 @@ end
 
 -- Returns a form that pushes an entity's body: `form(ctx, entity, value)`.
 local function pushForm(form, name, read)
+	forms.describe(form, "(ctx: CtxLike, entity: Entity, value: " .. typeOf(read) .. ") -> ()")
 	return function(...)
 		forms.arguments(form, 3, ...)
 		local ctx, target, value = ...
-		checkContext(form, ctx)
+		ctx = forms.context(form, ctx)
 		call(form, ctx, name, { entity = entity(form, target), value = read(form, value, "value") })
 	end
 end
 
 -- Returns a form that sets the gravity: `form(ctx, gravity)`.
 local function gravityForm(form, name, vector)
+	forms.describe(form, "(ctx: CtxLike, gravity: " .. typeOf(vector) .. ") -> ()")
 	return function(...)
 		forms.arguments(form, 2, ...)
 		local ctx, gravity = ...
-		checkContext(form, ctx)
+		ctx = forms.context(form, ctx)
 		call(form, ctx, name, { gravity = vector(form, gravity, "gravity") })
 	end
 end
 
 -- Returns a slide form: `form(ctx, entity, from, delta, options)`, with the call's result.
 local function slideForm(form, name, vector, keys)
+	local options = {}
+	for _, key in keys do
+		table.insert(options, key .. ": number?")
+	end
+	forms.describe(form, "(ctx: CtxLike, entity: Entity, from: " .. typeOf(vector) .. ", delta: " .. typeOf(vector) .. ", options: { " .. table.concat(options, ", ") .. " }?) -> " .. resultOf(name))
 	return function(...)
 		forms.arguments(form, 5, ...)
 		local ctx, target, from, delta, options = ...
-		checkContext(form, ctx)
+		ctx = forms.context(form, ctx)
 		local fields = forms.options(form .. ": the options", options, keys)
 		for _, key in keys do
 			if fields[key] ~= nil then
@@ -221,11 +240,12 @@ engine.physics.applyImpulse = pushForm("engine.physics.applyImpulse", "aylo.phys
 engine.physics.setGravity = gravityForm("engine.physics.setGravity", "aylo.physics.setGravity", vec2)
 
 -- engine.physics.applyTorque(ctx, entity, torque): the call takes `torque`, not `value`.
+forms.describe("engine.physics.applyTorque", "(ctx: CtxLike, entity: Entity, torque: number) -> ()")
 function engine.physics.applyTorque(...)
 	local form = "engine.physics.applyTorque"
 	forms.arguments(form, 3, ...)
 	local ctx, target, torque = ...
-	checkContext(form, ctx)
+	ctx = forms.context(form, ctx)
 	call(form, ctx, "aylo.physics.applyTorque", { entity = entity(form, target), torque = number(form, torque, "torque") })
 end
 
