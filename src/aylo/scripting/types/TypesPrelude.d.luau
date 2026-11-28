@@ -107,4 +107,5 @@ type SystemSpec = {
 	inState: { string }?,
 	onEnter: { string }?,
 	onExit: { string }?,
+	whilePaused: boolean?,
 }
