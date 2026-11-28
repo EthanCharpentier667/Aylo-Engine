@@ -128,6 +128,17 @@ Each node is spawned on its side only, so one capsule loads on the server and on
 server's entities reach the players by replication, and the client nodes stay local. Components marked server-only
 are left out on clients, and client-only ones on a dedicated server.
 
+Every side reads every capsule file, its client nodes too, so every component a file names must be declared on the
+server as well: a component of yours in a shared script, and a plugin's by listing the plugin on both sides. A server
+adds the drawing plugins (`aylo.Sprite`, `aylo.Shape`, `aylo.Text`...) without their drawing, so a sprite in a capsule
+costs it nothing. A file that names a component the side does not know stops the game with `unknown component`.
+
+A node is spawned on its side only when the side spawns the capsule. An actor the server spawns while the game runs
+(`engine.capsule.spawn` in a server system) is spawned on the server only, and its client nodes nowhere: the players
+see its replicated entities, and give them a look with a client system. A scene both sides load (`engine.capsule.load` in a
+`side = "both"` system) spawns its client nodes on the clients, and its `both` nodes on every side, each its own copy
+(a static wall needs no network).
+
 ## Errors
 
 A call on a path no capsule has, or a capsule that contains itself through its instances, is a Luau error naming the
