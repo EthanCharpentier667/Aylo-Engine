@@ -8,6 +8,7 @@
 #include "CapsuleText.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cctype>
 #include <charconv>
 #include <cmath>
@@ -609,9 +610,73 @@ class Reader {
         return number;
     }
 
-    /// @brief Writes one value of a field's type into `out`; an enum field also takes the name of its value.
+    /// @return The units a field with units takes, for the messages: `a number, "50%", "120px" or "auto"`.
+    static std::string unitChoices(const ecs::FieldInfo& field) {
+        std::string choices = "a number";
+        for (std::size_t index = 0; index < field.units.size(); ++index) {
+            const ecs::FieldUnit& unit = *std::next(field.units.begin(), static_cast<std::ptrdiff_t>(index));
+            if (index == field.bareUnit && !unit.keyword) {
+                continue;  // the plain number already says it
+            }
+            const bool last = index + 1 == field.units.size();
+            choices += std::format("{}\"{}{}\"", last ? " or " : ", ", unit.keyword ? "" : "50", unit.name);
+        }
+        return choices;
+    }
+
+    /// @brief Writes a field with units (ecs::FieldUnits, a UiLength): a number in its bare unit (`120`), a string with
+    /// its unit (`"50%"`, `"120px"`) or a keyword (`"auto"`), or the vector of the number and the unit's index.
+    void writeWithUnit(const ecs::FieldInfo& field, std::span<std::byte> out, const Value& value,
+                       std::string_view component) const {
+        const auto store = [&](const double number, const std::size_t unit) {
+            if (!std::isfinite(number) || std::abs(number) > std::numeric_limits<float>::max()) {
+                fail(value.where,
+                     std::format("field '{}' of '{}': {} is out of range", field.name, component, value.text));
+            }
+            const std::array<float, 2> stored{static_cast<float>(number), static_cast<float>(unit)};
+            std::memcpy(out.data(), stored.data(), sizeof(stored));
+        };
+        if (value.kind == Value::Kind::kTuple) {
+            writeVector(field, out, value, component);
+            return;
+        }
+        if (value.kind == Value::Kind::kNumber) {
+            store(readFloat(field, value, component), field.bareUnit);
+            return;
+        }
+        if (value.kind == Value::Kind::kString) {
+            for (std::size_t index = 0; index < field.units.size(); ++index) {
+                const ecs::FieldUnit& unit = *std::next(field.units.begin(), static_cast<std::ptrdiff_t>(index));
+                if (unit.keyword) {
+                    if (value.text == unit.name) {
+                        store(0.0, index);
+                        return;
+                    }
+                    continue;
+                }
+                if (value.text.size() > unit.name.size() && value.text.ends_with(unit.name)) {
+                    const std::optional<double> number =
+                        parseFloat(value.text.substr(0, value.text.size() - unit.name.size()));
+                    if (number) {
+                        store(*number, index);
+                        return;
+                    }
+                }
+            }
+        }
+        fail(value.where,
+             std::format("field '{}' of '{}' takes {}, not {}", field.name, component, unitChoices(field),
+                         value.kind == Value::Kind::kString ? std::format("\"{}\"", value.text) : describe(value)));
+    }
+
+    /// @brief Writes one value of a field's type into `out`; an enum field also takes the name of its value, a field
+    /// with units a number with its unit.
     void writeScalar(const ecs::FieldInfo& field, std::span<std::byte> out, const Value& given,
                      std::string_view component) {
+        if (!field.units.empty() && field.type == ecs::FieldType::kVec2) {
+            writeWithUnit(field, out, given, component);
+            return;
+        }
         const std::optional<Value> number = enumNumber(field, given, component);
         const Value& value = number ? *number : given;
         switch (field.type) {
@@ -888,7 +953,33 @@ class Writer {
         if (const std::optional<std::string_view> name = enumName(field, value.subspan(field.offset, size))) {
             return quoteText(*name);  // an enum is saved as the name of its value
         }
+        if (std::optional<std::string> text = withUnit(field, value.subspan(field.offset, size))) {
+            return *std::move(text);
+        }
         return scalar(field.type, value.subspan(field.offset, size));
+    }
+
+    /// @return A field with units as a script writes it: `120` in its bare unit, `"50%"`, `"auto"`; nothing for any
+    /// other field, or a unit index it does not have (then saved as its vector).
+    [[nodiscard]] static std::optional<std::string> withUnit(const ecs::FieldInfo& field,
+                                                             std::span<const std::byte> bytes) {
+        if (field.units.empty() || field.type != ecs::FieldType::kVec2) {
+            return std::nullopt;
+        }
+        const auto number = read<float>(bytes);
+        const auto unit = read<float>(bytes.subspan(sizeof(float)));
+        if (!(unit >= 0.0F) || unit != std::floor(unit) || static_cast<std::size_t>(unit) >= field.units.size()) {
+            return std::nullopt;
+        }
+        const auto index = static_cast<std::size_t>(unit);
+        const ecs::FieldUnit& named = *std::next(field.units.begin(), static_cast<std::ptrdiff_t>(index));
+        if (named.keyword) {
+            return quoteText(named.name);
+        }
+        if (index == field.bareUnit) {
+            return formatFloat(number);
+        }
+        return quoteText(std::format("{}{}", formatFloat(number), named.name));
     }
 
     /// @return The name of an enum field's value in `bytes`, or nothing for any other field and a value with no name.
