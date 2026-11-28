@@ -2,7 +2,6 @@
 -- round is (it follows the server's game.Round), both nodes of the arena's scene (assets/scenes/arena.scene), and who
 -- won when it is over.
 
-local assets = require("@scripts/client/assets")
 local Duel = require("@scripts/shared/arena")
 
 local textLayer = 10 -- over every sprite, as the scene's texts
@@ -25,7 +24,7 @@ local function text(content: string, position, size: number, color)
 		["aylo.Transform2D"] = { position = position },
 		["aylo.TextRenderer"] = {
 			text = content,
-			font = assets.font,
+			font = "fonts/orbitron.json", -- the scene's texts load it
 			size = size,
 			color = color,
 			anchor = { x = 0.5, y = 0.5 },
