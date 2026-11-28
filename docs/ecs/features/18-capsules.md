@@ -122,6 +122,13 @@ the format, and how the writer writes, is in [`CapsuleFormat.md`](../../CapsuleF
 built, so a file can name the components scripts declare. A file instancing another reads it first. A broken file stops
 the start, naming the file, line and column.
 
+**Assets.** A file names its assets by path (`texture = "sprites/bg.png"`); the reader turns each into its id and
+`Capsules` remembers the path. After `loadAll()`, and after each hot reload, `loadNamedAssets()` hands every remembered
+path to the `AssetLoaders` resource (`plugins/AssetLoaders.hpp`), which the asset plugins fill by extension: a model,
+a material or an image a capsule names is loaded as its setup form would, and draws without a script listing it. The
+capsule plugin knows no asset plugin. A path no plugin loads is skipped (a server has no models); one that fails is
+reported on the error output and skipped. Loading an asset twice does nothing more.
+
 **Hot reload.** With the engine's hot reload (`hotReload`, the `HotReload` resource), the plugin adds a
 `CapsuleReloadable` to the engine's `HotReloader`, following the capsule files of the assets. Between two frames, a
 saved or added file is read again (`CapsuleFiles::reload()`) with the files that instance it, and the capsules read go
