@@ -13,6 +13,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <span>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -57,6 +58,21 @@ AssetKind kindOf(std::string_view name, bool isFolder) {
     return AssetKind::kOther;
 }
 
+AssetKind scriptKindOf(std::string_view relative, std::span<const std::string> entries, bool isFolder) {
+    const AssetKind kind = kindOf(relative, isFolder);
+    if (kind != AssetKind::kScript) {
+        return kind;
+    }
+    if (relative.ends_with(".d.luau")) {
+        return AssetKind::kTypes;
+    }
+    if (relative.starts_with("behaviours/")) {
+        return AssetKind::kBehaviour;
+    }
+    const std::string stem = std::filesystem::path{relative}.replace_extension().generic_string();
+    return std::ranges::find(entries, stem) != entries.end() ? AssetKind::kEntry : AssetKind::kScript;
+}
+
 char32_t iconOf(AssetKind kind, bool open) {
     switch (kind) {
         case AssetKind::kFolder:
@@ -68,7 +84,13 @@ char32_t iconOf(AssetKind kind, bool open) {
         case AssetKind::kCapsule:
             return U'\uf1b3';
         case AssetKind::kScript:
-            return U'\uf121';
+            return U'\uf121';  // </>
+        case AssetKind::kBehaviour:
+            return U'\uf12e';  // a puzzle piece: it fits on an entity
+        case AssetKind::kEntry:
+            return U'\uf04b';  // play: where the scripts start
+        case AssetKind::kTypes:
+            return U'\uf02c';  // tags
         case AssetKind::kImage:
             return U'\uf03e';
         case AssetKind::kAudio:
@@ -102,7 +124,13 @@ std::string_view labelOf(AssetKind kind) {
         case AssetKind::kCapsule:
             return "Capsule";
         case AssetKind::kScript:
-            return "Luau script";
+            return "Luau module";
+        case AssetKind::kBehaviour:
+            return "Behaviour";
+        case AssetKind::kEntry:
+            return "Entry point";
+        case AssetKind::kTypes:
+            return "Type definitions";
         case AssetKind::kImage:
             return "Image";
         case AssetKind::kAudio:
@@ -137,6 +165,12 @@ std::uint32_t colorOf(AssetKind kind) {
             return 0x9C8CF2;
         case AssetKind::kScript:
             return 0x4FC1D9;
+        case AssetKind::kBehaviour:
+            return 0x8FD96C;
+        case AssetKind::kEntry:
+            return 0xF2C14F;
+        case AssetKind::kTypes:
+            return 0x7F8CA8;
         case AssetKind::kImage:
             return 0xE07AB0;
         case AssetKind::kAudio:
