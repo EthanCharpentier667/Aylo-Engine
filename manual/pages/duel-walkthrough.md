@@ -13,7 +13,7 @@ game/
       main.luau           the shared entry: requires rules.luau
       arena.luau          the constants (a frozen table)
       rules.luau          the replicated components, the input actions, the round, the join packets, the
-                          components the capsules name
+                          components the capsules name (the arena's texts, the menu's pieces)
     behaviours/           Behaviours, run on every side without a require
       Lifetime.luau       removes a misfire after a moment (server)
       Explosion.luau      removes an explosion once it played (client)
@@ -27,22 +27,25 @@ game/
       lasers.luau         flying, hitting, winning
     client/               presentation (runs on the clients)
       main.luau           the client entry
-      assets.luau         the ids of the atlases, font, sounds, map and menu images the scripts use
       scene.luau          the background and the planets that pass
-      sprites.luau        looks of ships and lasers, the loser's explosion
-      sounds.luau         music and shots
+      sprites.luau        the ships, lasers and misfires follow their replicated position; the loser explodes
+      sounds.luau         each shot's pitch and volume, drawn at random
       menu.luau           the main menu and the quick join, as the client's own screens
       hud.luau            writes the names and the round's line, shows the winner
       controls.luau       a local back key
   assets/                 images, sounds, font, Tiled map, the menu's pixel art (ui/)
-    scenes/arena.scene    the arena: the walls and the rock, the camera, the names and the round's line
-    actors/               the walls and the rock; the ships, the laser and the misfire the server spawns;
-                          the explosion and the planets a client spawns
+    maint.ogg.import      the music streams
+    scenes/arena.scene    the arena: the walls and the rock, the camera, the music, the names and the round's line
+    actors/               the walls and the rock; the ships, the lasers and the misfire the server spawns, each with
+                          its look and its sound; the explosion and the planets a client spawns
     atlases/              the frames and animations of the ships, the laser and the explosion (.atlas files)
+    ui/                   the menu's screens (menu.capsule, joining.capsule), their panel and their button
 ```
 
-The arena and everything spawned in it are [capsules](capsules.md): files you can open and change in the
-[editor](editor.md) (`./aylo-editor examples/games/aylo_duel/game` opens the arena). What a thing does over time is a
+The arena, everything spawned in it and the menu's screens are [capsules](capsules.md): text files you can write by
+hand, or open and change in the [editor](editor.md) (`./aylo-editor examples/games/aylo_duel/game` opens the arena).
+Every asset is named where it is used: an actor names its atlas and its sound, a screen its images and its font, and
+the file loads them. No script keeps a list of assets. What a thing does over time is a
 [Behaviour](behaviours.md) on its actor when it concerns that thing alone (a misfire that goes after a moment), and a
 system when it orders against the engine or reads the whole match (moving the ships between the inputs and the
 physics).
@@ -109,8 +112,9 @@ engine.ecs.component("game.PlayerName", { fields = { player = "u32" }, presence 
 ```
 
 `game.Ship`, `game.Laser`, `game.Winner` and `game.Misfire` are replicated: the clients see them appear and move.
-`game.PlayerName` and `game.Banner` mark the texts of the arena's scene: they live on the clients only, but the server
-reads the scene too, so it must know them. Then it declares the inputs, once, for both sides:
+`game.PlayerName` and `game.Banner` mark the texts of the arena's scene, and `game.ScreenNode`, `game.Spinner`,
+`game.MenuStatus` and `game.ButtonSkin` the pieces of the menu's screens: they live on the clients only, but the server
+reads every capsule file too, so it must know them. Then it declares the inputs, once, for both sides:
 
 ```luau
 engine.input.action("move", "vector2", { bind = { { up = "W", down = "S", left = "A", right = "D" }, ... } })
@@ -181,11 +185,13 @@ is false: in the editor, the server and the client are one process with no netwo
 
 `shared/rules.luau` loads the arena on every side in a `Startup` system, with `engine.capsule.load(ctx, Duel.arena)`.
 Its walls and its rock are `side=both` nodes: each side spawns its own copy, static, with its collider and its
-`aylo.ShapeRenderer`, so nothing about them goes over the network. Its camera and its texts are `side=client` nodes.
+`aylo.ShapeRenderer`, so nothing about them goes over the network. Its camera, its texts and its music (an
+`aylo.AudioSource` on the music bus, looping, which streams as `maint.ogg.import` says) are `side=client` nodes.
 
 - **`players.luau`** reads the `game.Join` packets with `engine.net.received` and gives each asking client a free seat:
   it spawns a ship from its actor (`actors/ship_left.actor` or `ship_right.actor`: `game.Ship`, a `aylo.Transform2D`, a
-  box `aylo.Collider` and a kinematic `aylo.RigidBody`) with `engine.capsule.spawn`, then adds `net.Owner` and
+  box `aylo.Collider`, a kinematic `aylo.RigidBody`, and its look: an `aylo.SpriteRenderer` and an
+  `aylo.SpriteAnimator` of its `.atlas` file) with `engine.capsule.spawn`, then adds `net.Owner` and
   `net.PlayerInput` with `ctx.commands:add`, as an override only changes what the actor has. It answers every request
   with `game.Seat`, sent to that client only: the seat, or `granted = false` when both are taken. It removes the ship
   of a client that sends `game.Leave` or that the engine reports in `net.ClientDisconnected`. A client that is
@@ -199,10 +205,11 @@ Its walls and its rock are `side=both` nodes: each side spawns its own copy, sta
 - **`ships.luau`** moves the ships in `FixedUpdate`, only while the round is `Live` (`inState = { "game.Round",
   "Live" }`), after `net.applyInputs` and before the physics syncs, reading the
   player's `move` action with `engine.input.read(ctx, entity, "move")` and sliding along the obstacles with
-  `engine.physics.moveAndSlide`. On `shoot.pressed` it spawns `actors/laser.actor` (a dynamic body with a
-  `aylo.Velocity`, no gravity and continuous collision), with overrides for its place, its shooter, its direction and
-  the ship it can hit. One shot in ten misfires: `actors/misfire.actor` replaces the laser so the clients play
-  another sound, and its `game.Lifetime` removes it.
+  `engine.physics.moveAndSlide`. On `shoot.pressed` it spawns the shooter's laser, `actors/laser.actor` (a dynamic
+  body with a `aylo.Velocity`, no gravity and continuous collision, its sprite flying right and its sound) or
+  `actors/laser_left.actor`, which instances it and only flies left, with overrides for its place, its shooter, its
+  direction and the ship it can hit. One shot in ten misfires: `actors/misfire.actor` replaces the laser with only
+  its own sound, and its `game.Lifetime` removes it.
 - **`lasers.luau`** copies the laser bodies' positions into the replicated `game.Laser` after the physics, removes
   those that left the view, and reads `aylo.CollisionStarted` events: a laser that touches something is spent, and
   while the round is `Live`, one that touches a ship spawns a `game.Winner` and sets the round to `Over`. See
@@ -212,25 +219,27 @@ Its walls and its rock are `side=both` nodes: each side spawns its own copy, sta
 
 `client/main.luau` requires the client files below, so the server never loads them.
 
-- **`assets.luau`** returns the ids of what the client's scripts use, each loaded by its `engine.assets` form: the
-  ships' and the laser's atlases (`engine.assets.atlas({ path = "atlases/ship_left.atlas" })`: their frames and
-  animations are in [`.atlas` files](setup-forms.md#atlas-files)), the font, the sounds (the music with
-  `stream = true`), the map and the menu images; the files that draw require it. What only a capsule names needs no
-  line: the explosion's atlas file, the planets' images and the arena's font are loaded by the capsules that name
-  them. See [Setup forms](setup-forms.md) and [Capsule files](capsules.md#capsule-files).
+The ships, the lasers and the misfire come with their look: each client spawns, with the entity the server sends,
+the sprite and the sound its actor names (see [Actors the server spawns](capsules.md#actors-the-server-spawns)). The
+scripts only do what the files cannot say.
+
 - **`scene.luau`** spawns the space background map, and now and then a planet's actor with `engine.capsule.spawn`.
-- **`sprites.luau`** gives the ships and the lasers, which the server spawned on its side only, a
-  `aylo.SpriteRenderer` and `aylo.SpriteAnimator` from the atlases, in `PostUpdate` (which also runs while the editor
-  edits, so an actor opened alone shows its look), and spawns `actors/explosion.actor` where the loser was.
-- **`sounds.luau`** sends `aylo.PlayMusic` at start and calls `engine.audio.play` for each new laser or misfire.
+  The map is loaded by its form, `engine.assets.tilemap`, when the game starts: it is spawned from its loaded data.
+- **`sprites.luau`** copies the replicated positions of the ships, the lasers and the misfires into their
+  `aylo.Transform2D`, which the actors give the clients, and spawns `actors/explosion.actor` where the loser was.
+- **`sounds.luau`** draws the pitch and the volume of each new laser's and misfire's `aylo.AudioSource`, so no two
+  shots sound the same.
 - **`menu.luau`** declares the client's own state machine, `game.Screen` (`Menu`, `Joining`, `Playing`), with no
-  `replicate`: each client has its own. Entering `Menu` or `Joining` spawns that screen with `engine.ui.spawn` (the
-  arena dimmed, a panel, the buttons), and leaving it despawns every node marked with a `game.ScreenNode`. **Quick
+  `replicate`: each client has its own. Entering `Menu` or `Joining` spawns that screen's capsule
+  (`assets/ui/menu.capsule`, `joining.capsule`: the arena dimmed, the panel of `panel.capsule`, the buttons of
+  `button.capsule`, written as in [An interface in a capsule file](ui.md#an-interface-in-a-capsule-file)), and
+  leaving it despawns the screen's root, marked with a `game.ScreenNode`, with all its nodes. **Quick
   join** enters `Joining`, where a system sends `game.Join` as soon as `engine.net.localClient` says the server
   answered, and reads the `game.Seat` reply: a seat enters `Playing`, a refusal (or no server after five seconds)
-  goes back to `Menu`, which says why. The UI pack's buttons are images: a system switches each button's
-  `aylo.UiImage` texture by its `aylo.UiInteraction` (`hovered`, `pressed`), and another steps the loading wheel's
-  `source` through its frames. See [User interface](ui.md).
+  goes back to `Menu`, whose status line says why. The UI pack's buttons are images: each button's `game.ButtonSkin`
+  names its three (so the file loads them), a system switches its `aylo.UiImage` texture by its `aylo.UiInteraction`
+  (`hovered`, `pressed`), and another steps the loading wheel's `source` through its frames. See
+  [User interface](ui.md).
 - **`hud.luau`** writes the texts of the arena's scene: the names (marking this player's) and the line at the bottom that
   says where the round is (`Waiting for an opponent...`, `Next round in 3`), and when `game.Winner` appears says who
   won, using `engine.net.localClient` and `net.Owner` to know whether this client is the winner (with the network
@@ -243,5 +252,5 @@ Its walls and its rock are `side=both` nodes: each side spawns its own copy, sta
 1. The server decides everything that matters and writes replicated components; the clients only present them. The
    phase of the match is a state the server owns (`replicate = true`); a client's screens are a state of its own.
 2. One folder per side with an entry each, shared declarations in `shared/`, and data shared through `require`.
-3. Everything the engine does for the game is chosen in data: plugins and settings in `project.luau`, assets and
-   inputs by forms, what is in the world by capsules, behavior by Behaviours and systems.
+3. Everything the engine does for the game is chosen in data: plugins and settings in `project.luau`, inputs by forms,
+   what is in the world and on screen by capsules, which name their assets, behavior by Behaviours and systems.
