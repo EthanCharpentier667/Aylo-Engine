@@ -567,3 +567,77 @@ TEST(ScriptBehaviour, CtxIsEnabledLooksUpTheHierarchy) {
     fixture.app.runFrame();
     EXPECT_EQ(testing::internal::GetCapturedStderr(), "");
 }
+
+TEST(ScriptBehaviour, WaitsWhileTheGameIsPausedUnlessItAsks) {
+    // The editor edits with the game paused, and a paused frame runs PreUpdate and PostUpdate: a planet's onStart
+    // placed it at random while it was being edited (#179). A Behaviour's hooks now wait; `whilePaused` opts in.
+    Fixture fixture;
+    ASSERT_EQ(fixture.run("planet.luau", R"(
+        local Planet = engine.behaviour("game.Planet", { fields = { starts = "f32" } })
+        function Planet:onStart()
+            self.starts += 1
+            self:getComponent("game.Position").x = 800 -- off the view, at random in the game
+        end
+        local Preview = engine.behaviour("game.Preview", { fields = { starts = "f32" }, whilePaused = true })
+        function Preview:onStart()
+            self.starts += 1
+        end
+        engine.ecs.system("game.Spawn", {
+            phase = "Startup",
+            run = function(ctx)
+                ctx.commands:spawn({ ["game.Planet"] = {}, ["game.Position"] = {} })
+                ctx.commands:spawn({ ["game.Preview"] = {} })
+            end,
+        })
+        engine.ecs.system("game.CountPaused", {
+            phase = "PostUpdate",
+            whilePaused = false,
+            query = { write = { "game.Health" } },
+            run = function(ctx)
+                for _, health in ctx.query do
+                    health.value += 1
+                end
+            end,
+        })
+    )"),
+              "");
+    ASSERT_EQ(fixture.run("health.luau", R"(
+        engine.ecs.system("game.SpawnHealth", {
+            phase = "Startup",
+            run = function(ctx) ctx.commands:spawn({ ["game.Health"] = {} }) end,
+        })
+    )"),
+              "");
+    fixture.app.getSchedules().setPaused(true);
+    for (int frame = 0; frame < 3; ++frame) {
+        fixture.app.runFrame();
+    }
+
+    const aylo::ecs::Entity planet = fixture.having("game.Planet").front();
+    EXPECT_FLOAT_EQ(fixture.read(planet, "game.Planet", "starts"), 0.F) << "waits while paused";
+    EXPECT_FLOAT_EQ(fixture.read(planet, "game.Position", "x"), 0.F) << "stays where it was put";
+    EXPECT_FLOAT_EQ(fixture.read(fixture.having("game.Preview").front(), "game.Preview", "starts"), 1.F)
+        << "whilePaused = true runs while paused";
+    EXPECT_FLOAT_EQ(fixture.read(fixture.having("game.Health").front(), "game.Health", "value"), 0.F)
+        << "a system with whilePaused = false waits too";
+
+    fixture.app.getSchedules().setPaused(false);
+    fixture.app.runFrame();
+
+    EXPECT_FLOAT_EQ(fixture.read(planet, "game.Planet", "starts"), 1.F);
+    EXPECT_FLOAT_EQ(fixture.read(planet, "game.Position", "x"), 800.F);
+    EXPECT_FLOAT_EQ(fixture.read(fixture.having("game.Health").front(), "game.Health", "value"), 1.F);
+}
+
+TEST(ScriptBehaviour, RefusesAWhilePausedThatIsNotABoolean) {
+    Fixture fixture;
+    EXPECT_NE(fixture.run("bad.luau", R"(engine.behaviour("game.Bad", { fields = {}, whilePaused = "yes" }))")
+                  .find("'whilePaused' must be true or false"),
+              std::string::npos);
+    EXPECT_NE(fixture
+                  .run("bad-system.luau", R"(
+        engine.ecs.system("game.Bad", { phase = "Update", whilePaused = 1, run = function() end })
+    )")
+                  .find("'whilePaused' must be true or false"),
+              std::string::npos);
+}
