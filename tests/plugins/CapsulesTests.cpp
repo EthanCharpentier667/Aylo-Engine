@@ -12,6 +12,7 @@
 #include <filesystem>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -192,4 +193,16 @@ TEST(Capsules, WithoutAssetLoadersNothingIsLoaded) {
     capsules.rememberAssetPath(aylo::core::asset::AssetId::fromPath("models/statue.obj"), "models/statue.obj");
     capsule::loadNamedAssets(capsules, world.getResources());
     EXPECT_EQ(world.getResources().get<aylo::plugins::AssetLoaders>(), nullptr);
+}
+
+TEST(Capsules, ListsEveryCapsuleByPath) {
+    aylo::plugins::capsule::Capsules capsules;
+    capsules.define(aylo::plugins::capsule::Capsule{"scenes/level.scene"});
+    capsules.define(aylo::plugins::capsule::Capsule{"actors/ship.actor"});
+
+    std::vector<std::string_view> paths;
+    for (const aylo::plugins::capsule::Capsule* capsule : capsules.list()) {
+        paths.push_back(capsule->getPath());
+    }
+    EXPECT_EQ(paths, (std::vector<std::string_view>{"actors/ship.actor", "scenes/level.scene"}));
 }
