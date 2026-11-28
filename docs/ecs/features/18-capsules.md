@@ -127,7 +127,8 @@ the start, naming the file, line and column.
 path to the `AssetLoaders` resource (`plugins/AssetLoaders.hpp`), which the asset plugins fill by extension: a model,
 a material, an image, an atlas file, a font or a sound a capsule names is loaded as its setup form would, and draws without a script listing it. The
 capsule plugin knows no asset plugin. A path no plugin loads is skipped (a server has no models); one that fails is
-reported on the error output and skipped. Loading an asset twice does nothing more.
+reported on the error output and skipped. Loading an asset twice does nothing more. The engine does the same for the
+paths scripts write ([`../../engine/design.md#assets`](../../engine/design.md#assets)).
 
 **Hot reload.** With the engine's hot reload (`hotReload`, the `HotReload` resource), the plugin adds a
 `CapsuleReloadable` to the engine's `HotReloader`, following the capsule files of the assets. Between two frames, a

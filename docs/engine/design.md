@@ -176,6 +176,11 @@ is named by this path, the same on every side.
   the checks above; an exported game will read its pack instead ([`../release/export.md`](../release/export.md),
   EXP-06 and EXP-07). What needs a file on disk asks `directory()`: hot reload follows only a folder, and a sound is
   opened by its path when it has one (a streamed music keeps reading it), from its bytes otherwise.
+- **Named by a script.** A path a script writes where an asset id goes (a field, a call's argument, a default) is
+  loaded as a capsule's is: the bridge records it (`scripting::asset::NamedAssets`), and after every frame, and once
+  after the build, `Engine::loadNamedAssets()` hands the new paths to the `AssetLoaders` resource
+  (`plugins/AssetLoaders.hpp`, filled by the asset plugins). Between two frames, a loader may change any resource; a
+  path no plugin loads (a name such as `game.ship`) is skipped, and one that fails is reported once on `std::cerr`.
 
 ## Reloading
 
@@ -225,7 +230,8 @@ A new hot-reloaded feature is a new `Reloadable` added to the reloader, nothing 
 
 ### In the loop
 
-`run()` calls `App::runFrame()`, reads `App::takeExit()` (an exit wins over a reload), polls the reloader, then rebuilds
+`run()` calls `App::runFrame()`, reads `App::takeExit()` (an exit wins over a reload), loads the assets the scripts
+named during the frame ([Assets](#assets)), polls the reloader, then rebuilds
 if a reload asked for it or `requestReload()` was called (an atomic flag, safe from another thread). Reloads therefore
 run between two frames, on the main thread, which is the renderer's.
 
