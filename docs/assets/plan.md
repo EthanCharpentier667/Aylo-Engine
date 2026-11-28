@@ -58,13 +58,17 @@ test).
 
 ## 3. What the duel looks like after
 
-- `actors/ship_left.actor`: `game.Ship`, the body, and `aylo.SpriteRenderer` with
-  `aylo.SpriteAnimator = { atlas = "atlases/ship_left.atlas", animation = "fly" }` on its root. `DressShips` and
-  `DressLasers` go; `FollowShips` and `FollowLasers` stay (positions are replicated through `game.Ship` and
-  `game.Laser`).
+- `actors/ship_left.actor`, `ship_right.actor`: `game.Ship`, the body, and `aylo.SpriteRenderer` with
+  `aylo.SpriteAnimator = { atlas = "atlases/ship_left.atlas", animation = "fly" }` on their root.
+  `actors/laser.actor` has its sprite flying right and its sound (`aylo.AudioSource = { sound = "laser.mp3" }`);
+  `actors/laser_left.actor` instances it and only flies left; `actors/misfire.actor` has its sound. `DressShips` and
+  `DressLasers` are gone; `FollowShips`, `FollowLasers` and `FollowMisfires` stay (positions are replicated through
+  `game.Ship`, `game.Laser` and `game.Misfire`), and `sounds.luau` only draws each shot's pitch and volume.
 - `assets/maint.ogg.import`: `{ "stream": true }`; the music is an `aylo.AudioSource` (music bus, loop) on a client
   node of `arena.scene`.
-- `ui/menu.capsule`, `ui/joining.capsule`: the menu's screens, spawned with `engine.capsule.spawn` on entering their
-  state. What changes at run time (the button's image under the pointer, the reason a join failed) stays in scripts,
-  which write paths.
-- The shot sounds: `engine.audio.play(ctx, "laser.mp3")`.
+- `ui/menu.capsule`, `ui/joining.capsule` (with `ui/panel.capsule` and `ui/button.capsule`): the menu's screens,
+  spawned with `engine.capsule.spawn` on entering their state. A button's three images are named by its
+  `game.ButtonSkin`, so the file loads them; what changes at run time (the status line, the turning wheel) stays in
+  scripts.
+- The background map keeps its setup form, in `scene.luau`: `aylo.tilemap.spawn` spawns a map from its loaded data,
+  and no plugin loads a `.tmj` named elsewhere.
