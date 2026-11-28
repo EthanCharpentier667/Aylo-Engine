@@ -16,6 +16,7 @@
 #include <string>
 #include <string_view>
 #include <type_traits>
+#include <utility>
 #include <vector>
 
 #include "aylo/ecs/component/ComponentTraits.hpp"
@@ -32,6 +33,7 @@
 #include "plugins/capsule/Capsules.hpp"
 #include "plugins/capsule/exceptions/CapsuleException.hpp"
 #include "plugins/capsule/format/CapsuleText.hpp"
+#include "plugins/ui/UiNode.hpp"
 
 namespace aylo::test::capsule_text {
 struct Health {
@@ -362,6 +364,46 @@ test.text.Guard = { stance = "sleep" })");
         message.find(R"(field 'stance' of 'test.text.Guard' takes one of "idle", "guard", "charge", not "sleep")"),
         std::string::npos)
         << message;
+}
+
+TEST_F(CapsuleTextTest, ReadsALengthWithItsUnitAndWritesItBackSo) {
+    // A length is written as a script writes it, so an interface is a capsule someone writes by hand (#168).
+    static_cast<void>(world.getComponents().registerType<aylo::plugins::ui::UiNode>());
+
+    const capsule::Capsule read = this->read(R"([node path="."]
+aylo.UiNode = { width = "60%", height = "auto", left = 40, top = "12px", right = "-2.5%", minWidth = (5, 1) })");
+
+    using aylo::plugins::ui::UiLength;
+    const auto* node = get<aylo::plugins::ui::UiNode>(read, 0);
+    ASSERT_NE(node, nullptr);
+    EXPECT_EQ(node->width.value, 60.0F);
+    EXPECT_EQ(node->width.unit, UiLength::percent(0.0F).unit);
+    EXPECT_EQ(node->height.unit, UiLength{}.unit);
+    EXPECT_EQ(node->left.value, 40.0F);
+    EXPECT_EQ(node->left.unit, UiLength::px(0.0F).unit);
+    EXPECT_EQ(node->top.value, 12.0F);
+    EXPECT_EQ(node->top.unit, UiLength::px(0.0F).unit);
+    EXPECT_EQ(node->right.value, -2.5F);
+    EXPECT_EQ(node->minWidth.value, 5.0F) << "the vector of the number and the unit still reads";
+    EXPECT_EQ(node->minWidth.unit, UiLength::px(0.0F).unit);
+    EXPECT_EQ(format::writeCapsule(read, world.getComponents(), capsules), R"([capsule format=1]
+
+[node path="."]
+aylo.UiNode = { width = "60%", minWidth = 5, left = 40, top = 12, right = "-2.5%" }
+)");
+}
+
+TEST_F(CapsuleTextTest, RefusesALengthWithoutAUnitItKnows) {
+    static_cast<void>(world.getComponents().registerType<aylo::plugins::ui::UiNode>());
+
+    for (const auto& [text, part] : {std::pair{R"(aylo.UiNode = { width = "wide" })", R"(not "wide")"},
+                                     std::pair{R"(aylo.UiNode = { width = "50em" })", R"(not "50em")"},
+                                     std::pair{R"(aylo.UiNode = { width = true })", "not a boolean"}}) {
+        const std::string message = errorOf(std::format("[node path=\".\"]\n{}", text));
+        EXPECT_NE(message.find(R"(field 'width' of 'aylo.UiNode' takes a number, "auto" or "50%")"), std::string::npos)
+            << message;
+        EXPECT_NE(message.find(part), std::string::npos) << message;
+    }
 }
 
 TEST_F(CapsuleTextTest, KeepsASwitchedOffNode) {
