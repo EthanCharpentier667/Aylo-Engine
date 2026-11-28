@@ -7,9 +7,13 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <cstdint>
+#include <filesystem>
+#include <stdexcept>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "aylo/ecs/app/App.hpp"
 #include "aylo/ecs/component/ComponentTraits.hpp"
@@ -18,6 +22,7 @@
 #include "aylo/ecs/type/TypeInfo.hpp"
 #include "aylo/ecs/world/World.hpp"
 #include "core/asset/AssetId.hpp"
+#include "plugins/AssetLoaders.hpp"
 #include "plugins/capsule/Capsule.hpp"
 #include "plugins/capsule/CapsulePlugin.hpp"
 #include "plugins/capsule/Capsules.hpp"
@@ -154,4 +159,37 @@ TEST(Capsules, RemembersThePathsOfAssets) {
     capsules.rememberAssetPath(id, "sprites/ship.png");
     ASSERT_NE(capsules.findAssetPath(id), nullptr);
     EXPECT_EQ(*capsules.findAssetPath(id), "sprites/ship.png");
+}
+
+TEST(Capsules, LoadsEveryAssetPathTheFilesNamed) {
+    // A model a capsule names draws without a script loading it (issue #152).
+    aylo::ecs::World world;
+    std::vector<std::string> loaded;
+    aylo::plugins::addAssetLoader(world.getResources(), {".obj", ".material"},
+                                  [&loaded](const std::filesystem::path& path) {
+                                      if (path.filename() == "broken.obj") {
+                                          throw std::runtime_error{"cannot read it"};
+                                      }
+                                      loaded.push_back(path.generic_string());
+                                  });
+    capsule::Capsules capsules;
+    capsules.rememberAssetPath(aylo::core::asset::AssetId::fromPath("models/statue.obj"), "models/statue.obj");
+    capsules.rememberAssetPath(aylo::core::asset::AssetId::fromPath("models/broken.obj"), "models/broken.obj");
+    capsules.rememberAssetPath(aylo::core::asset::AssetId::fromPath("materials/brass.material"),
+                               "materials/brass.material");
+    capsules.rememberAssetPath(aylo::core::asset::AssetId::fromPath("sounds/boom.wav"), "sounds/boom.wav");
+
+    capsule::loadNamedAssets(capsules, world.getResources());  // the broken model is reported, the others load
+
+    std::ranges::sort(loaded);
+    EXPECT_EQ(loaded, (std::vector<std::string>{"materials/brass.material", "models/statue.obj"}));
+}
+
+TEST(Capsules, WithoutAssetLoadersNothingIsLoaded) {
+    // A server has no models to load: the paths stay names.
+    const aylo::ecs::World world;
+    capsule::Capsules capsules;
+    capsules.rememberAssetPath(aylo::core::asset::AssetId::fromPath("models/statue.obj"), "models/statue.obj");
+    capsule::loadNamedAssets(capsules, world.getResources());
+    EXPECT_EQ(world.getResources().get<aylo::plugins::AssetLoaders>(), nullptr);
 }

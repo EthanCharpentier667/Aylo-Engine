@@ -2,6 +2,6 @@
 
 # The rock in the middle of the arena: a static circle, an obstacle like the walls.
 [node path="."]
-game.Obstacle = {}
 aylo.Transform2D = {}
 aylo.Collider = { shape = "circle", radius = 36, layer = 1 }
+aylo.ShapeRenderer = { kind = "circle", radius = 36, fillColor = (0.25, 0.27, 0.32, 1), outlineColor = (0.55, 0.6, 0.7, 1), outlineThickness = 2 }

@@ -1,15 +1,13 @@
--- The texts over the game: each player's name at the top of their half, a line at the bottom that says where the round
--- is (it follows the server's game.Round), and who won when it is over.
+-- The texts over the game: each player's name at the top of their half and a line at the bottom that says where the
+-- round is (it follows the server's game.Round), both nodes of the arena's scene (assets/scenes/arena.scene), and who
+-- won when it is over.
 
 local assets = require("@scripts/client/assets")
 local Duel = require("@scripts/shared/arena")
 
-local textLayer = 10 -- over every sprite
-local nameSize, nameTop = 22, 12
-local nameColor = { x = 1, y = 1, z = 1, w = 0.85 }
+local textLayer = 10 -- over every sprite, as the scene's texts
+local nameColor = { x = 1, y = 1, z = 1, w = 0.85 } -- the scene's
 local myNameColor = { x = 1, y = 0.85, z = 0.3, w = 1 }
-local bannerSize, bannerY = 20, 572
-local bannerColor = { x = 0.7, y = 0.75, z = 0.9, w = 1 }
 -- Shapes are drawn over every text, so the end of the round is written in the gaps of the middle column: who won
 -- between the top wall and the rock, and whether it is this player between the rock and the bottom wall
 -- (assets/scenes/arena.scene).
@@ -18,10 +16,6 @@ local winnerY, verdictY = 237, 363
 local winColor = { x = 1, y = 0.85, z = 0.3, w = 1 }
 local loseColor = { x = 1, y = 0.45, z = 0.4, w = 1 }
 
--- A player's name over their half.
-engine.ecs.component("game.PlayerName", { fields = { player = "u32" }, presence = "clientOnly" })
--- The line at the bottom about the round.
-engine.ecs.component("game.Banner", { fields = {}, presence = "clientOnly" })
 -- A text of the end of a round, removed when the next one starts.
 engine.ecs.component("game.Announcement", { fields = {}, presence = "clientOnly" })
 
@@ -39,23 +33,6 @@ local function text(content: string, position, size: number, color)
 		},
 	}
 end
-
--- Startup: each player's name, at the top of the middle of their half, and the empty banner.
-engine.ecs.system("game.SpawnNames", {
-	phase = "Startup",
-	side = "client",
-	run = function(ctx)
-		for player = 0, Duel.playerCount - 1 do
-			local name = text(`Player {player + 1}`, { x = Duel.viewWidth / 4 * (2 * player + 1), y = nameTop }, nameSize, nameColor)
-			name["aylo.TextRenderer"].anchor = { x = 0.5, y = 0 }
-			name["game.PlayerName"] = { player = player }
-			ctx.commands:spawn(name)
-		end
-		local banner = text("", { x = Duel.viewWidth / 2, y = bannerY }, bannerSize, bannerColor)
-		banner["game.Banner"] = {}
-		ctx.commands:spawn(banner)
-	end,
-})
 
 -- Who is who and where the round is come from the network: run alone (the editor), there are no players.
 if not Duel.networked then

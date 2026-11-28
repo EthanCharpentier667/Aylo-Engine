@@ -1,0 +1,9 @@
+[capsule format=1]
+
+# A ringed planet passing behind the arena, over the background's three layers (game.BackgroundPlanet places it and
+# removes it). The image is loaded because this file names it.
+[node path="."]
+game.BackgroundPlanet = { size = (51, 115) }
+aylo.Transform2D = { position = (800, 0) }
+aylo.SpriteRenderer = { texture = "backgrounds/space/parallax-space-ring-planet.png", source = (0, 0, 51, 115), layer = -97 }
+aylo.Parallax = {}

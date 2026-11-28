@@ -1,13 +1,40 @@
 [capsule format=1]
 
+# The arena, loaded on every side (scripts/shared/rules.luau).
+#   - The walls and the rock are static: each side spawns its own (side=both), so the server never sends them and the
+#     clients draw them where they are.
+#   - The camera and the texts over the game are the clients' (side=client): scripts/client/hud.luau writes the texts.
 [node path="."]
 aylo.Transform2D = {}
 
-[node path="TopWall" instance="actors/wall.actor"]
+[node path="TopWall" instance="actors/wall.actor" side=both]
 aylo.Transform2D = { position = (419.4, 140) }
 
-[node path="Rock" instance="actors/rock.actor"]
+[node path="Rock" instance="actors/rock.actor" side=both]
 aylo.Transform2D = { position = (400, 300) }
 
-[node path="BottomWall" instance="actors/wall.actor"]
+[node path="BottomWall" instance="actors/wall.actor" side=both]
 aylo.Transform2D = { position = (400, 460) }
+
+# The camera looks at the middle of the arena and listens there.
+[node path="Camera" side=client]
+aylo.Transform2D = { position = (400, 300) }
+aylo.Camera2D = {}
+aylo.AudioListener = {}
+
+# Each player's name at the top of the middle of their half, over every sprite (layer 10).
+[node path="LeftName" side=client]
+game.PlayerName = { player = 0 }
+aylo.Transform2D = { position = (200, 12) }
+aylo.TextRenderer = { text = "Player 1", font = "fonts/orbitron.json", size = 22, color = (1, 1, 1, 0.85), anchor = (0.5, 0), layer = 10 }
+
+[node path="RightName" side=client]
+game.PlayerName = { player = 1 }
+aylo.Transform2D = { position = (600, 12) }
+aylo.TextRenderer = { text = "Player 2", font = "fonts/orbitron.json", size = 22, color = (1, 1, 1, 0.85), anchor = (0.5, 0), layer = 10 }
+
+# The line at the bottom that says where the round is.
+[node path="Banner" side=client]
+game.Banner = {}
+aylo.Transform2D = { position = (400, 572) }
+aylo.TextRenderer = { font = "fonts/orbitron.json", size = 20, color = (0.7, 0.75, 0.9, 1), anchor = (0.5, 0.5), layer = 10 }

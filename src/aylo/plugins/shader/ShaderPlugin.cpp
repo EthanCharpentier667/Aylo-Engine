@@ -17,6 +17,7 @@
 #include <utility>
 #include <vector>
 
+#include "MaterialFile.hpp"
 #include "aylo/contract/renderer/shaders/CompiledShader.hpp"
 #include "aylo/contract/renderer/shaders/ScreenEffect.hpp"
 #include "aylo/core/reload/HotReloader.hpp"
@@ -29,6 +30,7 @@
 #include "aylo/ecs/system/Side.hpp"
 #include "core/asset/AssetId.hpp"
 #include "plugins/AssetDirectory.hpp"
+#include "plugins/AssetLoaders.hpp"
 #include "plugins/HotReload.hpp"
 #include "plugins/graphics/BackendRegistry.hpp"
 #include "plugins/graphics/GraphicsPlugin.hpp"
@@ -137,6 +139,12 @@ void ShaderPlugin::build(ecs::App& app) {
     resources.insertIfAbsent<ScreenMaterials>();
     resources.insertIfAbsent<InstanceValueRequests>();
     resources.insertIfAbsent<graphics::TextureAssets>();
+    // A material file a capsule names is loaded as engine.assets.material would (AssetLoaders.hpp).
+    addAssetLoader(resources, {".material"}, [&resources](const std::filesystem::path& path) {
+        static_cast<void>(loadMaterialFile(path, *resources.requireMut<ShaderAssets>(),
+                                           *resources.requireMut<MaterialAssets>(),
+                                           *resources.requireMut<graphics::TextureAssets>()));
+    });
     static_cast<void>(app.getWorld().getComponents().registerType<MaterialInstance>());
     app.addSystem(ecs::Phase::kRender, std::string{kUpdateSystem}, &updateShaders)
         .after(std::string{graphics::GraphicsPlugin::kTexturesSystem})

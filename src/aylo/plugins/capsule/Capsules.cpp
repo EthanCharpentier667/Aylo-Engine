@@ -8,16 +8,21 @@
 #include "Capsules.hpp"
 
 #include <cstddef>
+#include <exception>
 #include <format>
+#include <iostream>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <utility>
 
+#include "aylo/ecs/resource/Resources.hpp"
 #include "aylo/ecs/schedule/RunMode.hpp"
 #include "aylo/ecs/system/Side.hpp"
 #include "aylo/ecs/type/TypeInfo.hpp"
 #include "core/asset/AssetFiles.hpp"
 #include "core/asset/AssetId.hpp"
+#include "plugins/AssetLoaders.hpp"
 #include "plugins/capsule/Capsule.hpp"
 #include "plugins/capsule/exceptions/CapsuleException.hpp"
 
@@ -61,6 +66,10 @@ Capsule& Capsules::edit(CapsuleId id) {
     return found->second;
 }
 
+const std::unordered_map<core::asset::AssetId, std::string>& Capsules::getAssetPaths() const noexcept {
+    return _assetPaths;
+}
+
 void Capsules::rememberAssetPath(core::asset::AssetId id, std::string path) {
     _assetPaths.insert_or_assign(id, std::move(path));
 }
@@ -82,5 +91,19 @@ bool Capsules::keeps(ecs::Presence presence) const noexcept {
             break;
     }
     return true;
+}
+void loadNamedAssets(const Capsules& capsules, const ecs::Resources& resources) {
+    const auto* loaders = resources.get<AssetLoaders>();
+    if (loaders == nullptr) {
+        return;
+    }
+    for (const auto& [id, path] : capsules.getAssetPaths()) {
+        try {
+            static_cast<void>(loaders->load(path));
+        } catch (const std::exception& error) {
+            std::cerr << std::format("[capsule] '{}', named in a capsule file, cannot be loaded: {}\n", path,
+                                     error.what());
+        }
+    }
 }
 }  // namespace aylo::plugins::capsule

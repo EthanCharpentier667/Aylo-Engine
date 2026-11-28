@@ -32,6 +32,7 @@
 #include "core/asset/exceptions/AssetExceptions.hpp"
 #include "core/vfs/DirectorySource.hpp"
 #include "plugins/AssetDirectory.hpp"
+#include "plugins/AssetLoaders.hpp"
 #include "plugins/mesh/MeshAssets.hpp"
 #include "plugins/mesh/MeshPlugin.hpp"
 #include "plugins/mesh/MeshRenderer.hpp"
@@ -329,4 +330,17 @@ TEST(MeshPlugin, TellsTheRendererWhetherAModelCastsAndReceivesShadows) {
     ASSERT_FALSE(fixture.state().staticMeshDraws.empty());
     EXPECT_FALSE(fixture.state().staticMeshDraws.back().castShadows);
     EXPECT_FALSE(fixture.state().staticMeshDraws.back().receiveShadows);
+}
+
+TEST(MeshPlugin, LoadsAModelOfTheAssetLoaders) {
+    // What a capsule names reaches the mesh plugin through the AssetLoaders, as engine.assets.mesh would (#152).
+    const AssetsFolder assets;
+    assets.writeTriangle();
+    MeshApp mesh{assets};
+    const auto* loaders = mesh.app().getWorld().getResources().get<aylo::plugins::AssetLoaders>();
+    ASSERT_NE(loaders, nullptr);
+
+    EXPECT_TRUE(loaders->load("models/tri.gltf"));
+
+    EXPECT_NE(mesh.meshes().get(aylo::core::asset::AssetId::fromPath("models/tri.gltf")), nullptr);
 }

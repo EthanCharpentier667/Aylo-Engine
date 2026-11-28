@@ -17,6 +17,7 @@
 #include "aylo/core/reload/ChangeSet.hpp"
 #include "aylo/core/reload/ReloadOutcome.hpp"
 #include "aylo/core/reload/Reloadable.hpp"
+#include "aylo/ecs/resource/Resources.hpp"
 #include "plugins/capsule/Capsule.hpp"
 #include "plugins/capsule/CapsuleFiles.hpp"
 #include "plugins/capsule/Capsules.hpp"
@@ -25,8 +26,12 @@
 
 namespace aylo::plugins::capsule {
 CapsuleReloadable::CapsuleReloadable(CapsuleFiles* files, Capsules* capsules, ReloadedCapsules* reloaded,
-                                     std::filesystem::path assetDirectory)
-    : _files{files}, _capsules{capsules}, _reloaded{reloaded}, _assets{std::move(assetDirectory)} {}
+                                     const ecs::Resources* resources, std::filesystem::path assetDirectory)
+    : _files{files},
+      _capsules{capsules},
+      _reloaded{reloaded},
+      _resources{resources},
+      _assets{std::move(assetDirectory)} {}
 
 std::string_view CapsuleReloadable::name() const noexcept { return "capsules"; }
 
@@ -44,6 +49,9 @@ core::reload::ReloadOutcome CapsuleReloadable::reload(const core::reload::Change
     }
     CapsuleFiles::Reread reread = _files->reload(*_capsules, paths);
     _reloaded->capsules.insert(_reloaded->capsules.end(), reread.capsules.begin(), reread.capsules.end());
+    if (_resources != nullptr) {
+        loadNamedAssets(*_capsules, *_resources);  // a model or an image the saved files name for the first time
+    }
     if (!reread.errors.empty()) {
         std::string message;
         for (const std::string& error : reread.errors) {

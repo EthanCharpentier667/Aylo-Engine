@@ -1,13 +1,8 @@
 -- The look of what the server spawns: the ships and the lasers fly animated where the server puts them, and the loser
--- explodes.
+-- explodes. The server spawns them from their actors on its side only, so their look is given here, on the clients.
 
 local assets = require("@scripts/client/assets")
 local Duel = require("@scripts/shared/arena")
-
-local explosionScale = 1.5
-
--- A finished explosion: removed when its animation ends.
-engine.ecs.component("game.Explosion", { fields = {}, presence = "clientOnly" })
 
 -- PostUpdate: gives the ships their sprite, animated. PostUpdate also runs while the editor edits, so a ship's actor
 -- opened alone shows its look.
@@ -62,6 +57,7 @@ engine.ecs.system("game.FollowLasers", {
 	side = "client",
 	query = { read = { "game.Laser" }, write = { "aylo.Transform2D" } },
 	after = { "game.FollowShips" },
+	before = { "game.BackgroundPlanet.onUpdate" }, -- a Behaviour declares no order: the systems order themselves on it
 	run = function(ctx)
 		for _, laser, transform in ctx.query do
 			transform.position = laser.position
@@ -89,6 +85,7 @@ engine.ecs.system("game.ExplodeLoser", {
 	phase = "Update",
 	side = "client",
 	query = { read = { "game.Ship" }, write = { "aylo.SpriteRenderer" } },
+	calls = { "aylo.capsule.spawn" },
 	after = { "game.NoticeWinner" },
 	run = function(ctx)
 		if newWinner == nil then
@@ -98,36 +95,10 @@ engine.ecs.system("game.ExplodeLoser", {
 			if ship.player ~= newWinner then
 				local color = sprite.color
 				sprite.color = { x = color.x, y = color.y, z = color.z, w = 0 } -- its alpha: the ship is gone
-				ctx.commands:spawn({
-					["aylo.Transform2D"] = {
-						position = ship.position,
-						scale = { x = explosionScale, y = explosionScale },
-					},
-					["aylo.SpriteRenderer"] = { layer = 3, blend = "additive" },
-					["aylo.SpriteAnimator"] = { atlas = assets.explosion, animation = "explode" },
-					["game.Explosion"] = {},
-				})
+				-- The explosion's actor plays once and goes (game.Explosion).
+				engine.capsule.spawn(ctx, Duel.explosion, { ["aylo.Transform2D"] = { position = ship.position } })
 			end
 		end
 		newWinner = nil
-	end,
-})
-
--- Update: removes the explosions that finished.
-engine.ecs.system("game.RemoveExplosions", {
-	phase = "Update",
-	side = "client",
-	query = { with = { "game.Explosion" } },
-	events = { read = { "aylo.AnimationFinished" } },
-	run = function(ctx)
-		local finished = {}
-		for event in ctx.events.read("aylo.AnimationFinished") do
-			finished[event.entity.bits] = true
-		end
-		for entity in ctx.query do
-			if finished[entity.bits] then
-				ctx.commands:despawn(entity)
-			end
-		end
 	end,
 })

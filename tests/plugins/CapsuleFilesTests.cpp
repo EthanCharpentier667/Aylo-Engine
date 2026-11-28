@@ -199,7 +199,8 @@ TEST_F(CapsuleFilesTest, TheReloadableReadsWhatTheReloaderSees) {
     aylo::core::reload::HotReloader reloader{_game.parent_path(),
                                              [&](std::string_view line) { log.emplace_back(line); }};
     const std::filesystem::path assets = _game.filename();  // the assets, in the reloader's root
-    auto reloadable = std::make_unique<capsule::CapsuleReloadable>(&files, &capsules, &reloaded, assets);
+    auto reloadable =
+        std::make_unique<capsule::CapsuleReloadable>(&files, &capsules, &reloaded, &world.getResources(), assets);
     EXPECT_EQ(reloadable->name(), "capsules");
     ASSERT_EQ(reloadable->watched().size(), 1U);
     EXPECT_EQ(reloadable->watched()[0].path, assets);

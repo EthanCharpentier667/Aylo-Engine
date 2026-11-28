@@ -12,10 +12,7 @@ function Weapons.fire(ctx, player: number, position)
 		y = position.y,
 	}
 	if math.random(1, Duel.misfireOdds) == 1 then
-		ctx.commands:spawn({
-			["game.Misfire"] = { position = muzzle, shooter = player },
-			["game.MisfireTimer"] = { remaining = Duel.misfireLifetime },
-		})
+		engine.capsule.spawn(ctx, Duel.misfire, { ["game.Misfire"] = { position = muzzle, shooter = player } })
 		return
 	end
 	-- The laser's actor (assets/actors/laser.actor) is the body; the shot gives where, who, which way and whom it hits.

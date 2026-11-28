@@ -13,6 +13,7 @@
 #include <unordered_map>
 
 #include "aylo/ecs/resource/ResourceTraits.hpp"
+#include "aylo/ecs/resource/Resources.hpp"
 #include "aylo/ecs/schedule/RunMode.hpp"
 #include "aylo/ecs/system/Side.hpp"
 #include "aylo/ecs/type/TypeInfo.hpp"
@@ -66,6 +67,8 @@ class AYLO_PLUGIN_CAPSULE_API Capsules {
 
     /// @return The path an asset id was read from, or nullptr if none was remembered.
     [[nodiscard]] const std::string* findAssetPath(core::asset::AssetId id) const noexcept;
+    /// @return Every asset path the capsule files named, by its id.
+    [[nodiscard]] const std::unordered_map<core::asset::AssetId, std::string>& getAssetPaths() const noexcept;
 
     /// @return Whether a spawn on this registry's side creates a node of this side (ecs::runsIn()).
     [[nodiscard]] bool loads(ecs::Side side) const noexcept;
@@ -81,4 +84,12 @@ class AYLO_PLUGIN_CAPSULE_API Capsules {
 };
 
 AYLO_ECS_RESOURCE(Capsules, "aylo.Capsules");
+
+/// @brief Has the plugins that load assets (AssetLoaders) load every asset path the capsule files named, so a model,
+/// a material or an image a capsule names draws without a script loading it. A path no plugin here loads is skipped
+/// (a server has no models); one that fails is reported on the error output and skipped. Loading an asset twice
+/// does nothing more.
+/// @param capsules What the capsule files were read into.
+/// @param resources The world's resources, which hold the AssetLoaders when an asset plugin is there.
+AYLO_PLUGIN_CAPSULE_API void loadNamedAssets(const Capsules& capsules, const ecs::Resources& resources);
 }  // namespace aylo::plugins::capsule

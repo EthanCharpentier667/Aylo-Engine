@@ -1,6 +1,7 @@
 -- What both sides declare alike: the replicated components and the input actions (the manifest checks that the server
--- and the clients declared the same ones), the round and the messages of the quick join. Required by
--- shared/main.luau, which every process runs first.
+-- and the clients declared the same ones), the round, the messages of the quick join, and the components the capsules
+-- name (every side reads every capsule file). Required by shared/main.luau, which every process runs first. The
+-- Behaviours (scripts/behaviours/) run on every side by themselves.
 
 local Duel = require("@scripts/shared/arena")
 
@@ -27,17 +28,19 @@ engine.ecs.component("game.Laser", {
 	fields = { position = "vec2", shooter = "u32" },
 	replication = "everyChange",
 })
--- A wall in the middle of the arena: the clients place and draw it.
-engine.ecs.component("game.Obstacle", { fields = { position = "vec2" }, replication = "everyChange" })
 -- Spawned by the server when a laser hits: the game is over.
 engine.ecs.component("game.Winner", { fields = { player = "u32" }, replication = "everyChange" })
--- Spawned by the server instead of a laser when a shot misfires, so that the clients play the misfire sound.
+-- Spawned by the server instead of a laser when a shot misfires (actors/misfire.actor), so that the clients play the
+-- misfire sound.
 engine.ecs.component("game.Misfire", {
 	fields = { position = "vec2", shooter = "u32" },
 	replication = "everyChange",
 })
--- Server only: how long a Misfire still lives.
-engine.ecs.component("game.MisfireTimer", { fields = { remaining = "f32" }, presence = "serverOnly" })
+
+-- The texts of the arena's scene, on the clients (scripts/client/hud.luau writes them): a player's name over their half,
+-- and the line at the bottom about the round.
+engine.ecs.component("game.PlayerName", { fields = { player = "u32" }, presence = "clientOnly" })
+engine.ecs.component("game.Banner", { fields = {}, presence = "clientOnly" })
 
 -- The actions both sides agree on: the clients send them, the server reads them.
 engine.input.action("move", "vector2", { -- up and down (only Y is used)
@@ -48,7 +51,8 @@ engine.input.action("move", "vector2", { -- up and down (only Y is used)
 })
 engine.input.action("shoot", "button", { bind = { "MouseLeft" } })
 
--- Startup, on every side: the arena. The server spawns its obstacles and replicates them to the clients.
+-- Startup, on every side: the arena (assets/scenes/arena.scene). Each side spawns the obstacles; the clients also spawn
+-- the camera and the texts.
 engine.ecs.system("game.LoadArena", {
 	phase = "Startup",
 	side = "both",
