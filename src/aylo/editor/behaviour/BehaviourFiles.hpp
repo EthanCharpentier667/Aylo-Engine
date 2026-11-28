@@ -11,6 +11,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <vector>
 
 #include "aylo/ecs/app/App.hpp"
 #include "aylo/ecs/component/ComponentRegistry.hpp"
@@ -43,6 +44,10 @@ namespace aylo::editor::behaviour {
 /// @return Whether the component @p component is a Behaviour with a hook: the App has a system named after it and a
 /// hook (`<component>.onUpdate`...) in the hook's phase.
 [[nodiscard]] AYLO_EDITOR_API bool isBehaviour(const ecs::App& app, std::string_view component);
+
+/// @return The hooks the Behaviour @p component defines (`onStart`, `onUpdate`...), in the order the manual gives:
+/// those the App has a system for.
+[[nodiscard]] AYLO_EDITOR_API std::vector<std::string_view> hooksOf(const ecs::App& app, std::string_view component);
 
 /// @return Whether @p component is a tag a Behaviour keeps its lifecycle in (`<behaviour>.Started`,
 /// `<behaviour>.Active`): a component the editor does not show.

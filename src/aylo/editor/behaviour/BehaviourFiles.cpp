@@ -134,6 +134,16 @@ bool isBehaviour(const ecs::App& app, std::string_view component) {
     });
 }
 
+std::vector<std::string_view> hooksOf(const ecs::App& app, std::string_view component) {
+    std::vector<std::string_view> hooks;
+    for (const Hook& hook : kHooks) {
+        if (app.getSchedules().getSchedule(hook.phase).contains(std::format("{}.{}", component, hook.name))) {
+            hooks.push_back(hook.name);
+        }
+    }
+    return hooks;
+}
+
 bool isBehaviourTag(const ecs::ComponentRegistry& registry, std::string_view component) {
     return std::ranges::any_of(kTags, [&registry, component](std::string_view tag) {
         return component.ends_with(tag) &&
