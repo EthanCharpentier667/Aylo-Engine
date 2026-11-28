@@ -14,6 +14,7 @@
 #include "aylo/core/reload/ChangeSet.hpp"
 #include "aylo/core/reload/ReloadOutcome.hpp"
 #include "aylo/core/reload/Reloadable.hpp"
+#include "aylo/ecs/resource/Resources.hpp"
 #include "plugins/capsule/Export.hpp"
 
 namespace aylo::plugins::capsule {
@@ -34,7 +35,7 @@ class AYLO_PLUGIN_CAPSULE_API CapsuleReloadable : public core::reload::Reloadabl
     /// @param reloaded Gets the capsules read; must outlive this.
     /// @param assetDirectory The game's assets, relative to the HotReloader's root.
     CapsuleReloadable(CapsuleFiles* files, Capsules* capsules, ReloadedCapsules* reloaded,
-                      std::filesystem::path assetDirectory);
+                      const ecs::Resources* resources, std::filesystem::path assetDirectory);
     ~CapsuleReloadable() override = default;
     CapsuleReloadable(const CapsuleReloadable& other) = default;
     CapsuleReloadable& operator=(const CapsuleReloadable& other) = default;
@@ -51,9 +52,10 @@ class AYLO_PLUGIN_CAPSULE_API CapsuleReloadable : public core::reload::Reloadabl
     [[nodiscard]] core::reload::ReloadOutcome reload(const core::reload::ChangeSet& changes) override;
 
   private:
-    CapsuleFiles* _files{nullptr};         ///< The game's capsule files.
-    Capsules* _capsules{nullptr};          ///< What they are read into.
-    ReloadedCapsules* _reloaded{nullptr};  ///< What the next frame reloads.
-    std::filesystem::path _assets;         ///< What the changed paths start with.
+    CapsuleFiles* _files{nullptr};              ///< The game's capsule files.
+    Capsules* _capsules{nullptr};               ///< What they are read into.
+    ReloadedCapsules* _reloaded{nullptr};       ///< What the next frame reloads.
+    const ecs::Resources* _resources{nullptr};  ///< The world's, for the assets a file saved names (loadNamedAssets()).
+    std::filesystem::path _assets;              ///< What the changed paths start with.
 };
 }  // namespace aylo::plugins::capsule

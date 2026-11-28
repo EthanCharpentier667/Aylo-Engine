@@ -154,7 +154,7 @@ void CapsulePlugin::build(ecs::App& app) {
     }
     reloader->add(std::make_unique<CapsuleReloadable>(&*resources.getMut<CapsuleFiles>(),
                                                       &*resources.requireMut<Capsules>(),
-                                                      &*resources.requireMut<ReloadedCapsules>(), assets));
+                                                      &*resources.requireMut<ReloadedCapsules>(), &resources, assets));
 }
 
 void CapsulePlugin::finish(ecs::App& app) {
@@ -162,6 +162,7 @@ void CapsulePlugin::finish(ecs::App& app) {
     ecs::Mut<CapsuleFiles> files = resources.getMut<CapsuleFiles>();
     if (files) {
         static_cast<void>(files->loadAll(*resources.requireMut<Capsules>()));
+        loadNamedAssets(*resources.get<Capsules>(), resources);
     }
 }
 }  // namespace aylo::plugins::capsule
