@@ -16,6 +16,7 @@
 #include "aylo/luau/Value.hpp"
 #include "aylo/luau/ValuePack.hpp"
 #include "aylo/scripting/Export.hpp"
+#include "aylo/scripting/asset/NamedAssets.hpp"
 
 namespace aylo::scripting::call {
 /// @brief What actually calls an engine call: Calls::invoke() while scripts load, DynamicCalls::invoke() in a system.
@@ -31,9 +32,11 @@ using Invoker = std::function<void(std::span<const std::byte> arguments, std::sp
 /// @param info The call.
 /// @param fields `nil`, nothing, or a table of argument fields.
 /// @param invoke Calls the call with the bytes of the arguments and of the result.
+/// @param named Where the asset paths of the arguments are recorded (view::writeField()); null: nowhere.
 /// @return The result's values.
 /// @throws luau::exceptions::RuntimeError Naming the call, when `fields` is not a table, names a field the arguments
 /// do not have or a value of the wrong type, gives fields to a call that takes none, or when the call throws.
 [[nodiscard]] AYLO_SCRIPTING_API luau::ValuePack callEngine(const luau::Runtime& runtime, const ecs::CallInfo& info,
-                                                            const luau::Value* fields, const Invoker& invoke);
+                                                            const luau::Value* fields, const Invoker& invoke,
+                                                            asset::NamedAssets* named = nullptr);
 }  // namespace aylo::scripting::call

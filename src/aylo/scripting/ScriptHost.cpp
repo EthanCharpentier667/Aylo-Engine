@@ -144,6 +144,7 @@ ScriptHost::ScriptHost(ecs::App& app, luau::Runtime runtime, luau::ModuleLoader:
       _resolver{std::move(resolver)} {
     _handle->runtime = &_runtime;
     _handle->components = &_components;
+    _handle->assets = &_namedAssets;
     // Scripts switch entities off by name (commands:add(entity, "aylo.Disabled", {})), and their queries skip them.
     static_cast<void>(app.getWorld().getComponents().registerType<ecs::Disabled>());
     if (_resolver) {
@@ -307,7 +308,7 @@ const component::ComponentLayout* ScriptHost::findComponent(const std::string_vi
 }
 
 luau::Result<> ScriptHost::installEngine(const Options options) {
-    if (auto registered = view::registerViewTypes(_runtime); !registered) {
+    if (auto registered = view::registerViewTypes(_runtime, &_namedAssets); !registered) {
         return registered;
     }
     if (auto registered = console::registerConsoleTypes(_runtime); !registered) {
@@ -400,7 +401,7 @@ luau::Result<> ScriptHost::installEngine(const Options options) {
 }
 
 void ScriptHost::declareComponent(std::string name, const luau::Table& spec) {
-    const auto declaration = component::readComponentDeclaration(std::move(name), spec);
+    const auto declaration = component::readComponentDeclaration(std::move(name), spec, &_namedAssets);
     if (!declaration) {
         throw luau::exceptions::RuntimeError{std::string{declaration.error().message()}};
     }
@@ -592,6 +593,8 @@ void ScriptHost::addPlugin(const std::string& name) {
     _pluginStack.pop_back();
 }
 
+std::vector<std::string> ScriptHost::takeNamedAssets() { return _namedAssets.take(); }
+
 luau::ValuePack ScriptHost::callEngine(const luau::CallContext& arguments) {
     const auto* name = arguments.argCount() > 0 ? arguments.args().front().tryAs<std::string>() : nullptr;
     if (name == nullptr) {
@@ -603,10 +606,12 @@ luau::ValuePack ScriptHost::callEngine(const luau::CallContext& arguments) {
         throw luau::exceptions::RuntimeError{std::format("unknown engine call '{}'", *name)};
     }
     const luau::Value* fields = arguments.argCount() > 1 ? &*std::next(arguments.args().begin()) : nullptr;
-    return call::callEngine(_runtime, *info, fields,
-                            [&world, info](const std::span<const std::byte> bytes, const std::span<std::byte> result) {
-                                world.getCalls().invoke(world, info->id, bytes, result);
-                            });
+    return call::callEngine(
+        _runtime, *info, fields,
+        [&world, info](const std::span<const std::byte> bytes, const std::span<std::byte> result) {
+            world.getCalls().invoke(world, info->id, bytes, result);
+        },
+        &_namedAssets);
 }
 
 core::reload::ReloadOutcome ScriptHost::reloadScript(const std::string& name, const std::string& source) {

@@ -164,7 +164,7 @@ void checkAlive(const ScriptCommands& handle) {
         ecs::TypeInfo description;
         description.name = name;
         description.fields.assign(built.fields.begin(), built.fields.end());
-        if (auto filled = view::fillFromTable(description, *fields, built.value()); !filled) {
+        if (auto filled = view::fillFromTable(description, *fields, built.value(), handle.assets); !filled) {
             throw luau::exceptions::RuntimeError{std::string{filled.error().message()}};
         }
     }

@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "Export.hpp"
+#include "asset/NamedAssets.hpp"
 #include "aylo/core/reload/ReloadOutcome.hpp"
 #include "aylo/ecs/app/App.hpp"
 #include "aylo/ecs/entity/Entity.hpp"
@@ -165,6 +166,11 @@ class AYLO_SCRIPTING_API ScriptHost {
     /// @return The luau-lsp definition file of the game as it runs now (types::generateDefinitions()): its components,
     /// events, engine calls and `engine` tree.
     [[nodiscard]] std::string generateTypes() const;
+
+    /// @brief The asset paths scripts wrote where an asset id goes (a field, an engine call's argument, a default) for
+    /// the first time since the last call, for the engine to load them as a capsule's are (see asset::NamedAssets).
+    /// @return The new paths, in the order scripts named them.
+    [[nodiscard]] std::vector<std::string> takeNamedAssets();
 
     /// @brief Chooses what a reload does with a file no module loaded.
     /// @param adopts True (the default): it is a new root and runs. False (what the ScriptingPlugin sets, with entry
@@ -359,8 +365,9 @@ class AYLO_SCRIPTING_API ScriptHost {
     /// @return The phase of the system this name, in the scripts' records; nothing if no script declared it.
     [[nodiscard]] std::optional<ecs::Phase> findSystemPhase(const std::string& name) const;
 
-    ecs::App& _app;          ///< The App scripts declare their ECS data on.
-    luau::Runtime _runtime;  ///< The runtime of the scripts; declared before what holds references into it.
+    ecs::App& _app;                   ///< The App scripts declare their ECS data on.
+    asset::NamedAssets _namedAssets;  ///< The asset paths scripts wrote, for takeNamedAssets().
+    luau::Runtime _runtime;           ///< The runtime of the scripts; declared before what holds references into it.
     std::shared_ptr<system::RuntimeHandle> _handle;  ///< Points to the runtime for the systems; cleared on destruction.
     std::optional<luau::Library> _engine;            ///< The `engine` library, with the sub-library `ecs`.
     mutable std::set<std::string> _loadedForms;      ///< The setup forms already run, by name.

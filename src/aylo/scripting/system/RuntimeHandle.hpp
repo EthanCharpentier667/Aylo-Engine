@@ -8,6 +8,7 @@
 #pragma once
 
 #include "aylo/luau/Runtime.hpp"
+#include "aylo/scripting/asset/NamedAssets.hpp"
 #include "aylo/scripting/component/ComponentLayout.hpp"
 
 namespace aylo::scripting::system {
@@ -18,5 +19,6 @@ namespace aylo::scripting::system {
 struct RuntimeHandle {
     luau::Runtime* runtime{nullptr};  ///< The runtime of the host, or null once the host is destroyed.
     const component::ComponentLayouts* components{nullptr};  ///< The components of the host, valid with `runtime`.
+    asset::NamedAssets* assets{nullptr};  ///< The asset paths the host's scripts wrote, valid with `runtime`.
 };
 }  // namespace aylo::scripting::system

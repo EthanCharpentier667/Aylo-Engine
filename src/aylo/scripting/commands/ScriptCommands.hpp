@@ -15,6 +15,7 @@
 #include "aylo/luau/Result.hpp"
 #include "aylo/luau/Runtime.hpp"
 #include "aylo/scripting/Export.hpp"
+#include "aylo/scripting/asset/NamedAssets.hpp"
 #include "aylo/scripting/component/ComponentLayout.hpp"
 #include "aylo/scripting/view/ViewScope.hpp"
 
@@ -28,6 +29,7 @@ struct AYLO_SCRIPTING_API ScriptCommands {
     const component::ComponentLayouts* layouts{nullptr};  ///< The components scripts declared, with their defaults.
     const ecs::ComponentRegistry* registry{nullptr};      ///< The world's components, for the C++ ones; null for none.
     bool clientSide{false};  ///< The system runs on clients: it cannot add replicated or server-only components.
+    asset::NamedAssets* assets{nullptr};   ///< Where the asset paths written are recorded; null: nowhere.
     std::weak_ptr<view::ViewScope> scope;  ///< The scope that invalidates the handle; expires with the system.
     std::uint64_t generation{0};           ///< The scope's generation when the handle was created.
 };

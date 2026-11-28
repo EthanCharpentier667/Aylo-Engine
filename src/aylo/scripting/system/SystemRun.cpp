@@ -385,7 +385,7 @@ class EventsContext {
         const std::shared_ptr<std::byte> storage = makeValue(*term.type);
         const std::span<std::byte> bytes{storage.get(), term.type->size};
         if (fields != nullptr) {
-            if (auto filled = view::fillFromTable(*term.type, *fields, bytes); !filled) {
+            if (auto filled = view::fillFromTable(*term.type, *fields, bytes, _system->runtime->assets); !filled) {
                 throw luau::exceptions::RuntimeError{std::string{filled.error().message()}};
             }
         }
@@ -470,10 +470,12 @@ class EventsContext {
     }
     const auto index = static_cast<std::size_t>(std::distance(system.calls.begin(), found));
     const luau::Value* fields = arguments.argCount() > 1 ? &*std::next(arguments.args().begin()) : nullptr;
-    return call::callEngine(runtime, **found, fields,
-                            [&calls, index](const std::span<const std::byte> bytes, const std::span<std::byte> result) {
-                                calls.invoke(index, bytes, result);
-                            });
+    return call::callEngine(
+        runtime, **found, fields,
+        [&calls, index](const std::span<const std::byte> bytes, const std::span<std::byte> result) {
+            calls.invoke(index, bytes, result);
+        },
+        system.runtime->assets);
 }
 
 /// @brief Builds `ctx` and calls `run` with it.
@@ -505,6 +507,7 @@ class EventsContext {
         .layouts = system.runtime->components,
         .registry = system.components,
         .clientSide = system.clientSide,
+        .assets = system.runtime->assets,
         .scope = system.scope,
         .generation = system.scope->generation,
     });
