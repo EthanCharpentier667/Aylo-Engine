@@ -11,11 +11,13 @@
 #include <cctype>
 #include <filesystem>
 #include <functional>
+#include <initializer_list>
 #include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
 
+#include "aylo/ecs/change/Mut.hpp"
 #include "aylo/ecs/resource/ResourceTraits.hpp"
 #include "aylo/ecs/resource/Resources.hpp"
 
