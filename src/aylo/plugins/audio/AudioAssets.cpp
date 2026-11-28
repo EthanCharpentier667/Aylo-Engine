@@ -28,6 +28,7 @@
 #include "core/vfs/DirectorySource.hpp"
 #include "core/vfs/FileSource.hpp"
 #include "plugins/audio/SoundProbe.hpp"
+#include "plugins/audio/detail/ImportFile.hpp"
 
 namespace aylo::plugins::audio {
 namespace {
@@ -67,7 +68,12 @@ std::size_t AudioAssets::getCount() const noexcept { return _entries.size(); }
 
 core::asset::AssetId AudioAssets::load(const std::filesystem::path& path,
                                        const contract::audiodevice::SoundDesc& desc) {
-    return request(core::asset::normalizePath(path), {}, desc);
+    std::string normalized = core::asset::normalizePath(path);
+    if (get(core::asset::AssetId::fromPath(normalized)) != nullptr) {
+        return request(std::move(normalized), {}, desc);  // asked for already: the first request wins
+    }
+    const contract::audiodevice::SoundDesc options = detail::applyImportFile(*_source, normalized, desc);
+    return request(std::move(normalized), {}, options);
 }
 
 core::asset::AssetId AudioAssets::load(const std::string& name, std::span<const std::byte> encoded,

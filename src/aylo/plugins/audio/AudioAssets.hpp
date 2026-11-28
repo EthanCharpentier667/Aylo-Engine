@@ -84,9 +84,12 @@ class AYLO_PLUGIN_AUDIO_API AudioAssets {
     [[nodiscard]] std::size_t getCount() const noexcept;
 
     /// @brief Asks for the sound file at @p path (WAV, OGG, MP3, FLAC), opened by the device in updateSounds().
+    /// @details Its import file, `<path>.import` (`{ "stream": true }`), adds its options to @p desc
+    /// (detail::applyImportFile()), so they hold wherever the sound is asked for from.
     /// @param desc How to load it. Ignored if the sound was already asked for: the first request wins.
     /// @return Its id (AssetId::fromPath()), at once: put it in components and events, the sound plays once loaded.
-    /// @throws exceptions::AudioLoadException If another path already has this id (a hash collision).
+    /// @throws exceptions::AudioLoadException If another path already has this id (a hash collision), or its import
+    /// file is broken.
     core::asset::AssetId load(const std::filesystem::path& path, const contract::audiodevice::SoundDesc& desc = {});
 
     /// @brief Asks for a sound already in memory (embedded, downloaded), known by @p name.
