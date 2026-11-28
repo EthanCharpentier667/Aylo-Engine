@@ -8,6 +8,7 @@
 #include "plugins/sprite/SpritePlugin.hpp"
 
 #include <exception>
+#include <filesystem>
 #include <iostream>
 #include <string>
 #include <string_view>
@@ -24,6 +25,7 @@
 #include "aylo/ecs/system/Side.hpp"
 #include "aylo/ecs/time/Time.hpp"
 #include "plugins/AssetDirectory.hpp"
+#include "plugins/AssetLoaders.hpp"
 #include "plugins/graphics/TextureAssets.hpp"
 #include "plugins/sprite/AnimationEvents.hpp"
 #include "plugins/sprite/AtlasAssets.hpp"
@@ -31,6 +33,7 @@
 #include "plugins/sprite/SpriteAtlas.hpp"
 #include "plugins/sprite/SpriteCalls.hpp"
 #include "plugins/sprite/SpriteRenderer.hpp"
+#include "plugins/sprite/detail/AtlasFile.hpp"
 
 namespace aylo::plugins::sprite {
 
@@ -100,6 +103,11 @@ void SpritePlugin::build(ecs::App& app) {
     ecs::Resources& resources = app.getWorld().getResources();
     resources.insertIfAbsent<AtlasAssets>();
     resources.getMut<AtlasAssets>()->setSource(assetSourceOf(resources));
+    // An atlas file a capsule names is loaded as engine.assets.atlas({ path = ... }) would (AssetLoaders.hpp). Only the
+    // engine's .atlas: a .json may be a font, so a capsule names an Aseprite export through a .atlas.
+    addAssetLoader(resources, {detail::kAtlasFileExtension}, [&resources](const std::filesystem::path& path) {
+        static_cast<void>(resources.requireMut<AtlasAssets>()->load(path));
+    });
     resources.insertIfAbsent<graphics::TextureAssets>();
     static_cast<void>(app.getWorld().getComponents().registerType<SpriteRenderer>());
     static_cast<void>(app.getWorld().getComponents().registerType<SpriteAnimator>());
