@@ -46,7 +46,7 @@ on. Return it from the file so other files can require it.
 | Option | Meaning |
 |---|---|
 | `fields` | **Required.** The fields of each entity's `self`, a table of field name to [type](components.md#field-types). An empty table is allowed. |
-| `defaults` | The starting value of some fields; a field not listed starts at zero. |
+| `defaults` | The starting value of some fields; a field not listed starts at zero. A capsule node that leaves a field out (`game.Spinner = {}`) gets its default too. |
 | `replication` | `"none"` (default), `"everyChange"` or `"spawnOnly"`: whether the server sends the fields to the clients, see [Where components live](components.md#where-components-live). |
 | `presence` | `"both"` (default), `"serverOnly"` or `"clientOnly"`: which side the component exists on. |
 | `side` | `"server"` (default), `"client"` or `"both"`: where the hooks run. One side for the whole Behaviour. |
