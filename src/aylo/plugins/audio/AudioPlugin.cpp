@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <array>
+#include <filesystem>
 #include <glm/ext/vector_float2.hpp>
 #include <iostream>
 #include <memory>
@@ -36,6 +37,7 @@
 #include "core/asset/AssetId.hpp"
 #include "core/config/Settings.hpp"
 #include "plugins/AssetDirectory.hpp"
+#include "plugins/AssetLoaders.hpp"
 #include "plugins/audio/AudioAssets.hpp"
 #include "plugins/audio/AudioCalls.hpp"
 #include "plugins/audio/AudioConfig.hpp"
@@ -352,6 +354,11 @@ void AudioPlugin::build(ecs::App& app) {
     resources.insertNonSend(Audio{});
     resources.insertIfAbsent<AudioAssets>();
     resources.getMut<AudioAssets>()->setSource(assetSourceOf(resources));
+    // A sound a capsule names is loaded as engine.assets.sound would, decoded once (AssetLoaders.hpp): a music meant
+    // to stream is loaded by a script first, whose options the second load keeps.
+    addAssetLoader(resources, {".wav", ".mp3", ".ogg", ".flac"}, [&resources](const std::filesystem::path& path) {
+        static_cast<void>(resources.requireMut<AudioAssets>()->load(path));
+    });
     resources.insertIfAbsent<plugins::audio::AudioVolumes>();
     static_cast<void>(app.getWorld().getComponents().registerType<AudioSource>());
     static_cast<void>(app.getWorld().getComponents().registerType<AudioListener>());
