@@ -50,6 +50,10 @@ class AYLO_PLUGIN_CAPSULE_API ComponentValues {
     /// @return On which side of the network the component of the value at `index` exists; `index` below getCount().
     [[nodiscard]] ecs::Presence getPresence(std::size_t index) const noexcept;
 
+    /// @return Whether the server sends the component of the value at `index` to the clients (any ecs::ReplicationMode
+    /// but kNone), so a client never writes it; `index` below getCount().
+    [[nodiscard]] bool isReplicated(std::size_t index) const noexcept;
+
     /// @return Whether the component has a value.
     [[nodiscard]] bool has(ecs::ComponentId id) const noexcept;
 
@@ -81,6 +85,7 @@ class AYLO_PLUGIN_CAPSULE_API ComponentValues {
     struct Entry {
         ecs::ComponentId id;              ///< The component.
         ecs::Presence presence;           ///< On which side of the network it exists.
+        bool replicated{false};           ///< The server sends it to the clients.
         ecs::storage::ByteColumn column;  ///< Its value, the column's only element.
     };
 
