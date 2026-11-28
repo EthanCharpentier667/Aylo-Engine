@@ -41,7 +41,7 @@ An `.actor` named there opens alone (see below).
 | **Scene** | The world seen from the editor's own camera, to look around, select and move things (see [The Scene panel](#the-scene-panel)). Docked with the Game panel |
 | **Hierarchy** | While editing, the tree of the scene's nodes. While playing, the entities of the game, by their parents |
 | **Inspector** | The components of what the Hierarchy selected, to change, add and remove |
-| **Assets** | An explorer for your `assets/` folder: the folders in a small tree on the left, the current folder as big icons on the right (one icon and color per kind of file). Double-click a folder to enter it, right-click to make a scene, an actor, a material, a folder or a [Behaviour](#behaviours), rename, delete, or drag a file. Click a `.material` to edit it in the Inspector (see [Materials](materials.md#in-the-editor)) |
+| **Assets** | An explorer for your `assets/` and `scripts/` folders: the folders in a small tree on the left, the current folder as big icons on the right (one icon and color per kind of file). Double-click a folder to enter it, right-click to make a scene, an actor, a material, a folder or a [Behaviour](#behaviours), rename, delete, or drag a file. Click a `.material` to edit it in the Inspector (see [Materials](materials.md#in-the-editor)). In `scripts/`, see [Scripts](#scripts) |
 | **Particles** | Your particle effects, to tune and preview |
 | **Console** | What your game writes: your scripts' `print`, the engine's errors and warnings |
 | **Stats** | The frame rate, the last frame times, and what the frame drew |
@@ -137,6 +137,21 @@ cannot be found, the status line says so. Name another editor in `project.luau`:
 ```luau
 engine.settings.editor.textEditor = "subl"  -- any command: it gets the file's path
 ```
+
+### Scripts
+
+The tree of the Assets panel has a second root, `scripts`: the Luau your game runs. Each file's icon says what it is
+to the game, so you know where the code that runs comes from:
+
+| Icon | Kind | What runs it |
+|---|---|---|
+| Play, yellow | Entry point | `project.luau` names it (`scripts.main`, `server`, `client`): it runs at start |
+| Puzzle piece, green | Behaviour | a file of `scripts/behaviours/`: its hooks run only on the entities that carry its component |
+| `</>`, blue | Module | runs when another file `require`s it |
+| Tags, grey | Type definitions | a `.d.luau`, read by your editor's luau-lsp, never run |
+
+Double-click a script to open it in your text editor; hover it to see its kind. Right-click a folder of `scripts/` to
+make a **New script** (a module, `return Module`), a folder or a Behaviour; rename and delete work as in `assets/`.
 
 ### Behaviours
 

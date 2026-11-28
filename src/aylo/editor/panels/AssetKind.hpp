@@ -8,6 +8,7 @@
 #pragma once
 
 #include <cstdint>
+#include <span>
 #include <string>
 #include <string_view>
 
@@ -18,10 +19,13 @@ namespace aylo::editor::panels {
 /// @brief The kinds of entries the Assets panel tells apart, each with its own icon and color.
 enum class AssetKind : std::uint8_t {
     kFolder,
-    kScene,    ///< A `.scene` capsule.
-    kActor,    ///< An `.actor` capsule.
-    kCapsule,  ///< Any other capsule file.
-    kScript,   ///< Luau.
+    kScene,      ///< A `.scene` capsule.
+    kActor,      ///< An `.actor` capsule.
+    kCapsule,    ///< Any other capsule file.
+    kScript,     ///< Luau: a module, required by another file.
+    kBehaviour,  ///< A file of `scripts/behaviours/`: Behaviours, run on the entities that carry them.
+    kEntry,      ///< An entry point `project.luau` names (`scripts.main`, `server`, `client`).
+    kTypes,      ///< Luau type definitions (`.d.luau`), for luau-lsp.
     kImage,
     kAudio,
     kFont,
@@ -36,6 +40,12 @@ enum class AssetKind : std::uint8_t {
 /// @return The kind of the entry named @p name (a file name or a path), from its extension; a folder is told by
 /// @p isFolder, not by its name.
 [[nodiscard]] AYLO_EDITOR_API AssetKind kindOf(std::string_view name, bool isFolder);
+
+/// @return The kind of the file @p relative of the game's `scripts/` (a path with forward slashes): a type definition
+/// file, a file of `behaviours/`, one of the @p entries (paths without their extension), or a module; a file that is
+/// not Luau is told by kindOf().
+[[nodiscard]] AYLO_EDITOR_API AssetKind scriptKindOf(std::string_view relative, std::span<const std::string> entries,
+                                                     bool isFolder);
 
 /// @return The glyph (a code point of the Nerd Font the editor embeds) that is the icon of @p kind; the folder's is the
 /// open one when @p open.

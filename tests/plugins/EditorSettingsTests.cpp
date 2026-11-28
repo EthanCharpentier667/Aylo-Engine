@@ -8,6 +8,7 @@
 #include <gtest/gtest.h>
 
 #include <string>
+#include <vector>
 
 #include "aylo/core/config/exceptions/ConfigExceptions.hpp"
 #include "core/config/Settings.hpp"
@@ -48,4 +49,16 @@ TEST(EditorSettings, RefusesAnUnknownKey) {
     settings.set("editor.sceen", std::string{"level"});
 
     EXPECT_ANY_THROW(static_cast<void>(aylo::editor::readEditorOptions(settings)));
+}
+
+TEST(EditorSettings, ReadsTheEntryPointsOfTheScripts) {
+    // The Assets panel marks the entry points among the scripts (#180): main by default, server and client if named.
+    EXPECT_EQ(aylo::editor::readEditorOptions(Settings{}).scriptEntries, std::vector<std::string>{"main"});
+    Settings settings;
+    settings.set("scripts.main", std::string{"shared/main"});
+    settings.set("scripts.server", std::string{"server/main"});
+    settings.set("scripts.client", std::string{"client/main"});
+
+    EXPECT_EQ(aylo::editor::readEditorOptions(settings).scriptEntries,
+              (std::vector<std::string>{"shared/main", "server/main", "client/main"}));
 }

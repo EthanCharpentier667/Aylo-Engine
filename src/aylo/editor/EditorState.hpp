@@ -42,6 +42,12 @@ class World;
 namespace aylo::editor {
 
 /// @brief What the Assets panel is asking for, through its popup.
+/// @brief The folder of the game the Assets panel browses.
+enum class AssetRoot : std::uint8_t {
+    kAssets,   ///< `assets/`: capsules, images, sounds...
+    kScripts,  ///< `scripts/`: the Luau the game runs.
+};
+
 enum class AssetAction : std::uint8_t {
     kNone,          ///< Nothing.
     kNewScene,      ///< A new `.scene` in the target folder.
@@ -49,6 +55,7 @@ enum class AssetAction : std::uint8_t {
     kNewFolder,     ///< A new folder in the target folder.
     kNewMaterial,   ///< A new `.material` in the target folder.
     kNewBehaviour,  ///< A new Behaviour in `scripts/behaviours/`, whatever the target folder.
+    kNewScript,     ///< A new Luau module in the target folder of `scripts/`.
     kRename,        ///< A new name for the target file or folder.
     kDelete,        ///< Removing the target file or folder.
 };
@@ -73,6 +80,9 @@ struct EditorOptions {
         textEditor;  ///< The command that opens a file (`editor.textEditor`); empty: shell::defaultTextEditor().
     bool captureOutput{true};  ///< Whether the Console shows the program's output (OutputCapture).
     std::string gameTitle;     ///< The game's window title (`window.title`), shown in the editor's own; empty: none.
+    /// The entry points `project.luau` names (`scripts.main`, `server`, `client`), as paths in `scripts/` without their
+    /// extension, for the Assets panel to tell them from the other scripts.
+    std::vector<std::string> scriptEntries;
     /// What survives from one App to the next (the child server, the Console, Play online); null: the plugin makes
     /// its own, which lives and dies with its App.
     std::shared_ptr<EditorSession> session;
@@ -103,6 +113,8 @@ struct AYLO_EDITOR_API EditorState {
     std::shared_ptr<gui::GuiInput> input;      ///< Feeds ImGui; shared with the window's event filter.
     play::PlaySession play;                    ///< Whether the game is being played, and what Stop puts back.
     std::filesystem::path assets;              ///< The game's assets (AssetDirectory); empty: none.
+    std::filesystem::path scripts;             ///< The game's scripts, next to its assets; empty: none.
+    std::vector<std::string> scriptEntries;    ///< The entry points (EditorOptions::scriptEntries).
 
     std::optional<plugins::capsule::CapsuleId> scene;  ///< The scene open; none: no scene is.
     float prefabZoom{2.0F};                  ///< How big the Actor tabs show the capsule: pixels per world unit.
@@ -113,11 +125,13 @@ struct AYLO_EDITOR_API EditorState {
     std::vector<plugins::capsule::CapsuleId> unsaved;       ///< The capsules changed since they were saved or opened.
     ecs::Entity selected;                                   ///< The entity the Inspector shows while playing.
 
-    AssetAction assetAction{AssetAction::kNone};  ///< What the Assets panel's popup asks for.
-    std::string assetTarget;                      ///< The folder or file of assetAction, in the assets.
-    bool openAssetPopup{false};                   ///< Whether the popup opens at the end of the panel.
-    std::string assetFolder;                      ///< The folder the Assets panel shows, in the assets; "": the root.
-    std::string assetSelected;                    ///< The file or folder selected in the Assets panel; "": none.
+    AssetAction assetAction{AssetAction::kNone};    ///< What the Assets panel's popup asks for.
+    std::string assetTarget;                        ///< The folder or file of assetAction, in assetActionRoot.
+    AssetRoot assetActionRoot{AssetRoot::kAssets};  ///< The folder assetTarget is in.
+    AssetRoot assetRoot{AssetRoot::kAssets};        ///< The folder the Assets panel browses.
+    bool openAssetPopup{false};                     ///< Whether the popup opens at the end of the panel.
+    std::string assetFolder;                        ///< The folder the Assets panel shows, in assetRoot; "": the root.
+    std::string assetSelected;                      ///< The file or folder selected in the Assets panel; "": none.
     std::string
         inspectedMaterial;        ///< The `.material` the Inspector shows, in the assets; "": none (a node or entity).
     bool materialUnsaved{false};  ///< Whether it changed since it was read or saved.
