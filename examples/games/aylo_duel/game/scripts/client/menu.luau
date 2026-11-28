@@ -5,29 +5,18 @@
 --   Menu --Quick join--> Joining --the server gives a seat--> Playing --Escape--> Menu
 --                           \--full, no server, Cancel--> Menu
 
-local assets = require("@scripts/client/assets")
 local Duel = require("@scripts/shared/arena")
 
 -- Run alone (the editor), there is no server to join: the game starts in Playing, and the menu never shows.
 engine.ecs.state("game.Screen", if Duel.networked then { "Menu", "Joining", "Playing" } else { "Playing", "Menu", "Joining" })
 
--- Every node of a screen, removed with it.
-engine.ecs.component("game.ScreenNode", { fields = {}, presence = "clientOnly" })
--- The loading wheel, turning: seconds since it appeared.
-engine.ecs.component("game.Spinner", { fields = { time = "f32" }, presence = "clientOnly" })
--- The line of the menu that says whether the server is there.
-engine.ecs.component("game.MenuStatus", { fields = {}, presence = "clientOnly" })
-
-local pixel = 3 -- view pixels per pixel of the UI pack's art
-local titlePanelSlice = { 35, 26, 35, 4 } -- its borders, in its pixels: the roof is the top one
-local buttonSlice = { 5, 6, 5, 6 }
+-- The screens are capsule files (assets/ui/menu.capsule and joining.capsule, their panel and buttons in panel.capsule
+-- and button.capsule): this module only spawns them and writes what changes while they show.
 local spinnerFrames, spinnerFrameSize, spinnerFrameDuration = 11, 16, 0.06
 
-local white = { 1, 1, 1, 1 }
-local gold = { 1, 0.85, 0.3, 1 }
-local pale = { 0.7, 0.75, 0.9, 1 }
-local warning = { 1, 0.55, 0.45, 1 }
-local fine = { 0.55, 1, 0.65, 1 }
+local pale = { x = 0.7, y = 0.75, z = 0.9, w = 1 }
+local warning = { x = 1, y = 0.55, z = 0.45, w = 1 }
+local fine = { x = 0.55, y = 1, z = 0.65, w = 1 }
 
 -- What the menu says when it opens again: why the last join failed, or nil.
 local notice: string? = nil
@@ -35,123 +24,24 @@ local notice: string? = nil
 local asked = false
 local looking = 0
 
---- Marks @p spec and all its children as part of the screen, so that leaving the screen removes them all.
-local function screenNode(spec)
-	spec.components = spec.components or {}
-	spec.components["game.ScreenNode"] = {}
-	for _, child in spec.children or {} do
-		screenNode(child)
-	end
-	return spec
+-- On entering Menu, and on entering Joining: the screen's capsule, over the arena.
+for value, path in Duel.screens do
+	engine.ecs.system(`game.Show{value}`, {
+		onEnter = { "game.Screen", value },
+		side = "client",
+		calls = { "aylo.capsule.spawn" },
+		run = function(ctx)
+			if value == "Joining" then
+				asked = false
+				looking = 0
+				notice = nil
+			end
+			engine.capsule.spawn(ctx, path)
+		end,
+	})
 end
 
---- A line of text, which lets the pointer through to what is under it.
-local function label(text: string, size: number, color, extra: { [string]: any }?)
-	local spec = {
-		style = { ignorePointer = true },
-		text = { text = text, font = assets.font, size = size, color = color, align = "center" },
-	}
-	for key, value in extra or {} do
-		spec[key] = value
-	end
-	return spec
-end
-
---- A button of the UI pack, its look switched by game.SkinButtons: the tint stays white.
-local function button(text: string, action: string)
-	return {
-		style = { width = "100%", height = 58, justify = "center", alignItems = "center" },
-		image = { texture = assets.ui.button.normal, slice = buttonSlice, sliceScale = pixel },
-		button = { action = action, normal = white, hovered = white, pressed = white },
-		children = { label(text, 20, white) },
-	}
-end
-
---- A whole screen: the arena dimmed, and in its middle the panel with a roof (a planet in it) holding @p children.
-local function screen(commands, children)
-	local panelWidth = 440
-	engine.ui.spawn(
-		commands,
-		screenNode({
-			style = { width = "100%", height = "100%", justify = "center", alignItems = "center" },
-			background = { color = { 0.01, 0.01, 0.04, 0.6 } },
-			children = {
-				{
-					style = {
-						width = panelWidth,
-						paddingTop = titlePanelSlice[2] * pixel + 10,
-						paddingX = 48,
-						paddingBottom = 34,
-						gap = 14,
-						alignItems = "center",
-					},
-					image = { texture = assets.ui.titlePanel, slice = titlePanelSlice, sliceScale = pixel },
-					children = {
-						{
-							style = {
-								position = "absolute",
-								top = 16,
-								left = panelWidth / 2 - 24,
-								width = 48,
-								height = 48,
-								ignorePointer = true,
-							},
-							image = { texture = assets.ui.planet },
-						},
-						table.unpack(children),
-					},
-				},
-				label("WASD or the arrows to move, click to fire, Escape to go back", 13, pale, {
-					style = { position = "absolute", bottom = 16, ignorePointer = true },
-				}),
-			},
-		})
-	)
-end
-
--- On entering Menu: the title, Quick join and Quit, and a line about the server.
-engine.ecs.system("game.ShowMenu", {
-	onEnter = { "game.Screen", "Menu" },
-	side = "client",
-	run = function(ctx)
-		screen(ctx.commands, {
-			label("AYLO DUEL", 44, gold),
-			label("One shot, one winner", 14, pale, { style = { marginBottom = 10, ignorePointer = true } }),
-			button("Quick join", "menu.quickJoin"),
-			button("Quit", "menu.quit"),
-			label(notice or "", 14, if notice then warning else pale, {
-				style = { marginTop = 6, ignorePointer = true },
-				components = { ["game.MenuStatus"] = {} },
-			}),
-		})
-	end,
-})
-
--- On entering Joining: a turning wheel while the server finds a seat, and Cancel.
-engine.ecs.system("game.ShowJoining", {
-	onEnter = { "game.Screen", "Joining" },
-	side = "client",
-	run = function(ctx)
-		asked = false
-		looking = 0
-		notice = nil
-		screen(ctx.commands, {
-			label("QUICK JOIN", 34, gold),
-			{
-				style = { width = spinnerFrameSize * pixel, height = spinnerFrameSize * pixel, marginY = 8, ignorePointer = true },
-				image = {
-					texture = assets.ui.loadingWheel,
-					source = { 0, 0, spinnerFrameSize, spinnerFrameSize },
-				},
-				components = { ["game.Spinner"] = {} },
-			},
-			label("Looking for a free seat...", 16, pale),
-			button("Cancel", "menu.cancel"),
-		})
-	end,
-})
-
--- On leaving Menu, and on leaving Joining: the screen's interface goes.
+-- On leaving Menu, and on leaving Joining: the screen goes, its root with all its nodes.
 for _, value in { "Menu", "Joining" } do
 	engine.ecs.system(`game.Hide{value}`, {
 		onExit = { "game.Screen", value },
@@ -166,17 +56,18 @@ for _, value in { "Menu", "Joining" } do
 	})
 end
 
--- Update: the buttons of the screens take the pack's look of their state: at rest, under the pointer or focused, held.
+-- Update: the buttons of the screens take the image of their state (game.ButtonSkin): at rest, under the pointer or
+-- focused, held.
 engine.ecs.system("game.SkinButtons", {
 	phase = "Update",
 	side = "client",
-	query = { read = { "aylo.UiInteraction" }, write = { "aylo.UiImage" }, with = { "aylo.UiButton", "game.ScreenNode" } },
+	query = { read = { "aylo.UiInteraction", "game.ButtonSkin" }, write = { "aylo.UiImage" } },
 	run = function(ctx)
-		for _, interaction, image in ctx.query do
+		for _, interaction, skin, image in ctx.query do
 			image.texture = if interaction.pressed
-				then assets.ui.button.pressed
-				elseif interaction.hovered or interaction.focused then assets.ui.button.hovered
-				else assets.ui.button.normal
+				then skin.pressed
+				elseif interaction.hovered or interaction.focused then skin.hovered
+				else skin.normal
 		end
 	end,
 })
@@ -196,7 +87,7 @@ engine.ecs.system("game.TurnSpinners", {
 	end,
 })
 
--- Update, in the menu: says whether the server answers, unless the menu opened on why the last join failed.
+-- Update, in the menu: says why the last join failed, or else whether the server answers.
 engine.ecs.system("game.ShowServerStatus", {
 	phase = "Update",
 	side = "client",
@@ -205,13 +96,15 @@ engine.ecs.system("game.ShowServerStatus", {
 	calls = { "aylo.replication.localClient" },
 	after = { "game.WatchServer" },
 	run = function(ctx)
-		if notice ~= nil then
-			return
-		end
 		local connected = engine.net.localClient(ctx).connected
 		for _, text in ctx.query do
-			text.text = if connected then "Server online" else "Looking for the server..."
-			text.color = if connected then { x = fine[1], y = fine[2], z = fine[3], w = 1 } else { x = pale[1], y = pale[2], z = pale[3], w = 1 }
+			if notice ~= nil then
+				text.text = notice
+				text.color = warning
+			else
+				text.text = if connected then "Server online" else "Looking for the server..."
+				text.color = if connected then fine else pale
+			end
 		end
 	end,
 })

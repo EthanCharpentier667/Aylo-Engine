@@ -27,6 +27,7 @@ local Duel = {
 	misfire = "actors/misfire.actor",
 	explosion = "actors/explosion.actor",
 	planets = { "actors/planet_ring.actor", "actors/planet_big.actor" },
+	screens = { Menu = "ui/menu.capsule", Joining = "ui/joining.capsule" }, -- the menu's, by game.Screen
 
 	-- Whether players join through the network. Run alone (`aylo-editor`), the server and the client are one
 	-- process with no network: there are no players, and the scripts that need them stay out.

@@ -1,0 +1,42 @@
+[capsule format=1]
+
+# The main menu, over the arena dimmed: the title, Quick join, Quit and a line about the server (scripts/client/menu.luau
+# spawns it on entering the Menu screen and writes the line).
+[node path="."]
+game.ScreenNode = {}
+aylo.UiNode = { width = "100%", height = "100%", justify = "center", alignItems = "center" }
+aylo.UiBackground = { color = (0.01, 0.01, 0.04, 0.6) }
+
+[node path="Panel" instance="ui/panel.capsule" side=client]
+
+[node path="Panel/Title" side=client]
+aylo.UiNode = { ignorePointer = true }
+aylo.UiText = { text = "AYLO DUEL", font = "fonts/orbitron.json", size = 44, color = (1, 0.85, 0.3, 1), align = "center" }
+
+[node path="Panel/Tagline" side=client]
+aylo.UiNode = { marginBottom = 10, ignorePointer = true }
+aylo.UiText = { text = "One shot, one winner", font = "fonts/orbitron.json", size = 14, color = (0.7, 0.75, 0.9, 1), align = "center" }
+
+[node path="Panel/QuickJoin" instance="ui/button.capsule" side=client]
+aylo.UiButton = { action = "menu.quickJoin" }
+
+[node path="Panel/QuickJoin/Label" side=client]
+aylo.UiNode = { ignorePointer = true }
+aylo.UiText = { text = "Quick join", font = "fonts/orbitron.json", size = 20, align = "center" }
+
+[node path="Panel/Quit" instance="ui/button.capsule" side=client]
+aylo.UiButton = { action = "menu.quit" }
+
+[node path="Panel/Quit/Label" side=client]
+aylo.UiNode = { ignorePointer = true }
+aylo.UiText = { text = "Quit", font = "fonts/orbitron.json", size = 20, align = "center" }
+
+# Whether the server answers, or why the last join failed.
+[node path="Panel/Status" side=client]
+game.MenuStatus = {}
+aylo.UiNode = { marginTop = 6, ignorePointer = true }
+aylo.UiText = { font = "fonts/orbitron.json", size = 14, color = (0.7, 0.75, 0.9, 1), align = "center" }
+
+[node path="Help" side=client]
+aylo.UiNode = { position = "absolute", bottom = 16, ignorePointer = true }
+aylo.UiText = { text = "WASD or the arrows to move, click to fire, Escape to go back", font = "fonts/orbitron.json", size = 13, color = (0.7, 0.75, 0.9, 1), align = "center" }

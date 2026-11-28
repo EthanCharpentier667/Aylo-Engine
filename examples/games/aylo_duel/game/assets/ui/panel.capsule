@@ -1,0 +1,12 @@
+[capsule format=1]
+
+# The panel of the menu's screens, from the UI pack: a roof with a planet in it, its borders kept at three view pixels
+# per pixel of the art (a nine-slice). Its content is the children of the node that instances it (ui/menu.capsule).
+[node path="."]
+aylo.UiNode = { width = 440, paddingTop = 88, paddingLeft = 48, paddingRight = 48, paddingBottom = 34, rowGap = 14, columnGap = 14, alignItems = "center" }
+aylo.UiImage = { texture = "ui/title_panel.png", slice = (35, 26, 35, 4), sliceScale = 3 }
+
+# The planet in the roof, in the middle of the panel's width.
+[node path="Planet" side=client]
+aylo.UiNode = { position = "absolute", top = 16, left = 196, width = 48, height = 48, ignorePointer = true }
+aylo.UiImage = { texture = "ui/planet.png" }

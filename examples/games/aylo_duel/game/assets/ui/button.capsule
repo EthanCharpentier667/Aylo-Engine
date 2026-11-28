@@ -1,0 +1,10 @@
+[capsule format=1]
+
+# A button of the UI pack, as wide as the panel. Its image follows its state (game.ButtonSkin, scripts/client/menu.luau),
+# so its colours stay white. The node that instances it gives its action and its text, as a child.
+[node path="."]
+aylo.UiNode = { width = "100%", height = 58, justify = "center", alignItems = "center" }
+aylo.UiImage = { texture = "ui/button_normal.png", slice = (5, 6, 5, 6), sliceScale = 3 }
+aylo.UiButton = { normalColor = (1, 1, 1, 1), hoveredColor = (1, 1, 1, 1), pressedColor = (1, 1, 1, 1) }
+aylo.UiInteraction = {}
+game.ButtonSkin = { normal = "ui/button_normal.png", hovered = "ui/button_hover.png", pressed = "ui/button_clicked.png" }
