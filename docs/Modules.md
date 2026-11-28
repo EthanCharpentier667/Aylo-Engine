@@ -214,8 +214,8 @@ architecture rules, and this file keeps the detail, which changes with every fea
     - `plugins/AssetDirectory.hpp` — the `AssetDirectory` resource the `Engine` inserts: `<game>/assets`, where every
       asset path starts and which it cannot leave (`core::asset::resolveAssetPath()`).
     - `plugins/AssetLoaders.hpp` — the `AssetLoaders` resource: who loads each kind of asset file, by extension. The
-      mesh (`.gltf`, `.glb`, `.fbx`, `.obj`), shader (`.material`), graphics (images) and audio (`.wav`, `.mp3`,
-      `.ogg`, `.flac`) plugins add theirs when they are built; the capsule plugin loads through it the assets its files name, knowing none of them.
+      mesh (`.gltf`, `.glb`, `.fbx`, `.obj`), shader (`.material`), graphics (images), sprite (`.atlas`) and audio
+      (`.wav`, `.mp3`, `.ogg`, `.flac`) plugins add theirs when they are built; the capsule plugin loads through it the assets its files name, knowing none of them.
 - `src/aylo/tools/sign/` — `aylo-sign`: the keys and signatures of the game plugins (`docs/Plugins.md`).
 - `src/aylo/interop/` — header-only targets, one per graphics API (`interop-vulkan`,
   `aylo::interop::vulkan`): the interfaces a platform implements to serve the renderers of that API

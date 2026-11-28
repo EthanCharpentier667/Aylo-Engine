@@ -125,7 +125,7 @@ the start, naming the file, line and column.
 **Assets.** A file names its assets by path (`texture = "sprites/bg.png"`); the reader turns each into its id and
 `Capsules` remembers the path. After `loadAll()`, and after each hot reload, `loadNamedAssets()` hands every remembered
 path to the `AssetLoaders` resource (`plugins/AssetLoaders.hpp`), which the asset plugins fill by extension: a model,
-a material, an image or a sound a capsule names is loaded as its setup form would, and draws without a script listing it. The
+a material, an image, an atlas file or a sound a capsule names is loaded as its setup form would, and draws without a script listing it. The
 capsule plugin knows no asset plugin. A path no plugin loads is skipped (a server has no models); one that fails is
 reported on the error output and skipped. Loading an asset twice does nothing more.
 
