@@ -9,6 +9,7 @@
 
 #include <array>
 #include <exception>
+#include <filesystem>
 #include <iostream>
 #include <optional>
 #include <span>
@@ -26,6 +27,7 @@
 #include "aylo/ecs/system/ResourceParam.hpp"
 #include "aylo/ecs/system/Side.hpp"
 #include "plugins/AssetDirectory.hpp"
+#include "plugins/AssetLoaders.hpp"
 #include "plugins/graphics/GraphicsPlugin.hpp"
 #include "plugins/graphics/SpriteQueue.hpp"
 #include "plugins/graphics/TextureAssets.hpp"
@@ -104,6 +106,11 @@ void TextPlugin::build(ecs::App& app) {
     ecs::Resources& resources = app.getWorld().getResources();
     resources.insertIfAbsent<FontAssets>();
     resources.getMut<FontAssets>()->setSource(assetSourceOf(resources));
+    // A font a capsule names is loaded as engine.assets.font would (AssetLoaders.hpp). A capsule's .json is a font's:
+    // an atlas it names is a .atlas file, which the sprite plugin loads.
+    addAssetLoader(resources, {".json"}, [&resources](const std::filesystem::path& path) {
+        static_cast<void>(resources.requireMut<FontAssets>()->load(path));
+    });
     resources.insertIfAbsent<graphics::TextureAssets>();
     resources.insertIfAbsent<graphics::SpriteQueue>();
     static_cast<void>(app.getWorld().getComponents().registerType<TextRenderer>());
