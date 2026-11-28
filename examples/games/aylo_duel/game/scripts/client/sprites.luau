@@ -1,43 +1,7 @@
--- The look of what the server spawns: the ships and the lasers fly animated where the server puts them, and the loser
--- explodes. The server spawns them from their actors on its side only, so their look is given here, on the clients.
+-- The look of what the server spawns follows it: the ships, the lasers and the misfires are drawn and sound from their
+-- actors (assets/actors/), which every client spawns with them, where the server says they are. The loser explodes.
 
-local assets = require("@scripts/client/assets")
 local Duel = require("@scripts/shared/arena")
-
--- PostUpdate: gives the ships their sprite, animated. PostUpdate also runs while the editor edits, so a ship's actor
--- opened alone shows its look.
-engine.ecs.system("game.DressShips", {
-	phase = "PostUpdate",
-	side = "client",
-	query = { read = { "game.Ship" }, without = { "aylo.SpriteRenderer" } },
-	run = function(ctx)
-		for entity, ship in ctx.query do
-			ctx.commands:add(entity, "aylo.Transform2D", { position = ship.position })
-			ctx.commands:add(entity, "aylo.SpriteRenderer", { layer = 1 })
-			ctx.commands:add(entity, "aylo.SpriteAnimator", {
-				atlas = if ship.player == 0 then assets.leftShip else assets.rightShip,
-				animation = "fly",
-			})
-		end
-	end,
-})
-
--- PostUpdate: gives the lasers their sprite, flying away from their shooter (the editor shows it too).
-engine.ecs.system("game.DressLasers", {
-	phase = "PostUpdate",
-	side = "client",
-	query = { read = { "game.Laser" }, without = { "aylo.SpriteRenderer" } },
-	run = function(ctx)
-		for entity, laser in ctx.query do
-			ctx.commands:add(entity, "aylo.Transform2D", { position = laser.position })
-			ctx.commands:add(entity, "aylo.SpriteRenderer", { layer = 2 })
-			ctx.commands:add(entity, "aylo.SpriteAnimator", {
-				atlas = assets.laser,
-				animation = if laser.shooter == 0 then "right" else "left",
-			})
-		end
-	end,
-})
 
 -- Update: the ships' sprites follow the positions the server sends.
 engine.ecs.system("game.FollowShips", {
@@ -61,6 +25,20 @@ engine.ecs.system("game.FollowLasers", {
 	run = function(ctx)
 		for _, laser, transform in ctx.query do
 			transform.position = laser.position
+		end
+	end,
+})
+
+-- Update: and the misfires', so that their sound is heard where they were fired.
+engine.ecs.system("game.FollowMisfires", {
+	phase = "Update",
+	side = "client",
+	query = { read = { "game.Misfire" }, write = { "aylo.Transform2D" } },
+	after = { "game.FollowLasers" },
+	before = { "game.BackgroundPlanet.onUpdate" },
+	run = function(ctx)
+		for _, misfire, transform in ctx.query do
+			transform.position = misfire.position
 		end
 	end,
 })

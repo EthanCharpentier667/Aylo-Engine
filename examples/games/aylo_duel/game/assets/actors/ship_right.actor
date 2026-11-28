@@ -6,3 +6,5 @@ game.Ship = { position = (720, 300), player = 1 }
 aylo.Transform2D = { position = (720, 300) }
 aylo.Collider = { size = (48, 48), layer = 8, mask = 3 }
 aylo.RigidBody = { type = "kinematic" }
+aylo.SpriteRenderer = { layer = 1 }
+aylo.SpriteAnimator = { atlas = "atlases/ship_right.atlas", animation = "fly" }

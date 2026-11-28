@@ -1,43 +1,22 @@
--- A sound at each shot: the laser's, or the misfire's, a little different each time. The music is a node of the arena
--- (assets/scenes/arena.scene).
-
-local assets = require("@scripts/client/assets")
+-- Each shot sounds a little different: the laser's and the misfire's sound come with their actors
+-- (assets/actors/laser.actor and misfire.actor), and this draws their pitch and volume at random. The music is a node
+-- of the arena (assets/scenes/arena.scene).
 
 local shotPitchMin, shotPitchMax = 0.9, 1.1
 local shotVolumeMin, shotVolumeMax = 0.8, 1.0
 
---- Plays @p sound at @p position, its pitch and volume drawn at random.
-local function playShot(ctx, sound, position)
-	engine.audio.play(ctx, sound, {
-		volume = math.lerp(shotVolumeMin, shotVolumeMax, math.random()),
-		pitch = math.lerp(shotPitchMin, shotPitchMax, math.random()),
-		position = position,
+-- Update: a shot's sound gets its own pitch and volume as soon as it starts.
+for index, shot in { "game.Laser", "game.Misfire" } do
+	engine.ecs.system(`game.Vary{string.sub(shot, 6)}Sounds`, {
+		phase = "Update",
+		side = "client",
+		query = { write = { "aylo.AudioSource" }, with = { shot }, added = { "aylo.AudioSource" } },
+		after = if index == 2 then { "game.VaryLaserSounds" } else nil,
+		run = function(ctx)
+			for _, sound in ctx.query do
+				sound.volume = math.lerp(shotVolumeMin, shotVolumeMax, math.random())
+				sound.pitch = math.lerp(shotPitchMin, shotPitchMax, math.random())
+			end
+		end,
 	})
 end
-
--- Update: each laser the server spawned sounds where it was fired.
-engine.ecs.system("game.PlayLasers", {
-	phase = "Update",
-	side = "client",
-	query = { read = { "game.Laser" }, added = { "game.Laser" } },
-	calls = { "aylo.audio.playSound" },
-	run = function(ctx)
-		for _, laser in ctx.query do
-			playShot(ctx, assets.laserSound, laser.position)
-		end
-	end,
-})
-
--- Update: so does each misfire.
-engine.ecs.system("game.PlayMisfires", {
-	phase = "Update",
-	side = "client",
-	query = { read = { "game.Misfire" }, added = { "game.Misfire" } },
-	after = { "game.PlayLasers" },
-	calls = { "aylo.audio.playSound" },
-	run = function(ctx)
-		for _, misfire in ctx.query do
-			playShot(ctx, assets.misfireSound, misfire.position)
-		end
-	end,
-})
