@@ -12,6 +12,10 @@ an error that names the form and the part of it (`engine.assets.atlas: frame 2: 
 Paths are relative to the game's `assets/` folder and cannot leave it. Each form returns the asset's id, to keep in a
 table and use in components and calls.
 
+You do not need a form to use an asset: a path you write where an asset id goes is loaded too (see
+[Naming an asset by its path](#naming-an-asset-by-its-path)). A form is for an asset you want loaded when the game
+starts, or one that needs options (`stream`, `linear`, an atlas's frames).
+
 ```luau
 Game.assets = {
 	ship = engine.assets.atlas({
@@ -89,6 +93,31 @@ ctx.commands:add(entity, "aylo.SpriteAnimator", { atlas = assets.cyclist, animat
 ```
 
 An animation that plays a finite number of times stops on its last frame: `playing` turns `false`.
+
+### Naming an asset by its path
+
+Everywhere an asset id goes, a component's field, an engine call's argument or a default of your component, you can
+write the asset's path instead, as a [capsule file](capsules.md) does:
+
+```luau
+ctx.commands:add(entity, "aylo.TextRenderer", { text = "Player 1 wins!", font = "fonts/orbitron.json" })
+engine.audio.play(ctx, "laser.mp3")
+```
+
+The engine loads the file the first time a script names it, at the end of that frame, as its form would with no
+options: the text shows and the sound plays from the next frame. Naming it again costs nothing more. The path gives
+the same id as the form, so mixing both is fine.
+
+| What you write | What happens |
+|---|---|
+| A path of a kind a plugin loads (`.png`, `.ogg`, `.json`, `.atlas`...) | loaded once, at the end of the frame |
+| A name, not a file (`"game.ship"`, an atlas a form made) | nothing to load: the id of that name |
+| A path to a file that cannot be loaded | `[Engine] Cannot load 'x', which a script names: ...` on the error output, once; the game goes on without it |
+
+!!! note "When a form is still worth it"
+    A path loads on its first use, so the first frame that uses it can miss it, and loading a big file there can
+    hitch. Load what must be there at once (the music, a big atlas) with its form at start; a path is for the rest.
+    A sound that needs `stream = true` keeps its form: a path loads with the defaults.
 
 ## `engine.input`
 
