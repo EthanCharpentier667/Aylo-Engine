@@ -153,6 +153,7 @@ void drawViewMenuItems(EditorState& state) {
     ImGui::MenuItem("Hierarchy", nullptr, &state.showHierarchy);
     ImGui::MenuItem("Inspector", nullptr, &state.showInspector);
     ImGui::MenuItem("Assets", nullptr, &state.showAssets);
+    ImGui::MenuItem("Behaviours", nullptr, &state.showBehaviours);
     ImGui::MenuItem("Stats", nullptr, &state.showStats);
     ImGui::MenuItem("Particles", nullptr, &state.showParticles);
     ImGui::MenuItem("Console", nullptr, &state.showConsole);
@@ -163,7 +164,7 @@ void drawViewMenuItems(EditorState& state) {
         state.resetLayout = true;
         state.showGame = state.showScene = state.showHierarchy = state.showInspector = state.showAssets =
             state.showStats = true;
-        state.showParticles = state.showConsole = state.showPlugins = state.showServer = true;
+        state.showParticles = state.showConsole = state.showPlugins = state.showServer = state.showBehaviours = true;
     }
 }
 

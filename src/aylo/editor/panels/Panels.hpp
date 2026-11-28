@@ -102,4 +102,10 @@ AYLO_EDITOR_API void drawStatsPanel(EditorState& state, const contract::renderer
 /// or game), the plugins it requires and those that require it, a filter, and the plugins registered but not added.
 AYLO_EDITOR_API void drawPluginsPanel(EditorState& state);
 
+/// @brief The Behaviours panel: every Behaviour of the game (behaviour::catalogBehaviours()), with its hooks, a button
+/// that opens its script, the capsule nodes that carry it (a click opens the capsule on the node), and how many
+/// entities have it now (while playing, a button shows them in the Hierarchy). A Behaviour runs only on the entities
+/// that carry it, so this is where the code that runs comes from.
+AYLO_EDITOR_API void drawBehavioursPanel(EditorState& state);
+
 }  // namespace aylo::editor::panels
