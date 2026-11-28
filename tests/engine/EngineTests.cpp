@@ -19,6 +19,7 @@
 #include <iterator>
 #include <limits>
 #include <span>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <system_error>
@@ -31,6 +32,7 @@
 #include "aylo/ecs/app/App.hpp"
 #include "aylo/ecs/app/AppExit.hpp"
 #include "aylo/ecs/resource/ResourceTraits.hpp"
+#include "aylo/ecs/resource/Resources.hpp"
 #include "aylo/ecs/schedule/Phase.hpp"
 #include "aylo/ecs/schedule/RunMode.hpp"
 #include "aylo/ecs/system/EventWriter.hpp"
@@ -43,6 +45,7 @@
 #include "aylo/replication/server/ServerPlugin.hpp"
 #include "core/system/ExecutablePath.hpp"
 #include "plugins/AssetDirectory.hpp"
+#include "plugins/AssetLoaders.hpp"
 #include "plugins/capsule/LoadedCapsule.hpp"
 
 namespace aylo::test::engine {
@@ -330,6 +333,50 @@ TEST(Engine, ReadsTheGamesCapsuleFilesAfterItsScripts) {
     std::int32_t points = 0;
     std::memcpy(&points, value.data(), sizeof(points));
     EXPECT_EQ(points, 3);
+}
+
+TEST(Engine, LoadsTheAssetsScriptsNameByPath) {
+    // A path a script writes where an asset id goes is loaded as a capsule's is (#169): a component's default, a field
+    // of a spawn, a field written through a view. Each once, and one that fails is reported without stopping the game.
+    const GameDirectory game{"aylo-engine-named-assets"};
+    game.write("scripts/main.luau", R"(
+        engine.ecs.component("game.Look", {
+            fields = { texture = "assetId", icon = "assetId" },
+            defaults = { icon = "ui/icon.png" },
+        })
+        engine.ecs.system("game.Spawn", {
+            phase = "Startup",
+            query = {},
+            run = function(ctx)
+                ctx.commands:spawn({ ["game.Look"] = { texture = "ships/left.png" } })
+                ctx.commands:spawn({ ["game.Look"] = { texture = "broken.bad" } })
+            end,
+        })
+        engine.ecs.system("game.Dress", {
+            phase = "Update",
+            query = { write = { "game.Look" } },
+            run = function(ctx)
+                for _, look in ctx.query do
+                    look.icon = "ui/icon.png"
+                    look.texture = "ships/right.png"
+                end
+            end,
+        })
+    )");
+    std::vector<std::string> loaded;
+    EngineConfig config = serverConfig(game);
+    config.setup = [&loaded](Engine& engine) {
+        aylo::ecs::Resources& resources = engine.app().getWorld().getResources();
+        aylo::plugins::addAssetLoader(resources, {".png"}, [&loaded](const std::filesystem::path& path) {
+            loaded.push_back(path.generic_string());
+        });
+        aylo::plugins::addAssetLoader(resources, {".bad"},
+                                      [](const std::filesystem::path&) { throw std::runtime_error{"not an image"}; });
+    };
+    Engine engine{std::move(config)};
+
+    EXPECT_EQ(engine.run(3), 0);
+    EXPECT_EQ(loaded, (std::vector<std::string>{"ui/icon.png", "ships/left.png", "ships/right.png"}));
 }
 
 TEST(Engine, RefusesAPluginNoLibraryRegisters) {

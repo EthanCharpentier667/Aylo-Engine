@@ -13,6 +13,7 @@
 #include "aylo/luau/Table.hpp"
 #include "aylo/scripting/Export.hpp"
 #include "aylo/scripting/Result.hpp"
+#include "aylo/scripting/asset/NamedAssets.hpp"
 
 namespace aylo::scripting::component {
 /// @brief Reads the table a script gives to `engine.ecs.component` as a ComponentDeclaration.
@@ -25,10 +26,11 @@ namespace aylo::scripting::component {
 /// name, since a Luau table has no order.
 /// @param name Name of the component, "game.Shield".
 /// @param spec The declaration table.
+/// @param named Where the asset paths of the defaults are recorded (view::writeField()); null: nowhere.
 /// @return The declaration, or an ErrorKind::kInvalidDeclaration error naming the component and what is wrong, or an
 /// ErrorKind::kInvalidValue one when a default does not fit its field.
-[[nodiscard]] AYLO_SCRIPTING_API Result<ComponentDeclaration> readComponentDeclaration(std::string name,
-                                                                                       const luau::Table& spec);
+[[nodiscard]] AYLO_SCRIPTING_API Result<ComponentDeclaration> readComponentDeclaration(
+    std::string name, const luau::Table& spec, asset::NamedAssets* named = nullptr);
 
 /// @brief Reads the table a script gives to `engine.ecs.event` as a declaration: a `fields` table, as a component's,
 /// and nothing else. An event is local to one machine (both sides have its type, none sends it to the other), so it

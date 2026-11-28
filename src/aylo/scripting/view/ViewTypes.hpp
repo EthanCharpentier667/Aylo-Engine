@@ -10,6 +10,7 @@
 #include "aylo/luau/Result.hpp"
 #include "aylo/luau/Runtime.hpp"
 #include "aylo/scripting/Export.hpp"
+#include "aylo/scripting/asset/NamedAssets.hpp"
 
 namespace aylo::scripting::view {
 /// @brief Registers what scripts use to reach ECS data in a runtime: the `Entity`, `AssetId` and `ComponentView`
@@ -24,5 +25,6 @@ namespace aylo::scripting::view {
 /// (the views build tables in it).
 /// @return Nothing, or the `luau::ErrorKind::kLimitExceeded` error if @p runtime has no userdata tag left.
 /// @throws luau::exceptions::InvalidOperation If one of the types is already registered in @p runtime.
-[[nodiscard]] AYLO_SCRIPTING_API luau::Result<> registerViewTypes(luau::Runtime& runtime);
+[[nodiscard]] AYLO_SCRIPTING_API luau::Result<> registerViewTypes(luau::Runtime& runtime,
+                                                                  asset::NamedAssets* named = nullptr);
 }  // namespace aylo::scripting::view

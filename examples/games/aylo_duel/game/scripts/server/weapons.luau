@@ -15,8 +15,9 @@ function Weapons.fire(ctx, player: number, position)
 		engine.capsule.spawn(ctx, Duel.misfire, { ["game.Misfire"] = { position = muzzle, shooter = player } })
 		return
 	end
-	-- The laser's actor (assets/actors/laser.actor) is the body; the shot gives where, who, which way and whom it hits.
-	engine.capsule.spawn(ctx, Duel.laser, {
+	-- The laser's actor (assets/actors/laser.actor) is the body, its look and its sound; the shot gives where, who,
+	-- which way and whom it hits.
+	engine.capsule.spawn(ctx, Duel.lasers[player], {
 		["game.Laser"] = { position = muzzle, shooter = player },
 		["aylo.Transform2D"] = { position = muzzle },
 		["aylo.Collider"] = { mask = bit32.bor(Duel.obstacleLayer, Duel.shipLayerOf(1 - player)) },

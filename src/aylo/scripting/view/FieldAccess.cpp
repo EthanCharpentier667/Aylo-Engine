@@ -41,6 +41,7 @@
 #include "aylo/scripting/Error.hpp"
 #include "aylo/scripting/ErrorKind.hpp"
 #include "aylo/scripting/Result.hpp"
+#include "aylo/scripting/asset/NamedAssets.hpp"
 #include "core/asset/AssetId.hpp"
 
 namespace aylo::scripting::view {
@@ -259,14 +260,18 @@ Result<void> writeVector(const std::string_view component, const ecs::FieldInfo&
     }
 }
 
-/// @brief Writes an asset id field from a path, which is hashed, or from an `AssetId`.
+/// @brief Writes an asset id field from a path, which is hashed (and recorded in @p named, when given), or from an
+/// `AssetId`.
 Result<void> writeAssetId(const std::string_view component, const ecs::FieldInfo& field,
-                          const std::span<std::byte> bytes, const luau::Value& value) {
+                          const std::span<std::byte> bytes, const luau::Value& value, asset::NamedAssets* named) {
     if (const auto* path = value.tryAs<std::string>(); path != nullptr) {
         if (path->empty()) {
             return tl::unexpected{fieldError(component, field, "an asset path cannot be empty")};
         }
         store<std::uint64_t>(bytes, field, core::asset::AssetId::fromPath(std::filesystem::path{*path}).value);
+        if (named != nullptr) {
+            named->name(*path);
+        }
         return {};
     }
     const auto* userdata = value.tryAs<luau::Userdata>();
@@ -539,7 +544,7 @@ Result<luau::Value> readScalar(const std::string_view component, const ecs::Fiel
 }
 
 Result<void> writeScalar(const std::string_view component, const ecs::FieldInfo& field,
-                         const std::span<std::byte> bytes, const luau::Value& value) {
+                         const std::span<std::byte> bytes, const luau::Value& value, asset::NamedAssets* named) {
     if (auto supported = checkSupported(component, field, bytes); !supported) {
         return supported;
     }
@@ -568,7 +573,7 @@ Result<void> writeScalar(const std::string_view component, const ecs::FieldInfo&
         return writeVector(component, field, bytes, value);
     }
     if (field.type == ecs::FieldType::kAssetId) {
-        return writeAssetId(component, field, bytes, value);
+        return writeAssetId(component, field, bytes, value, named);
     }
     if (field.type == ecs::FieldType::kString) {
         const auto* text = value.tryAs<std::string>();
@@ -642,7 +647,7 @@ Result<luau::Value> readList(const std::string_view component, const ecs::FieldI
 
 /// @brief Replaces the values of a list field by those of a Luau array, each checked as a field of its type.
 Result<void> writeList(const std::string_view component, const ecs::FieldInfo& field, const std::span<std::byte> bytes,
-                       const luau::Value& value) {
+                       const luau::Value& value, asset::NamedAssets* named) {
     if (auto checked = checkList(component, field, bytes); !checked) {
         return checked;
     }
@@ -670,7 +675,7 @@ Result<void> writeList(const std::string_view component, const ecs::FieldInfo& f
         if (!item || item->tryAs<luau::Value::Nil>() != nullptr) {
             return tl::unexpected{fieldError(component, field, "expected an array, without holes or named keys")};
         }
-        if (auto written = writeScalar(component, element, std::span{values}.subspan(index * size, size), *item);
+        if (auto written = writeScalar(component, element, std::span{values}.subspan(index * size, size), *item, named);
             !written) {
             return written;
         }
@@ -687,9 +692,9 @@ Result<luau::Value> readField(const std::string_view component, const ecs::Field
 }
 
 Result<void> writeField(const std::string_view component, const ecs::FieldInfo& field, const std::span<std::byte> bytes,
-                        const luau::Value& value) {
-    return field.list != nullptr ? writeList(component, field, bytes, value)
-                                 : writeScalar(component, field, bytes, value);
+                        const luau::Value& value, asset::NamedAssets* named) {
+    return field.list != nullptr ? writeList(component, field, bytes, value, named)
+                                 : writeScalar(component, field, bytes, value, named);
 }
 
 Result<void> pushField(const std::string_view component, const ecs::FieldInfo& field,
@@ -735,7 +740,7 @@ Result<void> pushField(const std::string_view component, const ecs::FieldInfo& f
 }
 
 Result<void> writeFieldFrom(const std::string_view component, const ecs::FieldInfo& field,
-                            const std::span<std::byte> bytes, const luau::StackSlot& value) {
+                            const std::span<std::byte> bytes, const luau::StackSlot& value, asset::NamedAssets* named) {
     if (field.list == nullptr &&
         (isPlainNumber(field.type) || field.type == ecs::FieldType::kI64 || field.type == ecs::FieldType::kU64)) {
         if (const auto number = value.number()) {
@@ -756,7 +761,7 @@ Result<void> writeFieldFrom(const std::string_view component, const ecs::FieldIn
     }
     if (field.list != nullptr || !isVector(field.type) || !value.isTable()) {
         // Anything else, and every wrong type, goes the general way: same values, same messages.
-        return writeField(component, field, bytes, value.value());
+        return writeField(component, field, bytes, value.value(), named);
     }
     if (auto supported = checkSupported(component, field, bytes); !supported) {
         return supported;
@@ -770,7 +775,8 @@ Result<void> writeFieldFrom(const std::string_view component, const ecs::FieldIn
     });
 }
 
-Result<void> fillFromTable(const ecs::TypeInfo& type, const luau::Table& table, const std::span<std::byte> bytes) {
+Result<void> fillFromTable(const ecs::TypeInfo& type, const luau::Table& table, const std::span<std::byte> bytes,
+                           asset::NamedAssets* named) {
     auto entries = table.entries();
     if (!entries) {
         return fail(ErrorKind::kInvalidValue,
@@ -786,7 +792,7 @@ Result<void> fillFromTable(const ecs::TypeInfo& type, const luau::Table& table, 
         if (field == type.fields.end()) {
             return fail(ErrorKind::kInvalidValue, std::format("component '{}' has no field '{}'", type.name, *name));
         }
-        if (auto written = writeField(type.name, *field, bytes, value); !written) {
+        if (auto written = writeField(type.name, *field, bytes, value, named); !written) {
             return written;
         }
     }

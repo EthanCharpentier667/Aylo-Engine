@@ -42,6 +42,11 @@ ecs::Presence ComponentValues::getPresence(std::size_t index) const noexcept {
     return std::next(_entries.begin(), static_cast<std::ptrdiff_t>(index))->presence;
 }
 
+bool ComponentValues::isReplicated(std::size_t index) const noexcept {
+    assert(index < _entries.size());
+    return std::next(_entries.begin(), static_cast<std::ptrdiff_t>(index))->replicated;
+}
+
 bool ComponentValues::has(ecs::ComponentId id) const noexcept { return find(id) != nullptr; }
 
 std::span<const std::byte> ComponentValues::get(ecs::ComponentId id) const noexcept {
@@ -94,6 +99,9 @@ void ComponentValues::store(const ecs::ComponentInfo& info, ecs::storage::ByteCo
         found->column = std::move(column);  // the old value is destroyed
         return;
     }
-    _entries.push_back(Entry{.id = info.type.id, .presence = info.type.presence, .column = std::move(column)});
+    _entries.push_back(Entry{.id = info.type.id,
+                             .presence = info.type.presence,
+                             .replicated = info.type.replication != ecs::ReplicationMode::kNone,
+                             .column = std::move(column)});
 }
 }  // namespace aylo::plugins::capsule

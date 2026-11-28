@@ -35,8 +35,9 @@ The models (`.gltf`, `.glb`, `.fbx`, `.obj`), materials (`.material`), images (`
 `.flac`) a capsule names are loaded when its file is read, and again when
 you save it: `aylo.MeshRenderer = { mesh = "models/statue.obj" }` draws without an `engine.assets.mesh` in a script,
 and `aylo.AudioSource = { sound = "sfx/engine.ogg", loop = true }` plays without an `engine.assets.sound`. An asset
-loads with the defaults of its setup form: an image pixelated and not repeated, a sound decoded once. For other
-options (a smooth image, a music that streams), load it in a script with them first: the first load wins. A file that
+loads with the defaults of its setup form: an image pixelated and not repeated, a sound decoded once. A music that
+streams says so in its [import file](setup-forms.md#import-files), `maint.ogg.import`, and then streams wherever it is
+named. For other options (a smooth image), load it in a script with them first: the first load wins. A file that
 cannot be loaded is reported on the output, and the game goes on.
 
 !!! note "A `.json` in a capsule is a font"
@@ -141,11 +142,48 @@ server as well: a component of yours in a shared script, and a plugin's by listi
 adds the drawing plugins (`aylo.Sprite`, `aylo.Shape`, `aylo.Text`...) without their drawing, so a sprite in a capsule
 costs it nothing. A file that names a component the side does not know stops the game with `unknown component`.
 
-A node is spawned on its side only when the side spawns the capsule. An actor the server spawns while the game runs
-(`engine.capsule.spawn` in a server system) is spawned on the server only, and its client nodes nowhere: the players
-see its replicated entities, and give them a look with a client system. A scene both sides load (`engine.capsule.load` in a
-`side = "both"` system) spawns its client nodes on the clients, and its `both` nodes on every side, each its own copy
-(a static wall needs no network).
+A scene both sides load (`engine.capsule.load` in a `side = "both"` system) spawns its client nodes on the clients,
+and its `both` nodes on every side, each its own copy (a static wall needs no network).
+
+### Actors the server spawns
+
+An actor the server spawns while the game runs (`engine.capsule.spawn` in a server system) reaches every client with
+its look, as a prefab does in other engines: write the sprite in the actor, not in a client script.
+
+```
+[capsule format=1]
+
+# actors/ship_left.actor: the server moves it; every client draws it.
+[node path="."]
+game.Ship = { player = 0 }
+aylo.Transform2D = {}
+aylo.Collider = { size = (48, 48) }
+aylo.SpriteRenderer = { layer = 1 }
+aylo.SpriteAnimator = { atlas = "atlases/ship_left.atlas", animation = "fly" }
+
+[node path="Flame" side=client]
+aylo.Transform2D = { position = (-30, 0) }
+aylo.SpriteRenderer = { layer = 0, texture = "fx/flame.png" }
+```
+
+When the actor arrives on a client, the client spawns the part the server does not send:
+
+| Part of the actor | On a client |
+|---|---|
+| The root's replicated components (`game.Ship`) | from the server, as it changes them |
+| The root's other components (`aylo.SpriteRenderer`, `aylo.Collider`, `aylo.Transform2D`...) | from the file, once |
+| `side=client` nodes, and their children | spawned by the client, under the root |
+| `server` and `both` nodes | the server's: they arrive with their replicated components only |
+| Overrides given to `engine.capsule.spawn` | only those of replicated components |
+
+This needs a root with a replicated component of yours (`game.Ship` above): an actor whose root has none stays on the
+server, and nothing of it reaches the clients. A client never steps the physics, so the colliders it gets only follow
+their entity (the debug view shows them).
+
+!!! warning "What differs per actor must be replicated"
+    The client reads the root's other components from the file, not from the server. A position the server gives at
+    spawn (`{ ["aylo.Transform2D"] = { position = ... } }`) does not reach the client: replicate it in a component of
+    yours (`game.Ship.position`) and copy it into `aylo.Transform2D` in a client system, as AYLO Duel does.
 
 ## Errors
 

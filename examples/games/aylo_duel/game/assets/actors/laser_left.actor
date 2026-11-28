@@ -1,0 +1,5 @@
+[capsule format=1]
+
+# The right player's laser: actors/laser.actor, flying left.
+[node path="." instance="actors/laser.actor"]
+aylo.SpriteAnimator = { animation = "left" }

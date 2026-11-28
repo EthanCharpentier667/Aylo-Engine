@@ -32,6 +32,7 @@
 #include "aylo/ecs/schedule/Phase.hpp"
 #include "aylo/ecs/system/ResourceParam.hpp"
 #include "aylo/ecs/system/Side.hpp"
+#include "aylo/ecs/type/TypeInfo.hpp"
 #include "plugins/AssetDirectory.hpp"
 #include "plugins/HotReload.hpp"
 #include "plugins/capsule/Capsule.hpp"
@@ -43,6 +44,7 @@
 #include "plugins/capsule/Capsules.hpp"
 #include "plugins/capsule/LoadedCapsule.hpp"
 #include "plugins/capsule/ReloadedCapsules.hpp"
+#include "plugins/capsule/SpawnedCapsule.hpp"
 #include "plugins/capsule/exceptions/CapsuleException.hpp"
 
 namespace aylo::plugins::capsule {
@@ -80,9 +82,10 @@ ecs::Entity outermostRoot(ecs::Entity entity, const std::unordered_map<ecs::Enti
 
 /// @brief Render, with hot reload: reloads what was spawned from the capsules the CapsuleReloadable read again, nested
 /// roots through the outermost capsule they belong to.
-void reloadCapsules(ecs::Commands& commands, ecs::Res<Capsules> capsules, ecs::ResMut<ReloadedCapsules> reloaded,
-                    ecs::Query<const CapsuleInstance, ecs::Optional<const ecs::Children>> roots,
-                    ecs::Query<const ecs::Parent> parents) {
+void reloadCapsules(
+    ecs::Commands& commands, ecs::Res<Capsules> capsules, ecs::ResMut<ReloadedCapsules> reloaded,
+    ecs::Query<const CapsuleInstance, ecs::Optional<const ecs::Children>, ecs::Optional<const SpawnedCapsule>> roots,
+    ecs::Query<const ecs::Parent> parents) {
     if (reloaded->capsules.empty()) {
         return;
     }
@@ -92,7 +95,12 @@ void reloadCapsules(ecs::Commands& commands, ecs::Res<Capsules> capsules, ecs::R
         parentOf.emplace(entity, parent.entity);
     }
     std::unordered_map<ecs::Entity, Root> rootOf;
-    for (auto [entity, instance, children] : roots) {
+    // On a client, a root the server spawned is the server's to reload: its children came through replication.
+    const bool client = !capsules->keeps(ecs::Presence::kServerOnly);
+    for (auto [entity, instance, children, spawned] : roots) {
+        if (client && spawned != nullptr) {
+            continue;
+        }
         rootOf.emplace(entity, Root{.instance = instance,
                                     .children = children != nullptr ? children->entities : std::vector<ecs::Entity>{}});
     }
@@ -114,6 +122,21 @@ void reloadCapsules(ecs::Commands& commands, ecs::Res<Capsules> capsules, ecs::R
         }
     }
 }
+
+/// @brief Update, on a client: spawns into each root the server spawned (a SpawnedCapsule, no CapsuleInstance yet) the
+/// part of its capsule the server cannot send. A capsule this client does not know is reported, once.
+void spawnReplicated(ecs::Commands& commands, ecs::Res<Capsules> capsules,
+                     ecs::Query<const SpawnedCapsule, ecs::Without<CapsuleInstance>> roots) {
+    for (auto [entity, spawned] : roots) {
+        try {
+            spawnClientPart(commands, *capsules, entity, spawned.capsule);
+        } catch (const exceptions::CapsuleException& error) {  // bytes from the server: never more than a message
+            std::cerr << std::format("[capsule] entity {} the server spawned has no client part: {}\n",
+                                     entity.getIndex(), error.what());
+            commands.add(entity, CapsuleInstance{.capsule = spawned.capsule});  // not tried again
+        }
+    }
+}
 }  // namespace
 
 std::string_view CapsulePlugin::getName() const noexcept { return kName; }
@@ -127,11 +150,16 @@ void CapsulePlugin::build(ecs::App& app) {
     if (components.getRegistry().find<CapsuleInstance>() == nullptr) {
         static_cast<void>(components.registerType<CapsuleInstance>());
     }
+    if (components.getRegistry().find<SpawnedCapsule>() == nullptr) {
+        static_cast<void>(components.registerType<SpawnedCapsule>());  // replicated, at spawn
+    }
     addCapsuleCalls(app);
     // What to respawn in the world at the next frame: the files the hot reload read again, or what a tool (the
     // editor) changed. It runs whether or not hot reload is on.
     resources.insertIfAbsent<ReloadedCapsules>();
     app.addSystem(ecs::Phase::kRender, std::string{kHotReloadSystem}, &reloadCapsules).setSide(ecs::Side::kBoth);
+    app.addSystem(ecs::Phase::kUpdate, std::string{kSpawnReplicatedSystem}, &spawnReplicated)
+        .setSide(ecs::Side::kClient);
     // A game has assets (a folder or a pack); a program without an Engine has none, and reads no capsule file.
     const auto* assetDirectory = resources.get<AssetDirectory>();
     if (assetDirectory == nullptr || (assetDirectory->path.empty() && !assetDirectory->source)) {

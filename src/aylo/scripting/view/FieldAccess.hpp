@@ -21,6 +21,7 @@
 #include "aylo/luau/Value.hpp"
 #include "aylo/scripting/Export.hpp"
 #include "aylo/scripting/Result.hpp"
+#include "aylo/scripting/asset/NamedAssets.hpp"
 #include "core/asset/AssetId.hpp"
 
 namespace aylo::scripting::view {
@@ -58,10 +59,12 @@ struct FieldReadContext {
 /// @param field The field to write.
 /// @param bytes The component's value.
 /// @param value The new value.
+/// @param named Where an asset path written is recorded, for the engine to load it; null: nowhere.
 /// @return Nothing on success, or an ErrorKind::kInvalidValue error naming the field (`nil`, a wrong type, a number
 /// out of range or not whole, a vector table with a missing, extra or non-number key, an unsupported field type).
 [[nodiscard]] AYLO_SCRIPTING_API Result<void> writeField(std::string_view component, const ecs::FieldInfo& field,
-                                                         std::span<std::byte> bytes, const luau::Value& value);
+                                                         std::span<std::byte> bytes, const luau::Value& value,
+                                                         asset::NamedAssets* named = nullptr);
 
 /// @brief Reads a field as readField() does, pushing the value straight onto the Luau stack: what a view gives a
 /// script on each access, where a `vec2` table or an `Entity` is not held through the registry first.
@@ -75,7 +78,8 @@ struct FieldReadContext {
 /// in place instead of being copied first.
 /// @return Nothing, or the error writeField() gives.
 [[nodiscard]] AYLO_SCRIPTING_API Result<void> writeFieldFrom(std::string_view component, const ecs::FieldInfo& field,
-                                                             std::span<std::byte> bytes, const luau::StackSlot& value);
+                                                             std::span<std::byte> bytes, const luau::StackSlot& value,
+                                                             asset::NamedAssets* named = nullptr);
 
 /// @brief Writes the fields a Luau table names into a component's bytes, leaving the others as they are.
 ///
@@ -84,8 +88,10 @@ struct FieldReadContext {
 /// @param type The component's description.
 /// @param table Field names and their values.
 /// @param bytes The component's value.
+/// @param named Where the asset paths written are recorded (writeField()); null: nowhere.
 /// @return Nothing on success, or an ErrorKind::kInvalidValue error (a key that is not a field name, or a value
 /// writeField() refuses).
 [[nodiscard]] AYLO_SCRIPTING_API Result<void> fillFromTable(const ecs::TypeInfo& type, const luau::Table& table,
-                                                            std::span<std::byte> bytes);
+                                                            std::span<std::byte> bytes,
+                                                            asset::NamedAssets* named = nullptr);
 }  // namespace aylo::scripting::view

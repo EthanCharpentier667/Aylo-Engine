@@ -145,7 +145,9 @@ architecture rules, and this file keeps the detail, which changes with every fea
       `ComponentValues`), the `Capsules` resource (by the `AssetId` of their path, `define()` again for hot reload),
       `spawnCapsule()`, `loadCapsule()` (switches levels, with the `LoadedCapsule` resource) and `reloadCapsule()`,
       each recorded in a `Commands` buffer (`CapsuleSpawn.hpp`), the `CapsuleInstance` component on
-      every spawned root, and the `aylo.capsule.spawn` / `load` / `reload` calls (`CapsuleCalls.hpp`).
+      every spawned root, the replicated `SpawnedCapsule` of a root the server spawned, whose client part a client
+      spawns (`spawnClientPart()`, system `aylo.Capsule.SpawnReplicated`), and the `aylo.capsule.spawn` / `load` /
+      `reload` calls (`CapsuleCalls.hpp`).
       `format/CapsuleText.hpp` (`aylo::plugins::capsule::format`) reads and writes the capsule file format
       (`docs/CapsuleFormat.md`);
       `CapsuleFiles` (the `aylo.CapsuleFiles` resource) reads a game's `.capsule` / `.scene` / `.actor` files from the
@@ -168,7 +170,7 @@ architecture rules, and this file keeps the detail, which changes with every fea
     - `plugins/audio/` (`aylo::plugins::audio`) — `AudioPlugin`: `AudioRegistry` (starts the device the settings name,
       `"null"` always registered, as `NullAudioDevice`), `AudioConfig`, `AudioVolumes`, the `AudioAssets` resource (sounds by `AssetId`, opened
       and decoded by the device), the `AudioSource` and `AudioListener` components and the `PlaySound` / `PlayMusic` /
-      `StopMusic` events, played by client-side PostUpdate systems. `AudioReflection.hpp` reflects the contract's `Bus`. Design in `docs/audio/design.md`.
+      `StopMusic` events, played by client-side PostUpdate systems. `AudioReflection.hpp` reflects the contract's `Bus`. `detail/ImportFile` reads a sound's `<path>.import` (nlohmann/json, private). Design in `docs/audio/design.md`.
     - `plugins/http/` (`aylo::plugins::http`) — `HttpPlugin`: HTTPS requests for scripts. `HttpSettings` (the `http`
       section: allowed hosts, limits, secrets), the `HttpClient` resource (libcurl, private in `detail/CurlClient`,
       polled without waiting by `aylo.Http.Poll`), the `HttpResponse` event, the `aylo.http.request` and
@@ -257,7 +259,7 @@ architecture rules, and this file keeps the detail, which changes with every fea
   call from a script's table of argument fields and turns its result into Luau values, for `engine.call` and for
   `ctx.call` (a system's declared `calls`). `setup/` (`aylo::scripting::setup`) holds the setup forms built on those
   calls: each plugin brings its setup forms, in a `<Name>Forms.luau` file; `setup/FormsPrelude.luau` creates
-  `engine.assets`, `engine.input`, the helpers of `engine.forms` (`forms.context` takes a ctx or a Behaviour's `self`) and the state forms `engine.state.get` / `set`. `types/` (`aylo::scripting::types`) generates the luau-lsp definitions of a running game (`generateDefinitions()`, `ScriptHost::generateTypes()`). `behaviour/BehaviourPrelude.luau` (`aylo::scripting::behaviour`, run after it) defines `engine.behaviour`, a component plus one generated system per hook (`docs/ecs/features/19-luau-bridge.md#behaviours`). `ScriptHost` owns the Luau runtime and the `engine` global
+  `engine.assets`, `engine.input`, the helpers of `engine.forms` (`forms.context` takes a ctx or a Behaviour's `self`) and the state forms `engine.state.get` / `set`. `asset/NamedAssets` (`aylo::scripting::asset`) records each asset path a script writes where an id goes (`view::writeField()` and its callers), once, for `ScriptHost::takeNamedAssets()`, which the `Engine` loads between frames. `types/` (`aylo::scripting::types`) generates the luau-lsp definitions of a running game (`generateDefinitions()`, `ScriptHost::generateTypes()`). `behaviour/BehaviourPrelude.luau` (`aylo::scripting::behaviour`, run after it) defines `engine.behaviour`, a component plus one generated system per hook (`docs/ecs/features/19-luau-bridge.md#behaviours`). `ScriptHost` owns the Luau runtime and the `engine` global
   (constant flags `isClient`, `isServer`, `isDebug`, `engine.ecs.component` and `engine.ecs.event`, read by `component/DeclarationReader.hpp`,
   and `engine.ecs.system`, read by `system/SystemDeclarationReader.hpp`); a system declares or discovers the `resources`, `events` and `components` (of any entity) it uses, given to scripts by `ctx.resources`, `ctx.events` and `ctx:get` / `ctx:has`, and the hierarchy by `ctx:getParent` / `ctx:getChildren` / `ctx:isEnabled` (`system/EntityComponents.hpp`; plain-data resources only), through the `ecs` `DynamicResources`, `DynamicEvents` and `DynamicComponents` parameters; it knows no `Plugin`. The host and
   the App may be destroyed in either order. `plugin/` holds `ScriptingPlugin`, the `ecs::Plugin` that owns a

@@ -118,6 +118,7 @@ plugin("audio", {"contract-audiodevice", "plugin-transform"})
     add_files("audio/**.cpp")
     add_files("audio/AudioForms.luau")
     add_headerfiles("audio/**.hpp", "audio/**.tpp")
+    add_packages("nlohmann_json")  -- the import files of the sounds
 
 plugin("physics", {"plugin-transform"})
     add_files("physics/**.cpp|debug/**.cpp")

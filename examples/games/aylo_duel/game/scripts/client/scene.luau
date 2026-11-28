@@ -1,8 +1,10 @@
 -- The scene around the game: a space background whose layers scroll at their own speed (a Tiled map), where a planet
 -- passes now and then. The camera and the obstacles' look are in the arena's scene (assets/scenes/arena.scene).
 
-local assets = require("@scripts/client/assets")
 local Duel = require("@scripts/shared/arena")
+
+-- A map is spawned from its loaded data (aylo.tilemap.spawn), so it is loaded by its form, when the game starts.
+local background = engine.assets.tilemap("levels/space-background.tmj")
 
 local backgroundSize = { x = 272, y = 160 } -- the map's images, in pixels: scaled to the view's height
 local backgroundScale = Duel.viewHeight / backgroundSize.y
@@ -18,7 +20,7 @@ engine.ecs.system("game.SpawnBackground", {
 	calls = { "aylo.tilemap.spawn" },
 	run = function(ctx)
 		ctx.call("aylo.tilemap.spawn", {
-			map = assets.background,
+			map = background,
 			position = {
 				x = (Duel.viewWidth - backgroundSize.x * backgroundScale) / 2,
 				y = (Duel.viewHeight - backgroundSize.y * backgroundScale) / 2,

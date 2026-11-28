@@ -220,6 +220,11 @@ class AYLO_ENGINE_API Engine {
     /// @brief Looks at the files hot reload follows and asks for a reload if one of them needs it.
     void pollHotReload();
 
+    /// @brief Loads the assets the scripts named by path since the last call (scripting::ScriptHost::takeNamedAssets())
+    /// with the App's AssetLoaders, as the capsules' are: between two frames, so a loader may change any resource. A
+    /// path no plugin loads is skipped; one that fails is reported, once.
+    void loadNamedAssets();
+
     /// @brief Makes the reloader follow `project.luau` and the scripts.
     void addHotReloadSources();
 

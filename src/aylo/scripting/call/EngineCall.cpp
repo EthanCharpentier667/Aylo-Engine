@@ -25,6 +25,7 @@
 #include "aylo/luau/Table.hpp"
 #include "aylo/luau/Value.hpp"
 #include "aylo/luau/ValuePack.hpp"
+#include "aylo/scripting/asset/NamedAssets.hpp"
 #include "aylo/scripting/view/FieldAccess.hpp"
 #include "core/asset/AssetId.hpp"
 
@@ -36,7 +37,8 @@ namespace {
 }
 
 /// @brief Writes the fields the script gave over the defaults of the arguments.
-void fillArguments(const ecs::CallInfo& info, const luau::Value* fields, const std::span<std::byte> bytes) {
+void fillArguments(const ecs::CallInfo& info, const luau::Value* fields, const std::span<std::byte> bytes,
+                   asset::NamedAssets* named) {
     if (fields == nullptr || fields->is<luau::Value::Nil>()) {
         return;
     }
@@ -51,7 +53,7 @@ void fillArguments(const ecs::CallInfo& info, const luau::Value* fields, const s
         }
         return;
     }
-    if (auto filled = view::fillFromTable(*info.arguments, *table, bytes); !filled) {
+    if (auto filled = view::fillFromTable(*info.arguments, *table, bytes, named); !filled) {
         throw fail(info, filled.error().message());
     }
 }
@@ -94,9 +96,9 @@ void fillArguments(const ecs::CallInfo& info, const luau::Value* fields, const s
 }  // namespace
 
 luau::ValuePack callEngine(const luau::Runtime& runtime, const ecs::CallInfo& info, const luau::Value* fields,
-                           const Invoker& invoke) {
+                           const Invoker& invoke, asset::NamedAssets* named) {
     const ecs::CallBuffer arguments{info.arguments};
-    fillArguments(info, fields, arguments.get());
+    fillArguments(info, fields, arguments.get(), named);
     const ecs::CallBuffer result{info.result};
     try {
         invoke(arguments.get(), result.get());

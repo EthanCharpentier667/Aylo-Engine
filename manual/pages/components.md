@@ -34,7 +34,7 @@ engine.
 | `f32`, `f64` | a number |
 | `vec2`, `vec3`, `vec4` | a table `{ x = ..., y = ... }` (`z`, `w` for the larger ones) |
 | `entity` | an entity |
-| `assetId` | the id of an asset; a path is accepted where a value is written |
+| `assetId` | the id of an asset; a path is accepted where a value is written, and that file is loaded ([Naming an asset by its path](setup-forms.md#naming-an-asset-by-its-path)) |
 | `string` | a string (limited to 255 bytes) |
 
 The layout of a component is the same on every machine. When a client connects, the server checks that both sides

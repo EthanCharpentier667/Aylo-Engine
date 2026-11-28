@@ -1,7 +1,10 @@
 [capsule format=1]
 
-# A shot that misfired: no laser, only the sound the clients play where it was fired. It lives long enough for a
-# snapshot to carry it (game.Lifetime, scripts/behaviours/Lifetime.luau). The ship gives its position and shooter.
+# A shot that misfired: no laser, only its sound, which every client plays once where it was fired. It lives long
+# enough for a snapshot to carry it (game.Lifetime, scripts/behaviours/Lifetime.luau). The ship gives its position and
+# shooter.
 [node path="."]
 game.Misfire = {}
+aylo.Transform2D = {}
+aylo.AudioSource = { sound = "laser-no.mp3" }
 game.Lifetime = { seconds = 0.25 }

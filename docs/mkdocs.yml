@@ -71,6 +71,7 @@ nav:
       - Physics: physics/design.md
       - Particles: particles/design.md
       - Capsule format: CapsuleFormat.md
+      - "Assets named where they are used: plan": assets/plan.md
       - HTTP: Http.md
       - JSON: Json.md
   - Tools:

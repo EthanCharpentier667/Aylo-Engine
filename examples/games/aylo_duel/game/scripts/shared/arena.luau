@@ -23,10 +23,11 @@ local Duel = {
 	-- The capsules (assets/): the arena, what the server spawns in it, and what the clients spawn for the show.
 	arena = "scenes/arena.scene",
 	ships = { [0] = "actors/ship_left.actor", [1] = "actors/ship_right.actor" },
-	laser = "actors/laser.actor",
 	misfire = "actors/misfire.actor",
 	explosion = "actors/explosion.actor",
 	planets = { "actors/planet_ring.actor", "actors/planet_big.actor" },
+	lasers = { [0] = "actors/laser.actor", [1] = "actors/laser_left.actor" }, -- by shooter: flying right, flying left
+	screens = { Menu = "ui/menu.capsule", Joining = "ui/joining.capsule" }, -- the menu's, by game.Screen
 
 	-- Whether players join through the network. Run alone (`aylo-editor`), the server and the client are one
 	-- process with no network: there are no players, and the scripts that need them stay out.

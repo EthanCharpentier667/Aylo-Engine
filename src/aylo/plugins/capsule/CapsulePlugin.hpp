@@ -29,6 +29,8 @@ class AYLO_PLUGIN_CAPSULE_API CapsulePlugin : public ecs::Plugin {
   public:
     static constexpr std::string_view kName = "aylo.Capsule";                       ///< The plugin's name.
     static constexpr std::string_view kHotReloadSystem = "aylo.Capsule.HotReload";  ///< Respawns changed capsules.
+    /// Update, on a client: spawns the client part of the roots the server spawned (spawnClientPart()).
+    static constexpr std::string_view kSpawnReplicatedSystem = "aylo.Capsule.SpawnReplicated";
 
     CapsulePlugin() = default;
     ~CapsulePlugin() override = default;

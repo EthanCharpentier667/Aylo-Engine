@@ -19,6 +19,7 @@
 #include "aylo/ecs/entity/Entity.hpp"
 #include "aylo/ecs/entity/Name.hpp"
 #include "aylo/ecs/hierarchy/Parent.hpp"
+#include "aylo/ecs/system/Side.hpp"
 #include "aylo/ecs/type/String.hpp"
 #include "plugins/capsule/Capsule.hpp"
 #include "plugins/capsule/CapsuleInstance.hpp"
@@ -29,10 +30,12 @@
 namespace aylo::plugins::capsule::detail {
 namespace {
 /// @brief Gives `entity` the values of `values` a spawn keeps on the registry's side, in their order.
-void addKeptValues(const Capsules& capsules, const ComponentValues& values, ecs::Entity entity,
-                   ecs::Commands& commands) {
+/// @param replicated Whether to give the values of replicated components: false for a root the server spawned, whose
+/// replicated components come from the server only.
+void addKeptValues(const Capsules& capsules, const ComponentValues& values, ecs::Entity entity, ecs::Commands& commands,
+                   bool replicated = true) {
     for (std::size_t index = 0; index < values.getCount(); ++index) {
-        if (capsules.keeps(values.getPresence(index))) {
+        if (capsules.keeps(values.getPresence(index)) && (replicated || !values.isReplicated(index))) {
             // The id was registered when the value was set.
             static_cast<void>(commands.add(entity, values.getId(index), values.getValue(index)));
         }
@@ -83,8 +86,20 @@ void checkCapsule(const Capsules& capsules, const Capsule& capsule) {
 }
 
 // NOLINTNEXTLINE(misc-no-recursion): the depth is the depth of the instances, which checkCapsule() keeps acyclic.
+bool rootReplicates(const Capsules& capsules, const Capsule& capsule) {
+    const CapsuleNode& root = capsule.getNodes().front();
+    for (std::size_t index = 0; index < root.values.getCount(); ++index) {
+        if (root.values.isReplicated(index) && capsules.keeps(root.values.getPresence(index))) {
+            return true;
+        }
+    }
+    const Capsule* inner = root.instance ? capsules.find(root.instance->id) : nullptr;
+    return inner != nullptr && rootReplicates(capsules, *inner);
+}
+
+// NOLINTNEXTLINE(misc-no-recursion): the depth is the depth of the instances, which checkCapsule() keeps acyclic.
 ecs::Entity spawnTree(const Capsules& capsules, const Capsule& capsule, ecs::Commands& commands, ecs::Entity root,
-                      bool nested) {
+                      bool nested, bool clientPart) {
     const auto nodes = capsule.getNodes();
     std::vector<ecs::Entity> entities(nodes.size());  // the null entity for a node skipped
     for (std::size_t index = 0; index < nodes.size(); ++index) {
@@ -95,16 +110,21 @@ ecs::Entity spawnTree(const Capsules& capsules, const Capsule& capsule, ecs::Com
             if (parent == ecs::Entity{} || !capsules.loads(node.side)) {
                 continue;  // its parent was skipped, or it is the other side's: it is skipped with its subtree
             }
+            if (clientPart && node.parent == 0 && node.side != ecs::Side::kClient) {
+                continue;  // the server spawned it: it comes through replication, if at all
+            }
         }
         const ecs::Entity into = index == 0 ? root : ecs::Entity{};
+        // Only the root is the server's: what the client part spawns under it is the client's own.
+        const bool serverRoot = clientPart && index == 0;
         ecs::Entity entity;
         if (node.instance) {
-            entity = spawnTree(capsules, *capsules.find(node.instance->id), commands, into, true);
+            entity = spawnTree(capsules, *capsules.find(node.instance->id), commands, into, true, serverRoot);
         } else {
             entity = into != ecs::Entity{} ? into : commands.spawn().getEntity();
         }
         commands.add(entity, ecs::Name{.value = ecs::String{index == 0 ? rootName(capsule) : node.name}});
-        addKeptValues(capsules, node.values, entity, commands);
+        addKeptValues(capsules, node.values, entity, commands, !serverRoot);
         if (index != 0) {
             commands.add(entity, ecs::Parent{.entity = parent});
         }

@@ -142,7 +142,8 @@ first parent), they give `nil` and an empty list.
 What a plugin does through a C++ API rather than through plain data (load an atlas, bind an input action, play a
 sound) is an [engine call](12-systems.md#engine-calls): a named C++ function registered with `App::addCall()`.
 Scripts make it by name, with a table of argument fields converted as component fields are (an `assetId` takes a
-path):
+path, which the bridge records in its `asset::NamedAssets` for the engine to load, as a component field's or a
+default's: [`../../engine/design.md#assets`](../../engine/design.md#assets)):
 
 ```luau
 local total = engine.call("game.addPoints", { points = 3 })   -- while the script loads

@@ -207,7 +207,9 @@ end
 return OnJoin
 ```
 
-Plus `replication = "everyChange"` or `replication = "spawnOnly"` on its components. That is all the networking the
+Plus `replication = "everyChange"` or `replication = "spawnOnly"` on its components. The actor's look (its sprite,
+its client nodes) is in its file: the root carries a replicated `aylo.SpawnedCapsule`, and each client spawns that part
+of the capsule itself ([Capsules](18-capsules.md#actors-the-server-spawns)). That is all the networking the
 game code sees; the same systems run in standalone mode, where `PlayerInput` comes from local input.
 
 ### Replicated states

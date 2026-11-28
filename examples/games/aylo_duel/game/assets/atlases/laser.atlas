@@ -1,0 +1,13 @@
+{
+    "texture": "../bullet.gif",
+    "frames": [
+        { "position": [108, 151], "size": [80, 16] },
+        { "position": [189, 151], "size": [80, 16] },
+        { "position": [271, 151], "size": [80, 16] },
+        { "position": [352, 151], "size": [80, 16] }
+    ],
+    "animations": {
+        "right": { "frames": [0, 1], "frameDuration": 0.08 },
+        "left": { "frames": [2, 3], "frameDuration": 0.08 }
+    }
+}

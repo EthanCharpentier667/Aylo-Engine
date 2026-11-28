@@ -42,6 +42,20 @@ engine.ecs.component("game.Misfire", {
 engine.ecs.component("game.PlayerName", { fields = { player = "u32" }, presence = "clientOnly" })
 engine.ecs.component("game.Banner", { fields = {}, presence = "clientOnly" })
 
+-- The pieces of the menu's screens (assets/ui/*.capsule), on the clients (scripts/client/menu.luau): every side reads
+-- every capsule file, so the components they name are declared here, for both.
+-- The root of a screen, removed with all its nodes when the screen is left.
+engine.ecs.component("game.ScreenNode", { fields = {}, presence = "clientOnly" })
+-- The loading wheel, turning: seconds since it appeared.
+engine.ecs.component("game.Spinner", { fields = { time = "f32" }, presence = "clientOnly" })
+-- The line of the menu that says whether the server is there.
+engine.ecs.component("game.MenuStatus", { fields = {}, presence = "clientOnly" })
+-- A button's images, at rest, under the pointer or focused, and held: naming them in the file loads them with it.
+engine.ecs.component("game.ButtonSkin", {
+	fields = { normal = "assetId", hovered = "assetId", pressed = "assetId" },
+	presence = "clientOnly",
+})
+
 -- The actions both sides agree on: the clients send them, the server reads them.
 engine.input.action("move", "vector2", { -- up and down (only Y is used)
 	bind = {

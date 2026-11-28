@@ -26,6 +26,7 @@
 #include "aylo/scripting/Error.hpp"
 #include "aylo/scripting/ErrorKind.hpp"
 #include "aylo/scripting/Result.hpp"
+#include "aylo/scripting/asset/NamedAssets.hpp"
 #include "aylo/scripting/view/FieldAccess.hpp"
 
 namespace aylo::scripting::component {
@@ -116,7 +117,8 @@ struct Source {
 }
 
 /// @brief Sets the default of every field the `defaults` table names, as the bytes of the field's type.
-[[nodiscard]] Result<void> readDefaults(const Source& source, std::vector<FieldDeclaration>& fields) {
+[[nodiscard]] Result<void> readDefaults(const Source& source, std::vector<FieldDeclaration>& fields,
+                                        asset::NamedAssets* named) {
     const auto entries = namedEntries(source.component, source.table, "'defaults'");
     if (!entries) {
         return tl::unexpected{entries.error()};
@@ -129,7 +131,7 @@ struct Source {
         }
         const ecs::FieldInfo info{.name = name, .type = field->type, .offset = 0, .count = 1};
         field->defaultValue.assign(ecs::getFieldLayout(field->type).size, std::byte{0});
-        if (auto written = view::writeField(source.component, info, field->defaultValue, value); !written) {
+        if (auto written = view::writeField(source.component, info, field->defaultValue, value, named); !written) {
             return written;
         }
     }
@@ -188,7 +190,8 @@ struct Source {
 }
 }  // namespace
 
-Result<ComponentDeclaration> readComponentDeclaration(std::string name, const luau::Table& spec) {
+Result<ComponentDeclaration> readComponentDeclaration(std::string name, const luau::Table& spec,
+                                                      asset::NamedAssets* named) {
     const auto entries = namedEntries(name, spec, "the declaration");
     if (!entries) {
         return tl::unexpected{entries.error()};
@@ -227,7 +230,8 @@ Result<ComponentDeclaration> readComponentDeclaration(std::string name, const lu
         return invalid(declaration.name, "needs a 'fields' table");
     }
     if (defaults) {
-        if (auto read = readDefaults({.component = declaration.name, .table = *defaults}, declaration.fields); !read) {
+        if (auto read = readDefaults({.component = declaration.name, .table = *defaults}, declaration.fields, named);
+            !read) {
             return tl::unexpected{std::move(read.error())};
         }
     }

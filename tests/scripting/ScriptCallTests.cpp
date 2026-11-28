@@ -28,6 +28,8 @@
 #include "aylo/ecs/time/FixedTimestep.hpp"
 #include "aylo/ecs/time/TimePlugin.hpp"
 #include "aylo/scripting/ScriptHost.hpp"
+#include "core/asset/AssetId.hpp"
+#include "plugins/AssetIdReflection.hpp"  // IWYU pragma: keep
 
 namespace aylo::test::script_call {
 /// @brief The resource the calls below change.
@@ -106,6 +108,15 @@ Echo echo(const Prompt& prompt) {
     }
     return result;
 }
+
+/// @brief The arguments of `test.play`: a sound, named by its path or its id.
+struct Play {
+    core::asset::AssetId sound;
+};
+AYLO_ECS_CALL_DATA(Play, "test.call.Play", sound);
+
+/// @brief Plays nothing: the test reads which paths the host recorded.
+void play(const Play& /*arguments*/) {}
 }  // namespace aylo::test::script_call
 
 namespace {
@@ -128,6 +139,7 @@ struct Fixture {
         app.addCall("test.widen", &aylo::test::script_call::widen);
         app.addCall("test.broken", &aylo::test::script_call::broken);
         app.addCall("test.echo", &aylo::test::script_call::echo);
+        app.addCall("test.play", &aylo::test::script_call::play);
         app.getPluginRegistry().addScriptForms("test.Probe", aylo::tests::kProbeForms);
         auto created = aylo::scripting::ScriptHost::create(app, {});
         EXPECT_TRUE(created) << (created ? "" : std::string{created.error().message()});
@@ -371,4 +383,30 @@ TEST(ScriptCall, ASystemPassesALongTextToTheCallsItDeclares) {
     EXPECT_EQ(fixture.run("assert(#probe.lengths == 2 and probe.lengths[1] == 8000 and probe.lengths[2] == 8000, "
                           "tostring(#probe.lengths))"),
               "");
+}
+
+TEST(ScriptCall, ThePathsOfTheArgumentsAreRecordedForTheEngineToLoad) {
+    // An asset path given to a call is loaded as a capsule's is (#169): the host records it, once; an AssetId is
+    // already loaded, so it is not.
+    Fixture fixture;
+    ASSERT_EQ(fixture.run(R"(
+        engine.call("test.play", { sound = "laser.mp3" })
+        engine.call("test.play", { sound = engine.assetId("music.ogg") })
+        engine.ecs.system("game.Shoot", {
+            phase = "Update",
+            query = {},
+            calls = { "test.play" },
+            run = function(ctx)
+                ctx.call("test.play", { sound = "laser.mp3" })
+                ctx.call("test.play", { sound = "laser-no.mp3" })
+            end,
+        })
+    )"),
+              "");
+    EXPECT_EQ(fixture.host->takeNamedAssets(), std::vector<std::string>{"laser.mp3"});
+
+    fixture.app.runFrame();
+    fixture.app.runFrame();
+
+    EXPECT_EQ(fixture.host->takeNamedAssets(), std::vector<std::string>{"laser-no.mp3"});
 }

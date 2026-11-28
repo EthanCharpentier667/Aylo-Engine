@@ -24,6 +24,7 @@
 #include "aylo/luau/Runtime.hpp"
 #include "aylo/luau/StackAccess.hpp"
 #include "aylo/luau/Usertype.hpp"
+#include "aylo/scripting/asset/NamedAssets.hpp"
 #include "core/asset/AssetId.hpp"
 
 namespace aylo::scripting::view {
@@ -78,7 +79,8 @@ luau::Result<luau::Usertype<core::asset::AssetId>> registerAssetIdType(luau::Run
 /// @brief Registers `ComponentView`: reads and writes the fields of a component in place.
 /// @param context What reading a field needs to build its value.
 /// @return Nothing, or the error of the registration.
-luau::Result<> registerComponentViewType(luau::Runtime& runtime, const FieldReadContext& context) {
+luau::Result<> registerComponentViewType(luau::Runtime& runtime, const FieldReadContext& context,
+                                         asset::NamedAssets* named) {
     auto viewType = runtime.usertype<ComponentView>("ComponentView");
     if (!viewType) {
         return tl::unexpected{std::move(viewType.error())};
@@ -92,7 +94,7 @@ luau::Result<> registerComponentViewType(luau::Runtime& runtime, const FieldRead
                 throw luau::exceptions::RuntimeError{std::string{pushed.error().message()}};
             }
         })
-        .rawNewIndex([](const ComponentView& view, const std::string_view name, const luau::StackSlot& value) {
+        .rawNewIndex([named](const ComponentView& view, const std::string_view name, const luau::StackSlot& value) {
             checkAlive(view);
             if (view.readOnly && view.onWrite != nullptr) {
                 (*view.onWrite)();
@@ -101,7 +103,7 @@ luau::Result<> registerComponentViewType(luau::Runtime& runtime, const FieldRead
                     std::format("cannot write '{}': the view of '{}' is read-only", name, view.type->name)};
             }
             const auto& field = findField(view, name);
-            if (auto written = writeFieldFrom(view.type->name, field, view.bytes, value); !written) {
+            if (auto written = writeFieldFrom(view.type->name, field, view.bytes, value, named); !written) {
                 throw luau::exceptions::RuntimeError{std::string{written.error().message()}};
             }
         })
@@ -113,7 +115,7 @@ luau::Result<> registerComponentViewType(luau::Runtime& runtime, const FieldRead
 }
 }  // namespace
 
-luau::Result<> registerViewTypes(luau::Runtime& runtime) {
+luau::Result<> registerViewTypes(luau::Runtime& runtime, asset::NamedAssets* named) {
     auto entities = registerEntityType(runtime);
     if (!entities) {
         return tl::unexpected{std::move(entities.error())};
@@ -122,6 +124,7 @@ luau::Result<> registerViewTypes(luau::Runtime& runtime) {
     if (!assetIds) {
         return tl::unexpected{std::move(assetIds.error())};
     }
-    return registerComponentViewType(runtime, {.runtime = &runtime, .entities = *entities, .assetIds = *assetIds});
+    return registerComponentViewType(runtime, {.runtime = &runtime, .entities = *entities, .assetIds = *assetIds},
+                                     named);
 }
 }  // namespace aylo::scripting::view

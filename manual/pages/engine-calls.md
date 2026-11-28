@@ -25,7 +25,8 @@ engine.ecs.system("game.Pew", {
 })
 ```
 
-- Arguments you leave out keep their defaults. An `assetId` argument accepts a path.
+- Arguments you leave out keep their defaults. An `assetId` argument accepts a path, and the engine loads that file
+  ([Naming an asset by its path](setup-forms.md#naming-an-asset-by-its-path)).
 - A text argument or result is a Luau string. Short names (a sound, an action) hold 255 bytes at most and a longer
   one is cut; a call that takes or gives a long text (a prompt, a request, a reply) takes it whole, at any length,
   as its table says. A list argument is a Luau array.
