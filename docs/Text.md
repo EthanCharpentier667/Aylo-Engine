@@ -19,7 +19,9 @@ void spawnTitle(ecs::ResMut<FontAssets> fonts, ecs::Commands& commands) {
 - **`FontAssets`** (the resource `aylo.FontAssets`) keeps the fonts by `AssetId`, as `TextureAssets` keeps the
   textures. `load()` reads a font's metrics at once, on every side (a server can measure texts); one that cannot be read
   is recorded as failed, with the reason, which is printed. Its atlas image is handed to `TextureAssets` by the client,
-  with linear filtering and `TextureEncoding::kLinear`.
+  with linear filtering and `TextureEncoding::kLinear`. The plugin adds a `.json` loader to the `AssetLoaders`
+  resource (`plugins/AssetLoaders.hpp`), so a capsule naming a font loads it: a `.json` a capsule names is taken for a
+  font, since an atlas is named by its `.atlas` file (`docs/Sprites.md`).
 - **`TextRenderer`** (the component `aylo.TextRenderer`) is what to write: the UTF-8 text (`\n` starts a line), the
   font, its size (world units per em, before the entity's scale), its colour, how its lines line up (`TextAlign`), its
   anchor (which point of the text sits on the entity's position, and turns: `{0, 0}` the top-left corner, `{0.5, 0.5}`
