@@ -18,7 +18,7 @@ engine.ecs.component("game.MisfireTimer", { fields = { remaining = "f32" }, pres
 | Option | Meaning |
 |---|---|
 | `fields` | **Required.** A table of field name to type name. An empty table makes a tag. |
-| `defaults` | The starting value of some fields; a field not listed starts at zero. It can only name declared fields. |
+| `defaults` | The starting value of some fields; a field not listed starts at zero. It can only name declared fields. Every new value starts from them: one a system spawns, one a [capsule](capsules.md) gives (the fields its file leaves out), one the editor adds. |
 | `replication` | `"none"` (default), `"everyChange"` (sent whenever it changes) or `"spawnOnly"` (sent once, when the entity appears). A tag (no fields) is sent too: its presence is what the clients get. |
 | `presence` | `"both"` (default), `"serverOnly"` or `"clientOnly"`: which side the component exists on. |
 

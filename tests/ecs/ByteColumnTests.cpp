@@ -10,6 +10,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <map>
 #include <memory_resource>
 #include <span>
@@ -19,6 +20,7 @@
 #include "aylo/ecs/component/ComponentTraits.hpp"
 #include "aylo/ecs/storage/ByteColumn.hpp"
 #include "aylo/ecs/storage/ViewAs.hpp"
+#include "aylo/ecs/type/TypeInfo.hpp"
 
 namespace {
 /// @brief Number of Counter instances alive, to detect leaks and double destruction.
@@ -266,4 +268,42 @@ TEST(ByteColumn, MovingTransfersTheValues) {
         EXPECT_EQ(liveCounters, 2);  // assigned's value + the one in the moved-from column
     }
     EXPECT_EQ(liveCounters, 0);
+}
+
+namespace {
+/// @return A run-time type of two int32 (no C++ type, no hooks) whose new values start at 5 and 7.
+aylo::ecs::TypeInfo makePairWithDefaults() {
+    aylo::ecs::TypeInfo info{.name = "test.Pair", .size = 8, .alignment = 4};
+    const std::array<std::int32_t, 2> defaults{5, 7};
+    info.defaults.resize(sizeof(defaults));
+    std::memcpy(info.defaults.data(), defaults.data(), sizeof(defaults));
+    return info;
+}
+
+/// @return The two int32 of a value of makePairWithDefaults().
+std::array<std::int32_t, 2> pairOf(std::span<const std::byte> bytes) {
+    std::array<std::int32_t, 2> pair{};
+    std::memcpy(pair.data(), bytes.data(), sizeof(pair));
+    return pair;
+}
+}  // namespace
+
+TEST(ByteColumn, ANewValueStartsFromTheTypesDefaultBytes) {
+    aylo::ecs::storage::ByteColumn column{makePairWithDefaults()};
+    EXPECT_EQ(pairOf(column.emplaceBack()), (std::array<std::int32_t, 2>{5, 7}));
+    EXPECT_EQ(pairOf(column.emplaceBack()), (std::array<std::int32_t, 2>{5, 7}));
+}
+
+TEST(ByteColumn, AMovedColumnKeepsItsDefaultBytes) {
+    aylo::ecs::storage::ByteColumn first{makePairWithDefaults()};
+    aylo::ecs::storage::ByteColumn moved{std::move(first)};
+    EXPECT_EQ(pairOf(moved.emplaceBack()), (std::array<std::int32_t, 2>{5, 7}));
+    aylo::ecs::storage::ByteColumn assigned{aylo::ecs::TypeInfo{.name = "test.Pair", .size = 8, .alignment = 4}};
+    assigned = std::move(moved);
+    EXPECT_EQ(pairOf(assigned.emplaceBack()), (std::array<std::int32_t, 2>{5, 7}));
+}
+
+TEST(ByteColumn, WithoutDefaultBytesANewValueIsZero) {
+    aylo::ecs::storage::ByteColumn column{aylo::ecs::TypeInfo{.name = "test.Pair", .size = 8, .alignment = 4}};
+    EXPECT_EQ(pairOf(column.emplaceBack()), (std::array<std::int32_t, 2>{0, 0}));
 }

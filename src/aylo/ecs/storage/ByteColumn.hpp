@@ -11,6 +11,7 @@
 #include <memory>
 #include <memory_resource>
 #include <span>
+#include <vector>
 
 #include "aylo/ecs/Export.hpp"
 #include "aylo/ecs/type/TypeHooks.hpp"
@@ -40,7 +41,8 @@ namespace aylo::ecs::storage {
 class AYLO_ECS_API ByteColumn {
   public:
     /// @brief An empty column for the described component.
-    /// @param info Only its size, alignment and hooks are used; they are copied, so `info` may go away.
+    /// @param info Only its size, alignment, hooks and default bytes are used; they are copied, so `info` may go away
+    ///        (and a column keeps the defaults it was made with).
     /// @param resource Where the buffer comes from; it must outlive the column.
     explicit ByteColumn(const TypeInfo& info, std::pmr::memory_resource* resource = std::pmr::get_default_resource());
     /// @brief Destroys every value and gives the buffer back to its resource.
@@ -61,7 +63,7 @@ class AYLO_ECS_API ByteColumn {
     /// @return The size of one value in bytes; 0 for a tag.
     [[nodiscard]] std::size_t getElementSize() const noexcept;
 
-    /// @brief Appends a default value: the construct hook, or zero-filled bytes when it is `nullptr`.
+    /// @brief Appends a default value: the construct hook, else the type's default bytes, else zero-filled bytes.
     /// @return The new value's bytes, empty for a tag.
     std::span<std::byte> emplaceBack();
 
@@ -115,6 +117,7 @@ class AYLO_ECS_API ByteColumn {
     std::size_t _elementSize;              ///< Bytes per value; 0 for a tag.
     std::size_t _alignment;                ///< Alignment of every value.
     TypeHooks _hooks;                      ///< Lifecycle of the values; `nullptr` hooks mean plain bytes.
+    std::vector<std::byte> _defaults;      ///< What a new value starts from without a construct hook; empty: zeros.
     std::pmr::memory_resource* _resource;  ///< Where the buffer comes from.
     Buffer _data;                          ///< The values, `_elementSize` bytes each; null until the first growth.
     std::size_t _size{0};                  ///< Number of values.

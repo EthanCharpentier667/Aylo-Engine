@@ -9,8 +9,10 @@
 
 #include <array>
 #include <cstdint>
+#include <cstring>
 #include <format>
 #include <glm/ext/vector_float2.hpp>
+#include <span>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -370,4 +372,27 @@ aylo.Disabled = {})");
     EXPECT_TRUE(first.getNodes()[1].values.has(*world.getComponents().find("aylo.Disabled")));
     EXPECT_NE(format::writeCapsule(first, world.getComponents(), capsules).find("aylo.Disabled = {}"),
               std::string::npos);
+}
+
+TEST_F(CapsuleTextTest, AComponentWithoutACppTypeStartsFromItsDefaultBytes) {
+    // A component declared in Luau: its defaults are the type's bytes, and the fields the file leaves out keep them
+    // (issue #151).
+    aylo::ecs::ComponentInfo info;
+    info.type = aylo::ecs::TypeInfo{.name = "test.text.Scripted",
+                                    .size = 8,
+                                    .alignment = 4,
+                                    .fields = {{.name = "value", .type = aylo::ecs::FieldType::kI32, .offset = 0},
+                                               {.name = "other", .type = aylo::ecs::FieldType::kI32, .offset = 4}}};
+    const std::array<std::int32_t, 2> defaults{5, 7};
+    info.type.defaults.resize(sizeof(defaults));
+    std::memcpy(info.type.defaults.data(), defaults.data(), sizeof(defaults));
+    const auto id = world.getComponents().registerType(std::move(info));
+    ASSERT_TRUE(id);
+    const capsule::Capsule read = this->read(R"([node path="."]
+test.text.Scripted = { other = 2 })");
+    const std::span<const std::byte> bytes = read.getNodes()[0].values.get(*id);
+    ASSERT_EQ(bytes.size(), 8U);
+    std::array<std::int32_t, 2> stored{};
+    std::memcpy(stored.data(), bytes.data(), sizeof(stored));
+    EXPECT_EQ(stored, (std::array<std::int32_t, 2>{5, 2}));
 }

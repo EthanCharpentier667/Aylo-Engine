@@ -31,6 +31,7 @@ ByteColumn::ByteColumn(const TypeInfo& info, std::pmr::memory_resource* resource
     : _elementSize{info.size},
       _alignment{info.alignment},
       _hooks{info.hooks},
+      _defaults{info.defaults},
       _resource{resource},
       _data{nullptr, BufferDelete{.resource = resource, .bytes = 0, .alignment = info.alignment}} {}
 
@@ -40,6 +41,7 @@ ByteColumn::ByteColumn(ByteColumn&& other) noexcept
     : _elementSize{other._elementSize},
       _alignment{other._alignment},
       _hooks{other._hooks},
+      _defaults{std::move(other._defaults)},
       _resource{other._resource},
       _data{std::move(other._data)},
       _size{std::exchange(other._size, 0)},
@@ -51,6 +53,7 @@ ByteColumn& ByteColumn::operator=(ByteColumn&& other) noexcept {
         _elementSize = other._elementSize;
         _alignment = other._alignment;
         _hooks = other._hooks;
+        _defaults = std::move(other._defaults);
         _resource = other._resource;
         _data = std::move(other._data);  // frees this column's old buffer
         _size = std::exchange(other._size, 0);
@@ -74,6 +77,8 @@ std::span<std::byte> ByteColumn::emplaceBack() {
     const std::span<std::byte> destination = slot(_data.get(), _size);
     if (_hooks.construct != nullptr) {
         _hooks.construct(destination.data());
+    } else if (!_defaults.empty()) {
+        std::memcpy(destination.data(), _defaults.data(), _elementSize);
     } else {
         std::memset(destination.data(), 0, _elementSize);
     }

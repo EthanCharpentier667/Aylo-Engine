@@ -43,7 +43,10 @@ Result<TypeId> TypeRegistry<Info>::registerType(Info info) {
         if (Result<void> same = Traits::checkSameOptions(*registered, info); !same) {
             return tl::unexpected<Error>{std::move(same.error())};
         }
-        return registered->type.id;
+        // The same layout may come with new defaults (a script saved with other ones): the new values start from them.
+        const TypeId id = registered->type.id;
+        std::next(_infos.begin(), static_cast<std::ptrdiff_t>(id))->type.defaults = std::move(info.type.defaults);
+        return id;
     }
     if (_infos.size() >= kInvalidTypeId) {
         return tl::unexpected<Error>{detail::noIdLeft(Traits::kLabel, info.type.name)};
