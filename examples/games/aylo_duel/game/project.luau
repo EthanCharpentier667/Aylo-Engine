@@ -13,16 +13,15 @@ if engine.isClient then
 end
 
 -- A top-down arena: the physics without gravity, and F3 outlines every collider (hidden at first).
--- The arena and what the server spawns in it are capsules (assets/scenes, assets/actors). A client opens on its main
--- menu (aylo.Ui) and joins from there.
-engine.settings.plugins = { "aylo.Physics", "aylo.Capsule" }
-if engine.isClient then
-	engine.settings.plugins = {
-		"aylo.Physics", "aylo.Capsule", "aylo.Input", "aylo.graphics", "aylo.Shader", "aylo.Sprite",
-		"aylo.SpriteDraw", "aylo.Shape", "aylo.Tilemap", "aylo.Text", "aylo.Particle", "aylo.audio",
-		"aylo.PhysicsDebug", "aylo.Ui",
-	}
-end
+-- The arena and what is spawned in it are capsules (assets/scenes, assets/actors). A client opens on its main menu
+-- (aylo.Ui) and joins from there.
+-- Both sides list the same plugins: the capsules name the components of the drawing plugins (a sprite, a shape, a
+-- text), and a server reads every capsule file too. A server adds them without their drawing systems.
+engine.settings.plugins = {
+	"aylo.Physics", "aylo.Capsule", "aylo.Input", "aylo.graphics", "aylo.Shader", "aylo.Sprite",
+	"aylo.SpriteDraw", "aylo.Shape", "aylo.Tilemap", "aylo.Text", "aylo.Particle", "aylo.audio",
+	"aylo.PhysicsDebug", "aylo.Ui",
+}
 -- `aylo-editor <this folder>` opens the arena to edit it; `--open actors/ship_left.actor` opens
 -- another capsule (an actor opens alone).
 engine.settings.editor.scene = engine.args.open or "scenes/arena.scene"
