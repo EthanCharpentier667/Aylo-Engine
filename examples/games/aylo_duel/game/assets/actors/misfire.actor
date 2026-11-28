@@ -1,0 +1,7 @@
+[capsule format=1]
+
+# A shot that misfired: no laser, only the sound the clients play where it was fired. It lives long enough for a
+# snapshot to carry it (game.Lifetime, scripts/behaviours/Lifetime.luau). The ship gives its position and shooter.
+[node path="."]
+game.Misfire = {}
+game.Lifetime = { seconds = 0.25 }

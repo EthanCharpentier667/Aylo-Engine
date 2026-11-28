@@ -1,0 +1,8 @@
+[capsule format=1]
+
+# A big planet passing behind the arena, as planet_ring.actor.
+[node path="."]
+game.BackgroundPlanet = { size = (88, 87) }
+aylo.Transform2D = { position = (800, 0) }
+aylo.SpriteRenderer = { texture = "backgrounds/space/parallax-space-big-planet.png", source = (0, 0, 88, 87), layer = -97 }
+aylo.Parallax = {}

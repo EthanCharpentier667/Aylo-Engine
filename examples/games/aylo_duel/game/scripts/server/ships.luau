@@ -1,5 +1,6 @@
 -- The ships: they move in their half of the arena, sliding along the obstacles, and fire on a click while the round is
--- Live. One shot in Duel.misfireOdds misfires: a Misfire replaces the laser, for the clients to play its sound.
+-- Live. One shot in Duel.misfireOdds misfires: a Misfire replaces the laser, for the clients to play its sound (it
+-- removes itself: game.Lifetime).
 
 local Duel = require("@scripts/shared/arena")
 local Weapons = require("@scripts/server/weapons")
@@ -36,21 +37,6 @@ engine.ecs.system("game.MoveShips", {
 			ship.position = position
 			if engine.input.read(ctx, entity, "shoot").pressed then
 				Weapons.fire(ctx, ship.player, position)
-			end
-		end
-	end,
-})
-
--- FixedUpdate: removes the Misfires once a snapshot had time to carry them to the clients.
-engine.ecs.system("game.ExpireMisfires", {
-	phase = "FixedUpdate",
-	side = "server",
-	query = { write = { "game.MisfireTimer" } },
-	run = function(ctx)
-		for entity, timer in ctx.query do
-			timer.remaining -= ctx.time.fixedDelta
-			if timer.remaining <= 0 then
-				ctx.commands:despawn(entity)
 			end
 		end
 	end,

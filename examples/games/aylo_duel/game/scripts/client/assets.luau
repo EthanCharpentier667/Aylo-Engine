@@ -1,10 +1,10 @@
--- The client's assets: the sprite atlases, the sounds, the planets, the background and the menu's pieces. The forms
--- load them; the module returns their ids, for the client modules that use them.
+-- What the client's scripts use and no capsule can load by itself: the sprite atlases, the font, the sounds, the
+-- background map and the menu's pieces. The forms load them; the module returns their ids, for the client modules that
+-- use them. The images a capsule names (the planets: assets/actors/planet_*.actor) are loaded by the capsule, and a
+-- capsule names an atlas or the font by the name given here (actors/explosion.actor, scenes/arena.scene).
 
--- The menu's pieces are pixel art (assets/ui, from a UI pack): drawn without smoothing.
-local function pixelArt(path: string)
-	return engine.assets.texture(path, { linear = false })
-end
+-- The menu's pieces are pixel art (assets/ui, from a UI pack): an image is drawn without smoothing by default.
+local pixelArt = engine.assets.texture
 
 return {
 	-- The menu: a panel with a roof, its buttons at rest, under the pointer and held, a loading wheel (11 frames of
@@ -51,6 +51,7 @@ return {
 		},
 	}),
 	-- The big explosions, the bottom row: 10 frames of 64x64, every 65 pixels; the first six burst and fade, once.
+	-- actors/explosion.actor plays it, by its name.
 	explosion = engine.assets.atlas({
 		name = "game.explosion",
 		texture = "fx-explosions.gif",
@@ -58,6 +59,7 @@ return {
 		animations = { explode = { frames = { 0, 1, 2, 3, 4, 5 }, frameDuration = 0.07, plays = 1 } },
 	}),
 
+	-- The texts of scenes/arena.scene name it by its path.
 	font = engine.assets.font("fonts/orbitron.json"),
 
 	music = engine.assets.sound("maint.ogg", { stream = true }),
@@ -65,14 +67,4 @@ return {
 	misfireSound = engine.assets.sound("laser-no.mp3"),
 
 	background = engine.assets.tilemap("levels/space-background.tmj"),
-	planets = {
-		{
-			texture = engine.assets.texture("backgrounds/space/parallax-space-ring-planet.png"),
-			size = { x = 51, y = 115 }, -- in pixels
-		},
-		{
-			texture = engine.assets.texture("backgrounds/space/parallax-space-big-planet.png"),
-			size = { x = 88, y = 87 },
-		},
-	},
 }

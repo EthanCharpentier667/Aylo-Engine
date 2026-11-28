@@ -1,0 +1,9 @@
+[capsule format=1]
+
+# The loser's ship vanishing: the six first frames of the big explosion, once, then it goes (game.Explosion). The
+# atlas is the one scripts/client/assets.luau makes, by its name. A client spawns it where the ship was.
+[node path="."]
+game.Explosion = {}
+aylo.Transform2D = { scale = (1.5, 1.5) }
+aylo.SpriteRenderer = { layer = 3, blend = "additive" }
+aylo.SpriteAnimator = { atlas = "game.explosion", animation = "explode" }
