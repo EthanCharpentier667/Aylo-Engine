@@ -13,6 +13,7 @@
 #include <string_view>
 #include <tl/expected.hpp>
 #include <utility>
+#include <vector>
 
 #include "aylo/ecs/error/Error.hpp"
 #include "aylo/ecs/error/Result.hpp"
@@ -124,4 +125,16 @@ TEST(TypeRegistry, SharedChecksNameTheKind) {
     ASSERT_FALSE(id);
     EXPECT_EQ(id.error().getKind(), aylo::ecs::ErrorKind::kLayoutMismatch);
     EXPECT_NE(std::string{id.error().getMessage()}.find("Gadget 'test.Lamp'"), std::string::npos);
+}
+
+TEST(TypeRegistry, RegisteringTheSameTypeAgainTakesItsNewDefaults) {
+    GadgetRegistry registry;
+    gadget::GadgetInfo lamp = makeLamp();
+    lamp.type.defaults.assign(4, std::byte{1});
+    const aylo::ecs::TypeId id = *registry.registerType(lamp);
+    lamp.type.defaults.assign(4, std::byte{2});
+    EXPECT_EQ(*registry.registerType(lamp), id);  // the same layout: no mismatch
+    const gadget::GadgetInfo* registered = registry.findById(id);
+    ASSERT_NE(registered, nullptr);
+    EXPECT_EQ(registered->type.defaults, std::vector<std::byte>(4, std::byte{2}));
 }

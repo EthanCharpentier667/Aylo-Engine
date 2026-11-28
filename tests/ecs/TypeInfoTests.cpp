@@ -7,6 +7,8 @@
 
 #include <gtest/gtest.h>
 
+#include <cstddef>
+#include <cstdint>
 #include <string>
 
 #include "aylo/ecs/error/Error.hpp"
@@ -63,4 +65,32 @@ TEST(TypeInfo, RejectsACopyableTypeWithoutCopyHook) {
     EXPECT_NE(std::string{result.error().getMessage()}.find("no copy hook"), std::string::npos);
     info.copyable = false;  // the same type, declared move-only, is fine
     EXPECT_TRUE(aylo::ecs::validateType(info, "resource"));
+}
+
+TEST(TypeInfo, RejectsDefaultBytesOfAnotherSize) {
+    aylo::ecs::TypeInfo info = makeScore();
+    info.defaults.resize(4);
+    const aylo::ecs::Result<void> result = aylo::ecs::validateType(info, "component");
+    ASSERT_FALSE(result);
+    EXPECT_NE(std::string{result.error().getMessage()}.find("default bytes are 4 bytes, not its size 8"),
+              std::string::npos);
+    info.defaults.resize(8);
+    EXPECT_TRUE(aylo::ecs::validateType(info, "component"));
+}
+
+TEST(TypeInfo, RejectsDefaultBytesNextToAConstructHook) {
+    aylo::ecs::TypeInfo info = makeScore();
+    info.defaults.resize(8);
+    info.hooks.construct = [](void* /*destination*/) {};
+    const aylo::ecs::Result<void> result = aylo::ecs::validateType(info, "component");
+    ASSERT_FALSE(result);
+    EXPECT_NE(std::string{result.error().getMessage()}.find("both a construct hook and default bytes"),
+              std::string::npos);
+}
+
+TEST(TypeInfo, DefaultBytesAreNotPartOfTheLayout) {
+    aylo::ecs::TypeInfo info = makeScore();
+    const std::uint64_t without = aylo::ecs::computeLayoutHash(info);
+    info.defaults.assign(8, std::byte{1});
+    EXPECT_EQ(aylo::ecs::computeLayoutHash(info), without);
 }
