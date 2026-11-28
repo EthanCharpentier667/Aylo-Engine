@@ -30,10 +30,12 @@ Put your capsules anywhere under `assets/`. The engine reads every `.capsule`, `
 starts, after your scripts, so a file can use the components they declare. A capsule's name is its path from
 `assets/`, for example `actors/boss.actor`.
 
-The models (`.gltf`, `.glb`, `.fbx`, `.obj`), materials (`.material`) and images (`.png`, `.jpg`, `.bmp`, `.tga`,
-`.hdr`) a capsule names are loaded when its file is read, and again when you save it: `aylo.MeshRenderer = { mesh =
-"models/statue.obj" }` draws without an `engine.assets.mesh` in a script. An image loads with the defaults of
-`engine.assets.texture` (pixelated, not repeated); for other options, load it in a script with them first. A file that
+The models (`.gltf`, `.glb`, `.fbx`, `.obj`), materials (`.material`), images (`.png`, `.jpg`, `.bmp`, `.tga`,
+`.hdr`) and sounds (`.wav`, `.mp3`, `.ogg`, `.flac`) a capsule names are loaded when its file is read, and again when
+you save it: `aylo.MeshRenderer = { mesh = "models/statue.obj" }` draws without an `engine.assets.mesh` in a script,
+and `aylo.AudioSource = { sound = "sfx/engine.ogg", loop = true }` plays without an `engine.assets.sound`. An asset
+loads with the defaults of its setup form: an image pixelated and not repeated, a sound decoded once. For other
+options (a smooth image, a music that streams), load it in a script with them first: the first load wins. A file that
 cannot be loaded is reported on the output, and the game goes on.
 
 ```
