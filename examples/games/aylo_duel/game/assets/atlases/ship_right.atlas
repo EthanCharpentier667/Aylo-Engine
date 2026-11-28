@@ -1,0 +1,5 @@
+{
+    "texture": "../spritesheet26.gif",
+    "grid": { "frameSize": [63, 48], "count": 3, "spacing": [2, 0], "offset": [1, 1] },
+    "animations": { "fly": { "frames": [0, 1, 2], "frameDuration": 0.1, "direction": "pingPong" } }
+}
