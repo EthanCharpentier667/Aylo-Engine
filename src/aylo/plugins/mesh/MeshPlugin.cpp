@@ -11,6 +11,7 @@
 #include <array>
 #include <cstddef>
 #include <exception>
+#include <filesystem>
 #include <format>
 #include <glm/ext/matrix_float4x4.hpp>
 #include <iostream>
@@ -37,6 +38,7 @@
 #include "core/asset/exceptions/AssetExceptions.hpp"
 #include "core/vfs/FileSource.hpp"
 #include "plugins/AssetDirectory.hpp"
+#include "plugins/AssetLoaders.hpp"
 #include "plugins/graphics/BackendRegistry.hpp"
 #include "plugins/graphics/GraphicsPlugin.hpp"
 #include "plugins/graphics/GraphicsResources.hpp"  // IWYU pragma: keep
@@ -361,6 +363,10 @@ void MeshPlugin::build(ecs::App& app) {
     ecs::Resources& resources = app.getWorld().getResources();
     resources.insertIfAbsent<MeshAssets>();
     resources.getMut<MeshAssets>()->setSource(assetSourceOf(resources));
+    // A model a capsule names is loaded as engine.assets.mesh would (AssetLoaders.hpp).
+    addAssetLoader(resources, {".gltf", ".glb", ".fbx", ".obj"}, [&resources](const std::filesystem::path& path) {
+        static_cast<void>(resources.requireMut<MeshAssets>()->load(path));
+    });
     static_cast<void>(app.getWorld().getComponents().registerType<MeshRenderer>());
     addMeshCalls(app);
 
