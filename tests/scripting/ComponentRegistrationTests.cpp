@@ -134,3 +134,17 @@ TEST(ComponentRegistration, DefaultOfTheWrongSizeIsRefused) {
     ASSERT_FALSE(result);
     EXPECT_EQ(result.error().kind(), ErrorKind::kInvalidDeclaration);
 }
+
+TEST(ComponentRegistration, TheWorldsTypeCarriesTheDefaults) {
+    // Every new value starts from them, whoever makes it: a capsule, the editor, C++ (issue #151).
+    aylo::ecs::World world;
+    sc::ComponentDeclaration declaration = makeBullet();
+    const float damage = 10.0F;
+    declaration.fields[0].defaultValue.resize(sizeof(float));
+    std::memcpy(declaration.fields[0].defaultValue.data(), &damage, sizeof(float));
+    const auto layout = sc::registerComponent(world.getComponents(), declaration);
+    ASSERT_TRUE(layout);
+    const aylo::ecs::ComponentInfo* info = world.getComponents().getRegistry().findById(layout->id);
+    ASSERT_NE(info, nullptr);
+    EXPECT_EQ(info->type.defaults, layout->defaults);
+}
