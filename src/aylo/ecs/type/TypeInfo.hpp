@@ -55,6 +55,9 @@ struct TypeInfo {
     TypeHooks hooks;                                      ///< Lifecycle of the bytes; null when trivial.
     bool copyable{true};                                  ///< Whether a value can be copied (false for move-only).
     std::vector<FieldInfo> fields;                        ///< Reflected fields.
+    /// @brief The bytes a new value starts from when the type has no construct hook: a type declared in Luau gives
+    /// its declared defaults here. Empty: zero-filled. Not part of the layout, so changing them is no layout mismatch.
+    std::vector<std::byte> defaults;
     std::uint64_t layoutHash{0};  ///< computeLayoutHash() of this description, set by the registry.
 };
 
@@ -62,8 +65,8 @@ struct TypeInfo {
 /// @param kind The kind of the type, lowercase ("component"), used in the messages.
 /// @return Nothing on success, or an ErrorKind::kInvalidType error naming the type and the problem: an empty
 /// name, a bad alignment or size, fields on an empty type, copyable without a copy hook, a client-only replicated
-/// type, a replicated type without fields, or a field that is unnamed, duplicated, empty, misaligned, out of bounds or
-/// overlapping another.
+/// type, a replicated type without fields, default bytes of another size than the type or next to a construct hook,
+/// or a field that is unnamed, duplicated, empty, misaligned, out of bounds or overlapping another.
 [[nodiscard]] AYLO_ECS_API Result<void> validateType(const TypeInfo& info, std::string_view kind);
 
 /// @brief Fingerprint of a type's layout: its name, size, alignment, which lifecycle hooks it has, whether it is

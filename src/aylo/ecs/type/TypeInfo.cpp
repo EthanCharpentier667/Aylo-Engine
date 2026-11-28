@@ -114,6 +114,13 @@ Result<void> validateType(const TypeInfo& info, std::string_view kind) {
     if (info.presence == Presence::kClientOnly && info.replication != ReplicationMode::kNone) {
         return invalid(kind, info.name, std::format("a client-only {} cannot be replicated", kind));
     }
+    if (!info.defaults.empty() && info.defaults.size() != info.size) {
+        return invalid(kind, info.name,
+                       std::format("its default bytes are {} bytes, not its size {}", info.defaults.size(), info.size));
+    }
+    if (!info.defaults.empty() && info.hooks.construct != nullptr) {
+        return invalid(kind, info.name, "it has both a construct hook and default bytes: the hook makes a new value");
+    }
     if (info.replication != ReplicationMode::kNone && info.size != 0 && info.fields.empty()) {
         return invalid(kind, info.name, std::format("a replicated {} needs fields to serialize", kind));
     }
