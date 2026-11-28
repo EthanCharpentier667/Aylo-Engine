@@ -12,10 +12,12 @@
 
 #include "aylo/ecs/command/Commands.hpp"
 #include "aylo/ecs/entity/Entity.hpp"
+#include "aylo/ecs/type/TypeInfo.hpp"
 #include "plugins/capsule/Capsule.hpp"
 #include "plugins/capsule/CapsuleInstance.hpp"
 #include "plugins/capsule/Capsules.hpp"
 #include "plugins/capsule/LoadedCapsule.hpp"
+#include "plugins/capsule/SpawnedCapsule.hpp"
 #include "plugins/capsule/detail/CapsuleSpawner.hpp"
 #include "plugins/capsule/exceptions/CapsuleException.hpp"
 
@@ -35,7 +37,17 @@ const Capsule& requireSpawnable(const Capsules& capsules, CapsuleId id) {
 
 ecs::Commands::EntityCommands spawnCapsule(ecs::Commands& commands, const Capsules& capsules, CapsuleId id) {
     const Capsule& capsule = requireSpawnable(capsules, id);
-    return commands.entity(detail::spawnTree(capsules, capsule, commands, ecs::Entity{}, false));
+    const ecs::Entity root = detail::spawnTree(capsules, capsule, commands, ecs::Entity{}, false);
+    // A root that reaches the clients tells them its capsule, for its client part. Only the side that sends it does.
+    if (capsules.keeps(ecs::Presence::kServerOnly) && detail::rootReplicates(capsules, capsule)) {
+        commands.add(root, SpawnedCapsule{.capsule = capsule.getId()});
+    }
+    return commands.entity(root);
+}
+
+void spawnClientPart(ecs::Commands& commands, const Capsules& capsules, ecs::Entity root, CapsuleId id) {
+    const Capsule& capsule = requireSpawnable(capsules, id);
+    static_cast<void>(detail::spawnTree(capsules, capsule, commands, root, false, true));
 }
 
 ecs::Commands::EntityCommands loadCapsule(ecs::Commands& commands, const Capsules& capsules, LoadedCapsule& loaded,

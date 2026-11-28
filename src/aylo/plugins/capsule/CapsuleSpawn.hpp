@@ -21,6 +21,8 @@ struct LoadedCapsule;
 
 /// @brief Records spawning a capsule: one entity per node of this side, each a copy of its values (the server-only or
 /// client-only ones left out on the other side), parented to its parent node's entity; a CapsuleInstance on the root.
+/// On the server (and standalone), a root with a replicated component also gets a SpawnedCapsule, so the clients spawn
+/// its client part (spawnClientPart()).
 /// @details The entities are reserved at once; their components are added when the commands are applied. A system
 /// spawns with its Commands and a read of the Capsules resource:
 /// @code
@@ -34,6 +36,16 @@ struct LoadedCapsule;
 /// nothing is recorded then.
 AYLO_PLUGIN_CAPSULE_API ecs::Commands::EntityCommands spawnCapsule(ecs::Commands& commands, const Capsules& capsules,
                                                                    CapsuleId id);
+
+/// @brief Records spawning, into a root the server spawned and replicated to this client, the part of its capsule the
+/// server cannot send: the root's values of the components that are not replicated (its sprite, its sound), its
+/// `side=client` child nodes with their subtrees, its Name and its CapsuleInstance. The root's replicated components,
+/// and its `server` and `both` children, are the server's: they come through replication.
+/// @details The system `aylo.Capsule.SpawnReplicated` calls it for each root with a SpawnedCapsule and no
+/// CapsuleInstance.
+/// @throws exceptions::CapsuleException As spawnCapsule(); nothing is recorded then.
+AYLO_PLUGIN_CAPSULE_API void spawnClientPart(ecs::Commands& commands, const Capsules& capsules, ecs::Entity root,
+                                             CapsuleId id);
 
 /// @brief Records switching to a capsule: despawns the root `loaded` names (the level being played, if any and alive),
 /// spawns the capsule (spawnCapsule()) and makes `loaded` name it. Entities outside the old capsule's tree stay.
