@@ -114,23 +114,25 @@ How you write a value depends on the type of the field (see [Components](compone
 | `i8`, `i16`, `i32`, `i64`, `u8`, `u16`, `u32`, `u64` | `42`, `-3`, `+7`, `0x2A` | a whole number that fits the type; hexadecimal after `0x`; no `-` for the `u` types |
 | `f32`, `f64` | `0.25`, `-40`, `2`, `1.5e3` | a number; write `0.5`, not `.5`; no `inf` or `nan` |
 | `vec2`, `vec3`, `vec4` | `(x, y)`, `(x, y, z)`, `(x, y, z, w)` | parentheses, exactly that many numbers |
-| `assetId` | `"sprites/ship.png"`, `"game.explosion"` | the asset's path from `assets/`, or the `name` a script gave it (an atlas made with `engine.assets.atlas({ name = ... })`, an animation of `aylo.SpriteAnimator`) |
+| `assetId` | `"sprites/ship.png"`, `"game.ship"` | the asset's path from `assets/`, or the `name` a script gave it (an atlas made with `engine.assets.atlas({ name = ... })`, an animation of `aylo.SpriteAnimator`) |
 | `string` | `"Player one"` | at most 255 bytes |
 | an enum field (`shape`, `type`, `blend`...) | `"circle"`, `1` | the name of its value, quoted, as in [Enum fields](components.md#enum-fields); its number also works |
 | a list | `[1, 2, 3]`, `[]` | any number of values, replacing the whole list |
 | `entity` | | cannot be written in a file yet |
 
-A file loads by itself the models, materials and images it names (see [Capsule files](capsules.md#capsule-files)).
-An atlas, a font, a sound or a map is not loaded from a file: make it in a script with its
-[setup form](setup-forms.md), and write its name or path in the file. A file read on a server or before the form ran
-still holds the same id, which finds the asset once it is made:
+A file loads by itself the models, materials, images, atlas files, fonts and sounds it names (see
+[Capsule files](capsules.md#capsule-files)):
 
 ```
-# actors/explosion.actor: the atlas is made by a client script, engine.assets.atlas({ name = "game.explosion", ... })
+# actors/explosion.actor: naming the atlas file loads it
 [node path="."]
 aylo.SpriteRenderer = { layer = 3, blend = "additive" }
-aylo.SpriteAnimator = { atlas = "game.explosion", animation = "explode" }
+aylo.SpriteAnimator = { atlas = "atlases/explosion.atlas", animation = "explode" }
 ```
+
+An asset a script makes without a file (an atlas cut with `engine.assets.atlas({ name = "game.ship", texture = ...
+})`, a map) is written by its name or path: the file holds the same id, which finds the asset once the script made
+it.
 
 ## Errors
 

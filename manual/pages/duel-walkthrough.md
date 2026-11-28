@@ -27,7 +27,7 @@ game/
       lasers.luau         flying, hitting, winning
     client/               presentation (runs on the clients)
       main.luau           the client entry
-      assets.luau         makes the atlases, the font, the sounds, the map and the menu images, returns the ids
+      assets.luau         the ids of the atlases, font, sounds, map and menu images the scripts use
       scene.luau          the background and the planets that pass
       sprites.luau        looks of ships and lasers, the loser's explosion
       sounds.luau         music and shots
@@ -38,6 +38,7 @@ game/
     scenes/arena.scene    the arena: the walls and the rock, the camera, the names and the round's line
     actors/               the walls and the rock; the ships, the laser and the misfire the server spawns;
                           the explosion and the planets a client spawns
+    atlases/              the frames and animations of the ships, the laser and the explosion (.atlas files)
 ```
 
 The arena and everything spawned in it are [capsules](capsules.md): files you can open and change in the
@@ -211,10 +212,12 @@ Its walls and its rock are `side=both` nodes: each side spawns its own copy, sta
 
 `client/main.luau` requires the client files below, so the server never loads them.
 
-- **`assets.luau`** makes what no capsule loads by itself with the `engine.assets` forms (the atlases, the font, the
-  sounds, the map, the menu images) and returns the ids; the files that draw require it. The capsules name an atlas
-  by its `name` (`"game.explosion"`) and the font by its path. The planets' images need no form: their actors name
-  them, which loads them. See [Setup forms](setup-forms.md) and [Values](capsule-format.md#values).
+- **`assets.luau`** returns the ids of what the client's scripts use, each loaded by its `engine.assets` form: the
+  ships' and the laser's atlases (`engine.assets.atlas({ path = "atlases/ship_left.atlas" })`: their frames and
+  animations are in [`.atlas` files](setup-forms.md#atlas-files)), the font, the sounds (the music with
+  `stream = true`), the map and the menu images; the files that draw require it. What only a capsule names needs no
+  line: the explosion's atlas file, the planets' images and the arena's font are loaded by the capsules that name
+  them. See [Setup forms](setup-forms.md) and [Capsule files](capsules.md#capsule-files).
 - **`scene.luau`** spawns the space background map, and now and then a planet's actor with `engine.capsule.spawn`.
 - **`sprites.luau`** gives the ships and the lasers, which the server spawned on its side only, a
   `aylo.SpriteRenderer` and `aylo.SpriteAnimator` from the atlases, in `PostUpdate` (which also runs while the editor
