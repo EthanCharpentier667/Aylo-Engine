@@ -65,6 +65,9 @@ that follows what you edit) says `whilePaused = true`, as `@tool` does in Godot:
 local Preview = engine.behaviour("game.Preview", { fields = {}, whilePaused = true })
 ```
 
+In the [editor](editor.md#behaviours), the **Behaviours** panel lists them, with their file and the capsule nodes that
+carry them.
+
 ## Hooks
 
 Write a hook as a method of the Behaviour, `function Spinner:onUpdate(dt)`. Define only the ones you need.

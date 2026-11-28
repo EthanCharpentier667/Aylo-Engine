@@ -45,6 +45,7 @@ An `.actor` named there opens alone (see below).
 | **Particles** | Your particle effects, to tune and preview |
 | **Console** | What your game writes: your scripts' `print`, the engine's errors and warnings |
 | **Stats** | The frame rate, the last frame times, and what the frame drew |
+| **Behaviours** | Every [Behaviour](#behaviours) of your game: its hooks, its script, the capsule nodes that carry it, how many entities have it now |
 | **Plugins** | The plugins your game loaded, in build order, each with its kind (engine or game), the plugins it needs and those that need it; a filter; and the plugins available but not loaded |
 | **Export** | Opened by **File**, **Export...**: exports your game as a player gets it, as `tools/aylo-export` does (see [Shipping your game](shipping.md)) |
 
@@ -163,6 +164,15 @@ one field, `speed`, and the hooks `onStart` and `onFixedUpdate`, on the server; 
 The file runs without a `require`, and [hot reload](hot-reload.md) runs it as soon as you save it. Then select a node,
 **Add component**: `game.Spinner` is under **Behaviours**. Its fields show in the Inspector like any component's, and the
 scene saves them. Right-click the header of a Behaviour, **Open script**, to open its file again.
+
+The **Behaviours** panel lists every Behaviour of your game:
+
+- its hooks, and **Open script**;
+- **Carried by**: the scenes and actors whose nodes have it, a click opens the capsule on that node;
+- how many entities have it now; while playing, **Show in Hierarchy** lists them.
+
+A Behaviour's code runs only on the entities that carry it, so this panel says where it runs. One that no capsule
+carries runs only on the entities a script gives it (`ctx.commands:add`), and the panel says so.
 
 A name is letters, digits and `_`, not starting with a digit: `Spinner`, `EnemyTurret`. A file of that name that exists
 already is kept, and the status line says so. A Behaviour shows under **Behaviours** once it has a hook; the tags it keeps
