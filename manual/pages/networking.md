@@ -30,8 +30,10 @@ Both sides declare the same components, and a client that declares different one
 rule of thumb:
 
 - the server spawns the entities that matter and writes their gameplay components;
-- a client system reacts to replicated entities (`added = {...}` finds the new ones) and adds what only it needs: a
-  transform, a sprite, a sound, a text, using `clientOnly` components or the engine's own.
+- an actor the server spawns from a capsule brings its look with it: its sprite, sound and client nodes are in the
+  file, and every client spawns them (see [Actors the server spawns](capsules.md#actors-the-server-spawns));
+- a client system reacts to replicated entities (`added = {...}` finds the new ones) for what the file cannot say: a
+  sprite that follows a replicated position, a text with a player's name.
 
 ## Players and presence
 
