@@ -168,7 +168,7 @@ architecture rules, and this file keeps the detail, which changes with every fea
     - `plugins/audio/` (`aylo::plugins::audio`) — `AudioPlugin`: `AudioRegistry` (starts the device the settings name,
       `"null"` always registered, as `NullAudioDevice`), `AudioConfig`, `AudioVolumes`, the `AudioAssets` resource (sounds by `AssetId`, opened
       and decoded by the device), the `AudioSource` and `AudioListener` components and the `PlaySound` / `PlayMusic` /
-      `StopMusic` events, played by client-side PostUpdate systems. `AudioReflection.hpp` reflects the contract's `Bus`. Design in `docs/audio/design.md`.
+      `StopMusic` events, played by client-side PostUpdate systems. `AudioReflection.hpp` reflects the contract's `Bus`. `detail/ImportFile` reads a sound's `<path>.import` (nlohmann/json, private). Design in `docs/audio/design.md`.
     - `plugins/http/` (`aylo::plugins::http`) — `HttpPlugin`: HTTPS requests for scripts. `HttpSettings` (the `http`
       section: allowed hosts, limits, secrets), the `HttpClient` resource (libcurl, private in `detail/CurlClient`,
       polled without waiting by `aylo.Http.Poll`), the `HttpResponse` event, the `aylo.http.request` and

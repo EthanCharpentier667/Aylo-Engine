@@ -311,8 +311,14 @@ void spawnShip(aylo::ecs::Commands& commands, aylo::ecs::ResMut<aylo::plugins::a
   the device cannot answer, and the silent backend could not anyway.
 - A sound a capsule names (`aylo.AudioSource = { sound = "sfx/engine.ogg" }`) is loaded too: the plugin adds a loader
   for `.wav`, `.mp3`, `.ogg` and `.flac` to the `AssetLoaders` resource (`plugins/AssetLoaders.hpp`) when it is built,
-  which calls `load(path)` with the default `SoundDesc` (decoded once). A music meant to stream is loaded by a script
-  first, with `stream`: the first request wins.
+  which calls `load(path)` with the default `SoundDesc` (decoded once).
+- **Import files.** A sound's options can sit beside it, in `<path>.import` (`maint.ogg.import`): a JSON object, today
+  `{ "stream": true }`. `load(path, desc)` reads it on the first request of the path (`detail::applyImportFile()`,
+  through the asset source) and adds its options to `desc`: an option true in either is true, so a capsule, a script's
+  path or a form without options all get a streamed music. A key it does not know, a value that is not a boolean or a
+  file that is not an object throws `AudioLoadException` naming the file, and nothing is queued. A request after the
+  first reads nothing: the first request wins, as before. The idea is Godot's `.import` and Unity's `.meta`; other
+  kinds of asset can read the same file later.
 - Sounds known by `AssetId` are what gameplay, Luau and the network exchange; `SoundId` and `VoiceId` never leave the
   process.
 
