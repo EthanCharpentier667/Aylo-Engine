@@ -18,6 +18,7 @@
 #include "aylo/ecs/type/Field.hpp"
 #include "aylo/ecs/world/World.hpp"
 #include "core/asset/AssetId.hpp"
+#include "plugins/AssetLoaders.hpp"
 #include "plugins/graphics/TextureAssets.hpp"
 #include "plugins/sprite/AnimationEvents.hpp"
 #include "plugins/sprite/AtlasAssets.hpp"
@@ -84,6 +85,18 @@ TEST(SpritePlugin, InsertsTheAtlasAndTextureAssets) {
     SpriteApp app;
     EXPECT_TRUE(app.world().getResources().has<aylo::plugins::sprite::AtlasAssets>());
     EXPECT_TRUE(app.world().getResources().has<aylo::plugins::graphics::TextureAssets>());
+}
+
+TEST(SpritePlugin, AddsTheLoaderOfAtlasFilesOnly) {
+    // A capsule's .atlas reaches the sprite plugin through the AssetLoaders (#158); a .json is left to the fonts.
+    SpriteApp app;
+    const auto* loaders = app.world().getResources().get<aylo::plugins::AssetLoaders>();
+    ASSERT_NE(loaders, nullptr);
+    EXPECT_TRUE(loaders->load("ships/missing.atlas"));  // taken, and recorded as failed: the file is missing
+    const auto* entry = app.world().getResources().get<aylo::plugins::sprite::AtlasAssets>()->getEntry(
+        AssetId::fromPath("ships/missing.atlas"));
+    EXPECT_NE(entry, nullptr);
+    EXPECT_FALSE(loaders->load("ships/ship.json"));
 }
 
 TEST(SpritePlugin, ShowsTheFrameOfTheAnimationTime) {
