@@ -18,6 +18,8 @@
 --   what the other needs.
 -- - `onDestroy` (PostUpdate) visits the entities that lost the component (`removed`), and takes the tags away. It is
 --   there as soon as a tag is, to keep a component given back from looking started.
+-- A Behaviour is gameplay, so no hook runs while the game is paused, the editor editing or after Pause (a paused frame
+-- still runs PreUpdate and PostUpdate): `whilePaused = true` makes them run then too, as `@tool` does in Godot.
 local forms = engine.forms
 local declareComponent = engine.ecs.component
 local declareSystem = engine.ecs.system
@@ -38,7 +40,7 @@ local hookSpecs = {
 local lifecycleOrder = { "onDisable", "onEnable", "onStart" }
 local hookList = "onStart, onEnable, onDisable, onUpdate, onFixedUpdate, onDestroy"
 
-local optionKeys = { "fields", "defaults", "replication", "presence", "side" }
+local optionKeys = { "fields", "defaults", "replication", "presence", "side", "whilePaused" }
 
 -- The presence of the tags `<name>.Started` and `<name>.Active` for each side: they live only where the hooks run.
 local tagPresence = { server = "serverOnly", client = "clientOnly", both = "both" }
@@ -232,7 +234,7 @@ end
 
 forms.describe(
 	"engine.behaviour",
-	"(name: string, spec: { fields: { [string]: string }, defaults: Fields?, replication: string?, presence: string?, side: Side? }) -> Self"
+	"(name: string, spec: { fields: { [string]: string }, defaults: Fields?, replication: string?, presence: string?, side: Side?, whilePaused: boolean? }) -> Self"
 )
 
 function engine.behaviour(name, spec)
@@ -255,6 +257,11 @@ function engine.behaviour(name, spec)
 	if tagPresence[side] == nil then
 		forms.fail(context, "'side' must be \"server\", \"client\" or \"both\"")
 	end
+	-- A Behaviour is gameplay: its hooks wait while the game is paused (the editor editing, Pause), unless it asks.
+	if spec.whilePaused ~= nil and type(spec.whilePaused) ~= "boolean" then
+		forms.fail(context, "'whilePaused' must be true or false")
+	end
+	local whilePaused = spec.whilePaused == true
 	noteBehaviour(name)
 	declareComponent(name, {
 		fields = spec.fields,
@@ -282,6 +289,7 @@ function engine.behaviour(name, spec)
 		declared[hook] = true
 		options.phase = hookSpecs[hook].phase
 		options.side = side
+		options.whilePaused = whilePaused
 		declareSystem(name .. "." .. hook, options)
 	end
 
