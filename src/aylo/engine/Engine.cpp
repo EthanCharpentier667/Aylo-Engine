@@ -57,6 +57,7 @@
 #include "aylo/network/crypto/Crypto.hpp"
 #include "aylo/network/io/Address.hpp"
 #include "aylo/plugins/AssetDirectory.hpp"
+#include "aylo/plugins/AssetLoaders.hpp"
 #include "aylo/plugins/HotReload.hpp"
 #include "aylo/replication/ReplicationPlugin.hpp"
 #include "aylo/replication/ReplicationSettings.hpp"
@@ -498,6 +499,7 @@ int Engine::run(std::optional<std::size_t> maxFrames) {
             if (const std::optional<int> code = _app->takeExit()) {
                 return *code;
             }
+            loadNamedAssets();
         } else {
             // The last reload could not build the game: wait for the files to change.
             std::this_thread::sleep_for(core::reload::HotReloader::kInterval / 5);
@@ -513,6 +515,24 @@ int Engine::run(std::optional<std::size_t> maxFrames) {
                 }
                 std::cerr << "[Engine] Waiting for a change in the game files to try again.\n";
             }
+        }
+    }
+}
+
+void Engine::loadNamedAssets() {
+    if (!_app || _scriptHost == nullptr) {
+        return;
+    }
+    const std::vector<std::string> paths = _scriptHost->takeNamedAssets();
+    const auto* loaders = _app->getWorld().getResources().get<plugins::AssetLoaders>();
+    if (loaders == nullptr) {
+        return;  // no asset plugin here (a server without one): nothing to load
+    }
+    for (const std::string& path : paths) {
+        try {
+            static_cast<void>(loaders->load(path));  // false: no plugin loads that kind of file, or it is a name
+        } catch (const std::exception& error) {
+            std::cerr << std::format("[Engine] Cannot load '{}', which a script names: {}\n", path, error.what());
         }
     }
 }
@@ -731,5 +751,6 @@ void Engine::build() {
         addNetworkInput(app);
     }
     writeScriptTypes();
+    loadNamedAssets();  // what the scripts named while loading (the defaults of their components)
 }
 }  // namespace aylo::engine
