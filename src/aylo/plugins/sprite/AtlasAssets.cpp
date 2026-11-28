@@ -25,7 +25,9 @@
 #include "core/asset/AssetId.hpp"
 #include "core/asset/AssetStore.hpp"
 #include "core/vfs/FileSource.hpp"
+#include "plugins/AssetLoaders.hpp"
 #include "plugins/sprite/SpriteAtlas.hpp"
+#include "plugins/sprite/detail/AtlasFile.hpp"
 #include "plugins/sprite/detail/AtlasJson.hpp"
 #include "plugins/sprite/detail/AtlasPacker.hpp"
 
@@ -40,7 +42,14 @@ void AtlasAssets::setSource(std::shared_ptr<const core::vfs::FileSource> source)
 std::size_t AtlasAssets::getCount() const noexcept { return _atlases.getCount(); }
 
 core::asset::AssetId AtlasAssets::load(const std::filesystem::path& path, const contract::renderer::TextureDesc& desc) {
-    const auto stored = _atlases.load(path, [&desc](std::string_view text, const std::filesystem::path& file) {
+    const core::vfs::FileSource& source = _atlases.getSource();
+    const auto stored = _atlases.load(path, [&](std::string_view text, const std::filesystem::path& file) {
+        if (AssetLoaders::lowercase(file.extension().string()) == detail::kAtlasFileExtension) {
+            return detail::parseAtlasFile(
+                text, file,
+                [&source](const std::filesystem::path& exported) { return source.read(exported.generic_string()); },
+                desc);
+        }
         return detail::parseAtlasJson(text, file, desc);
     });
     if (stored.added != nullptr) {
