@@ -124,6 +124,28 @@ TEST(ScriptSetupForms, AnAtlasFormCutsFramesAndNamesAnimations) {
     EXPECT_NE(laser->findAnimation(aylo::plugins::sprite::animationId("glow")), nullptr);
 }
 
+TEST(ScriptSetupForms, AnAtlasFormReadsAnAtlasFile) {
+    // The engine's .atlas file holds the fields of the form (#158).
+    const std::filesystem::path file = std::filesystem::temp_directory_path() / "aylo-script-forms.atlas";
+    std::ofstream{file} << R"({
+      "texture": "ship.png",
+      "grid": { "frameSize": [48, 48], "count": 3 },
+      "animations": { "fly": { "frames": [0, 1, 2], "direction": "pingPong" } }
+    })";
+    ScriptApp script;
+    script.app.addPlugin(aylo::plugins::sprite::SpritePlugin{});
+    EXPECT_EQ(
+        script.run(std::format(R"(assert(engine.assets.atlas({{ path = "{}" }}) ~= nil))", file.generic_string())), "");
+    std::filesystem::remove(file);
+
+    const auto* ship = atlasOf(script.app, file.generic_string());
+    ASSERT_NE(ship, nullptr);
+    EXPECT_EQ(ship->getFrames().size(), 3U);
+    const auto* fly = ship->findAnimation(aylo::plugins::sprite::animationId("fly"));
+    ASSERT_NE(fly, nullptr);
+    EXPECT_EQ(fly->direction, aylo::plugins::sprite::AnimationDirection::kPingPong);
+}
+
 TEST(ScriptSetupForms, AnAtlasFormReportsTheSpritePluginsErrors) {
     ScriptApp script;
     script.app.addPlugin(aylo::plugins::sprite::SpritePlugin{});

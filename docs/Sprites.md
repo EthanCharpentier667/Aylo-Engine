@@ -11,8 +11,9 @@ A `SpriteAtlas` is a texture, its frames (a name, a rectangle of the texture, an
 `AtlasAssets` resource keeps them by `AssetId`, as `TextureAssets` keeps textures, and builds them three ways:
 
 ```cpp
-// An Aseprite or TexturePacker JSON file: its image, frames and animations (Aseprite's frame tags).
+// An atlas file: the engine's own .atlas, or an Aseprite or TexturePacker JSON export.
 const AssetId ship = atlases->load("assets/ship.json");
+const AssetId left = atlases->load("assets/ships/left.atlas");
 
 // A uniform sheet without a file: a grid, and animations in code.
 SpriteAtlas enemy = SpriteAtlas::grid("assets/spritesheet26.gif", {63.0F, 48.0F}, 6, {2.0F, 0.0F}, 0, {1.0F, 1.0F});
@@ -32,7 +33,14 @@ const AssetId fx = atlases->pack("fx", images);
   or "Array" layout. Frames keep the file's order. Each frame's `duration` (milliseconds) is read, and a trimmed frame
   keeps its origin where it was in the untrimmed image. Each frame tag becomes an animation, with its `direction`
   (forward, reverse, pingpong, pingpong_reverse) and its `repeat` count. `meta.image` is relative to the file. The
-  parser lives in `sprite/detail/AtlasJson`, the only file that includes nlohmann_json.
+  parser lives in `sprite/detail/AtlasJson`.
+- **The `.atlas` file** is the engine's own (`load()` tells it by its extension, whatever its case): the fields of the
+  `engine.assets.atlas` form as a JSON object, `texture` with a `grid` and `frames`, or `path` to an export whose
+  animations it adds to, plus `linear` and `animations`; paths are relative to the file, vectors are `[x, y]`, and an
+  unknown key is an error. It lets an atlas cut by hand live on disk, where a capsule can name it: the sprite plugin
+  adds the `.atlas` loader to the `AssetLoaders` resource (`plugins/AssetLoaders.hpp`). It adds none for `.json`,
+  which may be a font: a capsule names an Aseprite export through a `.atlas`. The parser is `sprite/detail/AtlasFile`;
+  with `AtlasJson`, the only files that include nlohmann_json.
 - **Packing** decodes the images (stb_image, through `backend/graphics/ImageDecoding`), packs them with stb_rect_pack
   into the smallest power-of-two texture up to 4096x4096, a pixel apart by default so linear filtering never bleeds,
   and hands the pixels to `TextureAssets::loadPixels()`.

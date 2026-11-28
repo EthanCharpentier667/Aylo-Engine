@@ -144,3 +144,29 @@ TEST(AtlasAssets, UnloadsAnAtlas) {
     EXPECT_EQ(atlases.get(id), nullptr);
     EXPECT_FALSE(atlases.unload(id));
 }
+
+TEST(AtlasAssets, ReadsAnAtlasFileOfTheEngine) {
+    const TemporaryFile image{"aylo-atlas-tests.png", aylo::test::plugins::twoPixelPng()};
+    const TemporaryFile file{"aylo-atlas-tests.atlas", R"({
+      "texture": "aylo-atlas-tests.png",
+      "grid": { "frameSize": [1, 1], "count": 2 },
+      "animations": { "blink": { "frames": [0, 1] } }
+    })"};
+    AtlasAssets atlases;
+    const AssetId id = atlases.load(file.getPath());
+    EXPECT_EQ(id, AssetId::fromPath(file.getPath()));
+    const SpriteAtlas* atlas = atlases.get(id);
+    ASSERT_NE(atlas, nullptr);
+    EXPECT_EQ(atlas->getFrames().size(), 2U);
+    EXPECT_NE(atlas->findAnimation(aylo::plugins::sprite::animationId("blink")), nullptr);
+    EXPECT_EQ(atlases.takeTextureRequests().size(), 1U);
+}
+
+TEST(AtlasAssets, ReadsTheExportAnAtlasFileNames) {
+    const TemporaryFile json{"aylo-atlas-tests.json", kAtlasJson};
+    const TemporaryFile file{"aylo-atlas-tests.ATLAS", R"({ "path": "aylo-atlas-tests.json" })"};
+    AtlasAssets atlases;
+    const SpriteAtlas* atlas = atlases.get(atlases.load(file.getPath()));
+    ASSERT_NE(atlas, nullptr);
+    EXPECT_EQ(atlas->getFrames().size(), 2U);
+}

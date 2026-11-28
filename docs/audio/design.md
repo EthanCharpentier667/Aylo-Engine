@@ -309,6 +309,10 @@ void spawnShip(aylo::ecs::Commands& commands, aylo::ecs::ResMut<aylo::plugins::a
   `SoundProbe.hpp`) and keeps the answer in the entry; a sound given in memory is probed before its bytes are freed.
   Since a script asks right after `loadSound`, at the top level of a file, before the Startup system opened the device,
   the device cannot answer, and the silent backend could not anyway.
+- A sound a capsule names (`aylo.AudioSource = { sound = "sfx/engine.ogg" }`) is loaded too: the plugin adds a loader
+  for `.wav`, `.mp3`, `.ogg` and `.flac` to the `AssetLoaders` resource (`plugins/AssetLoaders.hpp`) when it is built,
+  which calls `load(path)` with the default `SoundDesc` (decoded once). A music meant to stream is loaded by a script
+  first, with `stream`: the first request wins.
 - Sounds known by `AssetId` are what gameplay, Luau and the network exchange; `SoundId` and `VoiceId` never leave the
   process.
 

@@ -22,6 +22,7 @@
 #include "aylo/ecs/world/World.hpp"
 #include "core/asset/AssetId.hpp"
 #include "core/config/Settings.hpp"
+#include "plugins/AssetLoaders.hpp"
 #include "plugins/audio/AudioAssets.hpp"
 #include "plugins/audio/AudioEvents.hpp"
 #include "plugins/audio/AudioListener.hpp"
@@ -481,4 +482,32 @@ TEST(AudioPlugin, ForgetsA3DVoiceThatEnded) {
     app.state().playing.clear();  // it ended
     app.app().runFrame();
     EXPECT_TRUE(app.world().getResources().get<aylo::plugins::audio::Audio>()->placed.empty());
+}
+
+TEST(AudioPlugin, LoadsTheSoundsOfTheAssetLoaders) {
+    // What a capsule names reaches the audio plugin through the AssetLoaders, as engine.assets.sound would (#157).
+    AudioApp app;
+    const auto* loaders = app.world().getResources().get<aylo::plugins::AssetLoaders>();
+    ASSERT_NE(loaders, nullptr);
+    const auto* sounds = app.world().getResources().get<aylo::plugins::audio::AudioAssets>();
+
+    for (const char* path : {"sfx/shot.wav", "sfx/shot.mp3", "music/theme.ogg", "sfx/SHOT.FLAC"}) {
+        EXPECT_TRUE(loaders->load(path)) << path;
+        const auto* entry = sounds->get(aylo::core::asset::AssetId::fromPath(path));
+        ASSERT_NE(entry, nullptr) << path;
+        EXPECT_FALSE(entry->desc.stream) << path;
+    }
+}
+
+TEST(AudioPlugin, KeepsTheStreamOfASoundAScriptLoadedFirst) {
+    AudioApp app;
+    const aylo::core::asset::AssetId music = app.load("music/theme.ogg", {.stream = true});
+    const auto* loaders = app.world().getResources().get<aylo::plugins::AssetLoaders>();
+    ASSERT_NE(loaders, nullptr);
+
+    EXPECT_TRUE(loaders->load("music/theme.ogg"));
+
+    const auto* entry = app.world().getResources().get<aylo::plugins::audio::AudioAssets>()->get(music);
+    ASSERT_NE(entry, nullptr);
+    EXPECT_TRUE(entry->desc.stream);
 }

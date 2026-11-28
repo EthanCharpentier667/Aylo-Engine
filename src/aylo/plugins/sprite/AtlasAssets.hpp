@@ -74,8 +74,9 @@ class AYLO_PLUGIN_SPRITE_API AtlasAssets {
     /// @return The number of atlases known, built or failed.
     [[nodiscard]] std::size_t getCount() const noexcept;
 
-    /// @brief Reads the Aseprite or TexturePacker JSON file at @p path (detail::parseAtlasJson()): its frames, its
-    /// animations (Aseprite's frame tags) and its image, relative to the file.
+    /// @brief Reads the atlas file at @p path: a `.atlas` file, the engine's own (detail::parseAtlasFile()), or an
+    /// Aseprite or TexturePacker JSON export (detail::parseAtlasJson()): its frames, its animations and its image,
+    /// relative to the file.
     /// @param desc How the image is sampled.
     /// @return Its id (AssetId::fromPath()), at once, even if it failed. Asking twice gives the first one.
     /// @throws core::asset::exceptions::AssetLoadException If another path already has this id (a hash collision).
